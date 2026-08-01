@@ -1,0 +1,47 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+    // data 模块不需要 Compose UI
+}
+
+android {
+    namespace = "app.amisles.hanime.data"
+    compileSdk = 37
+
+    defaultConfig {
+        minSdk = 30
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+    }
+}
+
+dependencies {
+    implementation(project(":core:common"))
+    implementation(project(":core:network"))
+    implementation(project(":domain:model"))
+
+    implementation(libs.androidx.core.ktx)
+    
+    // Network
+    implementation(libs.okhttp)
+    implementation(libs.jsoup)
+    
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Test
+    testImplementation(libs.junit)
+}

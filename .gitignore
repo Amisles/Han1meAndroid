@@ -1,0 +1,41 @@
+# Gradle 构建产物
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# 输出文件
+*.apk
+*.aab
+*.dex
+*.class
+
+# Android Studio 配置
+.idea/
+!app/.idea/.gitignore
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Gradle 缓存
+.gradle/
+
+# IDE 缓存
+*.iml
+.kotlin/
+
+# HTML 样本文件（调试用）
+*.html
+
+# 日志文件
+*.log
+
+# 临时文件
+*.download
+*.tmp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db

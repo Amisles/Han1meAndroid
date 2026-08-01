@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 左猫耳（白色外耳） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,38 Q28,24 36,18 Q48,18 52,34 Z" />
+
+    <!-- 右猫耳（白色外耳） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,38 Q80,24 72,18 Q60,18 56,34 Z" />
+
+    <!-- 左猫耳内耳（浅粉色） -->
+    <path
+        android:fillColor="#FFB6C1"
+        android:pathData="M34,35 Q33,26 38,24 Q44,24 48,32 Z" />
+
+    <!-- 右猫耳内耳（浅粉色） -->
+    <path
+        android:fillColor="#FFB6C1"
+        android:pathData="M74,35 Q75,26 70,24 Q64,24 60,32 Z" />
+
+    <!-- 红色圆角方形播放按钮主体 -->
+    <path
+        android:fillColor="#E53935"
+        android:pathData="M42,34 H66 A12,12 0 0 1 78,46 V70 A12,12 0 0 1 66,82 H42 A12,12 0 0 1 30,70 V46 A12,12 0 0 1 42,34 Z" />
+
+    <!-- 白色播放三角形 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,46 L68,58 L46,70 Z" />
+</vector>

@@ -1,0 +1,74 @@
+package app.amisles.hanime.feature.profile
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.data.repository.HanimeRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class LoginViewModel : ViewModel() {
+
+    sealed interface UiState {
+        data object Idle : UiState
+        data object Loading : UiState
+        data class Success(val cookieLength: Int) : UiState
+        data class Error(val message: String) : UiState
+    }
+
+    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    private val repository get() = HanimeRepository.getInstance()
+
+    fun loginWithEmailPassword(email: String, password: String) {
+        val cleanEmail = email.trim()
+        if (cleanEmail.isEmpty() || password.isEmpty()) {
+            _uiState.value = UiState.Error("请输入邮箱和密码")
+            return
+        }
+        if (!cleanEmail.contains('@')) {
+            _uiState.value = UiState.Error("请输入正确的邮箱地址")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            val result = repository.login(cleanEmail, password)
+            result.onSuccess { cookie ->
+                _uiState.value = UiState.Success(cookie.length)
+            }.onFailure { t ->
+                _uiState.value = UiState.Error(t.message ?: "登录失败")
+            }
+        }
+    }
+
+    fun saveManualCookie(cookieString: String) {
+        val clean = cookieString.trim()
+        if (clean.isEmpty()) {
+            _uiState.value = UiState.Error("Cookie 不能为空")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            val ok = repository.saveLoginCookie(clean)
+            if (ok) {
+                _uiState.value = UiState.Success(clean.length)
+            } else {
+                _uiState.value = UiState.Error("保存失败，请检查 Cookie 格式")
+            }
+        }
+    }
+
+    fun saveWebViewCookie(cookieFromManager: String) {
+        saveManualCookie(cookieFromManager)
+    }
+
+    fun reset() {
+        _uiState.value = UiState.Idle
+    }
+
+    fun logout() {
+        repository.logout()
+    }
+}
