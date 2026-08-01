@@ -447,7 +447,7 @@ fun DetailScreen(
                                     Text(
                                         text = "播放列表",
                                         fontSize = 11.sp,
-                                        color = HanimePrimary,
+                                        color = Color.Black,
                                         modifier = Modifier
                                             .background(HanimePrimaryLight, RoundedCornerShape(4.dp))
                                             .padding(horizontal = 6.dp, vertical = 2.dp)

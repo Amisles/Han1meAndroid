@@ -19,6 +19,16 @@ import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
 class HanimeParser {
+
+    // 清理点赞率文本，移除图标和标签前缀，只保留数字百分比
+    private fun cleanLikeRate(text: String): String {
+        return text.replace("👍", "")
+            .replace("thumb-up", "")
+            .replace("thumb_up", "")
+            .replace("thumb up", "")
+            .trim()
+    }
+
     private val traditionalToSimplified = mapOf(
         "最新上市" to "最新上市",
         "最新上傳" to "最新上传",
@@ -271,7 +281,7 @@ class HanimeParser {
                 for (stat in statItems) {
                     val text = stat.text().trim()
                     if (text.contains("%")) {
-                        likeRate = text.replace("👍", "").replace("thumb_up", "").trim()
+                        likeRate = cleanLikeRate(text)
                     } else {
                         viewCount = text.trim()
                     }
@@ -609,7 +619,7 @@ class HanimeParser {
                     val duration = videoCard.selectFirst(".duration")?.text()?.trim() ?: ""
                     
                     val statsContainer = videoCard.selectFirst(".stats-container")
-                    val likeRate = statsContainer?.selectFirst(".stat-item")?.text()?.trim() ?: ""
+                    val likeRate = statsContainer?.selectFirst(".stat-item")?.text()?.trim()?.let { cleanLikeRate(it) } ?: ""
                     val viewCount = statsContainer?.select("div.stat-item")?.getOrNull(1)?.text() ?: ""
                     
                     val title = videoCard.selectFirst(".video-title a")?.text()?.trim() ?: ""
@@ -929,7 +939,7 @@ class HanimeParser {
                 val duration = item.selectFirst(".duration")?.text()?.trim() ?: ""
 
                 val statsContainer = item.selectFirst(".stats-container")
-                val likeRate = statsContainer?.selectFirst(".stat-item")?.text()?.trim() ?: ""
+                val likeRate = statsContainer?.selectFirst(".stat-item")?.text()?.trim()?.let { cleanLikeRate(it) } ?: ""
                 val viewCount = statsContainer?.select("div.stat-item")?.getOrNull(1)?.text() ?: ""
 
                 val title = item.selectFirst(".video-title a")?.text()?.trim() ?: ""
@@ -966,7 +976,7 @@ class HanimeParser {
             val duration = item.selectFirst(".duration")?.text()?.trim() ?: ""
 
             val statsContainer = item.selectFirst(".stats-container")
-            val likeRate = statsContainer?.selectFirst(".stat-item")?.text()?.trim() ?: ""
+            val likeRate = statsContainer?.selectFirst(".stat-item")?.text()?.trim()?.let { cleanLikeRate(it) } ?: ""
             val viewCount = statsContainer?.select("div.stat-item")?.getOrNull(1)?.text() ?: ""
 
             val title = item.selectFirst(".title")?.text()?.trim() ?: ""
