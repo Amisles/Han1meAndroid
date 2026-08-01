@@ -3,6 +3,7 @@ package app.amisles.hanime.data.remote
 import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
 import app.amisles.hanime.data.parser.HanimeParser
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistDetail
@@ -34,23 +35,9 @@ class NetworkService {
             .build()
     }
 
-    private val baseUrls = listOf(
-        "https://hanime1.me",
-        "https://www.hanime1.me",
-        "https://hanimeone.me",
-        "https://www.hanimeone.me",
-        "https://hanime1.sbs",
-        "https://hanime1.tv"
-    )
-    private var currentBaseUrlIndex = 0
-
+    // 从用户配置中获取官网地址，默认 https://hanime1.me
     private fun getCurrentBaseUrl(): String {
-        return baseUrls[currentBaseUrlIndex]
-    }
-
-    private fun tryNextBaseUrl() {
-        currentBaseUrlIndex = (currentBaseUrlIndex + 1) % baseUrls.size
-        AppLogger.log("NetworkService", "Switching to base URL: ${getCurrentBaseUrl()}")
+        return Preferences.baseUrl
     }
 
     private val uaString
@@ -84,32 +71,24 @@ class NetworkService {
 
     suspend fun fetchLoginPageWithBaseUrl(): FetchResult {
         AppLogger.log("NetworkService", "fetchLoginPageWithBaseUrl called")
-        for (i in baseUrls.indices) {
-            try {
-                val base = getCurrentBaseUrl()
-                val url = "$base/login"
-                val req = Request.Builder()
-                    .url(url)
-                    .header("User-Agent", uaString)
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-                    .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                    .get()
-                    .build()
-                val resp = client.newCall(req).execute()
-                val code = resp.code
-                AppLogger.log("NetworkService", "fetchLoginPage code=$code url=$base")
-                if (code in 200..399) {
-                    val html = resp.body?.string().orEmpty()
-                    return FetchResult(html, base)
-                } else {
-                    if (i < baseUrls.size - 1) tryNextBaseUrl() else throw Exception("login page HTTP $code")
-                }
-            } catch (e: Exception) {
-                AppLogger.logError("NetworkService", "fetchLoginPage failed: ${e.message}", e)
-                if (i < baseUrls.size - 1) tryNextBaseUrl() else throw e
-            }
+        val base = getCurrentBaseUrl()
+        val url = "$base/login"
+        val req = Request.Builder()
+            .url(url)
+            .header("User-Agent", uaString)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+            .get()
+            .build()
+        val resp = client.newCall(req).execute()
+        val code = resp.code
+        AppLogger.log("NetworkService", "fetchLoginPage code=$code url=$base")
+        if (code in 200..399) {
+            val html = resp.body?.string().orEmpty()
+            return FetchResult(html, base)
+        } else {
+            throw Exception("login page HTTP $code")
         }
-        throw Exception("All base URLs failed for login")
     }
 
     suspend fun postLoginForm(
@@ -118,107 +97,72 @@ class NetworkService {
         password: String
     ): LoginFormResult {
         AppLogger.log("NetworkService", "postLoginForm called (email length=${email.length})")
-        for (i in baseUrls.indices) {
-            val base = getCurrentBaseUrl()
-            val form = FormBody.Builder()
-                .add("_token", csrfToken)
-                .add("email", email)
-                .add("password", password)
-                .build()
-            val req = Request.Builder()
-                .url("$base/login")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Referer", "$base/login")
-                .header("Origin", base)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .build()
-            try {
-                noRedirectClient.newCall(req).execute().use { resp ->
-                    val code = resp.code
-                    val cookies = resp.headers("Set-Cookie")
-                    var body: String? = null
-                    if (code in 200..299) {
-                        body = resp.body?.string()
-                    }
-                    AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
-                    return LoginFormResult(code, cookies, body)
-                }
-            } catch (e: Exception) {
-                AppLogger.logError("NetworkService", "postLoginForm base=$base failed: ${e.message}", e)
-                if (i < baseUrls.size - 1) tryNextBaseUrl() else throw e
+        val base = getCurrentBaseUrl()
+        val form = FormBody.Builder()
+            .add("_token", csrfToken)
+            .add("email", email)
+            .add("password", password)
+            .build()
+        val req = Request.Builder()
+            .url("$base/login")
+            .post(form)
+            .header("User-Agent", uaString)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+            .header("Referer", "$base/login")
+            .header("Origin", base)
+            .header("X-CSRF-TOKEN", csrfToken)
+            .build()
+        noRedirectClient.newCall(req).execute().use { resp ->
+            val code = resp.code
+            val cookies = resp.headers("Set-Cookie")
+            var body: String? = null
+            if (code in 200..299) {
+                body = resp.body?.string()
             }
+            AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
+            return LoginFormResult(code, cookies, body)
         }
-        throw Exception("All base URLs failed for login post")
     }
 
     suspend fun fetchHomePageWithBaseUrl(): FetchResult {
         AppLogger.log("NetworkService", "fetchHomePageWithBaseUrl called")
-        for (i in baseUrls.indices) {
-            try {
-                val baseUrl = getCurrentBaseUrl()
-                AppLogger.log("NetworkService", "Trying base URL: $baseUrl")
-                val url = "$baseUrl/"
-                val html = executeRequest(buildRequest(url))
-                return FetchResult(html, baseUrl)
-            } catch (e: Exception) {
-                AppLogger.logError("NetworkService", "Failed to fetch from ${getCurrentBaseUrl()}: ${e.message}", e)
-                if (i < baseUrls.size - 1) {
-                    tryNextBaseUrl()
-                } else {
-                    throw e
-                }
-            }
-        }
-        throw Exception("All base URLs failed")
+        val baseUrl = getCurrentBaseUrl()
+        AppLogger.log("NetworkService", "Using base URL: $baseUrl")
+        val url = "$baseUrl/"
+        val html = executeRequest(buildRequest(url))
+        return FetchResult(html, baseUrl)
     }
 
     suspend fun fetchSearchPageWithBaseUrl(query: String, genre: String? = null, sort: String? = null, page: Int = 1): FetchResult {
         AppLogger.log("NetworkService", "fetchSearchPageWithBaseUrl called")
-        for (i in baseUrls.indices) {
-            try {
-                val baseUrl = getCurrentBaseUrl()
-                AppLogger.log("NetworkService", "Trying base URL: $baseUrl")
-                val url = buildString {
-                    append("$baseUrl/search?")
+        val baseUrl = getCurrentBaseUrl()
+        AppLogger.log("NetworkService", "Using base URL: $baseUrl")
+        val url = buildString {
+            append("$baseUrl/search?")
 
-                    if (query.isNotEmpty()) {
-                        append("query=").append(URLEncoder.encode(query, StandardCharsets.UTF_8))
-                    }
-                    
-                    if (genre != null && genre.isNotEmpty()) {
-                        // Add & if query was already added
-                        if (query.isNotEmpty()) append("&")
-                        append("genre=").append(URLEncoder.encode(genre, StandardCharsets.UTF_8))
-                    }
-                    
-                    if (sort != null && sort.isNotEmpty()) {
-                        // Add & if query or genre was already added
-                        if (query.isNotEmpty() || (genre != null && genre.isNotEmpty())) append("&")
-                        append("sort=").append(URLEncoder.encode(sort, StandardCharsets.UTF_8))
-                    }
-                    
-                    if (page > 1) {
-                        // Add & if any parameter was already added
-                        if (query.isNotEmpty() || (genre != null && genre.isNotEmpty()) || (sort != null && sort.isNotEmpty())) append("&")
-                        append("page=").append(page)
-                    }
-                }
-                Log.i("NetworkService", "Search API URL: $url")
-                val html = executeRequest(buildRequest(url))
-                return FetchResult(html, baseUrl)
-            } catch (e: Exception) {
-                AppLogger.logError("NetworkService", "Failed to search from ${getCurrentBaseUrl()}: ${e.message}", e)
-                if (i < baseUrls.size - 1) {
-                    tryNextBaseUrl()
-                } else {
-                    throw e
-                }
+            if (query.isNotEmpty()) {
+                append("query=").append(URLEncoder.encode(query, StandardCharsets.UTF_8))
+            }
+
+            if (genre != null && genre.isNotEmpty()) {
+                if (query.isNotEmpty()) append("&")
+                append("genre=").append(URLEncoder.encode(genre, StandardCharsets.UTF_8))
+            }
+
+            if (sort != null && sort.isNotEmpty()) {
+                if (query.isNotEmpty() || (genre != null && genre.isNotEmpty())) append("&")
+                append("sort=").append(URLEncoder.encode(sort, StandardCharsets.UTF_8))
+            }
+
+            if (page > 1) {
+                if (query.isNotEmpty() || (genre != null && genre.isNotEmpty()) || (sort != null && sort.isNotEmpty())) append("&")
+                append("page=").append(page)
             }
         }
-        throw Exception("All base URLs failed")
+        Log.i("NetworkService", "Search API URL: $url")
+        val html = executeRequest(buildRequest(url))
+        return FetchResult(html, baseUrl)
     }
 
     suspend fun fetchWatchPageWithBaseUrl(videoUrl: String): FetchResult {
@@ -226,29 +170,17 @@ class NetworkService {
         val url = if (videoUrl.startsWith("http")) videoUrl else "${getCurrentBaseUrl()}$videoUrl"
         AppLogger.log("NetworkService", "Full URL: $url")
         val html = executeRequest(buildRequest(url))
-        val baseUrl = "https://${Regex("https?://([^/]+)").find(url)?.groupValues?.get(1) ?: "hanime1.me"}"
+        val baseUrl = "https://${Regex("https?://([^/]+)").find(url)?.groupValues?.get(1) ?: Preferences.DEFAULT_BASE_URL.removePrefix("https://")}"
         return FetchResult(html, baseUrl)
     }
 
     suspend fun fetchDownloadPageWithBaseUrl(videoId: String): FetchResult {
         AppLogger.log("NetworkService", "fetchDownloadPageWithBaseUrl called, videoId: $videoId")
-        for (i in baseUrls.indices) {
-            try {
-                val baseUrl = getCurrentBaseUrl()
-                AppLogger.log("NetworkService", "Trying download page from: $baseUrl")
-                val url = "$baseUrl/download?v=$videoId"
-                val html = executeRequest(buildRequest(url))
-                return FetchResult(html, baseUrl)
-            } catch (e: Exception) {
-                AppLogger.logError("NetworkService", "Failed to fetch download page from ${getCurrentBaseUrl()}: ${e.message}", e)
-                if (i < baseUrls.size - 1) {
-                    tryNextBaseUrl()
-                } else {
-                    throw e
-                }
-            }
-        }
-        throw Exception("All base URLs failed")
+        val baseUrl = getCurrentBaseUrl()
+        AppLogger.log("NetworkService", "Fetching download page from: $baseUrl")
+        val url = "$baseUrl/download?v=$videoId"
+        val html = executeRequest(buildRequest(url))
+        return FetchResult(html, baseUrl)
     }
 
     suspend fun fetchAuthorPage(authorPageUrl: String): AuthorPageData? {

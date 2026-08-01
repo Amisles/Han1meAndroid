@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,6 +30,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,9 +72,12 @@ fun SettingsScreen(
     val context = LocalContext.current
     val videoLanguage by Preferences.videoLanguageFlow.collectAsState()
     val maxDownloadConcurrent by Preferences.maxDownloadConcurrentFlow.collectAsState()
+    val baseUrl by Preferences.baseUrlFlow.collectAsState()
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
+    var showBaseUrlDialog by remember { mutableStateOf(false) }
+    var baseUrlInput by remember { mutableStateOf(baseUrl) }
 
     Column(
         modifier = Modifier
@@ -245,6 +250,52 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 15.dp, vertical = 6.dp)
+                .clickable {
+                    baseUrlInput = baseUrl
+                    showBaseUrlDialog = true
+                },
+            colors = CardDefaults.cardColors(containerColor = HanimeCard),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Link,
+                    contentDescription = null,
+                    tint = HanimePrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "官网网址",
+                        fontSize = 15.sp,
+                        color = HanimeTextPrimary
+                    )
+                    Text(
+                        text = baseUrl,
+                        fontSize = 12.sp,
+                        color = HanimeTextSecondary,
+                        maxLines = 1
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = HanimeTextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 6.dp)
                 .clickable { showClearCacheDialog = true },
             colors = CardDefaults.cardColors(containerColor = HanimeCard),
             shape = RoundedCornerShape(10.dp)
@@ -301,6 +352,60 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showClearCacheDialog = false }) {
                     Text("取消", color = HanimeTextSecondary)
+                }
+            },
+            containerColor = HanimeCard
+        )
+    }
+
+    if (showBaseUrlDialog) {
+        AlertDialog(
+            onDismissRequest = { showBaseUrlDialog = false },
+            title = { Text("官网网址", color = HanimeTextPrimary) },
+            text = {
+                Column {
+                    Text(
+                        "请输入官网地址，留空则恢复默认",
+                        color = HanimeTextSecondary,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    OutlinedTextField(
+                        value = baseUrlInput,
+                        onValueChange = { baseUrlInput = it },
+                        placeholder = {
+                            Text(
+                                text = Preferences.DEFAULT_BASE_URL,
+                                fontSize = 14.sp,
+                                color = HanimeTextSecondary
+                            )
+                        },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            color = HanimeTextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    Preferences.setBaseUrl(baseUrlInput)
+                    showBaseUrlDialog = false
+                    Toast.makeText(context, "官网网址已更新", Toast.LENGTH_SHORT).show()
+                }) {
+                    Text("保存", color = HanimePrimary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    baseUrlInput = Preferences.DEFAULT_BASE_URL
+                    Preferences.setBaseUrl(Preferences.DEFAULT_BASE_URL)
+                    showBaseUrlDialog = false
+                    Toast.makeText(context, "已恢复默认网址", Toast.LENGTH_SHORT).show()
+                }) {
+                    Text("恢复默认", color = HanimeTextSecondary)
                 }
             },
             containerColor = HanimeCard

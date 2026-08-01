@@ -19,6 +19,10 @@ object Preferences {
     private const val SP_SAVED_USER_ID = "saved_user_id"
     private const val SP_VIDEO_LANGUAGE = "video_language"
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
+    private const val SP_BASE_URL = "base_url"
+
+    // 默认官网地址
+    const val DEFAULT_BASE_URL = "https://hanime1.me"
 
     private lateinit var sp: android.content.SharedPreferences
 
@@ -40,6 +44,9 @@ object Preferences {
     private val _maxDownloadConcurrentFlow = MutableStateFlow(3)
     val maxDownloadConcurrentFlow: StateFlow<Int> = _maxDownloadConcurrentFlow.asStateFlow()
 
+    private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
+    val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
+
     fun init(context: Context) {
         sp = context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
         _loginStateFlow.value = sp.getBoolean(SP_ALREADY_LOGIN, false)
@@ -48,6 +55,7 @@ object Preferences {
         _savedUserIdFlow.value = sp.getString(SP_SAVED_USER_ID, "").orEmpty()
         _videoLanguageFlow.value = sp.getString(SP_VIDEO_LANGUAGE, "zhs").orEmpty()
         _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
+        _baseUrlFlow.value = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
     }
 
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
@@ -61,6 +69,15 @@ object Preferences {
     val videoLanguage: String get() = _videoLanguageFlow.value
 
     val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
+
+    val baseUrl: String get() = _baseUrlFlow.value
+
+    fun setBaseUrl(url: String) {
+        val trimmed = url.trim().trimEnd('/')
+        val safeUrl = if (trimmed.isEmpty()) DEFAULT_BASE_URL else trimmed
+        sp.edit { putString(SP_BASE_URL, safeUrl) }
+        _baseUrlFlow.value = safeUrl
+    }
 
     fun saveLogin(cookieString: String, userId: String? = null) {
         val safeCookie = cookieString.take(8192)
