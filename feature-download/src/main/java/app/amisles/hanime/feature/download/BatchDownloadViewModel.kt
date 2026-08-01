@@ -318,8 +318,8 @@ class BatchDownloadViewModel : ViewModel() {
 
                             if (downloadPageHtml != null) {
                                 val qualities = withContext(Dispatchers.IO) {
-                                    val parser = app.amisles.hanime.data.parser.HanimeParser()
-                                    parser.parseDownloadPage(downloadPageHtml.html, downloadPageHtml.baseUrl)
+                                    val parser = app.amisles.hanime.data.parser.DownloadPageParser()
+                                    parser.parse(downloadPageHtml.html, downloadPageHtml.baseUrl)
                                 }
 
                                 _state.update { currentState ->

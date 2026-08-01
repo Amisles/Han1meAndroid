@@ -14,13 +14,19 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
-import app.amisles.hanime.data.parser.HanimeParser
+import app.amisles.hanime.data.parser.HomePageParser
+import app.amisles.hanime.data.parser.SearchPageParser
+import app.amisles.hanime.data.parser.WatchPageParser
+import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.flow.Flow
 
 class HanimeRepository private constructor(
     private val networkService: NetworkService = NetworkService(),
-    private val parser: HanimeParser = HanimeParser()
+    private val homePageParser: HomePageParser = HomePageParser(),
+    private val searchPageParser: SearchPageParser = SearchPageParser(),
+    private val watchPageParser: WatchPageParser = WatchPageParser(),
+    private val downloadPageParser: DownloadPageParser = DownloadPageParser()
 ) {
     companion object {
         @Volatile
@@ -157,7 +163,7 @@ class HanimeRepository private constructor(
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
 
             AppLogger.log("HanimeRepository", "Calling parser.parseHomePage")
-            val data = parser.parseHomePage(result.html, result.baseUrl)
+            val data = homePageParser.parse(result.html, result.baseUrl)
 
             val totalEndTime = System.currentTimeMillis()
             val totalDuration = totalEndTime - startTime
@@ -179,7 +185,7 @@ class HanimeRepository private constructor(
         try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return parser.parseSearchPage(result.html, result.baseUrl)
+            return searchPageParser.parse(result.html, result.baseUrl)
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in searchVideos: ${e.message}", e)
             return emptyList()
@@ -191,7 +197,7 @@ class HanimeRepository private constructor(
         try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return parser.parseSearchPageWithPagination(result.html, result.baseUrl)
+            return searchPageParser.parseWithPagination(result.html, result.baseUrl)
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in searchVideosWithPagination: ${e.message}", e)
             return SearchResult(videos = emptyList(), currentPage = page, totalPages = 1, hasNextPage = false)
@@ -203,7 +209,7 @@ class HanimeRepository private constructor(
         try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
             AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return parser.parseWatchPage(result.html, result.baseUrl)
+            return watchPageParser.parse(result.html, result.baseUrl)
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getVideoDetail: ${e.message}", e)
             return null
@@ -215,7 +221,7 @@ class HanimeRepository private constructor(
         try {
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
             AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return parser.parseDownloadPage(result.html, result.baseUrl)
+            return downloadPageParser.parse(result.html, result.baseUrl)
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getDownloadQualities: ${e.message}", e)
             return emptyList()

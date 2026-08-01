@@ -2,7 +2,9 @@ package app.amisles.hanime.data.remote
 
 import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
-import app.amisles.hanime.data.parser.HanimeParser
+import app.amisles.hanime.data.parser.AuthorPageParser
+import app.amisles.hanime.data.parser.PlaylistParser
+import app.amisles.hanime.data.parser.SearchPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -188,8 +190,7 @@ class NetworkService {
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(authorPageUrl))
-                val parser = HanimeParser()
-                parser.parseAuthorPage(html, authorPageUrl)
+                AuthorPageParser().parse(html, authorPageUrl)
             } catch (e: Exception) {
                 AppLogger.logError("NetworkService", "Failed to fetch author page: ${e.message}", e)
                 null
@@ -202,8 +203,7 @@ class NetworkService {
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(url))
-                val parser = HanimeParser()
-                parser.parseVideoListPage(html, url)
+                AuthorPageParser().parseVideoListPage(html, url)
             } catch (e: Exception) {
                 AppLogger.logError("NetworkService", "Failed to fetch video list page: ${e.message}", e)
                 emptyList()
@@ -216,8 +216,7 @@ class NetworkService {
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(url))
-                val parser = HanimeParser()
-                parser.parsePlaylistListPage(html, url)
+                PlaylistParser().parseListPage(html, url)
             } catch (e: Exception) {
                 AppLogger.logError("NetworkService", "Failed to fetch playlist list page: ${e.message}", e)
                 emptyList()
@@ -230,8 +229,7 @@ class NetworkService {
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(url))
-                val parser = HanimeParser()
-                parser.parsePlaylistDetailPage(html, url)
+                PlaylistParser().parseDetailPage(html, url)
             } catch (e: Exception) {
                 AppLogger.logError("NetworkService", "Failed to fetch playlist detail page: ${e.message}", e)
                 null
@@ -251,8 +249,7 @@ class NetworkService {
                 }
                 AppLogger.log("NetworkService", "Fetching user video list from: $url")
                 val html = executeRequest(buildRequest(url))
-                val parser = HanimeParser()
-                parser.parseUserVideoList(html, url)
+                AuthorPageParser().parseUserVideoList(html, url)
             } catch (e: Exception) {
                 AppLogger.logError("NetworkService", "Failed to fetch user video list: ${e.message}", e)
                 null
