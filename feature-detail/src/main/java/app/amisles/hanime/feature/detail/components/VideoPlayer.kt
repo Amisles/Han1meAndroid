@@ -7,6 +7,9 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -124,6 +128,21 @@ fun VideoPlayer(
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
     var qualityBtnBounds by remember { mutableStateOf(Rect.Zero) }
     val density = LocalDensity.current
+
+    // 手势状态
+    var gestureHint by remember { mutableStateOf<String?>(null) }
+    var seekPreview by remember { mutableLongStateOf(0L) }
+    var seekStart by remember { mutableLongStateOf(0L) }
+    var brightness by remember {
+        val initial = activity?.window?.attributes?.screenBrightness ?: -1f
+        mutableFloatStateOf(if (initial < 0f) 0.5f else initial)
+    }
+    var videoZoom by remember { mutableFloatStateOf(1f) }
+    var dragStartX by remember { mutableFloatStateOf(0f) }
+    var dragStartY by remember { mutableFloatStateOf(0f) }
+    var activeGesture by remember { mutableStateOf<String?>(null) }
+    var playerWidth by remember { mutableFloatStateOf(0f) }
+    var playerHeight by remember { mutableFloatStateOf(0f) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val sortedSources = remember(videoSources) {
@@ -253,6 +272,13 @@ fun VideoPlayer(
         exoPlayer.volume = if (isMuted) 0f else volume
     }
 
+    fun setBrightness(value: Float) {
+        val window = activity?.window ?: return
+        val attrs = window.attributes
+        attrs.screenBrightness = value.coerceIn(0f, 1f)
+        window.attributes = attrs
+    }
+
     fun setPlaybackSpeed(speed: Float) {
         playbackSpeed = speed
         exoPlayer.setPlaybackSpeed(speed)
@@ -299,6 +325,15 @@ fun VideoPlayer(
         }
     }
 
+    // 缩放手势结束后自动清除提示（detectTransformGestures 无 onEnd 回调）
+    LaunchedEffect(videoZoom) {
+        if (gestureHint?.startsWith("缩放") == true) {
+            kotlinx.coroutines.delay(800)
+            gestureHint = null
+            activeGesture = null
+        }
+    }
+
     Box(
         modifier = modifier
             .then(
@@ -306,6 +341,106 @@ fun VideoPlayer(
                 else Modifier.fillMaxWidth().aspectRatio(16f / 9f)
             )
             .background(Color.Black)
+            .onGloballyPositioned { coords ->
+                playerWidth = coords.size.width.toFloat()
+                playerHeight = coords.size.height.toFloat()
+            }
+            // 双指缩放
+            .pointerInput(Unit) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    if (activeGesture == null || activeGesture == "zoom") {
+                        activeGesture = "zoom"
+                        videoZoom = (videoZoom * zoom).coerceIn(0.5f, 2.0f)
+                        gestureHint = "缩放: ${String.format(Locale.getDefault(), "%.1f", videoZoom)}x"
+                    }
+                }
+            }
+            // 水平滑动调节进度
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        if (activeGesture == null || activeGesture == "zoom") {
+                            activeGesture = "seek"
+                            dragStartX = offset.x
+                            dragStartY = offset.y
+                            seekStart = exoPlayer.currentPosition
+                            seekPreview = seekStart
+                        }
+                    },
+                    onHorizontalDrag = { change, _ ->
+                        if (activeGesture == "seek" && duration > 0 && playerWidth > 0f) {
+                            val totalDelta = change.position.x - dragStartX
+                            val timeDelta = (totalDelta / playerWidth * duration.toFloat()).toLong()
+                            seekPreview = (seekStart + timeDelta).coerceIn(0L, duration)
+                            gestureHint = "${formatTime(seekPreview)} / ${formatTime(duration)}"
+                        }
+                    },
+                    onDragEnd = {
+                        if (activeGesture == "seek") {
+                            exoPlayer.seekTo(seekPreview)
+                            currentPosition = seekPreview
+                            activeGesture = null
+                            gestureHint = null
+                        }
+                    },
+                    onDragCancel = {
+                        if (activeGesture == "seek") {
+                            activeGesture = null
+                            gestureHint = null
+                        }
+                    }
+                )
+            }
+            // 垂直滑动调节亮度/音量
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragStart = { offset ->
+                        if (activeGesture == null || activeGesture == "zoom") {
+                            dragStartX = offset.x
+                            dragStartY = offset.y
+                            // 左半屏调节亮度，右半屏调节音量
+                            if (offset.x < playerWidth / 2f) {
+                                activeGesture = "brightness"
+                            } else {
+                                activeGesture = "volume"
+                            }
+                        }
+                    },
+                    onVerticalDrag = { _, dragAmount ->
+                        when (activeGesture) {
+                            "brightness" -> {
+                                if (playerHeight > 0f) {
+                                    val delta = -dragAmount / playerHeight
+                                    brightness = (brightness + delta).coerceIn(0f, 1f)
+                                    setBrightness(brightness)
+                                    gestureHint = "亮度: ${(brightness * 100).toInt()}%"
+                                }
+                            }
+                            "volume" -> {
+                                if (playerHeight > 0f) {
+                                    val delta = -dragAmount / playerHeight
+                                    volume = (volume + delta).coerceIn(0f, 1f)
+                                    exoPlayer.volume = volume
+                                    isMuted = volume == 0f
+                                    gestureHint = "音量: ${(volume * 100).toInt()}%"
+                                }
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        if (activeGesture == "brightness" || activeGesture == "volume") {
+                            activeGesture = null
+                            gestureHint = null
+                        }
+                    },
+                    onDragCancel = {
+                        if (activeGesture == "brightness" || activeGesture == "volume") {
+                            activeGesture = null
+                            gestureHint = null
+                        }
+                    }
+                )
+            }
             .clickable {
                 isControlsVisible = !isControlsVisible
                 showSpeedMenu = false
@@ -319,8 +454,29 @@ fun VideoPlayer(
                     useController = false
                 }
             },
+            update = { view ->
+                view.scaleX = videoZoom
+                view.scaleY = videoZoom
+            },
             modifier = Modifier.fillMaxSize()
         )
+
+        // 手势提示覆盖层
+        if (gestureHint != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = gestureHint ?: "",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
 
         if (isBuffering) {
             CircularProgressIndicator(

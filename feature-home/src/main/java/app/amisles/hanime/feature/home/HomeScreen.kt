@@ -1,12 +1,17 @@
 package app.amisles.hanime.feature.home
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,11 +21,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -32,6 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +54,7 @@ import app.amisles.hanime.core.ui.components.ErrorView
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.theme.HanimeBackground
+import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
@@ -165,14 +175,7 @@ fun HomeScreenContent(
 
         if (isLoading) {
             item(key = "home-loading") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = HanimePrimary)
-                }
+                HomeSkeletonScreen()
             }
         } else {
             banner?.let {
@@ -231,6 +234,106 @@ fun HomeScreenContent(
             }
         }
     }
+    }
+}
+
+/**
+ * 首页骨架屏：在加载时模拟首页布局的占位
+ */
+@Composable
+private fun HomeSkeletonScreen() {
+    // 闪烁动画：alpha 在 0.3f 到 0.6f 之间循环，时长 1000ms
+    val transition = rememberInfiniteTransition(label = "skeleton-shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "skeleton-alpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(HanimeBackground)
+    ) {
+        // Banner 骨架占位：260dp 高度，全宽，圆角
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(HanimeCard)
+                .alpha(alpha)
+        )
+
+        // 区块骨架（共 3 个）
+        repeat(3) {
+            // 区块标题骨架
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 15.dp, vertical = 15.dp)
+                    .size(width = 120.dp, height = 18.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(HanimeCard)
+                    .alpha(alpha)
+            )
+
+            // 横向视频卡片骨架列表
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 15.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(4) {
+                    SkeletonVideoCard(alpha = alpha)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+/**
+ * 骨架视频卡片：宽 200dp，高 210dp，包含图片占位（3:2）与两行文字占位
+ */
+@Composable
+private fun SkeletonVideoCard(alpha: Float) {
+    Column(
+        modifier = Modifier
+            .width(200.dp)
+            .height(210.dp)
+    ) {
+        // 图片占位（3:2 比例：200 x 133）
+        Box(
+            modifier = Modifier
+                .size(width = 200.dp, height = 133.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(HanimeCard)
+                .alpha(alpha)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        // 第一行文字占位
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(14.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(HanimeCard)
+                .alpha(alpha)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        // 第二行文字占位
+        Box(
+            modifier = Modifier
+                .width(120.dp)
+                .height(14.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(HanimeCard)
+                .alpha(alpha)
+        )
     }
 }
 

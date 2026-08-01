@@ -42,6 +42,10 @@ class DownloadManager(
 
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
     val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
+
+    // 进度更新回调，供外部（如 DownloadService）订阅以更新通知栏
+    var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
+
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
     private val taskIdCounter = AtomicInteger(0)
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -283,6 +287,13 @@ class DownloadManager(
                 if (task.id == taskId) {
                     val newTask = updater(task)
                     persistTask(newTask)
+                    // 触发进度回调，通知外部更新通知栏
+                    if (newTask.status == DownloadStatus.DOWNLOADING && newTask.totalBytes > 0) {
+                        val progress = (newTask.downloadedBytes * 100 / newTask.totalBytes).toInt()
+                        onProgressUpdate?.invoke(taskId, newTask.title, progress, newTask.status)
+                    } else if (newTask.status == DownloadStatus.COMPLETED || newTask.status == DownloadStatus.FAILED) {
+                        onProgressUpdate?.invoke(taskId, newTask.title, 100, newTask.status)
+                    }
                     newTask
                 } else {
                     task

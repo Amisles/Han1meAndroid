@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
@@ -22,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -360,34 +362,58 @@ fun SearchScreen(
                         modifier = Modifier.clickable { viewModel.clearSearchHistory() }
                     )
                 }
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 15.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp)
+                        .padding(horizontal = 15.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(searchHistory) { historyQuery ->
+                        // 单条历史项：搜索图标 + 关键词 + 删除按钮
                         Row(
                             modifier = Modifier
-                                .background(HanimeCard, RoundedCornerShape(16.dp))
+                                .fillMaxWidth()
+                                .background(HanimeCard, RoundedCornerShape(8.dp))
                                 .clickable {
                                     localQuery.value = historyQuery
                                     viewModel.setQuery(historyQuery)
                                     viewModel.executeSearch()
                                 }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // 搜索图标
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = HanimeTextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            // 历史关键词
                             Text(
                                 text = historyQuery,
-                                fontSize = 13.sp,
-                                color = HanimeTextPrimary
-                            )
-                            Text(
-                                text = "✕",
                                 fontSize = 14.sp,
-                                color = HanimeTextSecondary,
-                                modifier = Modifier.clickable { viewModel.removeSearchHistory(historyQuery) }
+                                color = HanimeTextPrimary,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
+                            // 删除按钮，保证足够的点击区域
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clickable { viewModel.removeSearchHistory(historyQuery) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "删除",
+                                    tint = HanimeTextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
