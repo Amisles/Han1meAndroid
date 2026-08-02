@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +49,7 @@ import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -113,7 +115,7 @@ fun FavoriteScreen(
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = if (isSelectionMode) "已选 ${selectedIds.size} 项" else "我的收藏",
+                text = if (isSelectionMode) "已选 ${selectedIds.size} 项" else stringResource(R.string.profile_favorites),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = HanimeTextPrimary,
@@ -167,13 +169,13 @@ fun FavoriteScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
-                        text = "暂无收藏",
+                        text = stringResource(R.string.favorite_empty),
                         fontSize = 16.sp,
                         color = HanimeTextSecondary,
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "去视频播放页收藏喜欢的视频吧",
+                        text = stringResource(R.string.favorite_empty_hint),
                         fontSize = 13.sp,
                         color = HanimeTextSecondary.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
@@ -252,7 +254,7 @@ fun FavoriteScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "删除",
+                    text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
                     color = Color(0xFFFF6B6B),
                     fontWeight = FontWeight.Medium,
@@ -285,7 +287,7 @@ fun FavoriteScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "确认删除",
+                    text = stringResource(R.string.favorite_delete_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimeTextPrimary,
@@ -302,7 +304,7 @@ fun FavoriteScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "取消",
+                        text = stringResource(R.string.common_cancel),
                         fontSize = 14.sp,
                         color = HanimeTextSecondary,
                         modifier = Modifier
@@ -312,7 +314,7 @@ fun FavoriteScreen(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "删除",
+                        text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
                         color = Color(0xFFFF6B6B),
                         fontWeight = FontWeight.Medium,

@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import app.amisles.hanime.core.ui.model.emojis
@@ -194,7 +196,7 @@ fun DetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (error != null) "加载失败: $error" else "暂无视频",
+                        text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
                         color = HanimeTextSecondary,
                         fontSize = 14.sp
                     )
@@ -255,14 +257,14 @@ fun DetailScreen(
                     ) {
                         if (detail.releaseDate.isNotEmpty()) {
                             Text(
-                                text = "发布: ${detail.releaseDate}",
+                                text = "${stringResource(R.string.detail_release_date)}: ${detail.releaseDate}",
                                 fontSize = 12.sp,
                                 color = HanimeTextSecondary
                             )
                         }
                         if (detail.fileSize.isNotEmpty()) {
                             Text(
-                                text = "大小: ${detail.fileSize}",
+                                text = "${stringResource(R.string.detail_file_size)}: ${detail.fileSize}",
                                 fontSize = 12.sp,
                                 color = HanimeTextSecondary
                             )
@@ -278,7 +280,7 @@ fun DetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (showDescription) "收起详情" else "查看详情",
+                                text = if (showDescription) stringResource(R.string.detail_collapse) else stringResource(R.string.detail_expand),
                                 fontSize = 13.sp,
                                 color = HanimePrimary,
                                 fontWeight = FontWeight.Medium
@@ -331,7 +333,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "下载",
+                                text = stringResource(R.string.detail_download),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = HanimeTextPrimary
@@ -356,7 +358,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (isFavorite) "已收藏" else "收藏",
+                                text = if (isFavorite) stringResource(R.string.detail_unfavorite) else stringResource(R.string.detail_favorite),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (isFavorite) HanimePrimary else HanimeTextPrimary
@@ -383,7 +385,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "分享",
+                                text = stringResource(R.string.detail_share),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = HanimeTextPrimary
@@ -393,7 +395,7 @@ fun DetailScreen(
 
                     if (detail.tags.isNotEmpty()) {
                         Text(
-                            text = "标签",
+                            text = stringResource(R.string.detail_tags),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = HanimeTextPrimary,
@@ -445,7 +447,7 @@ fun DetailScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "播放列表",
+                                        text = stringResource(R.string.detail_playlist),
                                         fontSize = 11.sp,
                                         color = Color.Black,
                                         modifier = Modifier
@@ -474,7 +476,7 @@ fun DetailScreen(
                                         modifier = Modifier.clickable { onAuthorClick(playlist.author) }
                                     )
                                     Text(
-                                        text = " · ${playlist.videoCount} 个视频",
+                                        text = " · " + stringResource(R.string.detail_playlist_count, playlist.videoCount),
                                         fontSize = 12.sp,
                                         color = HanimeTextSecondary
                                     )
@@ -532,7 +534,7 @@ fun DetailScreen(
             if (detail.relatedVideos.isNotEmpty()) {
                 item {
                     Text(
-                        text = "相关推荐",
+                        text = stringResource(R.string.detail_related),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = HanimeTextPrimary,
@@ -641,7 +643,7 @@ fun DetailScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "选择下载画质",
+                    text = stringResource(R.string.detail_select_quality),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimeTextPrimary,
@@ -655,7 +657,7 @@ fun DetailScreen(
                     )
                 } else if (downloadQualities.isEmpty()) {
                     Text(
-                        text = "暂无下载资源",
+                        text = stringResource(R.string.detail_no_download),
                         color = HanimeTextSecondary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(20.dp)
@@ -672,7 +674,7 @@ fun DetailScreen(
                                     showDownloadDialog = false
                                     scope.launch {
                                         snackbarHostState.showSnackbar(
-                                            message = "已添加下载任务",
+                                            message = context.getString(R.string.detail_download_added),
                                             duration = SnackbarDuration.Short
                                         )
                                     }
@@ -698,7 +700,7 @@ fun DetailScreen(
                                 }
                             }
                             Text(
-                                text = "下载",
+                                text = stringResource(R.string.detail_download),
                                 fontSize = 13.sp,
                                 color = HanimePrimary,
                                 fontWeight = FontWeight.Medium
@@ -708,7 +710,7 @@ fun DetailScreen(
                 }
 
                 Text(
-                    text = "取消",
+                    text = stringResource(R.string.common_cancel),
                     fontSize = 14.sp,
                     color = HanimeTextSecondary,
                     modifier = Modifier

@@ -1,0 +1,196 @@
+<resources>
+    <!-- App -->
+    <string name="app_name">hanime</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">首页</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_download">下载</string>
+    <string name="nav_profile">我的</string>
+    
+    <!-- Common -->
+    <string name="common_retry">重试</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_confirm">确认</string>
+    <string name="common_delete">删除</string>
+    <string name="common_clear">清空</string>
+    <string name="common_close">关闭</string>
+    <string name="common_save">保存</string>
+    <string name="common_select_all">全选</string>
+    <string name="common_loading">加载中...</string>
+    <string name="common_load_failed">加载失败</string>
+    <string name="common_empty_data">暂无数据</string>
+    <string name="common_search">搜索</string>
+    <string name="common_play">播放</string>
+    <string name="common_more_info">更多资讯</string>
+    <string name="common_view_more">查看更多</string>
+    <string name="common_manage">管理</string>
+    <string name="common_restore_default">恢复默认</string>
+    
+    <!-- Home -->
+    <string name="home_load_failed">首页加载失败</string>
+    
+    <!-- Search -->
+    <string name="search_placeholder">输入关键词搜索</string>
+    <string name="search_history">搜索历史</string>
+    <string name="search_no_results">暂无搜索结果</string>
+    <string name="search_sort">排序</string>
+    <string name="search_genre">分类</string>
+    <string name="search_load_more">加载更多</string>
+    <string name="search_loading_more">加载中...</string>
+    <string name="search_no_more">没有更多了</string>
+    <string name="search_all">全部</string>
+    <string name="search_sort_latest">最新发布</string>
+    <string name="search_sort_popular">最多播放</string>
+    <string name="search_sort_top_rated">最多好评</string>
+    <string name="search_result_count">%1$d 个结果</string>
+    <string name="search_selected_count">已选择 %1$d 项</string>
+    
+    <!-- Detail -->
+    <string name="detail_load_failed">视频加载失败</string>
+    <string name="detail_release_date">发布日期</string>
+    <string name="detail_file_size">文件大小</string>
+    <string name="detail_expand">展开</string>
+    <string name="detail_collapse">收起</string>
+    <string name="detail_download">下载</string>
+    <string name="detail_favorite">收藏</string>
+    <string name="detail_unfavorite">取消收藏</string>
+    <string name="detail_share">分享</string>
+    <string name="detail_tags">标签</string>
+    <string name="detail_playlist">播放列表</string>
+    <string name="detail_playlist_count">%1$d 个视频</string>
+    <string name="detail_related">相关推荐</string>
+    <string name="detail_select_quality">选择画质</string>
+    <string name="detail_no_download">暂无下载资源</string>
+    <string name="detail_download_added">已添加下载任务</string>
+    <string name="detail_download_button">下载此视频</string>
+    
+    <!-- Download -->
+    <string name="download_empty">暂无下载任务</string>
+    <string name="download_empty_hint">去详情页下载视频吧</string>
+    <string name="download_downloading">下载中</string>
+    <string name="download_paused">已暂停</string>
+    <string name="download_failed">下载失败</string>
+    <string name="download_completed">已完成</string>
+    <string name="download_pending">等待下载</string>
+    <string name="download_task_count">%1$d 个任务</string>
+    <string name="download_delete_title">确认删除</string>
+    <string name="download_delete_message">确定要删除这个下载任务吗？</string>
+    <string name="download_file_not_exist">文件不存在</string>
+    <string name="download_notification_channel">下载服务</string>
+    <string name="download_notification_downloading">正在下载</string>
+    <string name="download_notification_completed">下载完成</string>
+    <string name="download_notification_failed">下载失败</string>
+    
+    <!-- Batch Download -->
+    <string name="batch_title">批量下载</string>
+    <string name="batch_author_id_placeholder">输入作者ID</string>
+    <string name="batch_author_name">作者：%1$s</string>
+    <string name="batch_loading_page">加载第 %1$d 页...</string>
+    <string name="batch_status_downloaded">已下载</string>
+    <string name="batch_status_downloading">下载中</string>
+    <string name="batch_status_added">已添加</string>
+    <string name="batch_loading_qualities">获取画质中...</string>
+    <string name="batch_quality_label">画质</string>
+    <string name="batch_qualities_available">%1$d 种画质可选</string>
+    <string name="batch_select_quality">选择画质</string>
+    <string name="batch_start_download">开始下载</string>
+    <string name="batch_intro_title">批量下载功能</string>
+    <string name="batch_intro_input_id">输入作者ID，获取该作者的所有视频</string>
+    <string name="batch_no_videos">没有可下载的视频</string>
+    <string name="batch_manager_not_init">下载管理器未初始化</string>
+    <string name="batch_enter_author_id">请输入作者ID</string>
+    <string name="batch_search_failed">搜索失败，请检查作者ID</string>
+    <string name="batch_no_author_videos">该作者没有视频</string>
+    
+    <!-- Profile -->
+    <string name="profile_watch_history">观看历史</string>
+    <string name="profile_favorites">我的收藏</string>
+    <string name="profile_download_manager">下载管理</string>
+    <string name="profile_batch_download">批量下载</string>
+    <string name="profile_settings">设置</string>
+    <string name="profile_about">关于我们</string>
+    <string name="profile_logout">退出登录</string>
+    <string name="profile_logout_success">已退出登录</string>
+    <string name="profile_member">Hanime 会员</string>
+    <string name="profile_not_logged_in">未登录</string>
+    <string name="profile_logged_in">已登录</string>
+    <string name="profile_click_login">点击登录</string>
+    <string name="profile_stat_watch">观看</string>
+    <string name="profile_stat_favorite">收藏</string>
+    <string name="profile_stat_download">下载</string>
+    <string name="profile_stat_share">分享</string>
+    
+    <!-- Login -->
+    <string name="login_title">登录</string>
+    <string name="login_account_title">使用官网账号登录</string>
+    <string name="login_email">邮箱</string>
+    <string name="login_password">密码</string>
+    <string name="login_button">登录</string>
+    <string name="login_enter_email_password">请输入邮箱和密码</string>
+    <string name="login_invalid_email">请输入正确邮箱地址</string>
+    <string name="login_failed">登录失败</string>
+    <string name="login_cookie_empty">Cookie 不能为空</string>
+    <string name="login_save_failed">保存失败</string>
+    
+    <!-- Favorite -->
+    <string name="favorite_empty">暂无收藏</string>
+    <string name="favorite_empty_hint">去发现喜欢的视频吧</string>
+    <string name="favorite_delete_title">确认删除</string>
+    <string name="favorite_delete_message">确定要删除这个收藏吗？</string>
+    
+    <!-- History -->
+    <string name="history_empty">暂无观看历史</string>
+    <string name="history_empty_hint">观看视频后这里会显示记录</string>
+    <string name="history_delete">删除</string>
+    <string name="history_clear">清空</string>
+    <string name="history_count">%1$d 条记录</string>
+    <string name="history_clear_title">确认清空</string>
+    <string name="history_clear_message">确定要清空所有观看历史吗？</string>
+    
+    <!-- Settings -->
+    <string name="settings_video_language">视频语言</string>
+    <string name="settings_max_concurrent">同时下载数</string>
+    <string name="settings_base_url">官网网址</string>
+    <string name="settings_clear_cache">清除缓存</string>
+    <string name="settings_app_language">应用语言</string>
+    <string name="settings_clear_cache_title">清除缓存</string>
+    <string name="settings_clear_cache_message">确定要清除缓存吗？</string>
+    <string name="settings_cache_cleared">缓存已清除</string>
+    <string name="settings_base_url_title">官网网址</string>
+    <string name="settings_base_url_hint">请输入官网地址，留空则恢复默认</string>
+    <string name="settings_base_url_updated">官网网址已更新</string>
+    <string name="settings_base_url_restored">已恢复默认网址</string>
+    <string name="settings_language_zh_cn">简体中文</string>
+    <string name="settings_language_zh_tw">繁體中文</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_ja">日本語</string>
+    
+    <!-- About -->
+    <string name="about_title">关于我们</string>
+    <string name="about_version">版本 %1$s</string>
+    <string name="about_intro_title">应用简介</string>
+    <string name="about_features_title">主要功能</string>
+    <string name="about_license">开源协议</string>
+    <string name="about_license_name">GNU General Public License v3.0</string>
+    <string name="about_acknowledgements">致谢</string>
+    <string name="about_feature_1">视频浏览与搜索</string>
+    <string name="about_feature_2">HLS 流媒体播放</string>
+    <string name="about_feature_3">视频离线下载</string>
+    <string name="about_feature_4">收藏与观看历史</string>
+    <string name="about_feature_5">批量下载</string>
+    <string name="about_feature_6">作者主页浏览</string>
+    
+    <!-- Author -->
+    <string name="author_load_failed">加载失败</string>
+    <string name="author_parse_failed">无法解析作者主页</string>
+    
+    <!-- Video List / Playlist -->
+    <string name="video_list_load_failed">加载失败</string>
+    <string name="playlist_title">播放列表</string>
+    <string name="playlist_video_count">%1$d 个视频</string>
+    <string name="playlist_videos">影片列表</string>
+    
+    <!-- Error -->
+    <string name="error_load_failed">加载失败，请检查网络后重试</string>
+</resources>

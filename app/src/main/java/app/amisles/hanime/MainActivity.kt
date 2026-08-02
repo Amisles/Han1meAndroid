@@ -43,13 +43,19 @@ import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.ui.theme.HanimeBackground
 import app.amisles.hanime.ui.theme.HanimeTheme
+import app.amisles.hanime.core.common.util.LocaleHelper
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        Preferences.init(newBase)
+        super.attachBaseContext(LocaleHelper.wrapContext(newBase, Preferences.appLanguage))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         AppLogger.init(this)
-        Preferences.init(this)
         AppLogger.d("APP", "MainActivity onCreate started")
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(HanimeBackground.hashCode()),

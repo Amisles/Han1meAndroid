@@ -19,17 +19,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import app.amisles.hanime.R
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
-sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    object Home : Screen("home", "首页", Icons.Default.Home)
-    object Search : Screen("search", "搜索", Icons.Default.Search)
-    object Download : Screen("download", "下载", Icons.Default.Download)
-    object Profile : Screen("profile", "我的", Icons.Default.Person)
+sealed class Screen(val route: String, val labelResId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    object Home : Screen("home", R.string.nav_home, Icons.Default.Home)
+    object Search : Screen("search", R.string.nav_search, Icons.Default.Search)
+    object Download : Screen("download", R.string.nav_download, Icons.Default.Download)
+    object Profile : Screen("profile", R.string.nav_profile, Icons.Default.Person)
 }
 
 val screens = listOf(Screen.Home, Screen.Search, Screen.Download, Screen.Profile)
@@ -57,7 +58,7 @@ fun BottomNav(
             val isSelected = currentRoute.startsWith(screen.route)
             Icon(
                 imageVector = screen.icon,
-                contentDescription = screen.label,
+                contentDescription = stringResource(screen.labelResId),
                 tint = if (isSelected) HanimePrimary else HanimeTextSecondary,
                 modifier = Modifier
                     .size(24.dp)

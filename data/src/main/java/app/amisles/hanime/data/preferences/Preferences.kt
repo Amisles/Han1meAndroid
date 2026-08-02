@@ -20,9 +20,17 @@ object Preferences {
     private const val SP_VIDEO_LANGUAGE = "video_language"
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
+    private const val SP_APP_LANGUAGE = "app_language"
 
     // 默认官网地址
     const val DEFAULT_BASE_URL = "https://hanime1.me"
+
+    // 支持的语言代码
+    const val LANGUAGE_ZH_CN = "zh-CN"
+    const val LANGUAGE_ZH_TW = "zh-TW"
+    const val LANGUAGE_EN = "en"
+    const val LANGUAGE_JA = "ja"
+    val SUPPORTED_LANGUAGES = listOf(LANGUAGE_ZH_CN, LANGUAGE_ZH_TW, LANGUAGE_EN, LANGUAGE_JA)
 
     private lateinit var sp: android.content.SharedPreferences
 
@@ -47,6 +55,9 @@ object Preferences {
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
     val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
 
+    private val _appLanguageFlow = MutableStateFlow(LANGUAGE_ZH_CN)
+    val appLanguageFlow: StateFlow<String> = _appLanguageFlow.asStateFlow()
+
     fun init(context: Context) {
         sp = context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
         _loginStateFlow.value = sp.getBoolean(SP_ALREADY_LOGIN, false)
@@ -56,6 +67,7 @@ object Preferences {
         _videoLanguageFlow.value = sp.getString(SP_VIDEO_LANGUAGE, "zhs").orEmpty()
         _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _baseUrlFlow.value = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
+        _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
     }
 
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
@@ -71,6 +83,13 @@ object Preferences {
     val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
 
     val baseUrl: String get() = _baseUrlFlow.value
+
+    val appLanguage: String get() = _appLanguageFlow.value
+
+    fun setAppLanguage(lang: String) {
+        sp.edit { putString(SP_APP_LANGUAGE, lang) }
+        _appLanguageFlow.value = lang
+    }
 
     fun setBaseUrl(url: String) {
         val trimmed = url.trim().trimEnd('/')

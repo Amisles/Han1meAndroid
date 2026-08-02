@@ -56,12 +56,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.amisles.hanime.domain.model.BatchVideoItem
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import coil3.compose.AsyncImage
@@ -87,7 +89,7 @@ fun BatchDownloadScreen(
         containerColor = HanimeBackground,
         topBar = {
             TopAppBar(
-                title = { Text("批量下载", color = Color.White) },
+                title = { Text(stringResource(R.string.batch_title), color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
@@ -172,7 +174,7 @@ private fun SearchSection(
         OutlinedTextField(
             value = authorIdInput,
             onValueChange = onInputChange,
-            label = { Text("作者ID (例如: 1099851)", color = Color.Gray) },
+            label = { Text(stringResource(R.string.batch_author_id_placeholder), color = Color.Gray) },
             modifier = Modifier.weight(1f),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
@@ -221,7 +223,7 @@ private fun AuthorInfoSection(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "作者: $authorName",
+                text = stringResource(R.string.batch_author_name, authorName),
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -232,7 +234,7 @@ private fun AuthorInfoSection(
                 fontSize = 14.sp
             )
             Text(
-                text = "已加载: $totalVideos 个视频 (第 $currentPage/$totalPages 页)",
+                text = stringResource(R.string.batch_loading_page, currentPage),
                 color = HanimePrimary,
                 fontSize = 14.sp
             )
@@ -364,7 +366,7 @@ private fun VideoItem(
                     when {
                         video.isDownloaded -> {
                             Text(
-                                text = "已下载",
+                                text = stringResource(R.string.batch_status_downloaded),
                                 color = HanimePrimary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -373,7 +375,7 @@ private fun VideoItem(
                         }
                         video.isDownloading -> {
                             Text(
-                                text = "下载中...",
+                                text = stringResource(R.string.batch_status_downloading),
                                 color = Color(0xFF4CAF50),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -382,7 +384,7 @@ private fun VideoItem(
                         }
                         isDownloading -> {
                             Text(
-                                text = "已添加下载",
+                                text = stringResource(R.string.batch_status_added),
                                 color = HanimePrimary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -402,7 +404,7 @@ private fun VideoItem(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "获取画质...",
+                                        text = stringResource(R.string.batch_loading_qualities),
                                         color = HanimePrimary,
                                         fontSize = 11.sp
                                     )
@@ -417,7 +419,7 @@ private fun VideoItem(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "画质: ",
+                                            text = stringResource(R.string.batch_quality_label) + ": ",
                                             color = Color.Gray,
                                             fontSize = 11.sp
                                         )
@@ -431,7 +433,7 @@ private fun VideoItem(
                                         }
                                     }
                                     Text(
-                                        text = "(${video.qualities.size}个可选)",
+                                        text = stringResource(R.string.batch_qualities_available, video.qualities.size),
                                         color = Color.Gray,
                                         fontSize = 10.sp
                                     )
@@ -462,7 +464,7 @@ private fun VideoItem(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "已下载",
+                            text = stringResource(R.string.batch_status_downloaded),
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -496,7 +498,7 @@ private fun QualitySelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择画质", color = Color.White) },
+        title = { Text(stringResource(R.string.batch_select_quality), color = Color.White) },
         text = {
             Column {
                 qualities.forEachIndexed { index, quality ->
@@ -523,7 +525,7 @@ private fun QualitySelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭", color = HanimePrimary)
+                Text(stringResource(R.string.common_close), color = HanimePrimary)
             }
         },
         containerColor = Color(0xFF2A2A2A)
@@ -578,13 +580,13 @@ private fun BottomActionBar(
                 onClick = onSelectAll,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
             ) {
-                Text("全选")
+                Text(stringResource(R.string.common_select_all))
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = "已选: $selectedCount",
+                text = stringResource(R.string.search_selected_count, selectedCount),
                 color = Color.White,
                 fontSize = 14.sp
             )
@@ -607,7 +609,7 @@ private fun BottomActionBar(
                 } else {
                     Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("开始下载")
+                    Text(stringResource(R.string.batch_start_download))
                 }
             }
         }
@@ -637,7 +639,7 @@ private fun ErrorBanner(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Clear, contentDescription = "关闭", tint = Color.White)
+                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_close), tint = Color.White)
             }
         }
     }
@@ -662,14 +664,14 @@ private fun EmptyStateHint() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "批量下载功能",
+                text = stringResource(R.string.batch_intro_title),
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "输入作者ID可以一次性下载该作者的所有视频",
+                text = stringResource(R.string.batch_intro_input_id),
                 color = Color.Gray,
                 fontSize = 14.sp
             )

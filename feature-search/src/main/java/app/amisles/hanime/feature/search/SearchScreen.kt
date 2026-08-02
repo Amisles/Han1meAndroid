@@ -42,11 +42,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.ErrorView
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.categoryList
@@ -165,7 +167,7 @@ fun SearchScreen(
                 onValueChange = {
                     localQuery.value = it
                 },
-                placeholder = { Text("搜索视频、关键词...", color = HanimeTextSecondary) },
+                placeholder = { Text(stringResource(R.string.search_placeholder), color = HanimeTextSecondary) },
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(24.dp)),
@@ -257,7 +259,7 @@ fun SearchScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "排序",
+                    text = stringResource(R.string.search_sort),
                     fontSize = 13.sp,
                     color = HanimeTextSecondary,
                     fontWeight = FontWeight.Medium
@@ -350,7 +352,7 @@ fun SearchScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "搜索历史",
+                        text = stringResource(R.string.search_history),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = HanimeTextPrimary
@@ -521,7 +523,7 @@ fun SearchScreen(
                             CircularProgressIndicator(color = HanimePrimary)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "正在加载第${currentPage}/${totalPages}页",
+                                text = stringResource(R.string.search_loading_more),
                                 fontSize = 13.sp,
                                 color = HanimeTextSecondary
                             )
@@ -542,7 +544,7 @@ fun SearchScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             Text(
-                                text = "加载更多",
+                                text = stringResource(R.string.search_load_more),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = HanimePrimary,
@@ -561,7 +563,7 @@ fun SearchScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "已加载全部 ${currentPage}/${totalPages} 页",
+                                text = stringResource(R.string.search_no_more),
                                 fontSize = 13.sp,
                                 color = HanimeTextSecondary
                             )

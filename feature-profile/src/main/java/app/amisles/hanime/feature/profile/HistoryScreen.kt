@@ -1,4 +1,4 @@
-package app.amisles.hanime.feature.profile
+﻿package app.amisles.hanime.feature.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import app.amisles.hanime.core.ui.components.VideoThumbnail
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.core.ui.theme.HanimeBackground
@@ -183,7 +185,7 @@ fun HistoryScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     Text(
-                        text = "暂无观看历史",
+                        text = stringResource(R.string.history_empty),
                         fontSize = 16.sp,
                         color = HanimeTextSecondary,
                         textAlign = TextAlign.Center

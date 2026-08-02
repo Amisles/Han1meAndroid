@@ -37,10 +37,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -60,13 +62,14 @@ data class AppFeature(
     val title: String
 )
 
-private val appFeatures = listOf(
-    AppFeature(Icons.Filled.Home, "多区块首页浏览"),
-    AppFeature(Icons.Filled.Search, "多维度搜索与筛选"),
-    AppFeature(Icons.Filled.PlayArrow, "多画质在线播放"),
-    AppFeature(Icons.Filled.Download, "后台下载与离线缓存"),
-    AppFeature(Icons.Filled.Favorite, "本地收藏与历史记录"),
-    AppFeature(Icons.Filled.Settings, "Jetpack Compose 现代化 UI")
+@Composable
+private fun appFeatures() = listOf(
+    AppFeature(Icons.Filled.Home, stringResource(R.string.about_feature_1)),
+    AppFeature(Icons.Filled.Search, stringResource(R.string.about_feature_2)),
+    AppFeature(Icons.Filled.PlayArrow, stringResource(R.string.about_feature_3)),
+    AppFeature(Icons.Filled.Download, stringResource(R.string.about_feature_4)),
+    AppFeature(Icons.Filled.Favorite, stringResource(R.string.about_feature_5)),
+    AppFeature(Icons.Filled.Settings, stringResource(R.string.about_feature_6))
 )
 
 private val openSourceProjects = listOf(
@@ -190,7 +193,7 @@ fun AboutScreen(
             }
 
             Text(
-                text = "关于我们",
+                text = stringResource(R.string.about_title),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = HanimeTextPrimary,
@@ -238,7 +241,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "版本 1.0.0",
+                    text = stringResource(R.string.about_version, "1.0.0"),
                     fontSize = 12.sp,
                     color = HanimeTextSecondary
                 )
@@ -254,7 +257,7 @@ fun AboutScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "应用简介",
+                            text = stringResource(R.string.about_intro_title),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = HanimePrimary,
@@ -272,7 +275,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "主要功能",
+                    text = stringResource(R.string.about_features_title),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimePrimary,
@@ -289,7 +292,8 @@ fun AboutScreen(
                     colors = CardDefaults.cardColors(containerColor = HanimeCard)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                        appFeatures.forEachIndexed { index, feature ->
+                        val features = appFeatures()
+                        features.forEachIndexed { index, feature ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -309,7 +313,7 @@ fun AboutScreen(
                                     color = HanimeTextPrimary
                                 )
                             }
-                            if (index < appFeatures.size - 1) {
+                            if (index < features.size - 1) {
                                 Spacer(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -341,19 +345,19 @@ fun AboutScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Info,
-                                contentDescription = "开源协议",
+                                contentDescription = stringResource(R.string.about_license),
                                 tint = HanimePrimary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "开源协议",
+                                text = stringResource(R.string.about_license),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = HanimePrimary
                             )
                         }
                         Text(
-                            text = "GNU General Public License v3.0",
+                            text = stringResource(R.string.about_license_name),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = HanimeTextPrimary,
@@ -377,7 +381,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "致谢 · 使用到的开源项目",
+                    text = stringResource(R.string.about_acknowledgements),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimePrimary,

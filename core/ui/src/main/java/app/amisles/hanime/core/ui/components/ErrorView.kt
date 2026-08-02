@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
@@ -28,10 +30,11 @@ import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
  */
 @Composable
 fun ErrorView(
-    message: String = "加载失败，请重试",
+    message: String? = null,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val displayMessage = message ?: stringResource(R.string.error_load_failed)
     Column(
         modifier = modifier.fillMaxWidth().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -45,7 +48,7 @@ fun ErrorView(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = message,
+            text = displayMessage,
             color = HanimeTextSecondary,
             fontSize = 14.sp,
             textAlign = TextAlign.Center
@@ -59,7 +62,7 @@ fun ErrorView(
             )
         ) {
             Text(
-                text = "重试",
+                text = stringResource(R.string.common_retry),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )

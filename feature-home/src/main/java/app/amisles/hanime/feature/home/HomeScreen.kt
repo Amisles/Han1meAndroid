@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.ErrorView
@@ -205,7 +207,7 @@ fun HomeScreenContent(
                             color = HanimeTextPrimary
                         )
                         Text(
-                            text = "查看更多 →",
+                            text = "${stringResource(R.string.common_view_more)} →",
                             fontSize = 13.sp,
                             color = HanimeTextSecondary,
                             modifier = Modifier.clickable { onViewMore(section.title) }

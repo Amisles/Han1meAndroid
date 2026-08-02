@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -57,11 +59,20 @@ import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
 data class LanguageOption(val code: String, val label: String)
 
-val languageOptions = listOf(
-    LanguageOption("zhs", "简体中文"),
-    LanguageOption("zh", "繁體中文"),
-    LanguageOption("ja", "日本語"),
-    LanguageOption("en", "English")
+@Composable
+fun videoLanguageOptions() = listOf(
+    LanguageOption("zhs", stringResource(R.string.settings_language_zh_cn)),
+    LanguageOption("zh", stringResource(R.string.settings_language_zh_tw)),
+    LanguageOption("ja", stringResource(R.string.settings_language_ja)),
+    LanguageOption("en", stringResource(R.string.settings_language_en))
+)
+
+@Composable
+fun appLanguageOptions() = listOf(
+    LanguageOption(Preferences.LANGUAGE_ZH_CN, stringResource(R.string.settings_language_zh_cn)),
+    LanguageOption(Preferences.LANGUAGE_ZH_TW, stringResource(R.string.settings_language_zh_tw)),
+    LanguageOption(Preferences.LANGUAGE_EN, stringResource(R.string.settings_language_en)),
+    LanguageOption(Preferences.LANGUAGE_JA, stringResource(R.string.settings_language_ja))
 )
 
 @Composable
@@ -73,8 +84,10 @@ fun SettingsScreen(
     val videoLanguage by Preferences.videoLanguageFlow.collectAsState()
     val maxDownloadConcurrent by Preferences.maxDownloadConcurrentFlow.collectAsState()
     val baseUrl by Preferences.baseUrlFlow.collectAsState()
+    val appLanguage by Preferences.appLanguageFlow.collectAsState()
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
+    var appLanguageMenuExpanded by remember { mutableStateOf(false) }
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(baseUrl) }
@@ -101,7 +114,7 @@ fun SettingsScreen(
                 )
             }
             Text(
-                text = "设置",
+                text = stringResource(R.string.profile_settings),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = HanimeTextPrimary,
@@ -136,13 +149,13 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(14.dp))
                     Text(
-                        text = "视频语言",
+                        text = stringResource(R.string.settings_video_language),
                         fontSize = 15.sp,
                         color = HanimeTextPrimary,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = languageOptions.find { it.code == videoLanguage }?.label ?: "简体中文",
+                        text = videoLanguageOptions().find { it.code == videoLanguage }?.label ?: stringResource(R.string.settings_language_zh_cn),
                         fontSize = 14.sp,
                         color = HanimeTextSecondary
                     )
@@ -158,7 +171,7 @@ fun SettingsScreen(
                     onDismissRequest = { languageMenuExpanded = false },
                     offset = DpOffset(x = 0.dp, y = 0.dp)
                 ) {
-                    languageOptions.forEach { option ->
+                    videoLanguageOptions().forEach { option ->
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -190,6 +203,73 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { appLanguageMenuExpanded = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Language,
+                        contentDescription = null,
+                        tint = HanimePrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = stringResource(R.string.settings_app_language),
+                        fontSize = 15.sp,
+                        color = HanimeTextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = appLanguageOptions().find { it.code == appLanguage }?.label ?: stringResource(R.string.settings_language_zh_cn),
+                        fontSize = 14.sp,
+                        color = HanimeTextSecondary
+                    )
+                    Icon(
+                        imageVector = if (appLanguageMenuExpanded) Icons.Default.ArrowDropDown else Icons.Default.ArrowRight,
+                        contentDescription = null,
+                        tint = HanimeTextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = appLanguageMenuExpanded,
+                    onDismissRequest = { appLanguageMenuExpanded = false },
+                    offset = DpOffset(x = 0.dp, y = 0.dp)
+                ) {
+                    appLanguageOptions().forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = option.label,
+                                    fontSize = 14.sp,
+                                    color = if (option.code == appLanguage) HanimePrimary else HanimeTextSecondary,
+                                    fontWeight = if (option.code == appLanguage) FontWeight.Medium else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                appLanguageMenuExpanded = false
+                                Preferences.setAppLanguage(option.code)
+                                // 重建 Activity 以应用语言变更
+                                (context as? android.app.Activity)?.recreate()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = HanimeCard),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Box {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .clickable { downloadConcurrentMenuExpanded = true }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -202,7 +282,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(14.dp))
                     Text(
-                        text = "同时下载数",
+                        text = stringResource(R.string.settings_max_concurrent),
                         fontSize = 15.sp,
                         color = HanimeTextPrimary,
                         modifier = Modifier.weight(1f)
@@ -272,7 +352,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "官网网址",
+                        text = stringResource(R.string.settings_base_url),
                         fontSize = 15.sp,
                         color = HanimeTextPrimary
                     )
@@ -314,7 +394,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
-                    text = "清除缓存",
+                    text = stringResource(R.string.settings_clear_cache),
                     fontSize = 15.sp,
                     color = HanimeTextPrimary,
                     modifier = Modifier.weight(1f)
@@ -332,10 +412,10 @@ fun SettingsScreen(
     if (showClearCacheDialog) {
         AlertDialog(
             onDismissRequest = { showClearCacheDialog = false },
-            title = { Text("清除缓存", color = HanimeTextPrimary) },
+            title = { Text(stringResource(R.string.settings_clear_cache_title), color = HanimeTextPrimary) },
             text = {
                 Text(
-                    "确定要清除应用缓存吗？此操作不会删除下载的视频和收藏记录。",
+                    stringResource(R.string.settings_clear_cache_message),
                     color = HanimeTextSecondary,
                     fontSize = 14.sp
                 )
@@ -344,14 +424,14 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     clearAppCache(context)
                     showClearCacheDialog = false
-                    Toast.makeText(context, "缓存已清除", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_cache_cleared), Toast.LENGTH_SHORT).show()
                 }) {
                     Text("确定", color = HanimePrimary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearCacheDialog = false }) {
-                    Text("取消", color = HanimeTextSecondary)
+                    Text(stringResource(R.string.common_cancel), color = HanimeTextSecondary)
                 }
             },
             containerColor = HanimeCard
@@ -361,11 +441,11 @@ fun SettingsScreen(
     if (showBaseUrlDialog) {
         AlertDialog(
             onDismissRequest = { showBaseUrlDialog = false },
-            title = { Text("官网网址", color = HanimeTextPrimary) },
+            title = { Text(stringResource(R.string.settings_base_url_title), color = HanimeTextPrimary) },
             text = {
                 Column {
                     Text(
-                        "请输入官网地址，留空则恢复默认",
+                        stringResource(R.string.settings_base_url_hint),
                         color = HanimeTextSecondary,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -393,9 +473,9 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     Preferences.setBaseUrl(baseUrlInput)
                     showBaseUrlDialog = false
-                    Toast.makeText(context, "官网网址已更新", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_base_url_updated), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("保存", color = HanimePrimary)
+                    Text(stringResource(R.string.common_save), color = HanimePrimary)
                 }
             },
             dismissButton = {
@@ -403,9 +483,9 @@ fun SettingsScreen(
                     baseUrlInput = Preferences.DEFAULT_BASE_URL
                     Preferences.setBaseUrl(Preferences.DEFAULT_BASE_URL)
                     showBaseUrlDialog = false
-                    Toast.makeText(context, "已恢复默认网址", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_base_url_restored), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("恢复默认", color = HanimeTextSecondary)
+                    Text(stringResource(R.string.common_restore_default), color = HanimeTextSecondary)
                 }
             },
             containerColor = HanimeCard

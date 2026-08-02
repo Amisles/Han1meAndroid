@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import app.amisles.hanime.MainActivity
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadStatus
 
 /**
@@ -126,7 +127,7 @@ class DownloadService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "下载服务",
+            getString(R.string.download_notification_channel),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "显示视频下载进度"
@@ -148,7 +149,7 @@ class DownloadService : Service() {
         val displayTitle = title.ifEmpty { "下载" }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
-            .setContentText("下载中 $progress%")
+            .setContentText(getString(R.string.download_notification_downloading))
             .setProgress(100, progress, false)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
@@ -161,7 +162,7 @@ class DownloadService : Service() {
         val displayTitle = title.ifEmpty { "下载" }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
-            .setContentText("下载完成")
+            .setContentText(getString(R.string.download_notification_completed))
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setOngoing(false)
             .setAutoCancel(true)
@@ -173,7 +174,7 @@ class DownloadService : Service() {
         val displayTitle = title.ifEmpty { "下载" }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
-            .setContentText("下载失败")
+            .setContentText(getString(R.string.download_notification_failed))
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setOngoing(false)
             .setAutoCancel(true)

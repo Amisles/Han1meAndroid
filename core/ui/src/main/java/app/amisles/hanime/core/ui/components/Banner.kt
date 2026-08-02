@@ -26,9 +26,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -148,13 +150,13 @@ fun Banner(
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "播放",
+                        contentDescription = stringResource(R.string.common_play),
                         tint = Color.Unspecified,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "播放",
+                        text = stringResource(R.string.common_play),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black
@@ -178,13 +180,13 @@ fun Banner(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Info,
-                        contentDescription = "更多资讯",
+                        contentDescription = stringResource(R.string.common_more_info),
                         tint = HanimeTextPrimary,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "更多资讯",
+                        text = stringResource(R.string.common_more_info),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = HanimeTextPrimary

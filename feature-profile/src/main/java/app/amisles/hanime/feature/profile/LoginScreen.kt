@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeBorder
 import app.amisles.hanime.core.ui.theme.HanimeCard
@@ -104,7 +106,7 @@ fun LoginScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "登录 Hanime1",
+                        stringResource(R.string.login_title),
                         color = HanimeTextPrimary,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -194,7 +196,7 @@ private fun EmailPasswordTab(
     ) {
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            "使用官网账号登录",
+            stringResource(R.string.login_account_title),
             color = HanimeTextPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
@@ -210,7 +212,7 @@ private fun EmailPasswordTab(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("邮箱", color = HanimeTextSecondary) },
+            label = { Text(stringResource(R.string.login_email), color = HanimeTextSecondary) },
             singleLine = true,
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(
@@ -224,7 +226,7 @@ private fun EmailPasswordTab(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("密码", color = HanimeTextSecondary) },
+            label = { Text(stringResource(R.string.login_password), color = HanimeTextSecondary) },
             singleLine = true,
             enabled = !isLoading,
             visualTransformation = PasswordVisualTransformation(),
@@ -299,7 +301,7 @@ private fun EmailPasswordTab(
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(
-                    text = if (isLoading) "登录中..." else "登录",
+                    text = if (isLoading) "登录中..." else stringResource(R.string.login_button),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp
                 )

@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import app.amisles.hanime.data.download.DownloadManagerHolder
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
@@ -103,21 +105,21 @@ fun DownloadScreen(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "取消",
+                        contentDescription = stringResource(R.string.common_cancel),
                         tint = HanimeTextPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "已选 ${selectedIds.size} 项",
+                    text = stringResource(R.string.search_selected_count, selectedIds.size),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimeTextPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "全选",
+                    text = stringResource(R.string.common_select_all),
                     fontSize = 14.sp,
                     color = if (selectedIds.size == tasks.size) HanimeTextSecondary else HanimePrimary,
                     modifier = Modifier
@@ -147,13 +149,13 @@ fun DownloadScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 Text(
-                    text = "暂无下载任务",
+                    text = stringResource(R.string.download_empty),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = HanimeTextSecondary
                 )
                 Text(
-                    text = "在视频详情页点击下载按钮开始下载",
+                    text = stringResource(R.string.download_empty_hint),
                     fontSize = 12.sp,
                     color = HanimeTextSecondary,
                     modifier = Modifier.padding(top = 8.dp)
@@ -166,7 +168,7 @@ fun DownloadScreen(
                 if (downloadingTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "下载中",
+                            title = stringResource(R.string.download_downloading),
                             isSelectionMode = isSelectionMode,
                             tasks = downloadingTasks,
                             selectedIds = selectedIds,
@@ -200,7 +202,7 @@ fun DownloadScreen(
                 if (pausedTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "已暂停",
+                            title = stringResource(R.string.download_paused),
                             isSelectionMode = isSelectionMode,
                             tasks = pausedTasks,
                             selectedIds = selectedIds,
@@ -234,7 +236,7 @@ fun DownloadScreen(
                 if (failedTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "下载失败",
+                            title = stringResource(R.string.download_failed),
                             isSelectionMode = isSelectionMode,
                             tasks = failedTasks,
                             selectedIds = selectedIds,
@@ -268,7 +270,7 @@ fun DownloadScreen(
                 if (completedTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "已完成",
+                            title = stringResource(R.string.download_completed),
                             isSelectionMode = isSelectionMode,
                             tasks = completedTasks,
                             selectedIds = selectedIds,
@@ -322,7 +324,7 @@ fun DownloadScreen(
             ) {
                 if (!isSelectionMode && tasks.isNotEmpty()) {
                     Text(
-                        text = "管理",
+                        text = stringResource(R.string.common_manage),
                         fontSize = 14.sp,
                         color = HanimePrimary,
                         modifier = Modifier
@@ -331,13 +333,13 @@ fun DownloadScreen(
                     )
                 }
                 Text(
-                    text = "已选择 ${selectedIds.size} 项",
+                    text = stringResource(R.string.search_selected_count, selectedIds.size),
                     fontSize = 14.sp,
                     color = HanimeTextPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "删除",
+                    text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
                     color = Color(0xFFFF6B6B),
                     fontWeight = FontWeight.Medium,
@@ -364,13 +366,13 @@ fun DownloadScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${tasks.size} 个任务",
+                    text = stringResource(R.string.download_task_count, tasks.size),
                     fontSize = 14.sp,
                     color = HanimeTextSecondary,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "管理",
+                    text = stringResource(R.string.common_manage),
                     fontSize = 14.sp,
                     color = HanimePrimary,
                     fontWeight = FontWeight.Medium,
@@ -399,14 +401,14 @@ fun DownloadScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "确认删除",
+                    text = stringResource(R.string.download_delete_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimeTextPrimary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = "确定删除选中的 ${selectedIds.size} 个任务吗？\n已下载的文件将被删除。",
+                    text = stringResource(R.string.download_delete_message),
                     fontSize = 14.sp,
                     color = HanimeTextSecondary,
                     textAlign = TextAlign.Center,
@@ -417,7 +419,7 @@ fun DownloadScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "取消",
+                        text = stringResource(R.string.common_cancel),
                         fontSize = 14.sp,
                         color = HanimeTextSecondary,
                         modifier = Modifier
@@ -427,7 +429,7 @@ fun DownloadScreen(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "删除",
+                        text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
                         color = Color(0xFFFF6B6B),
                         fontWeight = FontWeight.Medium,
@@ -591,7 +593,7 @@ fun DownloadTaskItem(
                     )
                 }
                 Text(
-                    text = "下载中",
+                    text = stringResource(R.string.download_downloading),
                     fontSize = 10.sp,
                     color = HanimePrimary,
                     modifier = Modifier.padding(top = 3.dp)
@@ -604,14 +606,14 @@ fun DownloadTaskItem(
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
-                    text = "已完成",
+                    text = stringResource(R.string.download_completed),
                     fontSize = 10.sp,
                     color = HanimePrimary,
                     modifier = Modifier.padding(top = 3.dp)
                 )
             } else if (task.status == DownloadStatus.PENDING) {
                 Text(
-                    text = "等待下载...",
+                    text = stringResource(R.string.download_pending),
                     fontSize = 11.sp,
                     color = HanimeTextSecondary,
                     modifier = Modifier.padding(top = 4.dp)
@@ -624,7 +626,7 @@ fun DownloadTaskItem(
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
-                    text = "下载失败",
+                    text = stringResource(R.string.download_failed),
                     fontSize = 10.sp,
                     color = Color(0xFFFF6B6B),
                     modifier = Modifier.padding(top = 3.dp)
@@ -637,7 +639,7 @@ fun DownloadTaskItem(
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
-                    text = "已暂停",
+                    text = stringResource(R.string.download_paused),
                     fontSize = 10.sp,
                     color = HanimeTextSecondary,
                     modifier = Modifier.padding(top = 3.dp)
@@ -716,7 +718,7 @@ fun DownloadTaskItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(R.string.common_delete),
                         tint = Color(0xFFFF6B6B),
                         modifier = Modifier.size(20.dp)
                     )
@@ -739,7 +741,7 @@ fun formatFileSize(bytes: Long): String {
 private fun playVideoFile(context: android.content.Context, filePath: String) {
     val file = File(filePath)
     if (!file.exists()) {
-        Toast.makeText(context, "文件不存在", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.download_file_not_exist), Toast.LENGTH_SHORT).show()
         return
     }
 

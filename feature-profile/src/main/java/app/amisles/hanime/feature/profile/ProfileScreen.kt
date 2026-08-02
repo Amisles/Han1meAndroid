@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeBorder
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -57,6 +59,31 @@ private data class ProfileMenuItem(
     val text: String,
     val action: () -> Unit
 )
+
+@Composable
+private fun StatItem(
+    count: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = count,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = HanimeTextPrimary
+        )
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = HanimeTextSecondary,
+            modifier = Modifier.padding(top = 3.dp)
+        )
+    }
+}
 
 @Composable
 fun ProfileScreen(
@@ -83,16 +110,16 @@ fun ProfileScreen(
     }
 
     val menuItems = buildList {
-        add(ProfileMenuItem(Icons.Default.History, "观看历史") { onNavigate("history") })
-        add(ProfileMenuItem(Icons.Default.Favorite, "我的收藏") { onNavigate("favorite") })
-        add(ProfileMenuItem(Icons.Default.Download, "下载管理") { onNavigate("download") })
-        add(ProfileMenuItem(Icons.Default.Download, "批量下载") { onNavigate("batchDownload") })
-        add(ProfileMenuItem(Icons.Default.Settings, "设置") { onNavigate("settings") })
-        add(ProfileMenuItem(Icons.Default.Info, "关于我们") { onNavigate("about") })
+        add(ProfileMenuItem(Icons.Default.History, stringResource(R.string.profile_watch_history)) { onNavigate("history") })
+        add(ProfileMenuItem(Icons.Default.Favorite, stringResource(R.string.profile_favorites)) { onNavigate("favorite") })
+        add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_download_manager)) { onNavigate("download") })
+        add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_batch_download)) { onNavigate("batchDownload") })
+        add(ProfileMenuItem(Icons.Default.Settings, stringResource(R.string.profile_settings)) { onNavigate("settings") })
+        add(ProfileMenuItem(Icons.Default.Info, stringResource(R.string.profile_about)) { onNavigate("about") })
         if (isLogin) {
-            add(ProfileMenuItem(Icons.Default.Logout, "退出登录") {
+            add(ProfileMenuItem(Icons.Default.Logout, stringResource(R.string.profile_logout)) {
                 Preferences.logout()
-                Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.profile_logout_success), Toast.LENGTH_SHORT).show()
             })
         }
     }
@@ -145,14 +172,14 @@ fun ProfileScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = if (isLogin) "Hanime 会员" else "未登录",
+                        text = if (isLogin) stringResource(R.string.profile_member) else stringResource(R.string.profile_not_logged_in),
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = HanimeTextPrimary,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                     Text(
-                        text = if (isLogin) "已登录" else "点击登录",
+                        text = if (isLogin) stringResource(R.string.profile_logged_in) else stringResource(R.string.profile_click_login),
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.7f),
                         modifier = Modifier.clickable(enabled = !isLogin) {
@@ -167,79 +194,28 @@ fun ProfileScreen(
                     .fillMaxWidth()
                     .padding(top = 12.dp)
                     .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
-                horizontalArrangement = Arrangement.SpaceAround
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = watchCount.toString(),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary
-                    )
-                    Text(
-                        text = "观看",
-                        fontSize = 11.sp,
-                        color = HanimeTextSecondary,
-                        modifier = Modifier.padding(top = 3.dp)
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = favoriteCount.toString(),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary
-                    )
-                    Text(
-                        text = "收藏",
-                        fontSize = 11.sp,
-                        color = HanimeTextSecondary,
-                        modifier = Modifier.padding(top = 3.dp)
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = downloadCount.toString(),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary
-                    )
-                    Text(
-                        text = "下载",
-                        fontSize = 11.sp,
-                        color = HanimeTextSecondary,
-                        modifier = Modifier.padding(top = 3.dp)
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "0",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary
-                    )
-                    Text(
-                        text = "分享",
-                        fontSize = 11.sp,
-                        color = HanimeTextSecondary,
-                        modifier = Modifier.padding(top = 3.dp)
-                    )
-                }
+                StatItem(
+                    count = watchCount.toString(),
+                    label = stringResource(R.string.profile_stat_watch),
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    count = favoriteCount.toString(),
+                    label = stringResource(R.string.profile_stat_favorite),
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    count = downloadCount.toString(),
+                    label = stringResource(R.string.profile_stat_download),
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    count = "0",
+                    label = stringResource(R.string.profile_stat_share),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
