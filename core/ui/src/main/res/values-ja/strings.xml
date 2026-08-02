@@ -124,7 +124,6 @@
     <string name="history_count">%1$d 件</string>
     <string name="history_clear_title">クリアの確認</string>
     <string name="history_clear_message">すべての視聴履歴をクリアしますか？</string>
-    <string name="settings_video_language">動画言語</string>
     <string name="settings_max_concurrent">同時ダウンロード数</string>
     <string name="settings_base_url">サイトURL</string>
     <string name="settings_clear_cache">キャッシュクリア</string>

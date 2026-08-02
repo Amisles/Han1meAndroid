@@ -60,14 +60,6 @@ import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 data class LanguageOption(val code: String, val label: String)
 
 @Composable
-fun videoLanguageOptions() = listOf(
-    LanguageOption("zhs", stringResource(R.string.settings_language_zh_cn)),
-    LanguageOption("zh", stringResource(R.string.settings_language_zh_tw)),
-    LanguageOption("ja", stringResource(R.string.settings_language_ja)),
-    LanguageOption("en", stringResource(R.string.settings_language_en))
-)
-
-@Composable
 fun appLanguageOptions() = listOf(
     LanguageOption(Preferences.LANGUAGE_ZH_CN, stringResource(R.string.settings_language_zh_cn)),
     LanguageOption(Preferences.LANGUAGE_ZH_TW, stringResource(R.string.settings_language_zh_tw)),
@@ -81,12 +73,10 @@ fun SettingsScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val videoLanguage by Preferences.videoLanguageFlow.collectAsState()
     val maxDownloadConcurrent by Preferences.maxDownloadConcurrentFlow.collectAsState()
     val baseUrl by Preferences.baseUrlFlow.collectAsState()
     val appLanguage by Preferences.appLanguageFlow.collectAsState()
     var showClearCacheDialog by remember { mutableStateOf(false) }
-    var languageMenuExpanded by remember { mutableStateOf(false) }
     var appLanguageMenuExpanded by remember { mutableStateOf(false) }
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
@@ -125,72 +115,6 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = HanimeCard),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Box {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { languageMenuExpanded = true }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Language,
-                        contentDescription = null,
-                        tint = HanimePrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.settings_video_language),
-                        fontSize = 15.sp,
-                        color = HanimeTextPrimary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = videoLanguageOptions().find { it.code == videoLanguage }?.label ?: stringResource(R.string.settings_language_zh_cn),
-                        fontSize = 14.sp,
-                        color = HanimeTextSecondary
-                    )
-                    Icon(
-                        imageVector = if (languageMenuExpanded) Icons.Default.ArrowDropDown else Icons.Default.ArrowRight,
-                        contentDescription = null,
-                        tint = HanimeTextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = languageMenuExpanded,
-                    onDismissRequest = { languageMenuExpanded = false },
-                    offset = DpOffset(x = 0.dp, y = 0.dp)
-                ) {
-                    videoLanguageOptions().forEach { option ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = option.label,
-                                    fontSize = 14.sp,
-                                    color = if (option.code == videoLanguage) HanimePrimary else HanimeTextSecondary,
-                                    fontWeight = if (option.code == videoLanguage) FontWeight.Medium else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                Preferences.setVideoLanguage(option.code)
-                                languageMenuExpanded = false
-                                Toast.makeText(context, "语言已切换为${option.label}", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    }
-                }
-            }
-        }
 
         Card(
             modifier = Modifier

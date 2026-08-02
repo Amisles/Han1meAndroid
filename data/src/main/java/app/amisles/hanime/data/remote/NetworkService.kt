@@ -4,7 +4,6 @@ import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
 import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
-import app.amisles.hanime.data.parser.SearchPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.HanimeVideo

@@ -124,7 +124,6 @@
     <string name="history_count">%1$d 條記錄</string>
     <string name="history_clear_title">確認清空</string>
     <string name="history_clear_message">確定要清空所有觀看歷史嗎？</string>
-    <string name="settings_video_language">影片語言</string>
     <string name="settings_max_concurrent">同時下載數</string>
     <string name="settings_base_url">官網網址</string>
     <string name="settings_clear_cache">清除快取</string>

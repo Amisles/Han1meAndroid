@@ -149,7 +149,6 @@
     <string name="history_clear_message">确定要清空所有观看历史吗？</string>
     
     <!-- Settings -->
-    <string name="settings_video_language">视频语言</string>
     <string name="settings_max_concurrent">同时下载数</string>
     <string name="settings_base_url">官网网址</string>
     <string name="settings_clear_cache">清除缓存</string>

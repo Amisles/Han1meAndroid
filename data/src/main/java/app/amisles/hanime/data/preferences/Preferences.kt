@@ -17,7 +17,6 @@ object Preferences {
     private const val SP_LOGIN_COOKIE = "login_cookie"
     private const val SP_CF_COOKIE = "cloudflare_cookie"
     private const val SP_SAVED_USER_ID = "saved_user_id"
-    private const val SP_VIDEO_LANGUAGE = "video_language"
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
     private const val SP_APP_LANGUAGE = "app_language"
@@ -47,9 +46,6 @@ object Preferences {
     private val _savedUserIdFlow = MutableStateFlow("")
     val savedUserIdFlow: StateFlow<String> = _savedUserIdFlow.asStateFlow()
 
-    private val _videoLanguageFlow = MutableStateFlow("zhs")
-    val videoLanguageFlow: StateFlow<String> = _videoLanguageFlow.asStateFlow()
-
     private val _maxDownloadConcurrentFlow = MutableStateFlow(3)
     val maxDownloadConcurrentFlow: StateFlow<Int> = _maxDownloadConcurrentFlow.asStateFlow()
 
@@ -68,7 +64,6 @@ object Preferences {
         _loginCookieFlow.value = CookieString(sp.getString(SP_LOGIN_COOKIE, "").orEmpty())
         _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())
         _savedUserIdFlow.value = sp.getString(SP_SAVED_USER_ID, "").orEmpty()
-        _videoLanguageFlow.value = sp.getString(SP_VIDEO_LANGUAGE, "zhs").orEmpty()
         _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _baseUrlFlow.value = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
         _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
@@ -82,8 +77,6 @@ object Preferences {
     val cloudFlareCookie: CookieString get() = _cloudFlareCookieFlow.value
 
     val savedUserId: String get() = _savedUserIdFlow.value
-
-    val videoLanguage: String get() = _videoLanguageFlow.value
 
     val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
 
@@ -131,11 +124,6 @@ object Preferences {
         val safe = cookieString.take(8192)
         sp.edit { putString(SP_CF_COOKIE, safe) }
         _cloudFlareCookieFlow.value = CookieString(safe)
-    }
-
-    fun setVideoLanguage(lang: String) {
-        sp.edit { putString(SP_VIDEO_LANGUAGE, lang) }
-        _videoLanguageFlow.value = lang
     }
 
     fun setMaxDownloadConcurrent(max: Int) {
