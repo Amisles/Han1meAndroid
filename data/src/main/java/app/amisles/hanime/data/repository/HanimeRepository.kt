@@ -148,34 +148,18 @@ class HanimeRepository private constructor(
     }
     suspend fun getHomeData(): HomePageData {
         val startTime = System.currentTimeMillis()
-        android.util.Log.i("HanimePerformance", "========== 首页数据加载开始 ==========")
 
         AppLogger.log("HanimeRepository", "getHomeData called")
         try {
-            // 网络请求阶段
-            val networkStartTime = System.currentTimeMillis()
             AppLogger.log("HanimeRepository", "Calling networkService.fetchHomePage")
             val result = networkService.fetchHomePageWithBaseUrl()
-            val networkEndTime = System.currentTimeMillis()
-            val networkDuration = networkEndTime - networkStartTime
-            android.util.Log.i("HanimePerformance", "📡 网络请求耗时: ${networkDuration}ms (${String.format("%.2f", networkDuration / 1000.0)}s)")
-
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-
             AppLogger.log("HanimeRepository", "Calling parser.parseHomePage")
             val data = homePageParser.parse(result.html, result.baseUrl)
-
-            val totalEndTime = System.currentTimeMillis()
-            val totalDuration = totalEndTime - startTime
-            android.util.Log.i("HanimePerformance", "📊 HTML大小: ${result.html.length} bytes (${String.format("%.2f", result.html.length / 1024.0)} KB)")
-            android.util.Log.i("HanimePerformance", "⏱️ 总耗时: ${totalDuration}ms (${String.format("%.2f", totalDuration / 1000.0)}s)")
-            android.util.Log.i("HanimePerformance", "⚡ 解析耗时: ${totalDuration - networkDuration}ms (${String.format("%.2f", (totalDuration - networkDuration) / 1000.0)}s)")
-            android.util.Log.i("HanimePerformance", "========== 首页数据加载完成 ==========")
 
             return data
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getHomeData: ${e.message}", e)
-            android.util.Log.e("HanimePerformance", "❌ 首页数据加载失败: ${e.message}")
             return HomePageData(banner = null, sections = emptyList())
         }
     }

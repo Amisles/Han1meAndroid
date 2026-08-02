@@ -15,35 +15,17 @@ import org.jsoup.select.Elements
 class HomePageParser(private val videoListParser: VideoListParser = VideoListParser()) {
 
     fun parse(html: String, baseUrl: String): HomePageData {
-        val parseStartTime = System.currentTimeMillis()
-        android.util.Log.i("HomePageParser", "---------- HTML解析开始 ----------")
 
         AppLogger.log("HomePageParser", "parse called, baseUrl: $baseUrl")
 
-        val domStartTime = System.currentTimeMillis()
         val doc: Document = Jsoup.parse(html, baseUrl)
-        val domEndTime = System.currentTimeMillis()
-        android.util.Log.i("HomePageParser", "  Jsoup DOM解析: ${domEndTime - domStartTime}ms")
-
-        AppLogger.log("HomePageParser", "HTML parsed successfully")
-
-        val sectionsStartTime = System.currentTimeMillis()
         val sections = parseHomeSections(doc, baseUrl)
-        val sectionsEndTime = System.currentTimeMillis()
-        android.util.Log.i("HomePageParser", "  Sections解析: ${sectionsEndTime - sectionsStartTime}ms (${sections.size}个section, ${sections.sumOf { it.videos.size }}个视频)")
 
         AppLogger.log("HomePageParser", "Found ${sections.size} home sections, video counts: ${sections.joinToString { "${it.title}:${it.videos.size}" }}")
 
-        val bannerStartTime = System.currentTimeMillis()
         val banner = parseBanner(doc)
-        val bannerEndTime = System.currentTimeMillis()
-        android.util.Log.i("HomePageParser", "  Banner解析: ${bannerEndTime - bannerStartTime}ms")
 
         AppLogger.log("HomePageParser", "Banner found: ${banner != null}")
-
-        val parseEndTime = System.currentTimeMillis()
-        android.util.Log.i("HomePageParser", "  解析总耗时: ${parseEndTime - parseStartTime}ms")
-        android.util.Log.i("HomePageParser", "---------- HTML解析完成 ----------")
 
         return HomePageData(banner = banner, sections = sections)
     }
