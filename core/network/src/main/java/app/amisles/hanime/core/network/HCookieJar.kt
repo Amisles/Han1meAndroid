@@ -3,6 +3,7 @@ package app.amisles.hanime.core.network
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Cookie 管理 Jar
@@ -10,38 +11,49 @@ import okhttp3.HttpUrl
  * - 从 Set-Cookie 响应头解析并存储 Cookie
  * - 为请求自动注入已存储的 Cookie
  * - 持久化到 SharedPreferences（可选）
+ * - 线程安全：使用 ConcurrentHashMap + 同步块保护读写
  */
 class HCookieJar : CookieJar {
 
-    private val cookieStore: MutableMap<String, MutableList<Cookie>> = mutableMapOf()
+    private val cookieStore: ConcurrentHashMap<String, MutableList<Cookie>> = ConcurrentHashMap()
 
     /**
-     * 存储响应中的 Cookie
+     * 存储响应中的 Cookie（线程安全）
      */
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         val domain = url.host
         val existing = cookieStore[domain] ?: mutableListOf()
-        for (cookie in cookies) {
-            // 替换同名 Cookie
-            existing.removeAll { it.name == cookie.name }
-            existing.add(cookie)
+        synchronized(existing) {
+            for (cookie in cookies) {
+                existing.removeAll { it.name == cookie.name }
+                existing.add(cookie)
+            }
+            cookieStore[domain] = existing
         }
-        cookieStore[domain] = existing
     }
 
     /**
-     * 为请求加载已存储的 Cookie
+     * 为请求加载已存储的 Cookie（线程安全，同步清理过期）
      */
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val domain = url.host
         val cookies = cookieStore[domain] ?: return emptyList()
-        // 移除已过期 Cookie
-        val validCookies = cookies.filter { it.expiresAt > System.currentTimeMillis() }
-        return validCookies
+        return synchronized(cookies) {
+            val now = System.currentTimeMillis()
+            val validCookies = cookies.filter { it.expiresAt > now }
+            if (validCookies.size != cookies.size) {
+                if (validCookies.isEmpty()) {
+                    cookieStore.remove(domain)
+                } else {
+                    cookieStore[domain] = validCookies.toMutableList()
+                }
+            }
+            validCookies
+        }
     }
 
     /**
-     * 手动设置 Cookie（用于登录态恢复）
+     * 手动设置 Cookie（用于登录态恢复，线程安全）
      */
     fun setCookie(domain: String, cookieString: String) {
         val cookies = parseCookieString(domain, cookieString)
@@ -49,14 +61,17 @@ class HCookieJar : CookieJar {
     }
 
     /**
-     * 获取指定域名的所有 Cookie
+     * 获取指定域名的所有 Cookie（线程安全）
      */
     fun getCookies(domain: String): String {
-        return cookieStore[domain]?.joinToString("; ") { "${it.name}=${it.value}" } ?: ""
+        val cookies = cookieStore[domain] ?: return ""
+        return synchronized(cookies) {
+            cookies.joinToString("; ") { "${it.name}=${it.value}" }
+        }
     }
 
     /**
-     * 清除所有 Cookie
+     * 清除所有 Cookie（线程安全）
      */
     fun clear() {
         cookieStore.clear()
