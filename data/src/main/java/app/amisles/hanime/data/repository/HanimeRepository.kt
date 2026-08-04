@@ -1,9 +1,14 @@
 package app.amisles.hanime.data.repository
 
-import android.content.Context
+import app.amisles.hanime.data.local.database.FavoriteDao
+import app.amisles.hanime.data.local.database.SearchHistoryDao
+import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.remote.NetworkService
-import app.amisles.hanime.data.local.database.FavoriteDatabase
+import app.amisles.hanime.data.parser.DownloadPageParser
+import app.amisles.hanime.data.parser.HomePageParser
 import app.amisles.hanime.data.parser.LoginParser
+import app.amisles.hanime.data.parser.SearchPageParser
+import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
@@ -14,50 +19,27 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
-import app.amisles.hanime.data.parser.HomePageParser
-import app.amisles.hanime.data.parser.SearchPageParser
-import app.amisles.hanime.data.parser.WatchPageParser
-import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class HanimeRepository private constructor(
-    private val networkService: NetworkService = NetworkService(),
-    private val homePageParser: HomePageParser = HomePageParser(),
-    private val searchPageParser: SearchPageParser = SearchPageParser(),
-    private val watchPageParser: WatchPageParser = WatchPageParser(),
-    private val downloadPageParser: DownloadPageParser = DownloadPageParser()
+@Singleton
+class HanimeRepository @Inject constructor(
+    private val networkService: NetworkService,
+    private val homePageParser: HomePageParser,
+    private val searchPageParser: SearchPageParser,
+    private val watchPageParser: WatchPageParser,
+    private val downloadPageParser: DownloadPageParser,
+    private val favoriteDao: FavoriteDao,
+    private val watchHistoryDao: WatchHistoryDao,
+    private val searchHistoryDao: SearchHistoryDao
 ) {
-    companion object {
-        @Volatile
-        private var INSTANCE: HanimeRepository? = null
-
-        fun getInstance(): HanimeRepository {
-            return INSTANCE ?: synchronized(this) {
-                val instance = HanimeRepository()
-                INSTANCE = instance
-                instance
-            }
-        }
-    }
-
-    private var favoriteDao: app.amisles.hanime.data.local.database.FavoriteDao? = null
-    private var watchHistoryDao: app.amisles.hanime.data.local.database.WatchHistoryDao? = null
-    private var searchHistoryDao: app.amisles.hanime.data.local.database.SearchHistoryDao? = null
-
-    fun initDatabase(context: Context) {
-        if (favoriteDao == null) {
-            val db = FavoriteDatabase.getInstance(context)
-            favoriteDao = db.favoriteDao()
-            watchHistoryDao = db.watchHistoryDao()
-            searchHistoryDao = db.searchHistoryDao()
-        }
-    }
 
     suspend fun addFavorite(video: FavoriteVideo) {
         AppLogger.log("HanimeRepository", "addFavorite called, videoId: ${video.id}")
         try {
-            favoriteDao?.addFavorite(video)
+            favoriteDao.addFavorite(video)
             AppLogger.log("HanimeRepository", "Favorite added successfully")
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error adding favorite: ${e.message}", e)
@@ -67,7 +49,7 @@ class HanimeRepository private constructor(
     suspend fun removeFavorite(videoId: String) {
         AppLogger.log("HanimeRepository", "removeFavorite called, videoId: $videoId")
         try {
-            favoriteDao?.removeFavoriteById(videoId)
+            favoriteDao.removeFavoriteById(videoId)
             AppLogger.log("HanimeRepository", "Favorite removed successfully")
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error removing favorite: ${e.message}", e)
@@ -76,7 +58,7 @@ class HanimeRepository private constructor(
 
     suspend fun isFavorite(videoId: String): Boolean {
         return try {
-            favoriteDao?.isFavorite(videoId) ?: false
+            favoriteDao.isFavorite(videoId)
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error checking favorite: ${e.message}", e)
             false
@@ -86,7 +68,7 @@ class HanimeRepository private constructor(
     suspend fun getAllFavorites(): List<FavoriteVideo> {
         AppLogger.log("HanimeRepository", "getAllFavorites called")
         return try {
-            val favorites = favoriteDao?.getAllFavorites() ?: emptyList()
+            val favorites = favoriteDao.getAllFavorites()
             AppLogger.log("HanimeRepository", "Got ${favorites.size} favorites")
             favorites
         } catch (e: Exception) {
@@ -97,7 +79,7 @@ class HanimeRepository private constructor(
 
     suspend fun getFavoriteCount(): Int {
         return try {
-            favoriteDao?.getFavoriteCount() ?: 0
+            favoriteDao.getFavoriteCount()
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error getting favorite count: ${e.message}", e)
             0
@@ -107,7 +89,7 @@ class HanimeRepository private constructor(
     suspend fun addWatchHistory(history: WatchHistory) {
         AppLogger.log("HanimeRepository", "addWatchHistory called, videoId: ${history.id}")
         try {
-            watchHistoryDao?.addWatchHistory(history)
+            watchHistoryDao.addWatchHistory(history)
             AppLogger.log("HanimeRepository", "Watch history added successfully")
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error adding watch history: ${e.message}", e)
@@ -115,13 +97,13 @@ class HanimeRepository private constructor(
     }
 
     fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>> {
-        return watchHistoryDao?.getAllWatchHistory() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+        return watchHistoryDao.getAllWatchHistory()
     }
 
     suspend fun removeWatchHistory(videoId: String) {
         AppLogger.log("HanimeRepository", "removeWatchHistory called, videoId: $videoId")
         try {
-            watchHistoryDao?.removeWatchHistory(videoId)
+            watchHistoryDao.removeWatchHistory(videoId)
             AppLogger.log("HanimeRepository", "Watch history removed successfully")
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error removing watch history: ${e.message}", e)
@@ -131,7 +113,7 @@ class HanimeRepository private constructor(
     suspend fun clearWatchHistory() {
         AppLogger.log("HanimeRepository", "clearWatchHistory called")
         try {
-            watchHistoryDao?.clearWatchHistory()
+            watchHistoryDao.clearWatchHistory()
             AppLogger.log("HanimeRepository", "Watch history cleared successfully")
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error clearing watch history: ${e.message}", e)
@@ -140,7 +122,7 @@ class HanimeRepository private constructor(
 
     suspend fun getWatchHistoryCount(): Int {
         return try {
-            watchHistoryDao?.getWatchHistoryCount() ?: 0
+            watchHistoryDao.getWatchHistoryCount()
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error getting watch history count: ${e.message}", e)
             0
@@ -281,13 +263,13 @@ class HanimeRepository private constructor(
     }
 
     fun getSearchHistory(): kotlinx.coroutines.flow.Flow<List<app.amisles.hanime.domain.model.SearchHistoryEntity>> {
-        return searchHistoryDao?.getAllHistory() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+        return searchHistoryDao.getAllHistory()
     }
 
     suspend fun addSearchHistory(query: String) {
         if (query.isBlank()) return
         try {
-            searchHistoryDao?.addSearch(
+            searchHistoryDao.addSearch(
                 app.amisles.hanime.domain.model.SearchHistoryEntity(
                     query = query.trim(),
                     searchedAt = System.currentTimeMillis()
@@ -300,7 +282,7 @@ class HanimeRepository private constructor(
 
     suspend fun removeSearchHistory(query: String) {
         try {
-            searchHistoryDao?.removeSearch(query)
+            searchHistoryDao.removeSearch(query)
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error removing search history: ${e.message}", e)
         }
@@ -308,7 +290,7 @@ class HanimeRepository private constructor(
 
     suspend fun clearSearchHistory() {
         try {
-            searchHistoryDao?.clearAllSearch()
+            searchHistoryDao.clearAllSearch()
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error clearing search history: ${e.message}", e)
         }

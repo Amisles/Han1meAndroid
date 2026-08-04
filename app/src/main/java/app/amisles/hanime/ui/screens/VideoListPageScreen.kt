@@ -29,7 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.R
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.ui.theme.HanimeBackground
@@ -45,7 +45,7 @@ fun VideoListPageScreen(
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {}
 ) {
-    val viewModel: VideoListPageViewModel = viewModel()
+    val viewModel: VideoListPageViewModel = hiltViewModel()
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()

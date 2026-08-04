@@ -11,19 +11,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class FavoriteViewModel : ViewModel() {
-    private val repository = HanimeRepository.getInstance()
+@HiltViewModel
+class FavoriteViewModel @Inject constructor(
+    private val repository: HanimeRepository
+) : ViewModel() {
 
     private val _favorites = MutableStateFlow<List<FavoriteVideo>>(emptyList())
     val favorites: StateFlow<List<FavoriteVideo>> = _favorites.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    fun initDatabase(context: android.content.Context) {
-        repository.initDatabase(context)
-    }
 
     fun loadFavorites() {
         AppLogger.d("FavoriteViewModel", "loadFavorites called")
@@ -54,7 +54,7 @@ class FavoriteViewModel : ViewModel() {
                 }
                 loadFavorites()
             } catch (e: Exception) {
-                AppLogger.e("FavoriteViewModel", "Error removing favorite: ${e.message}", e)
+                AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }
         }
     }

@@ -1,18 +1,14 @@
 package app.amisles.hanime.feature.download
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.download.DownloadManager
-import app.amisles.hanime.data.download.DownloadManagerHolder
+import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.domain.model.BatchVideoItem
-import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
-import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.domain.model.UserVideoListResult
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -25,6 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 data class BatchDownloadState(
     val authorIdInput: String = "",
@@ -43,18 +41,19 @@ data class BatchDownloadState(
     val downloadingVideoIds: Set<String> = emptySet()
 )
 
-class BatchDownloadViewModel : ViewModel() {
-    private val networkService = NetworkService()
+@HiltViewModel
+class BatchDownloadViewModel @Inject constructor(
+    private val networkService: NetworkService,
+    private val downloadManager: DownloadManager,
+    private val downloadPageParser: DownloadPageParser
+) : ViewModel() {
     private val _state = MutableStateFlow(BatchDownloadState())
     val state: StateFlow<BatchDownloadState> = _state.asStateFlow()
-    private var downloadManager: DownloadManager? = null
 
-    fun initDownloadManager(context: Context) {
-        if (downloadManager != null) return
-        downloadManager = DownloadManagerHolder.getInstance(context)
+    init {
         // 观察下载任务变化，自动更新视频列表中的下载状态
         viewModelScope.launch {
-            downloadManager?.tasks?.collect { tasks ->
+            downloadManager.tasks.collect { tasks ->
                 syncDownloadStatuses(tasks)
             }
         }
@@ -139,8 +138,8 @@ class BatchDownloadViewModel : ViewModel() {
                 }
 
                 val batchVideos = result.videos.map { video ->
-                    val downloaded = downloadManager?.isVideoDownloaded(video.id) ?: false
-                    val downloading = downloadManager?.isVideoDownloading(video.id) ?: false
+                    val downloaded = downloadManager.isVideoDownloaded(video.id)
+                    val downloading = downloadManager.isVideoDownloading(video.id)
                     BatchVideoItem(
                         videoId = video.id,
                         title = video.title,
@@ -200,8 +199,8 @@ class BatchDownloadViewModel : ViewModel() {
 
                 if (result != null) {
                     val newBatchVideos = result.videos.map { video ->
-                        val downloaded = downloadManager?.isVideoDownloaded(video.id) ?: false
-                        val downloading = downloadManager?.isVideoDownloading(video.id) ?: false
+                        val downloaded = downloadManager.isVideoDownloaded(video.id)
+                        val downloading = downloadManager.isVideoDownloading(video.id)
                         BatchVideoItem(
                             videoId = video.id,
                             title = video.title,
@@ -318,8 +317,7 @@ class BatchDownloadViewModel : ViewModel() {
 
                             if (downloadPageHtml != null) {
                                 val qualities = withContext(Dispatchers.IO) {
-                                    val parser = app.amisles.hanime.data.parser.DownloadPageParser()
-                                    parser.parse(downloadPageHtml.html, downloadPageHtml.baseUrl)
+                                    downloadPageParser.parse(downloadPageHtml.html, downloadPageHtml.baseUrl)
                                 }
 
                                 _state.update { currentState ->
@@ -359,18 +357,12 @@ class BatchDownloadViewModel : ViewModel() {
     }
 
     fun startBatchDownload() {
-        val selectedVideos = _state.value.videos.filter { 
-            it.isSelected && !it.isDownloaded && !it.isDownloading 
-        }
-        
-        if (selectedVideos.isEmpty()) {
-            _state.update { it.copy(error = "没有可下载的视频（已自动跳过已下载的视频）") }
-            return
+        val selectedVideos = _state.value.videos.filter {
+            it.isSelected && !it.isDownloaded && !it.isDownloading
         }
 
-        val manager = downloadManager
-        if (manager == null) {
-            _state.update { it.copy(error = "下载管理器未初始化") }
+        if (selectedVideos.isEmpty()) {
+            _state.update { it.copy(error = "没有可下载的视频（已自动跳过已下载的视频）") }
             return
         }
 
@@ -389,10 +381,10 @@ class BatchDownloadViewModel : ViewModel() {
             } else {
                 null
             }
-            
+
             val downloadUrl = quality?.downloadUrl ?: video.videoUrl
             val qualityStr = quality?.quality ?: "unknown"
-            
+
             Log.i("BatchDownload", "[$index] ${video.title}")
             Log.i("BatchDownload", "    画质: $qualityStr")
             Log.i("BatchDownload", "    链接: $downloadUrl")
@@ -425,7 +417,7 @@ class BatchDownloadViewModel : ViewModel() {
                     if (quality == null) {
                         Log.w("BatchDownload", "跳过无画质信息的视频: ${video.title}")
                     } else {
-                        manager.startDownload(
+                        downloadManager.startDownload(
                             title = video.title,
                             quality = quality.quality,
                             url = quality.downloadUrl,

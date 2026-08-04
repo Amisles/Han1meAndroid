@@ -44,12 +44,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import app.amisles.hanime.data.download.DownloadManagerHolder
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.R
@@ -67,8 +67,8 @@ fun DownloadScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val downloadManager = DownloadManagerHolder.getInstance(context)
-    val tasks by downloadManager.tasks.collectAsState()
+    val viewModel: DownloadViewModel = hiltViewModel()
+    val tasks by viewModel.tasks.collectAsState()
 
     val downloadingTasks = tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
     val completedTasks = tasks.filter { it.status == DownloadStatus.COMPLETED }
@@ -193,8 +193,8 @@ fun DownloadScreen(
                                     selectedIds + task.id
                                 }
                             },
-                            onPauseClick = { downloadManager.pauseDownload(task.id) },
-                            onCancelClick = { downloadManager.cancelDownload(task.id) }
+                            onPauseClick = { viewModel.pauseDownload(task.id) },
+                            onCancelClick = { viewModel.cancelDownload(task.id) }
                         )
                     }
                 }
@@ -227,8 +227,8 @@ fun DownloadScreen(
                                     selectedIds + task.id
                                 }
                             },
-                            onResumeClick = { downloadManager.resumeDownload(task.id) },
-                            onCancelClick = { downloadManager.cancelDownload(task.id) }
+                            onResumeClick = { viewModel.resumeDownload(task.id) },
+                            onCancelClick = { viewModel.cancelDownload(task.id) }
                         )
                     }
                 }
@@ -261,8 +261,8 @@ fun DownloadScreen(
                                     selectedIds + task.id
                                 }
                             },
-                            onRetryClick = { downloadManager.resumeDownload(task.id) },
-                            onCancelClick = { downloadManager.cancelDownload(task.id) }
+                            onRetryClick = { viewModel.resumeDownload(task.id) },
+                            onCancelClick = { viewModel.cancelDownload(task.id) }
                         )
                     }
                 }
@@ -296,7 +296,7 @@ fun DownloadScreen(
                                 }
                             },
                             onPlayClick = { playVideoFile(context, task.filePath) },
-                            onDeleteClick = { downloadManager.cancelDownload(task.id) }
+                            onDeleteClick = { viewModel.cancelDownload(task.id) }
                         )
                     }
                 }
@@ -437,7 +437,7 @@ fun DownloadScreen(
                             .weight(1f)
                             .clickable {
                                 selectedIds.forEach { taskId ->
-                                    downloadManager.cancelDownload(taskId)
+                                    viewModel.cancelDownload(taskId)
                                 }
                                 isSelectionMode = false
                                 showDeleteConfirm = false

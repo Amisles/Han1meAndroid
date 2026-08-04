@@ -61,7 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
@@ -76,14 +76,8 @@ import coil3.request.crossfade
 fun BatchDownloadScreen(
     onBackClick: () -> Unit
 ) {
-    val viewModel: BatchDownloadViewModel = viewModel()
+    val viewModel: BatchDownloadViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
-    val context = LocalContext.current
-
-    DisposableEffect(Unit) {
-        viewModel.initDownloadManager(context)
-        onDispose { }
-    }
 
     Scaffold(
         containerColor = HanimeBackground,

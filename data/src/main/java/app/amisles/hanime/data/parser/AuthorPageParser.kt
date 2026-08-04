@@ -6,14 +6,17 @@ import app.amisles.hanime.domain.model.UserVideoListResult
 import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 作者页面解析器
  */
-class AuthorPageParser(
-    private val videoListParser: VideoListParser = VideoListParser(),
-    private val playlistParser: PlaylistParser = PlaylistParser(),
-    private val searchPageParser: SearchPageParser = SearchPageParser()
+@Singleton
+class AuthorPageParser @Inject constructor(
+    private val videoListParser: VideoListParser,
+    private val playlistParser: PlaylistParser,
+    private val searchPageParser: SearchPageParser
 ) {
 
     fun parse(html: String, baseUrl: String): AuthorPageData? {

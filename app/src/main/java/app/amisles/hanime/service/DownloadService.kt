@@ -17,8 +17,8 @@ import app.amisles.hanime.domain.model.DownloadStatus
 /**
  * 下载前台服务，负责在通知栏显示下载进度，支持后台下载。
  *
- * data 模块通过 [app.amisles.hanime.data.download.DownloadManagerHolder] 以
- * 显式类名 Intent 的方式将进度转发到本服务，从而避免 data 模块直接依赖 app 模块。
+ * data 模块的 DownloadManager 以显式类名 Intent 的方式将进度转发到本服务，
+ * 从而避免 data 模块直接依赖 app 模块。
  */
 class DownloadService : Service() {
 
@@ -30,8 +30,6 @@ class DownloadService : Service() {
         // Intent action
         const val ACTION_START = "app.amisles.hanime.service.action.START"
         const val ACTION_STOP = "app.amisles.hanime.service.action.STOP"
-
-        // Intent extras（需与 DownloadManagerHolder 中的字符串保持一致）
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"

@@ -36,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.R
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.model.emojis
@@ -55,7 +55,7 @@ fun PlaylistDetailScreen(
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {}
 ) {
-    val viewModel: PlaylistDetailViewModel = viewModel()
+    val viewModel: PlaylistDetailViewModel = hiltViewModel()
     val playlistDetail by viewModel.playlistDetail.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()

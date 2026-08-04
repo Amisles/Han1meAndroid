@@ -26,9 +26,14 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.max
+import android.content.Intent
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class DownloadManager(
-    private val context: Context,
+@Singleton
+class DownloadManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val downloadDao: DownloadDao
 ) {
 
@@ -62,6 +67,10 @@ class DownloadManager(
         }
 
     init {
+        onProgressUpdate = { _, title, progress, status ->
+            forwardToService(context, title, progress, status)
+        }
+
         scope.launch {
             try {
                 val entities = downloadDao.getAllDownloadsOnce()
@@ -454,5 +463,42 @@ class DownloadManager(
     fun getDownloadStatus(videoId: String): DownloadStatus? {
         val task = _tasks.value.find { it.url.contains(videoId) || it.title.contains(videoId) }
         return task?.status
+    }
+
+    /**
+     * 将下载进度转发给 DownloadService。
+     * 下载中使用 startForegroundService 以确保服务在前台运行；
+     * 完成/失败时服务应已在前台运行，使用 startService 更新最终通知并停止服务。
+     */
+    private fun forwardToService(
+        context: Context,
+        title: String,
+        progress: Int,
+        status: DownloadStatus
+    ) {
+        try {
+            val intent = Intent().apply {
+                setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
+                putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_PROGRESS, progress)
+                putExtra(EXTRA_STATUS, status.name)
+            }
+            if (status == DownloadStatus.DOWNLOADING) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } catch (e: Exception) {
+            // 忽略转发异常，避免影响下载主流程
+        }
+    }
+
+    private companion object {
+        // DownloadService 的完整类名。data 模块不能直接依赖 app 模块，
+        // 因此通过显式类名的 Intent 将进度转发给 app 模块中的 DownloadService。
+        const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
+        const val EXTRA_TITLE = "extra_title"
+        const val EXTRA_PROGRESS = "extra_progress"
+        const val EXTRA_STATUS = "extra_status"
     }
 }

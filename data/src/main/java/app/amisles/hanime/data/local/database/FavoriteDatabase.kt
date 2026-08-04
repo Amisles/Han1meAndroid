@@ -1,8 +1,6 @@
 package app.amisles.hanime.data.local.database
 
-import android.content.Context
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -23,9 +21,6 @@ abstract class FavoriteDatabase : RoomDatabase() {
     abstract fun searchHistoryDao(): SearchHistoryDao
 
     companion object {
-        @Volatile
-        private var INSTANCE: FavoriteDatabase? = null
-
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
@@ -70,20 +65,6 @@ abstract class FavoriteDatabase : RoomDatabase() {
                 database.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN thumbnailUrl TEXT NOT NULL DEFAULT ''"
                 )
-            }
-        }
-
-        fun getInstance(context: Context): FavoriteDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    FavoriteDatabase::class.java,
-                    "favorite_database"
-                )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-                    .build()
-                INSTANCE = instance
-                instance
             }
         }
     }

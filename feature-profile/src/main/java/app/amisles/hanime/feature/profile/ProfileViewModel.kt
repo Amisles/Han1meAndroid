@@ -1,9 +1,8 @@
 package app.amisles.hanime.feature.profile
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.download.DownloadManagerHolder
+import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -12,9 +11,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class ProfileViewModel : ViewModel() {
-    private val repository = HanimeRepository.getInstance()
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
+    private val repository: HanimeRepository,
+    private val downloadManager: DownloadManager
+) : ViewModel() {
 
     private val _watchCount = MutableStateFlow(0)
     val watchCount: StateFlow<Int> = _watchCount.asStateFlow()
@@ -25,11 +29,7 @@ class ProfileViewModel : ViewModel() {
     private val _downloadCount = MutableStateFlow(0)
     val downloadCount: StateFlow<Int> = _downloadCount.asStateFlow()
 
-    fun initDatabase(context: Context) {
-        repository.initDatabase(context)
-    }
-
-    fun loadCounts(context: Context) {
+    fun loadCounts() {
         AppLogger.d("ProfileViewModel", "loadCounts called")
         viewModelScope.launch {
             try {
@@ -40,7 +40,7 @@ class ProfileViewModel : ViewModel() {
                     repository.getFavoriteCount()
                 }
                 _downloadCount.value = withContext(Dispatchers.IO) {
-                    DownloadManagerHolder.getInstance(context).getCompletedDownloadCount()
+                    downloadManager.getCompletedDownloadCount()
                 }
                 AppLogger.d("ProfileViewModel", "Counts loaded: watch=${_watchCount.value}, fav=${_favoriteCount.value}, dl=${_downloadCount.value}")
             } catch (e: Exception) {

@@ -5,11 +5,14 @@ import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 搜索页解析器
  */
-class SearchPageParser(private val videoListParser: VideoListParser = VideoListParser()) {
+@Singleton
+class SearchPageParser @Inject constructor(private val videoListParser: VideoListParser) {
 
     fun parse(html: String, baseUrl: String): List<HanimeVideo> {
         AppLogger.log("SearchPageParser", "parse called, baseUrl: $baseUrl")

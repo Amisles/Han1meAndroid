@@ -5,11 +5,14 @@ import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 通用视频列表解析器
  */
-class VideoListParser {
+@Singleton
+class VideoListParser @Inject constructor() {
 
     // 从Document解析视频列表
     fun parseVideoList(doc: Document, baseUrl: String): List<HanimeVideo> {

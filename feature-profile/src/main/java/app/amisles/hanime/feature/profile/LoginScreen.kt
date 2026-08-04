@@ -63,7 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeBorder
@@ -89,7 +89,7 @@ fun LoginScreen(
     onBackClick: () -> Unit,
     onLoginSuccess: () -> Unit = {}
 ) {
-    val vm: LoginViewModel = viewModel()
+    val vm: LoginViewModel = hiltViewModel()
     val uiState by vm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState) {

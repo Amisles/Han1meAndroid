@@ -1,4 +1,4 @@
-﻿package app.amisles.hanime.feature.profile
+package app.amisles.hanime.feature.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -78,7 +78,7 @@ fun HistoryScreen(
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {}
 ) {
-    val viewModel: HistoryViewModel = viewModel()
+    val viewModel: HistoryViewModel = hiltViewModel()
     val context = LocalContext.current
     val history by viewModel.history.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -89,7 +89,6 @@ fun HistoryScreen(
     var showClearConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        viewModel.initDatabase(context)
         viewModel.loadHistory()
     }
 

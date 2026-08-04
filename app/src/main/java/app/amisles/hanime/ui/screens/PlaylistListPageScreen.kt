@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
@@ -51,7 +51,7 @@ fun PlaylistListPageScreen(
     onBackClick: () -> Unit = {},
     onPlaylistClick: (String) -> Unit = {}
 ) {
-    val viewModel: PlaylistListPageViewModel = viewModel()
+    val viewModel: PlaylistListPageViewModel = hiltViewModel()
     val playlists by viewModel.playlists.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()

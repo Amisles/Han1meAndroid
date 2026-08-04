@@ -45,7 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
@@ -71,7 +71,7 @@ fun HomeScreen(
     onAuthorClick: (String) -> Unit = {},
     onViewMore: (String) -> Unit = {}
 ) {
-    val viewModel: HomeViewModel = viewModel()
+    val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsState()
     val banner by viewModel.banner.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()

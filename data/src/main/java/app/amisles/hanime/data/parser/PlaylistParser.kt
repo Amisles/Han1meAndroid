@@ -8,11 +8,14 @@ import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 播放列表解析器
  */
-class PlaylistParser {
+@Singleton
+class PlaylistParser @Inject constructor() {
 
     // 解析播放列表信息（详情页内嵌的播放列表）
     fun parse(doc: Document, baseUrl: String): PlaylistInfo? {

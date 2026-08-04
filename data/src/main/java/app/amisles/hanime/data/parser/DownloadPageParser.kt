@@ -4,11 +4,14 @@ import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 下载页解析器
  */
-class DownloadPageParser {
+@Singleton
+class DownloadPageParser @Inject constructor() {
 
     fun parse(html: String, baseUrl: String): List<DownloadQuality> {
         AppLogger.log("DownloadPageParser", "parse called")

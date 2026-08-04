@@ -8,11 +8,14 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 首页解析器
  */
-class HomePageParser(private val videoListParser: VideoListParser = VideoListParser()) {
+@Singleton
+class HomePageParser @Inject constructor(private val videoListParser: VideoListParser) {
 
     fun parse(html: String, baseUrl: String): HomePageData {
 

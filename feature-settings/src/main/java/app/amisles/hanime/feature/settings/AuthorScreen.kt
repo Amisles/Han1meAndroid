@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.components.VideoCard
@@ -61,7 +61,7 @@ fun AuthorScreen(
     onViewAllPlaylists: (String) -> Unit = {},
     onPlaylistClick: (String) -> Unit = {}
 ) {
-    val viewModel: AuthorViewModel = viewModel()
+    val viewModel: AuthorViewModel = hiltViewModel()
     val authorData by viewModel.authorData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()

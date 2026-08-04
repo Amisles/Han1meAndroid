@@ -7,8 +7,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class LoginViewModel : ViewModel() {
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val repository: HanimeRepository
+) : ViewModel() {
 
     sealed interface UiState {
         data object Idle : UiState
@@ -19,8 +24,6 @@ class LoginViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-
-    private val repository get() = HanimeRepository.getInstance()
 
     fun loginWithEmailPassword(email: String, password: String) {
         val cleanEmail = email.trim()

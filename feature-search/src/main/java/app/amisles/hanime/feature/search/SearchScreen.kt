@@ -47,7 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.ErrorView
 import app.amisles.hanime.core.ui.components.VideoThumbnail
@@ -97,7 +97,7 @@ fun SearchScreen(
     initialSort: String? = null,
     onAuthorClick: (String) -> Unit = {}
 ) {
-    val viewModel: SearchViewModel = viewModel()
+    val viewModel: SearchViewModel = hiltViewModel()
     val query by viewModel.query.collectAsState()
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()

@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.profile
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.repository.HanimeRepository
@@ -13,19 +12,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class HistoryViewModel : ViewModel() {
-    private val repository = HanimeRepository.getInstance()
+@HiltViewModel
+class HistoryViewModel @Inject constructor(
+    private val repository: HanimeRepository
+) : ViewModel() {
 
     private val _history = MutableStateFlow<List<WatchHistory>>(emptyList())
     val history: StateFlow<List<WatchHistory>> = _history.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    fun initDatabase(context: Context) {
-        repository.initDatabase(context)
-    }
 
     fun loadHistory() {
         AppLogger.d("HistoryViewModel", "loadHistory called")

@@ -45,7 +45,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
@@ -90,7 +90,7 @@ fun ProfileScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val profileViewModel: ProfileViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = hiltViewModel()
     val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
     val displayName by Preferences.savedUserIdFlow.collectAsStateWithLifecycle()
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
@@ -102,8 +102,7 @@ fun ProfileScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                profileViewModel.initDatabase(context)
-                profileViewModel.loadCounts(context)
+                profileViewModel.loadCounts()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

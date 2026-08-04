@@ -59,7 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
@@ -86,7 +86,7 @@ fun DetailScreen(
     onAuthorClick: (String) -> Unit = {},
     onAuthorPageClick: (String) -> Unit = {}
 ) {
-    val viewModel: DetailViewModel = viewModel()
+    val viewModel: DetailViewModel = hiltViewModel()
     val context = LocalContext.current
     val videoDetail by viewModel.videoDetail.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -125,10 +125,6 @@ fun DetailScreen(
 
     BackHandler(enabled = isPlayerFullscreen) {
         isPlayerFullscreen = false
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.initDownloadManager(context)
     }
 
     LaunchedEffect(videoUrl) {

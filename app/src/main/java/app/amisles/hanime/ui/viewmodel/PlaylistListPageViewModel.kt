@@ -8,9 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class PlaylistListPageViewModel : ViewModel() {
-    private val networkService = NetworkService()
+@HiltViewModel
+class PlaylistListPageViewModel @Inject constructor(
+    private val networkService: NetworkService
+) : ViewModel() {
 
     private val _playlists = MutableStateFlow<List<PlaylistSummary>>(emptyList())
     val playlists: StateFlow<List<PlaylistSummary>> = _playlists.asStateFlow()

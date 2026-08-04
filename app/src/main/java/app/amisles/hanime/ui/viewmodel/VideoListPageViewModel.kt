@@ -8,9 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class VideoListPageViewModel : ViewModel() {
-    private val networkService = NetworkService()
+@HiltViewModel
+class VideoListPageViewModel @Inject constructor(
+    private val networkService: NetworkService
+) : ViewModel() {
 
     private val _videos = MutableStateFlow<List<HanimeVideo>>(emptyList())
     val videos: StateFlow<List<HanimeVideo>> = _videos.asStateFlow()

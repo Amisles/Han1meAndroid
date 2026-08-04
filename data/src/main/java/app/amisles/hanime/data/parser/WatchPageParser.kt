@@ -6,13 +6,16 @@ import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 视频详情页解析器
  */
-class WatchPageParser(
-    private val videoListParser: VideoListParser = VideoListParser(),
-    private val playlistParser: PlaylistParser = PlaylistParser()
+@Singleton
+class WatchPageParser @Inject constructor(
+    private val videoListParser: VideoListParser,
+    private val playlistParser: PlaylistParser
 ) {
 
     fun parse(html: String, baseUrl: String): VideoDetail? {

@@ -21,10 +21,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.feature.detail.DetailScreen
-import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.feature.download.DownloadScreen
 import app.amisles.hanime.feature.profile.FavoriteScreen
 import app.amisles.hanime.feature.profile.HistoryScreen
@@ -43,20 +41,14 @@ import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.ui.theme.HanimeBackground
 import app.amisles.hanime.ui.theme.HanimeTheme
-import app.amisles.hanime.core.common.util.LocaleHelper
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    override fun attachBaseContext(newBase: android.content.Context) {
-        Preferences.init(newBase)
-        super.attachBaseContext(LocaleHelper.wrapContext(newBase, Preferences.appLanguage))
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        AppLogger.init(this)
-        AppLogger.d("APP", "MainActivity onCreate started")
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(HanimeBackground.hashCode()),
             navigationBarStyle = SystemBarStyle.dark(HanimeBackground.hashCode())
@@ -66,7 +58,6 @@ class MainActivity : ComponentActivity() {
                 HanimeApp()
             }
         }
-        AppLogger.d("APP", "MainActivity onCreate finished")
     }
 }
 

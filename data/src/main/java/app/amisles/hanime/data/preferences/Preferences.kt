@@ -59,7 +59,8 @@ object Preferences {
     val shareCountFlow: StateFlow<Int> = _shareCountFlow.asStateFlow()
 
     fun init(context: Context) {
-        sp = context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+        // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
+        sp = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
         _loginStateFlow.value = sp.getBoolean(SP_ALREADY_LOGIN, false)
         _loginCookieFlow.value = CookieString(sp.getString(SP_LOGIN_COOKIE, "").orEmpty())
         _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())

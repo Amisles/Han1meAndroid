@@ -3,7 +3,6 @@ package app.amisles.hanime.feature.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.download.DownloadManager
-import app.amisles.hanime.data.download.DownloadManagerHolder
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
@@ -16,10 +15,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class DetailViewModel : ViewModel() {
-    private val repository = HanimeRepository.getInstance()
-    private lateinit var downloadManager: DownloadManager
+@HiltViewModel
+class DetailViewModel @Inject constructor(
+    private val repository: HanimeRepository,
+    private val downloadManager: DownloadManager
+) : ViewModel() {
 
     private val _videoDetail = MutableStateFlow<VideoDetail?>(null)
     val videoDetail: StateFlow<VideoDetail?> = _videoDetail.asStateFlow()
@@ -41,11 +44,6 @@ class DetailViewModel : ViewModel() {
 
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
-
-    fun initDownloadManager(context: android.content.Context) {
-        downloadManager = DownloadManagerHolder.getInstance(context)
-        repository.initDatabase(context)
-    }
 
     fun loadVideoDetail(videoUrl: String) {
         AppLogger.d("DetailViewModel", "loadVideoDetail called, url: $videoUrl")

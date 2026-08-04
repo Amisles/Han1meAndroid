@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import app.amisles.hanime.domain.model.FavoriteVideo
@@ -61,7 +61,7 @@ fun FavoriteScreen(
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {}
 ) {
-    val viewModel: FavoriteViewModel = viewModel()
+    val viewModel: FavoriteViewModel = hiltViewModel()
     val context = LocalContext.current
     val favorites by viewModel.favorites.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -73,7 +73,6 @@ fun FavoriteScreen(
     var deleteTargetTitle by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        viewModel.initDatabase(context)
         viewModel.loadFavorites()
     }
 

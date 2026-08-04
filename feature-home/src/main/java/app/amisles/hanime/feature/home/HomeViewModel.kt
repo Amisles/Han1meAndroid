@@ -13,9 +13,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class HomeViewModel : ViewModel() {
-    private val repository = HanimeRepository.getInstance()
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: HanimeRepository
+) : ViewModel() {
 
     private val _videos = MutableStateFlow<List<HanimeVideo>>(emptyList())
     val videos: StateFlow<List<HanimeVideo>> = _videos.asStateFlow()
