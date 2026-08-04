@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.PlaylistDetail
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +32,8 @@ class PlaylistDetailViewModel @Inject constructor(
             _error.value = null
             try {
                 _playlistDetail.value = networkService.fetchPlaylistDetailPage(url)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _error.value = e.message ?: "加载失败"
             } finally {
