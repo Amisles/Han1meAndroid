@@ -22,7 +22,6 @@ class PlaylistParser @Inject constructor() {
         try {
             val playlistWrapper = doc.selectFirst(".video-playlist-wrapper")
             if (playlistWrapper == null) {
-                AppLogger.log("PlaylistParser", "No playlist wrapper found")
                 return null
             }
 
@@ -86,7 +85,6 @@ class PlaylistParser @Inject constructor() {
                 return null
             }
 
-            AppLogger.log("PlaylistParser", "Parsed playlist: $playlistTitle by $author, ${videos.size} videos")
             return PlaylistInfo(
                 title = playlistTitle,
                 author = author,
@@ -101,7 +99,6 @@ class PlaylistParser @Inject constructor() {
 
     // 解析播放列表列表页
     fun parseListPage(html: String, baseUrl: String): List<PlaylistSummary> {
-        AppLogger.log("PlaylistParser", "parseListPage called")
         try {
             val doc = Jsoup.parse(html, baseUrl)
             return parsePlaylistSummaries(doc, baseUrl)
@@ -113,7 +110,6 @@ class PlaylistParser @Inject constructor() {
 
     // 解析播放列表详情页
     fun parseDetailPage(html: String, baseUrl: String): PlaylistDetail? {
-        AppLogger.log("PlaylistParser", "parseDetailPage called")
         try {
             val doc = Jsoup.parse(html, baseUrl)
 
@@ -135,8 +131,6 @@ class PlaylistParser @Inject constructor() {
 
             val videos = parsePlaylistDetailVideos(doc, baseUrl)
 
-            AppLogger.log("PlaylistParser", "Parsed playlist detail: $title, ${videos.size} videos")
-
             return PlaylistDetail(
                 title = title,
                 coverUrl = coverUrl,
@@ -157,14 +151,11 @@ class PlaylistParser @Inject constructor() {
     fun parseSectionPlaylists(doc: Document, baseUrl: String, sectionTitle: String): List<PlaylistSummary> {
         val playlists = mutableListOf<PlaylistSummary>()
         val sectionLinks = doc.select("a.horizontal-row-title")
-        AppLogger.log("PlaylistParser", "parseSectionPlaylists: Found ${sectionLinks.size} section links, looking for '$sectionTitle'")
 
         for (link in sectionLinks) {
             val h3 = link.selectFirst("h3") ?: continue
             val h3Text = h3.ownText().trim()
             val h3FullText = h3.text().trim()
-
-            AppLogger.log("PlaylistParser", "  Checking h3: ownText='$h3Text', fullText='$h3FullText'")
 
             val matches = h3Text.startsWith(sectionTitle) ||
                           h3Text.contains(sectionTitle) ||
@@ -172,30 +163,21 @@ class PlaylistParser @Inject constructor() {
                           (sectionTitle == "影片" && (h3Text.startsWith("影片")))
 
             if (matches) {
-                AppLogger.log("PlaylistParser", "  Found matching section '$sectionTitle', looking for .home-rows-videos-wrapper")
-
                 var sibling = link.nextElementSibling()
                 var siblingIndex = 0
                 while (sibling != null && siblingIndex < 10) {
                     siblingIndex++
-                    AppLogger.log("PlaylistParser", "    Sibling $siblingIndex: tag='${sibling.tagName()}', class='${sibling.className()}'")
 
                     val wrapper = sibling.selectFirst(".home-rows-videos-wrapper")
                     if (wrapper != null) {
-                        AppLogger.log("PlaylistParser", "    Found .home-rows-videos-wrapper")
                         val items = wrapper.select(".video-item-container")
-                        AppLogger.log("PlaylistParser", "    Found ${items.size} .video-item-container elements")
 
                         for ((idx, item) in items.withIndex()) {
                             try {
-                                AppLogger.log("PlaylistParser", "      Processing playlist item $idx")
-
                                 val videoLink = item.selectFirst("a.video-link")
                                 val playlistUrl = videoLink?.attr("abs:href") ?: ""
-                                AppLogger.log("PlaylistParser", "      Playlist URL: $playlistUrl")
 
                                 if (playlistUrl.isEmpty()) {
-                                    AppLogger.log("PlaylistParser", "      Skipped: empty URL")
                                     continue
                                 }
 
@@ -206,8 +188,6 @@ class PlaylistParser @Inject constructor() {
 
                                 val statsContainer = item.selectFirst(".stats-container")
                                 val videoCount = statsContainer?.selectFirst(".stat-item")?.text()?.trim() ?: ""
-
-                                AppLogger.log("PlaylistParser", "      Parsed: title='$title', videoCount='$videoCount', author='$author'")
 
                                 playlists.add(PlaylistSummary(
                                     title = title,
@@ -228,7 +208,6 @@ class PlaylistParser @Inject constructor() {
                 break
             }
         }
-        AppLogger.log("PlaylistParser", "parseSectionPlaylists result: ${playlists.size} playlists for '$sectionTitle'")
         return playlists
     }
 

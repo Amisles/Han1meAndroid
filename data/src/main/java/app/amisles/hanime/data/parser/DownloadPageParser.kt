@@ -14,13 +14,11 @@ import javax.inject.Singleton
 class DownloadPageParser @Inject constructor() {
 
     fun parse(html: String, baseUrl: String): List<DownloadQuality> {
-        AppLogger.log("DownloadPageParser", "parse called")
         val qualities = mutableListOf<DownloadQuality>()
         try {
             val doc = Jsoup.parse(html, baseUrl)
             val table = doc.selectFirst("table.download-table")
             if (table == null) {
-                AppLogger.log("DownloadPageParser", "No download-table found, trying alternative selectors")
                 val altTables = doc.select("table")
                 for (t in altTables) {
                     if (t.text().contains("下載") || t.text().contains("畫質")) {
@@ -31,7 +29,6 @@ class DownloadPageParser @Inject constructor() {
             } else {
                 parseDownloadTable(table, qualities)
             }
-            AppLogger.log("DownloadPageParser", "Found ${qualities.size} download qualities")
             return qualities
         } catch (e: Exception) {
             AppLogger.logError("DownloadPageParser", "Error parsing download page: ${e.message}", e)
@@ -41,7 +38,6 @@ class DownloadPageParser @Inject constructor() {
 
     private fun parseDownloadTable(table: Element, qualities: MutableList<DownloadQuality>) {
         val rows = table.select("tbody tr")
-        AppLogger.log("DownloadPageParser", "Download table has ${rows.size} rows")
         for (row in rows) {
             try {
                 val cells = row.select("td")
@@ -69,7 +65,6 @@ class DownloadPageParser @Inject constructor() {
                         downloadUrl = downloadUrl
                     )
                 )
-                AppLogger.log("DownloadPageParser", "Quality: $qualityText, URL: ${downloadUrl.take(50)}...")
             } catch (e: Exception) {
                 AppLogger.logError("DownloadPageParser", "Error parsing download row: ${e.message}", e)
                 continue

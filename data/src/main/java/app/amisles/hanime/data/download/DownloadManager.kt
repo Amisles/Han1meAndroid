@@ -48,7 +48,7 @@ class DownloadManager @Inject constructor(
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
     val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
 
-    // 进度更新回调，供外部（如 DownloadService）订阅以更新通知栏
+    // 进度更新回调
     var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
 
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
@@ -147,7 +147,7 @@ class DownloadManager @Inject constructor(
 
         val job = scope.launch {
             try {
-                // 等待获取信号量许可（使用synchronized读取）
+                // 等待获取信号量许可
                 val semaphore = synchronized(semaphoreLock) { downloadSemaphore }
                 semaphore.withPermit {
                     AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取)")
@@ -195,7 +195,6 @@ class DownloadManager @Inject constructor(
         AppLogger.log("DownloadManager", "并发下载数已更新为: $safeMax")
 
         tasksLock.withLock {
-            // 如果有增加的槽位，启动等待中的任务
             val downloadingCount = _tasks.value.count { it.status == DownloadStatus.DOWNLOADING }
             val pendingTasks = _tasks.value.filter {
                 it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)

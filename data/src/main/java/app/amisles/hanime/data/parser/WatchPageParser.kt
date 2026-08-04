@@ -19,15 +19,12 @@ class WatchPageParser @Inject constructor(
 ) {
 
     fun parse(html: String, baseUrl: String): VideoDetail? {
-        AppLogger.log("WatchPageParser", "parse called")
         try {
             val doc: Document = Jsoup.parse(html, baseUrl)
 
             val videoTag: Element? = doc.selectFirst("video#player")
             val defaultSourceUrl = videoTag?.attr("abs:src") ?: videoTag?.attr("src") ?: ""
             val posterUrl = videoTag?.attr("abs:poster") ?: videoTag?.attr("poster") ?: ""
-            AppLogger.log("WatchPageParser", "Video src: $defaultSourceUrl")
-            AppLogger.log("WatchPageParser", "Poster: $posterUrl")
 
             val sources = mutableListOf<VideoSource>()
             val sourceTags = doc.select("video#player source")
@@ -40,7 +37,6 @@ class WatchPageParser @Inject constructor(
                 }
             }
             sources.sortByDescending { it.size }
-            AppLogger.log("WatchPageParser", "Found ${sources.size} video sources")
 
             val titleElement = doc.selectFirst("h3#shareBtn-title")
                 ?: doc.selectFirst("h3.single-video-title")
@@ -52,7 +48,6 @@ class WatchPageParser @Inject constructor(
                     rawTitle.substring(closingBracket + 1).trim()
                 } else rawTitle
             } else rawTitle
-            AppLogger.log("WatchPageParser", "Title: $title (raw: $rawTitle)")
 
             val tags = mutableListOf<String>()
             val tagElements = doc.select(".video-tags-wrapper .single-video-tag a")
@@ -64,7 +59,6 @@ class WatchPageParser @Inject constructor(
                     seenTags.add(tagText)
                 }
             }
-            AppLogger.log("WatchPageParser", "Found ${tags.size} tags")
 
             val releaseDate = Regex("(20\\d{2}/\\d{2}/\\d{2})").find(html)?.value ?: ""
 
@@ -72,7 +66,6 @@ class WatchPageParser @Inject constructor(
             val fileSize = fileSizeMatch?.value ?: ""
 
             val author = doc.selectFirst("a#video-artist-name")?.text()?.trim() ?: ""
-            AppLogger.log("WatchPageParser", "Author: $author")
 
             val authorLink = doc.selectFirst("a[href*=\"/user/\"]")
             val authorPageUrl = authorLink?.attr("abs:href") ?: ""
@@ -81,16 +74,12 @@ class WatchPageParser @Inject constructor(
             val authorAvatarUrl = avatarContainer?.selectFirst("img[style*=\"position: absolute\"]")?.attr("abs:src")
                 ?: avatarContainer?.selectFirst("img#video-user-avatar")?.attr("abs:src")
                 ?: ""
-            AppLogger.log("WatchPageParser", "Author avatar: $authorAvatarUrl")
 
             val description = doc.selectFirst(".video-caption-text")?.wholeText()?.trim() ?: ""
-            AppLogger.log("WatchPageParser", "Description length: ${description.length}")
 
             val relatedVideos = videoListParser.parseVideoList(doc, baseUrl)
-            AppLogger.log("WatchPageParser", "Found ${relatedVideos.size} related videos")
 
             val playlist = playlistParser.parse(doc, baseUrl)
-            AppLogger.log("WatchPageParser", "Playlist: ${playlist != null}")
 
             val filteredRelatedVideos = if (playlist != null) {
                 val playlistUrls = playlist.videos.map { it.videoUrl }.toSet()
@@ -98,7 +87,6 @@ class WatchPageParser @Inject constructor(
             } else {
                 relatedVideos
             }
-            AppLogger.log("WatchPageParser", "Filtered related videos: ${filteredRelatedVideos.size} (removed ${relatedVideos.size - filteredRelatedVideos.size} playlist duplicates)")
 
             if (defaultSourceUrl.isEmpty() && sources.isNotEmpty()) {
                 val defaultSource = sources.find { it.size == 720 } ?: sources.first()

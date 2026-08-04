@@ -20,7 +20,6 @@ class AuthorPageParser @Inject constructor(
 ) {
 
     fun parse(html: String, baseUrl: String): AuthorPageData? {
-        AppLogger.log("AuthorPageParser", "parse called")
         try {
             val doc: Document = Jsoup.parse(html, baseUrl)
 
@@ -32,19 +31,7 @@ class AuthorPageParser @Inject constructor(
 
             val subStatsElement = doc.selectFirst(".profile-sub-stats-new-line")
             val subStats = subStatsElement?.text()?.trim() ?: ""
-            AppLogger.log("AuthorPageParser", "subStats element found: ${subStatsElement != null}, text: '$subStats'")
-            AppLogger.log("AuthorPageParser", "subStats length: ${subStats.length}, bytes: ${subStats.toByteArray(Charsets.UTF_8).joinToString(" ") { "%02x".format(it) }}")
             val (subscriberCount, videoCount) = parseSubscriberStats(subStats)
-
-            AppLogger.log("AuthorPageParser", "Looking for horizontal-row-title elements...")
-            val sectionLinks = doc.select("a.horizontal-row-title")
-            AppLogger.log("AuthorPageParser", "Found ${sectionLinks.size} horizontal-row-title links")
-            for ((index, link) in sectionLinks.withIndex()) {
-                val h3 = link.selectFirst("h3")
-                val h3OwnText = h3?.ownText()?.trim() ?: ""
-                val h3FullText = h3?.text()?.trim() ?: ""
-                AppLogger.log("AuthorPageParser", "  [$index] h3 ownText='$h3OwnText', fullText='$h3FullText'")
-            }
 
             val videos = videoListParser.parseSectionVideos(doc, baseUrl, "影片")
             val playlists = playlistParser.parseSectionPlaylists(doc, baseUrl, "播放清单")
@@ -57,9 +44,6 @@ class AuthorPageParser @Inject constructor(
                 val h3Text = it.selectFirst("h3")?.ownText()?.trim() ?: ""
                 h3Text.startsWith("播放清单") || h3Text.startsWith("播放清單")
             }?.attr("abs:href") ?: ""
-
-            AppLogger.log("AuthorPageParser", "Parsed author page: $authorName ($authorId), sub=$subscriberCount, vid=$videoCount, ${videos.size} videos, ${playlists.size} playlists")
-            AppLogger.log("AuthorPageParser", "Links: uploaded='$uploadedLink', playlists='$playlistsLink'")
 
             return AuthorPageData(
                 authorId = authorId,
@@ -79,7 +63,6 @@ class AuthorPageParser @Inject constructor(
     }
 
     fun parseVideoListPage(html: String, baseUrl: String): List<HanimeVideo> {
-        AppLogger.log("AuthorPageParser", "parseVideoListPage called")
         try {
             val doc: Document = Jsoup.parse(html, baseUrl)
             return videoListParser.parseAuthorVideos(doc, baseUrl)
@@ -90,7 +73,6 @@ class AuthorPageParser @Inject constructor(
     }
 
     fun parseUserVideoList(html: String, baseUrl: String): UserVideoListResult {
-        AppLogger.log("AuthorPageParser", "parseUserVideoList called")
         val doc: Document = Jsoup.parse(html, baseUrl)
 
         val authorName = doc.selectFirst(".profile-display-name")?.text()?.trim() ?: ""
@@ -100,7 +82,6 @@ class AuthorPageParser @Inject constructor(
         val videos = mutableListOf<HanimeVideo>()
 
         val userTabItems = doc.select(".user-tab-item-wrapper")
-        AppLogger.log("AuthorPageParser", "Found ${userTabItems.size} user-tab-item-wrapper elements")
 
         for (item in userTabItems) {
             val video = videoListParser.parseUserTabVideoItem(item, baseUrl)
@@ -111,7 +92,6 @@ class AuthorPageParser @Inject constructor(
 
         if (videos.isEmpty()) {
             val videoContainers = doc.select(".video-item-container")
-            AppLogger.log("AuthorPageParser", "Fallback: Found ${videoContainers.size} video-item-container elements")
             for (container in videoContainers) {
                 val video = videoListParser.parseVideoItem(container, baseUrl)
                 if (video != null) {
@@ -121,8 +101,6 @@ class AuthorPageParser @Inject constructor(
         }
 
         val (currentPage, totalPages, hasNextPage) = searchPageParser.parsePagination(doc)
-
-        AppLogger.log("AuthorPageParser", "Parsed user video list: ${videos.size} videos, page $currentPage/$totalPages, hasNext=$hasNextPage")
 
         return UserVideoListResult(
             videos = videos,
@@ -135,8 +113,6 @@ class AuthorPageParser @Inject constructor(
     }
 
     private fun parseSubscriberStats(stats: String): Pair<String, String> {
-        AppLogger.log("AuthorPageParser", "parseSubscriberStats input: '$stats'")
-
         val subscriberPatterns = listOf(
             Regex("(\\d[\\d,]*)\\s+位訂閱者"),
             Regex("(\\d[\\d,]*)\\s+位订阅者"),
@@ -150,7 +126,6 @@ class AuthorPageParser @Inject constructor(
             val match = pattern.find(stats)
             if (match != null) {
                 subscriberCount = match.groupValues[1]
-                AppLogger.log("AuthorPageParser", "Matched subscriber with pattern: $pattern")
                 break
             }
         }
@@ -168,12 +143,10 @@ class AuthorPageParser @Inject constructor(
             val match = pattern.find(stats)
             if (match != null) {
                 videoCount = match.groupValues[1]
-                AppLogger.log("AuthorPageParser", "Matched video count with pattern: $pattern")
                 break
             }
         }
 
-        AppLogger.log("AuthorPageParser", "parseSubscriberStats result: sub='$subscriberCount', video='$videoCount'")
         return Pair(subscriberCount, videoCount)
     }
 }

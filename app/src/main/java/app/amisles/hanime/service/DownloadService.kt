@@ -23,7 +23,6 @@ import app.amisles.hanime.domain.model.DownloadStatus
 class DownloadService : Service() {
 
     companion object {
-        // 通知渠道与通知 ID（单一下载通知）
         const val CHANNEL_ID = "download_channel"
         const val NOTIFICATION_ID = 1
 
@@ -35,7 +34,6 @@ class DownloadService : Service() {
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
 
-        // 本服务的完整类名，供 data 模块按类名构造 Intent
         const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
 
         /**
@@ -63,7 +61,6 @@ class DownloadService : Service() {
         }
     }
 
-    // 当前下载标题（跨多次 onStartCommand 保留）
     private var currentTitle: String = ""
 
     override fun onCreate() {

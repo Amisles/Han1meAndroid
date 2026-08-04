@@ -8,7 +8,7 @@ value class CookieString(val cookie: String)
 fun String.filterPrintableAscii(): String =
     filter { it.code in 0x20..0x7E }
 
-// 默认请求语言标识，随登录 Cookie 一并下发以保持服务端内容语言一致
+// 默认请求语言标识
 private const val DEFAULT_USER_LANG = "zhs"
 
 fun CookieString.toLoginCookieList(domain: String): List<Cookie> {

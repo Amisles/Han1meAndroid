@@ -37,7 +37,6 @@ class HanimeRepository @Inject constructor(
 ) {
 
     suspend fun addFavorite(video: FavoriteVideo) {
-        AppLogger.log("HanimeRepository", "addFavorite called, videoId: ${video.id}")
         try {
             favoriteDao.addFavorite(video)
             AppLogger.log("HanimeRepository", "Favorite added successfully")
@@ -47,7 +46,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun removeFavorite(videoId: String) {
-        AppLogger.log("HanimeRepository", "removeFavorite called, videoId: $videoId")
         try {
             favoriteDao.removeFavoriteById(videoId)
             AppLogger.log("HanimeRepository", "Favorite removed successfully")
@@ -66,7 +64,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun getAllFavorites(): List<FavoriteVideo> {
-        AppLogger.log("HanimeRepository", "getAllFavorites called")
         return try {
             val favorites = favoriteDao.getAllFavorites()
             AppLogger.log("HanimeRepository", "Got ${favorites.size} favorites")
@@ -87,7 +84,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun addWatchHistory(history: WatchHistory) {
-        AppLogger.log("HanimeRepository", "addWatchHistory called, videoId: ${history.id}")
         try {
             watchHistoryDao.addWatchHistory(history)
             AppLogger.log("HanimeRepository", "Watch history added successfully")
@@ -101,7 +97,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun removeWatchHistory(videoId: String) {
-        AppLogger.log("HanimeRepository", "removeWatchHistory called, videoId: $videoId")
         try {
             watchHistoryDao.removeWatchHistory(videoId)
             AppLogger.log("HanimeRepository", "Watch history removed successfully")
@@ -111,7 +106,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun clearWatchHistory() {
-        AppLogger.log("HanimeRepository", "clearWatchHistory called")
         try {
             watchHistoryDao.clearWatchHistory()
             AppLogger.log("HanimeRepository", "Watch history cleared successfully")
@@ -130,13 +124,9 @@ class HanimeRepository @Inject constructor(
     }
     suspend fun getHomeData(): HomePageData {
         val startTime = System.currentTimeMillis()
-
-        AppLogger.log("HanimeRepository", "getHomeData called")
         try {
-            AppLogger.log("HanimeRepository", "Calling networkService.fetchHomePage")
             val result = networkService.fetchHomePageWithBaseUrl()
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            AppLogger.log("HanimeRepository", "Calling parser.parseHomePage")
             val data = homePageParser.parse(result.html, result.baseUrl)
 
             return data
@@ -147,7 +137,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun searchVideos(query: String, genre: String? = null, sort: String? = null, page: Int = 1): List<HanimeVideo> {
-        AppLogger.log("HanimeRepository", "searchVideos called with query: $query")
         try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -159,7 +148,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1): SearchResult {
-        AppLogger.log("HanimeRepository", "searchVideosWithPagination called with query: $query, page: $page")
         try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -171,7 +159,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun getVideoDetail(videoUrl: String): VideoDetail? {
-        AppLogger.log("HanimeRepository", "getVideoDetail called, videoUrl: $videoUrl")
         try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
             AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -183,7 +170,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun getDownloadQualities(videoId: String): List<DownloadQuality> {
-        AppLogger.log("HanimeRepository", "getDownloadQualities called, videoId: $videoId")
         try {
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
             AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -195,7 +181,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun login(email: String, password: String): Result<String> = runCatching {
-        AppLogger.log("HanimeRepository", "login called for email prefix=${email.take(6)}")
         val page = try {
             networkService.fetchLoginPageWithBaseUrl()
         } catch (t: Throwable) {
@@ -250,7 +235,6 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun saveLoginCookie(cookieString: String): Boolean {
-        AppLogger.log("HanimeRepository", "saveLoginCookie called, length=${cookieString.length}")
         val safe = cookieString.trim().removePrefix("Cookie:").trim()
         if (safe.isBlank()) return false
         Preferences.saveLogin(safe)
@@ -258,7 +242,6 @@ class HanimeRepository @Inject constructor(
     }
 
     fun logout() {
-        AppLogger.log("HanimeRepository", "logout called")
         Preferences.logout()
     }
 

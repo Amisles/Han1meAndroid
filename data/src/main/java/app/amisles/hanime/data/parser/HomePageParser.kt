@@ -18,25 +18,15 @@ import javax.inject.Singleton
 class HomePageParser @Inject constructor(private val videoListParser: VideoListParser) {
 
     fun parse(html: String, baseUrl: String): HomePageData {
-
-        AppLogger.log("HomePageParser", "parse called, baseUrl: $baseUrl")
-
         val doc: Document = Jsoup.parse(html, baseUrl)
         val sections = parseHomeSections(doc, baseUrl)
-
-        AppLogger.log("HomePageParser", "Found ${sections.size} home sections, video counts: ${sections.joinToString { "${it.title}:${it.videos.size}" }}")
-
         val banner = parseBanner(doc)
-
-        AppLogger.log("HomePageParser", "Banner found: ${banner != null}")
-
         return HomePageData(banner = banner, sections = sections)
     }
 
     fun parseHomeSections(doc: Document, baseUrl: String): List<HomeSection> {
         val sections = mutableListOf<HomeSection>()
         val titleLinks: Elements = doc.select("a.horizontal-row-title")
-        AppLogger.log("HomePageParser", "Found ${titleLinks.size} horizontal-row-title links")
 
         if (titleLinks.isEmpty()) {
             val fallbackVideos = videoListParser.parseVideoList(doc, baseUrl)
@@ -83,7 +73,6 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
                     sibling = sibling.nextElementSibling()
                 }
 
-                AppLogger.log("HomePageParser", "Section '$title' found ${sectionVideos.size} videos, moreUrl: $moreUrl")
                 if (sectionVideos.isNotEmpty()) {
                     sections.add(HomeSection(title = title, moreUrl = moreUrl, videos = sectionVideos))
                 }
@@ -98,15 +87,8 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
     private fun parseBanner(doc: Document): HanimeBanner? {
         try {
             val bannerWrapper: Element? = doc.selectFirst("#home-banner-wrapper")
-            AppLogger.log("HomePageParser", "Banner wrapper found: ${bannerWrapper != null}")
 
             if (bannerWrapper == null) {
-                AppLogger.log("HomePageParser", "Trying alternative banner selectors...")
-                val alternativeSelectors = listOf("#banner", ".banner", ".hero", "[id*=banner]", "[class*=banner]")
-                for (selector in alternativeSelectors) {
-                    val elements = doc.select(selector)
-                    AppLogger.log("HomePageParser", "Banner selector '$selector' found ${elements.size} elements")
-                }
                 return null
             }
 
@@ -144,7 +126,6 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
                 ?: doc.selectFirst("img[src*=thumbnail]")?.attr("abs:src")
                 ?: doc.selectFirst("img[src*=thumbnail]")?.attr("src")
                 ?: ""
-            AppLogger.log("HomePageParser", "Banner image URL: $imageUrl")
 
             return HanimeBanner(
                 title = titleText,

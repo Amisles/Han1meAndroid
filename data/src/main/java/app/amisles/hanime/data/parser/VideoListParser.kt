@@ -19,16 +19,13 @@ class VideoListParser @Inject constructor() {
         val videos = mutableListOf<HanimeVideo>()
 
         val videoContainers: Elements = doc.select(".video-item-container")
-        AppLogger.log("VideoListParser", "Found ${videoContainers.size} .video-item-container elements")
 
         if (videoContainers.isEmpty()) {
-            AppLogger.log("VideoListParser", "Trying alternative selectors...")
             val alternativeSelectors = listOf(
                 ".video-card", ".video-item", ".card", ".horizontal-card", "[class*=video]", "[class*=card]"
             )
             for (selector in alternativeSelectors) {
                 val elements = doc.select(selector)
-                AppLogger.log("VideoListParser", "Selector '$selector' found ${elements.size} elements")
             }
         }
 
@@ -44,7 +41,6 @@ class VideoListParser @Inject constructor() {
             val videoLink: Element? = container.selectFirst(".video-link")
                 ?: container.selectFirst(".thumb-container a")
             val videoUrl = videoLink?.attr("abs:href") ?: videoLink?.attr("href") ?: return null
-            AppLogger.log("VideoListParser", "Video URL: $videoUrl")
 
             val videoId = ParserUtils.extractVideoId(videoUrl)
             if (videoId.isEmpty()) return null
@@ -52,7 +48,6 @@ class VideoListParser @Inject constructor() {
             val title: Element? = container.selectFirst(".title")
                 ?: container.selectFirst(".video-title")
             val titleText = title?.text()?.trim() ?: return null
-            AppLogger.log("VideoListParser", "Video title: $titleText")
 
             val thumbnail: Element? = container.selectFirst(".main-thumb")
             val thumbnailUrl = thumbnail?.attr("abs:src") ?: thumbnail?.attr("src") ?: ParserUtils.generatePlaceholderThumbnail(videoId)
@@ -116,7 +111,6 @@ class VideoListParser @Inject constructor() {
         for (link in sectionLinks) {
             val h3 = link.selectFirst("h3") ?: continue
             val h3Text = h3.ownText().trim()
-            AppLogger.log("VideoListParser", "parseSectionVideos h3 text: '$h3Text' (looking for '$sectionTitle')")
             if (h3Text.startsWith(sectionTitle)) {
                 var sibling = link.nextElementSibling()
                 while (sibling != null) {
@@ -134,7 +128,6 @@ class VideoListParser @Inject constructor() {
                 break
             }
         }
-        AppLogger.log("VideoListParser", "parseSectionVideos result: ${videos.size} videos for '$sectionTitle'")
         return videos
     }
 

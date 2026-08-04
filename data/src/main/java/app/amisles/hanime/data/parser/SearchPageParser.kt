@@ -15,33 +15,26 @@ import javax.inject.Singleton
 class SearchPageParser @Inject constructor(private val videoListParser: VideoListParser) {
 
     fun parse(html: String, baseUrl: String): List<HanimeVideo> {
-        AppLogger.log("SearchPageParser", "parse called, baseUrl: $baseUrl")
         val doc: Document = Jsoup.parse(html, baseUrl)
         val videos = videoListParser.parseVideoList(doc, baseUrl)
-        AppLogger.log("SearchPageParser", "Search found ${videos.size} videos before filtering")
         val filtered = videos.filter {
             it.videoUrl.startsWith("https://hanime1.me/watch") ||
             it.videoUrl.startsWith("https://hanimeone.me/watch") ||
             it.videoUrl.startsWith("/watch")
         }
-        AppLogger.log("SearchPageParser", "Search found ${filtered.size} videos after filtering")
         return filtered
     }
 
     fun parseWithPagination(html: String, baseUrl: String): SearchResult {
-        AppLogger.log("SearchPageParser", "parseWithPagination called, baseUrl: $baseUrl")
         val doc: Document = Jsoup.parse(html, baseUrl)
         val videos = videoListParser.parseVideoList(doc, baseUrl)
-        AppLogger.log("SearchPageParser", "Search found ${videos.size} videos before filtering")
         val filtered = videos.filter {
             it.videoUrl.startsWith("https://hanime1.me/watch") ||
             it.videoUrl.startsWith("https://hanimeone.me/watch") ||
             it.videoUrl.startsWith("/watch")
         }
-        AppLogger.log("SearchPageParser", "Search found ${filtered.size} videos after filtering")
 
         val (currentPage, totalPages, hasNextPage) = parsePagination(doc)
-        AppLogger.log("SearchPageParser", "Pagination: currentPage=$currentPage, totalPages=$totalPages, hasNextPage=$hasNextPage")
 
         return SearchResult(
             videos = filtered,

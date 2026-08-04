@@ -42,7 +42,7 @@ class NetworkService @Inject constructor(
             .build()
     }
 
-    // 从用户配置中获取官网地址，默认 https://hanime1.me
+    // 从用户配置中获取地址
     private fun getCurrentBaseUrl(): String {
         return Preferences.baseUrl
     }
