@@ -1,5 +1,6 @@
 package app.amisles.hanime
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,6 +22,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.amisles.hanime.core.common.util.LocaleHelper
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.feature.detail.DetailScreen
 import app.amisles.hanime.feature.download.DownloadScreen
@@ -45,6 +48,22 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    /**
+     * 每个 Activity 必须独立包装 Context 才能让切换语言后的资源生效。
+     * Application 级别的 attachBaseContext 仅影响 Application Context，
+     * 不影响 Activity 所持有的 Resources/Configuration。
+     * 当用户在 Settings 切换语言后，Activity 调用 recreate()，
+     * attachBaseContext 会重新读取 SP 并包装新的 Locale。
+     */
+    override fun attachBaseContext(newBase: Context) {
+        val lang = runCatching {
+            newBase.getSharedPreferences("hanime_app_prefs", Context.MODE_PRIVATE)
+                .getString("app_language", Preferences.LANGUAGE_ZH_CN)
+                ?: Preferences.LANGUAGE_ZH_CN
+        }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
+        super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
