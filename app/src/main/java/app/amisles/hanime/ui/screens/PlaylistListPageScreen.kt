@@ -29,12 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
+import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.ui.theme.HanimeBackground
@@ -46,7 +48,7 @@ import app.amisles.hanime.ui.viewmodel.PlaylistListPageViewModel
 
 @Composable
 fun PlaylistListPageScreen(
-    title: String = "播放清单",
+    title: String? = null,
     url: String = "",
     onBackClick: () -> Unit = {},
     onPlaylistClick: (String) -> Unit = {}
@@ -55,6 +57,7 @@ fun PlaylistListPageScreen(
     val playlists by viewModel.playlists.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val displayTitle = title ?: stringResource(CoreR.string.playlist_title)
 
     LaunchedEffect(url) {
         if (url.isNotEmpty()) {
@@ -72,13 +75,13 @@ fun PlaylistListPageScreen(
             IconButton(onClick = { onBackClick() }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(CoreR.string.common_back),
                     tint = HanimeTextPrimary,
                     modifier = Modifier.size(24.dp)
                 )
             }
             Text(
-                text = title,
+                text = displayTitle,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = HanimeTextPrimary,
@@ -92,14 +95,20 @@ fun PlaylistListPageScreen(
             }
         } else if (error != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = error ?: "加载失败", color = HanimeTextSecondary)
+                Text(
+                    text = error ?: stringResource(CoreR.string.common_load_failed),
+                    color = HanimeTextSecondary
+                )
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)
             ) {
-                items(playlists) { playlist ->
+                items(
+                    items = playlists,
+                    key = { it.playlistUrl }
+                ) { playlist ->
                     PlaylistListItem(
                         playlist = playlist,
                         onClick = { onPlaylistClick(playlist.playlistUrl) }
@@ -155,7 +164,11 @@ private fun PlaylistListItem(
             ) {
                 Text(text = playlist.author, fontSize = 11.sp, color = HanimePrimary)
                 if (playlist.publishTime.isNotEmpty()) {
-                    Text(text = " · ${playlist.publishTime}", fontSize = 11.sp, color = HanimeTextSecondary)
+                    Text(
+                        text = " · ${playlist.publishTime}",
+                        fontSize = 11.sp,
+                        color = HanimeTextSecondary
+                    )
                 }
             }
         }

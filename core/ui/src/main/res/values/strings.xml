@@ -26,6 +26,11 @@
     <string name="common_view_more">查看更多</string>
     <string name="common_manage">管理</string>
     <string name="common_restore_default">恢复默认</string>
+    <string name="common_back">返回</string>
+    <string name="common_cover">封面</string>
+    <string name="common_author_avatar">作者头像</string>
+    <string name="common_videos">影片</string>
+    <string name="common_playlist_videos_count">%1$d 部影片</string>
     
     <!-- Home -->
     <string name="home_load_failed">首页加载失败</string>

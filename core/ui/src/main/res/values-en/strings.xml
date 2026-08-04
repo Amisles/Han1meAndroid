@@ -21,6 +21,11 @@
     <string name="common_view_more">View More</string>
     <string name="common_manage">Manage</string>
     <string name="common_restore_default">Restore Default</string>
+    <string name="common_back">Back</string>
+    <string name="common_cover">Cover</string>
+    <string name="common_author_avatar">Author Avatar</string>
+    <string name="common_videos">Videos</string>
+    <string name="common_playlist_videos_count">%1$d videos</string>
     <string name="home_load_failed">Failed to load home page</string>
     <string name="search_placeholder">Enter keywords to search</string>
     <string name="search_history">Search History</string>

@@ -26,11 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import app.amisles.hanime.R
+import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.ui.theme.HanimeBackground
 import app.amisles.hanime.ui.theme.HanimePrimary
@@ -40,7 +41,7 @@ import app.amisles.hanime.ui.viewmodel.VideoListPageViewModel
 
 @Composable
 fun VideoListPageScreen(
-    title: String = "影片",
+    title: String? = null,
     url: String = "",
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {}
@@ -49,6 +50,7 @@ fun VideoListPageScreen(
     val videos by viewModel.videos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val displayTitle = title ?: stringResource(CoreR.string.common_videos)
 
     LaunchedEffect(url) {
         if (url.isNotEmpty()) {
@@ -66,13 +68,13 @@ fun VideoListPageScreen(
             IconButton(onClick = { onBackClick() }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(CoreR.string.common_back),
                     tint = HanimeTextPrimary,
                     modifier = Modifier.size(24.dp)
                 )
             }
             Text(
-                text = title,
+                text = displayTitle,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = HanimeTextPrimary,
@@ -86,7 +88,10 @@ fun VideoListPageScreen(
             }
         } else if (error != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = error ?: "加载失败", color = HanimeTextSecondary)
+                Text(
+                    text = error ?: stringResource(CoreR.string.common_load_failed),
+                    color = HanimeTextSecondary
+                )
             }
         } else {
             LazyVerticalGrid(
@@ -95,7 +100,10 @@ fun VideoListPageScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(videos) { video ->
+                items(
+                    items = videos,
+                    key = { it.id }
+                ) { video ->
                     VideoCard(video = video, onClick = { onVideoClick(video.videoUrl) })
                 }
             }

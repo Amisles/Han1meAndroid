@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.R
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.ui.theme.HanimeBackground
@@ -76,7 +78,7 @@ fun PlaylistDetailScreen(
             IconButton(onClick = { onBackClick() }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(CoreR.string.common_back),
                     tint = HanimeTextPrimary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -89,7 +91,10 @@ fun PlaylistDetailScreen(
             }
         } else if (error != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = error ?: "加载失败", color = HanimeTextSecondary)
+                Text(
+                    text = error ?: stringResource(CoreR.string.common_load_failed),
+                    color = HanimeTextSecondary
+                )
             }
         } else if (playlistDetail != null) {
             PlaylistDetailContent(
@@ -113,7 +118,7 @@ private fun PlaylistDetailContent(
                 if (detail.coverUrl.isNotEmpty()) {
                     AsyncImage(
                         model = detail.coverUrl,
-                        contentDescription = "封面",
+                        contentDescription = stringResource(CoreR.string.common_cover),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
@@ -137,7 +142,7 @@ private fun PlaylistDetailContent(
                     if (detail.authorAvatarUrl.isNotEmpty()) {
                         AsyncImage(
                             model = detail.authorAvatarUrl,
-                            contentDescription = "作者头像",
+                            contentDescription = stringResource(CoreR.string.common_author_avatar),
                             modifier = Modifier.size(20.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
@@ -145,7 +150,10 @@ private fun PlaylistDetailContent(
                     }
                     Text(text = detail.author, fontSize = 13.sp, color = HanimePrimary)
                     Text(
-                        text = " · ${detail.videoCount} 部影片",
+                        text = " · " + stringResource(
+                            CoreR.string.common_playlist_videos_count,
+                            detail.videoCount
+                        ),
                         fontSize = 12.sp,
                         color = HanimeTextSecondary,
                         modifier = Modifier.padding(start = 6.dp)
@@ -168,14 +176,17 @@ private fun PlaylistDetailContent(
         if (detail.videos.isNotEmpty()) {
             item {
                 Text(
-                    text = "影片列表",
+                    text = stringResource(CoreR.string.playlist_videos),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = HanimeTextPrimary,
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp)
                 )
             }
-            items(detail.videos) { video ->
+            items(
+                items = detail.videos,
+                key = { it.id }
+            ) { video ->
                 PlaylistVideoItem(
                     video = video,
                     onClick = { onVideoClick(video.videoUrl) }

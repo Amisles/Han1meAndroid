@@ -21,6 +21,11 @@
     <string name="common_view_more">もっと見る</string>
     <string name="common_manage">管理</string>
     <string name="common_restore_default">デフォルトに戻す</string>
+    <string name="common_back">戻る</string>
+    <string name="common_cover">カバー</string>
+    <string name="common_author_avatar">作者アバター</string>
+    <string name="common_videos">動画</string>
+    <string name="common_playlist_videos_count">%1$d 本の動画</string>
     <string name="home_load_failed">ホームの読み込みに失敗しました</string>
     <string name="search_placeholder">キーワードを入力して検索</string>
     <string name="search_history">検索履歴</string>
