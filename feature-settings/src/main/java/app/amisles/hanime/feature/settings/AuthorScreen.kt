@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.PlaylistSummary
+import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
@@ -99,9 +100,10 @@ fun AuthorScreen(
                 CircularProgressIndicator(color = HanimePrimary)
             }
         } else if (error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = error ?: stringResource(R.string.author_load_failed), color = HanimeTextSecondary)
-            }
+            KaomojiErrorView(
+                message = error ?: stringResource(R.string.author_load_failed),
+                onRetry = { viewModel.loadAuthorPage(authorPageUrl) }
+            )
         } else if (authorData != null) {
             AuthorContent(
                 authorData = authorData!!,

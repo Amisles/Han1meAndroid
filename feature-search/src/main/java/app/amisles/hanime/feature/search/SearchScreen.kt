@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.components.ErrorView
+import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.categoryList
 import app.amisles.hanime.core.ui.model.emojis
@@ -337,10 +337,12 @@ fun SearchScreen(
                 CircularProgressIndicator(color = HanimePrimary)
             }
         } else if (error != null && videos.isEmpty()) {
-            ErrorView(
+            KaomojiErrorView(
                 message = error!!,
                 onRetry = { viewModel.executeSearch() },
-                modifier = Modifier.padding(top = 60.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
             )
         } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null) {
             if (searchHistory.isNotEmpty()) {

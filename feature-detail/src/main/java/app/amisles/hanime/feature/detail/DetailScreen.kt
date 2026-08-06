@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -45,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -63,6 +70,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import app.amisles.hanime.core.ui.model.emojis
@@ -163,18 +171,21 @@ fun DetailScreen(
             }
         }
 
+        if (isLoading) {
+            item(key = "detail_skeleton") {
+                DetailSkeletonScreen()
+            }
+        } else if (error != null && videoDetail == null) {
+            item(key = "detail_error") {
+                KaomojiErrorView(
+                    message = error,
+                    onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
+                )
+            }
+        } else {
+
         item(key = "video_player") {
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(225.dp)
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = HanimePrimary)
-                }
-            } else if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
+            if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
                 VideoPlayer(
                     exoPlayer = exoPlayer,
                     posterUrl = videoDetail!!.posterUrl,
@@ -615,8 +626,9 @@ fun DetailScreen(
                 }
             }
         }
+        }
 
-        if (!isPlayerFullscreen) {
+        if (!isPlayerFullscreen && !isLoading) {
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }
@@ -743,4 +755,191 @@ private fun shareVideo(context: Context, title: String, url: String) {
     val chooser = Intent.createChooser(intent, "分享视频")
     chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(chooser)
+}
+
+/**
+ * 详情页骨架屏：加载时模拟详情页布局的占位
+ */
+@Composable
+private fun DetailSkeletonScreen() {
+    val transition = rememberInfiniteTransition(label = "detail-skeleton-shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "detail-skeleton-alpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(HanimeBackground)
+    ) {
+        // 播放器区域
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .background(Color.Black)
+        )
+
+        Column(modifier = Modifier.padding(15.dp)) {
+            // 标题
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(HanimeCard)
+                    .alpha(alpha)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(HanimeCard)
+                    .alpha(alpha)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 作者行
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 元信息行
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 操作按钮行
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(HanimeCard)
+                            .alpha(alpha)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 标签行骨架
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(4) {
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(26.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(HanimeCard)
+                            .alpha(alpha)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 相关推荐标题骨架
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 15.dp, vertical = 4.dp)
+                .width(100.dp)
+                .height(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(HanimeCard)
+                .alpha(alpha)
+        )
+
+        // 相关推荐视频骨架（3 条）
+        repeat(3) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HanimeCard)
+                    .padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 120.dp, height = 90.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(HanimeBackground)
+                        .alpha(alpha)
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(HanimeBackground)
+                            .alpha(alpha)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(HanimeBackground)
+                            .alpha(alpha)
+                    )
+                }
+            }
+        }
+    }
 }

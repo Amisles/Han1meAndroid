@@ -31,11 +31,7 @@ class AuthorViewModel @Inject constructor(
             _error.value = null
             try {
                 val result = networkService.fetchAuthorPage(authorPageUrl)
-                if (result != null) {
-                    _authorData.value = result
-                } else {
-                    _error.value = "无法解析作者主页"
-                }
+                _authorData.value = result
             } catch (e: Exception) {
                 _error.value = e.message ?: "加载失败"
             } finally {

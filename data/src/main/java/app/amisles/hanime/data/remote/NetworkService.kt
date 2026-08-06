@@ -190,16 +190,12 @@ class NetworkService @Inject constructor(
         return FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchAuthorPage(authorPageUrl: String): AuthorPageData? {
+    suspend fun fetchAuthorPage(authorPageUrl: String): AuthorPageData {
         AppLogger.log("NetworkService", "fetchAuthorPage called, url: $authorPageUrl")
         return withContext(Dispatchers.IO) {
-            try {
-                val html = executeRequest(buildRequest(authorPageUrl))
-                authorPageParser.parse(html, authorPageUrl)
-            } catch (e: Exception) {
-                AppLogger.logError("NetworkService", "Failed to fetch author page: ${e.message}", e)
-                null
-            }
+            val html = executeRequest(buildRequest(authorPageUrl))
+            authorPageParser.parse(html, authorPageUrl)
+                ?: throw IllegalStateException("无法解析作者主页")
         }
     }
 

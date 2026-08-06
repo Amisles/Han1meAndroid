@@ -58,11 +58,9 @@ class DetailViewModel @Inject constructor(
                 val detail = withContext(Dispatchers.IO) {
                     repository.getVideoDetail(videoUrl)
                 }
-                AppLogger.d("DetailViewModel", "Got video detail: ${detail?.title}, sources: ${detail?.videoSources?.size}")
+                AppLogger.d("DetailViewModel", "Got video detail: ${detail.title}, sources: ${detail.videoSources.size}")
                 _videoDetail.value = detail
-                if (detail == null) {
-                    _error.value = "无法加载视频信息"
-                } else if (currentVideoId.isNotEmpty()) {
+                if (currentVideoId.isNotEmpty()) {
                     val history = WatchHistory(
                         id = currentVideoId,
                         title = detail.title,

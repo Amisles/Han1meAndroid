@@ -123,17 +123,9 @@ class HanimeRepository @Inject constructor(
         }
     }
     suspend fun getHomeData(): HomePageData {
-        val startTime = System.currentTimeMillis()
-        try {
-            val result = networkService.fetchHomePageWithBaseUrl()
-            AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            val data = homePageParser.parse(result.html, result.baseUrl)
-
-            return data
-        } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getHomeData: ${e.message}", e)
-            return HomePageData(banner = null, sections = emptyList())
-        }
+        val result = networkService.fetchHomePageWithBaseUrl()
+        AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+        return homePageParser.parse(result.html, result.baseUrl)
     }
 
     suspend fun searchVideos(query: String, genre: String? = null, sort: String? = null, page: Int = 1): List<HanimeVideo> {
@@ -148,25 +140,16 @@ class HanimeRepository @Inject constructor(
     }
 
     suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1): SearchResult {
-        try {
-            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
-            AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return searchPageParser.parseWithPagination(result.html, result.baseUrl)
-        } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in searchVideosWithPagination: ${e.message}", e)
-            return SearchResult(videos = emptyList(), currentPage = page, totalPages = 1, hasNextPage = false)
-        }
+        val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
+        AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+        return searchPageParser.parseWithPagination(result.html, result.baseUrl)
     }
 
-    suspend fun getVideoDetail(videoUrl: String): VideoDetail? {
-        try {
-            val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
-            AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return watchPageParser.parse(result.html, result.baseUrl)
-        } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getVideoDetail: ${e.message}", e)
-            return null
-        }
+    suspend fun getVideoDetail(videoUrl: String): VideoDetail {
+        val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
+        AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+        return watchPageParser.parse(result.html, result.baseUrl)
+            ?: throw IllegalStateException("无法解析视频详情页")
     }
 
     suspend fun getDownloadQualities(videoId: String): List<DownloadQuality> {

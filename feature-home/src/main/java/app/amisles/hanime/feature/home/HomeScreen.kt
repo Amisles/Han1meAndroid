@@ -52,8 +52,8 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
-import app.amisles.hanime.core.ui.components.ErrorView
 import app.amisles.hanime.core.ui.components.Header
+import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
@@ -138,13 +138,6 @@ fun HomeScreenContent(
             .background(HanimeBackground)
             .statusBarsPadding()
     ) {
-        if (error != null && sections.isEmpty() && !isLoading) {
-            ErrorView(
-                message = error,
-                onRetry = onRefresh
-            )
-            return@PullToRefreshBox
-        }
     LazyColumn(
         state = listState,
         modifier = Modifier
@@ -178,6 +171,14 @@ fun HomeScreenContent(
         if (isLoading) {
             item(key = "home-loading") {
                 HomeSkeletonScreen()
+            }
+        } else if (error != null && sections.isEmpty()) {
+            item(key = "home-error") {
+                KaomojiErrorView(
+                    message = error,
+                    onRetry = onRefresh,
+                    modifier = Modifier.fillParentMaxSize()
+                )
             }
         } else {
             banner?.let {
