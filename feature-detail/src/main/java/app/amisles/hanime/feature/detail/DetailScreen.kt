@@ -987,55 +987,37 @@ private fun CommentItem(
                             color = HanimeTextSecondary
                         )
                     }
+                    // 展开/收起回复按钮（放在点赞同一行，红色主题色）
                     if (comment.replyCount > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable {
+                                    isExpanded = !isExpanded
+                                    if (isExpanded && replies == null && !isLoadingReplies) {
+                                        onLoadReplies(comment.id)
+                                    }
+                                }
+                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Comment,
+                                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = HanimeTextSecondary
+                                modifier = Modifier.size(16.dp),
+                                tint = HanimePrimary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = stringResource(R.string.comment_reply_count, comment.replyCount),
+                                text = if (isExpanded) {
+                                    stringResource(R.string.comment_hide_replies)
+                                } else {
+                                    stringResource(R.string.comment_view_replies, comment.replyCount)
+                                },
                                 fontSize = 12.sp,
-                                color = HanimeTextSecondary
+                                color = HanimePrimary
                             )
                         }
-                    }
-                }
-
-                // 展开/收起回复按钮
-                if (comment.replyCount > 0) {
-                    Row(
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable {
-                                isExpanded = !isExpanded
-                                if (isExpanded && replies == null && !isLoadingReplies) {
-                                    onLoadReplies(comment.id)
-                                }
-                            }
-                            .padding(vertical = 4.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = HanimePrimary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isExpanded) {
-                                stringResource(R.string.comment_hide_replies)
-                            } else {
-                                stringResource(R.string.comment_view_replies, comment.replyCount)
-                            },
-                            fontSize = 12.sp,
-                            color = HanimePrimary
-                        )
                     }
                 }
             }
