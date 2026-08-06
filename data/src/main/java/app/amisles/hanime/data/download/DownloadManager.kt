@@ -334,6 +334,7 @@ class DownloadManager @Inject constructor(
 
     fun pauseDownload(taskId: Int) {
         downloadJobs[taskId]?.cancel()
+        downloadJobs.remove(taskId)
         tasksLock.withLock {
             _tasks.value = _tasks.value.map { task ->
                 if (task.id == taskId) {
