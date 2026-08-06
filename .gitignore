@@ -34,6 +34,11 @@ local.properties
 *.download
 *.tmp
 
+# 签名文件（含私钥，不得提交）
+*.jks
+*.keystore
+keystore.properties
+
 # 系统文件
 .DS_Store
 Thumbs.db

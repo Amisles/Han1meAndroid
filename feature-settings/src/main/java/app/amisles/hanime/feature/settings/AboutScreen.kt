@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.settings
 
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -170,6 +173,21 @@ private val openSourceProjects = listOf(
 fun AboutScreen(
     onBackClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val appVersion = remember {
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.PackageInfoFlags.of(0L)
+                ).versionName
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            }
+        }.getOrNull() ?: "unknown"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -241,7 +259,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = stringResource(R.string.about_version, "1.0.0"),
+                    text = stringResource(R.string.about_version, appVersion),
                     fontSize = 12.sp,
                     color = HanimeTextSecondary
                 )

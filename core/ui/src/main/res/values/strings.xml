@@ -1,6 +1,6 @@
 <resources>
     <!-- App -->
-    <string name="app_name">hanime</string>
+    <string name="app_name">Hanime</string>
     
     <!-- Navigation -->
     <string name="nav_home">首页</string>
