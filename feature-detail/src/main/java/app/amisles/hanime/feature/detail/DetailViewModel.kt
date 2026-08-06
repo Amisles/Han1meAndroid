@@ -7,6 +7,7 @@ import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
+import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
@@ -55,6 +56,18 @@ class DetailViewModel @Inject constructor(
     private val _commentsLoaded = MutableStateFlow(false)
     val commentsLoaded: StateFlow<Boolean> = _commentsLoaded.asStateFlow()
 
+    // 回复缓存：commentId → 回复列表
+    private val _repliesCache = MutableStateFlow<Map<String, List<Reply>>>(emptyMap())
+    val repliesCache: StateFlow<Map<String, List<Reply>>> = _repliesCache.asStateFlow()
+
+    // 正在加载回复的评论 ID 集合
+    private val _loadingReplies = MutableStateFlow<Set<String>>(emptySet())
+    val loadingReplies: StateFlow<Set<String>> = _loadingReplies.asStateFlow()
+
+    // 回复加载错误：commentId → 错误信息
+    private val _repliesError = MutableStateFlow<Map<String, String?>>(emptyMap())
+    val repliesError: StateFlow<Map<String, String?>> = _repliesError.asStateFlow()
+
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
 
@@ -71,6 +84,11 @@ class DetailViewModel @Inject constructor(
         _commentsLoaded.value = false
         _commentsError.value = null
         _isLoadingComments.value = false
+
+        // 切换视频时清空回复缓存
+        _repliesCache.value = emptyMap()
+        _loadingReplies.value = emptySet()
+        _repliesError.value = emptyMap()
 
         viewModelScope.launch {
             try {
@@ -155,6 +173,40 @@ class DetailViewModel @Inject constructor(
                 _commentsError.value = e.message ?: "评论加载失败"
             } finally {
                 _isLoadingComments.value = false
+            }
+        }
+    }
+
+    /**
+     * 加载某条评论的回复列表。
+     * 已缓存则不重复请求，除非 force=true。
+     */
+    fun loadReplies(commentId: String, force: Boolean = false) {
+        if (commentId.isEmpty()) return
+        if (!force && _repliesCache.value.containsKey(commentId)) {
+            AppLogger.d("DetailViewModel", "Replies for $commentId already cached, skip")
+            return
+        }
+        if (_loadingReplies.value.contains(commentId)) {
+            AppLogger.d("DetailViewModel", "Replies for $commentId is loading, skip")
+            return
+        }
+        AppLogger.d("DetailViewModel", "loadReplies called, commentId: $commentId")
+        _loadingReplies.value = _loadingReplies.value + commentId
+        _repliesError.value = _repliesError.value - commentId
+
+        viewModelScope.launch {
+            try {
+                val list = withContext(Dispatchers.IO) {
+                    repository.getReplies(commentId)
+                }
+                AppLogger.d("DetailViewModel", "Got ${list.size} replies for comment $commentId")
+                _repliesCache.value = _repliesCache.value + (commentId to list)
+            } catch (e: Exception) {
+                AppLogger.e("DetailViewModel", "Error loading replies: ${e.message}", e)
+                _repliesError.value = _repliesError.value + (commentId to (e.message ?: "回复加载失败"))
+            } finally {
+                _loadingReplies.value = _loadingReplies.value - commentId
             }
         }
     }

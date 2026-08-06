@@ -60,6 +60,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
@@ -108,6 +110,9 @@ fun DetailScreen(
     val isLoadingComments by viewModel.isLoadingComments.collectAsState()
     val commentsError by viewModel.commentsError.collectAsState()
     val commentsLoaded by viewModel.commentsLoaded.collectAsState()
+    val repliesCache by viewModel.repliesCache.collectAsState()
+    val loadingReplies by viewModel.loadingReplies.collectAsState()
+    val repliesError by viewModel.repliesError.collectAsState()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
@@ -657,7 +662,11 @@ fun DetailScreen(
                             comments = comments,
                             isLoading = isLoadingComments,
                             error = commentsError,
-                            onRetry = { viewModel.loadComments(force = true) }
+                            onRetry = { viewModel.loadComments(force = true) },
+                            repliesCache = repliesCache,
+                            loadingReplies = loadingReplies,
+                            repliesError = repliesError,
+                            onLoadReplies = { commentId -> viewModel.loadReplies(commentId) }
                         )
                     }
                 }
@@ -834,7 +843,11 @@ private fun CommentSection(
     comments: List<app.amisles.hanime.domain.model.Comment>,
     isLoading: Boolean,
     error: String?,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    repliesCache: Map<String, List<app.amisles.hanime.domain.model.Reply>>,
+    loadingReplies: Set<String>,
+    repliesError: Map<String, String?>,
+    onLoadReplies: (String) -> Unit
 ) {
     when {
         isLoading -> {
@@ -874,7 +887,13 @@ private fun CommentSection(
         else -> {
             Column(modifier = Modifier.fillMaxWidth()) {
                 comments.forEach { comment ->
-                    CommentItem(comment = comment)
+                    CommentItem(
+                        comment = comment,
+                        replies = repliesCache[comment.id],
+                        isLoadingReplies = loadingReplies.contains(comment.id),
+                        repliesError = repliesError[comment.id],
+                        onLoadReplies = onLoadReplies
+                    )
                     Spacer(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -890,22 +909,236 @@ private fun CommentSection(
 }
 
 /**
- * 单条评论
+ * 单条评论（含展开/收起回复）
  */
 @Composable
-private fun CommentItem(comment: app.amisles.hanime.domain.model.Comment) {
+private fun CommentItem(
+    comment: app.amisles.hanime.domain.model.Comment,
+    replies: List<app.amisles.hanime.domain.model.Reply>?,
+    isLoadingReplies: Boolean,
+    repliesError: String?,
+    onLoadReplies: (String) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 15.dp, vertical = 12.dp)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            coil3.compose.AsyncImage(
+                model = comment.avatarUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = comment.username,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = HanimeTextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Text(
+                        text = comment.time,
+                        fontSize = 11.sp,
+                        color = HanimeTextSecondary
+                    )
+                }
+
+                Text(
+                    text = comment.content,
+                    fontSize = 14.sp,
+                    color = HanimeTextPrimary,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.ThumbUp,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = HanimeTextSecondary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (comment.likeCount > 0) comment.likeCount.toString() else "0",
+                            fontSize = 12.sp,
+                            color = HanimeTextSecondary
+                        )
+                    }
+                    if (comment.replyCount > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Comment,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = HanimeTextSecondary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(R.string.comment_reply_count, comment.replyCount),
+                                fontSize = 12.sp,
+                                color = HanimeTextSecondary
+                            )
+                        }
+                    }
+                }
+
+                // 展开/收起回复按钮
+                if (comment.replyCount > 0) {
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable {
+                                isExpanded = !isExpanded
+                                if (isExpanded && replies == null && !isLoadingReplies) {
+                                    onLoadReplies(comment.id)
+                                }
+                            }
+                            .padding(vertical = 4.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = HanimePrimary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isExpanded) {
+                                stringResource(R.string.comment_hide_replies)
+                            } else {
+                                stringResource(R.string.comment_view_replies, comment.replyCount)
+                            },
+                            fontSize = 12.sp,
+                            color = HanimePrimary
+                        )
+                    }
+                }
+            }
+        }
+
+        // 展开时显示回复列表
+        if (isExpanded && comment.replyCount > 0) {
+            ReplyList(
+                replies = replies,
+                isLoading = isLoadingReplies,
+                error = repliesError,
+                onRetry = { onLoadReplies(comment.id) }
+            )
+        }
+    }
+}
+
+/**
+ * 回复列表：加载中、错误、列表三态
+ */
+@Composable
+private fun ReplyList(
+    replies: List<app.amisles.hanime.domain.model.Reply>?,
+    isLoading: Boolean,
+    error: String?,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 46.dp, top = 8.dp)
+            .background(HanimeCard, shape = RoundedCornerShape(8.dp))
+            .padding(10.dp)
+    ) {
+        when {
+            isLoading -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        color = HanimePrimary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            error != null -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.comment_reply_load_failed),
+                        fontSize = 12.sp,
+                        color = HanimeTextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.common_retry),
+                        fontSize = 12.sp,
+                        color = HanimePrimary,
+                        modifier = Modifier.clickable(onClick = onRetry)
+                    )
+                }
+            }
+            replies != null -> {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    replies.forEachIndexed { index, reply ->
+                        ReplyItem(reply = reply)
+                        if (index < replies.size - 1) {
+                            Spacer(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(0.5.dp)
+                                    .background(Color.White.copy(alpha = 0.06f))
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 单条回复
+ */
+@Composable
+private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 15.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Top
     ) {
         coil3.compose.AsyncImage(
-            model = comment.avatarUrl,
+            model = reply.avatarUrl,
             contentDescription = null,
             modifier = Modifier
-                .size(36.dp)
+                .size(28.dp)
                 .clip(CircleShape),
             contentScale = androidx.compose.ui.layout.ContentScale.Crop
         )
@@ -913,11 +1146,11 @@ private fun CommentItem(comment: app.amisles.hanime.domain.model.Comment) {
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = comment.username,
-                    fontSize = 13.sp,
+                    text = reply.username,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = HanimeTextPrimary,
                     maxLines = 1,
@@ -925,55 +1158,47 @@ private fun CommentItem(comment: app.amisles.hanime.domain.model.Comment) {
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 Text(
-                    text = comment.time,
-                    fontSize = 11.sp,
+                    text = reply.time,
+                    fontSize = 10.sp,
                     color = HanimeTextSecondary
                 )
             }
 
+            // 如果是回复其他回复，显示 "回复 @用户名" 前缀
+            val replyToUser = reply.replyTo
+            if (replyToUser != null) {
+                Text(
+                    text = stringResource(R.string.comment_reply_to, replyToUser),
+                    fontSize = 11.sp,
+                    color = HanimePrimary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+
             Text(
-                text = comment.content,
-                fontSize = 14.sp,
+                text = reply.content,
+                fontSize = 13.sp,
                 color = HanimeTextPrimary,
-                lineHeight = 20.sp,
-                modifier = Modifier.padding(top = 4.dp)
+                lineHeight = 18.sp,
+                modifier = Modifier.padding(top = 2.dp)
             )
 
             Row(
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.ThumbUp,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = HanimeTextSecondary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (comment.likeCount > 0) comment.likeCount.toString() else "0",
-                        fontSize = 12.sp,
-                        color = HanimeTextSecondary
-                    )
-                }
-                if (comment.replyCount > 0) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Comment,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = HanimeTextSecondary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.comment_reply_count, comment.replyCount),
-                            fontSize = 12.sp,
-                            color = HanimeTextSecondary
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.ThumbUp,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = HanimeTextSecondary
+                )
+                Text(
+                    text = if (reply.likeCount > 0) reply.likeCount.toString() else "0",
+                    fontSize = 11.sp,
+                    color = HanimeTextSecondary
+                )
             }
         }
     }

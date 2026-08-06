@@ -65,6 +65,10 @@
     <string name="comment_empty">No comments yet</string>
     <string name="comment_load_failed">Failed to load comments</string>
     <string name="comment_reply_count">%1$d replies</string>
+    <string name="comment_view_replies">View %1$d replies</string>
+    <string name="comment_hide_replies">Hide replies</string>
+    <string name="comment_reply_load_failed">Failed to load replies</string>
+    <string name="comment_reply_to">Reply to %1$s</string>
 
     <string name="download_empty">No download tasks</string>
     <string name="download_empty_hint">Download videos from the detail page</string>

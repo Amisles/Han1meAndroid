@@ -273,6 +273,22 @@ class NetworkService @Inject constructor(
             executeRequest(buildRequest(url))
         }
     }
+
+    /**
+     * 拉取评论回复 JSON。
+     *
+     * 官网接口：GET /loadReplies?id={commentId}
+     * 返回 JSON：{"comment_id": "commentId", "replies": "<HTML>"}
+     */
+    suspend fun fetchReplies(commentId: String): String {
+        AppLogger.log("NetworkService", "fetchReplies called, commentId: $commentId")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val url = "$baseUrl/loadReplies?id=$commentId"
+            AppLogger.log("NetworkService", "Fetching replies from: $url")
+            executeRequest(buildRequest(url))
+        }
+    }
 }
 
 data class FetchResult(val html: String, val baseUrl: String)

@@ -65,6 +65,10 @@
     <string name="comment_empty">コメントがありません</string>
     <string name="comment_load_failed">コメントの読み込みに失敗しました</string>
     <string name="comment_reply_count">%1$d 件の返信</string>
+    <string name="comment_view_replies">%1$d 件の返信を表示</string>
+    <string name="comment_hide_replies">返信を非表示</string>
+    <string name="comment_reply_load_failed">返信の読み込みに失敗しました</string>
+    <string name="comment_reply_to">%1$s への返信</string>
 
     <string name="download_empty">ダウンロードタスクがありません</string>
     <string name="download_empty_hint">詳細ページから動画をダウンロードしてください</string>

@@ -65,6 +65,10 @@
     <string name="comment_empty">暫無評論</string>
     <string name="comment_load_failed">評論載入失敗</string>
     <string name="comment_reply_count">%1$d 則回覆</string>
+    <string name="comment_view_replies">查看 %1$d 則回覆</string>
+    <string name="comment_hide_replies">收起回覆</string>
+    <string name="comment_reply_load_failed">回覆載入失敗</string>
+    <string name="comment_reply_to">回覆 %1$s</string>
 
     <string name="download_empty">暫無下載任務</string>
     <string name="download_empty_hint">去詳情頁下載影片吧</string>

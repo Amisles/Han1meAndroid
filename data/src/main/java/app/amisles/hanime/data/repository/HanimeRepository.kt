@@ -14,6 +14,7 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
+import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomePageData
@@ -174,6 +175,16 @@ class HanimeRepository @Inject constructor(
         val json = networkService.fetchComments(videoId)
         AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
         return commentParser.parse(json)
+    }
+
+    /**
+     * 拉取评论的回复列表。
+     * 不捕获异常，让上层 ViewModel 处理错误。
+     */
+    suspend fun getReplies(commentId: String): List<Reply> {
+        val json = networkService.fetchReplies(commentId)
+        AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
+        return commentParser.parseReplies(json)
     }
 
     suspend fun login(email: String, password: String): Result<String> = runCatching {
