@@ -1,5 +1,10 @@
 package app.amisles.hanime.feature.settings
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +25,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -30,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -96,9 +101,7 @@ fun AuthorScreen(
         }
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = HanimePrimary)
-            }
+            AuthorSkeletonScreen()
         } else if (error != null) {
             KaomojiErrorView(
                 message = error ?: stringResource(R.string.author_load_failed),
@@ -274,5 +277,212 @@ private fun PlaylistSummaryCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * 作者页骨架屏：加载时模拟作者页布局的占位
+ */
+@Composable
+private fun AuthorSkeletonScreen() {
+    val transition = rememberInfiniteTransition(label = "author-skeleton-shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "author-skeleton-alpha"
+    )
+
+    LazyColumn(modifier = Modifier.fillMaxSize().background(HanimeBackground)) {
+        // 作者头部卡片（头像 + 名称 + 统计）
+        item(key = "skeleton-author-header") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(HanimeCard)
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(HanimeBackground)
+                        .alpha(alpha)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(18.dp)
+                        .padding(top = 12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeBackground)
+                        .alpha(alpha)
+                )
+                Row(
+                    modifier = Modifier.padding(top = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(HanimeBackground)
+                                .alpha(alpha)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(28.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(HanimeBackground)
+                                .alpha(alpha)
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(HanimeBackground)
+                                .alpha(alpha)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(28.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(HanimeBackground)
+                                .alpha(alpha)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 影片标题行
+        item(key = "skeleton-videos-title") {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(50.dp)
+                        .height(15.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(70.dp)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+            }
+        }
+
+        // 影片横向卡片（2 张，匹配 VideoCard 200x210）
+        item(key = "skeleton-videos-row") {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 15.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(2) {
+                    Column(
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(210.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HanimeCard)
+                            .alpha(alpha)
+                    ) {}
+                }
+            }
+        }
+
+        // 播放清单标题行
+        item(key = "skeleton-playlists-title") {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(70.dp)
+                        .height(15.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+                Box(
+                    modifier = Modifier
+                        .width(70.dp)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(HanimeCard)
+                        .alpha(alpha)
+                )
+            }
+        }
+
+        // 播放清单卡片（2 张，匹配 PlaylistSummaryCard 布局）
+        items(2, key = { it }) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HanimeCard)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 120.dp, height = 68.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(HanimeBackground)
+                        .alpha(alpha)
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(13.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(HanimeBackground)
+                            .alpha(alpha)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(11.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(HanimeBackground)
+                            .alpha(alpha)
+                    )
+                }
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(20.dp)) }
     }
 }
