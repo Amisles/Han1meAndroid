@@ -4,12 +4,14 @@ import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.data.parser.CommentParser
 import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
 import app.amisles.hanime.data.parser.LoginParser
 import app.amisles.hanime.data.parser.SearchPageParser
 import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.HanimeBanner
@@ -31,6 +33,7 @@ class HanimeRepository @Inject constructor(
     private val searchPageParser: SearchPageParser,
     private val watchPageParser: WatchPageParser,
     private val downloadPageParser: DownloadPageParser,
+    private val commentParser: CommentParser,
     private val favoriteDao: FavoriteDao,
     private val watchHistoryDao: WatchHistoryDao,
     private val searchHistoryDao: SearchHistoryDao
@@ -161,6 +164,16 @@ class HanimeRepository @Inject constructor(
             AppLogger.logError("HanimeRepository", "Error in getDownloadQualities: ${e.message}", e)
             return emptyList()
         }
+    }
+
+    /**
+     * 拉取视频评论列表。
+     * 不捕获异常，让上层 ViewModel 显示颜文字错误提示。
+     */
+    suspend fun getComments(videoId: String): List<Comment> {
+        val json = networkService.fetchComments(videoId)
+        AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
+        return commentParser.parse(json)
     }
 
     suspend fun login(email: String, password: String): Result<String> = runCatching {

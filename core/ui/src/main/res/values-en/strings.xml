@@ -58,6 +58,14 @@
     <string name="detail_no_download">No download available</string>
     <string name="detail_download_added">Download task added</string>
     <string name="detail_download_button">Download Video</string>
+
+    <!-- Comments -->
+    <string name="detail_tab_related">Related</string>
+    <string name="detail_tab_comments">Comments</string>
+    <string name="comment_empty">No comments yet</string>
+    <string name="comment_load_failed">Failed to load comments</string>
+    <string name="comment_reply_count">%1$d replies</string>
+
     <string name="download_empty">No download tasks</string>
     <string name="download_empty_hint">Download videos from the detail page</string>
     <string name="download_downloading">Downloading</string>

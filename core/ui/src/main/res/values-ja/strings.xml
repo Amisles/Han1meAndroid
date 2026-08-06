@@ -58,6 +58,14 @@
     <string name="detail_no_download">ダウンロードリソースがありません</string>
     <string name="detail_download_added">ダウンロードタスクを追加しました</string>
     <string name="detail_download_button">動画をダウンロード</string>
+
+    <!-- Comments -->
+    <string name="detail_tab_related">関連動画</string>
+    <string name="detail_tab_comments">コメント</string>
+    <string name="comment_empty">コメントがありません</string>
+    <string name="comment_load_failed">コメントの読み込みに失敗しました</string>
+    <string name="comment_reply_count">%1$d 件の返信</string>
+
     <string name="download_empty">ダウンロードタスクがありません</string>
     <string name="download_empty_hint">詳細ページから動画をダウンロードしてください</string>
     <string name="download_downloading">ダウンロード中</string>

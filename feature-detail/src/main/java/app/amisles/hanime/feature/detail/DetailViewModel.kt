@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.VideoDetail
@@ -42,6 +43,18 @@ class DetailViewModel @Inject constructor(
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
 
+    private val _comments = MutableStateFlow<List<Comment>>(emptyList())
+    val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
+
+    private val _isLoadingComments = MutableStateFlow(false)
+    val isLoadingComments: StateFlow<Boolean> = _isLoadingComments.asStateFlow()
+
+    private val _commentsError = MutableStateFlow<String?>(null)
+    val commentsError: StateFlow<String?> = _commentsError.asStateFlow()
+
+    private val _commentsLoaded = MutableStateFlow(false)
+    val commentsLoaded: StateFlow<Boolean> = _commentsLoaded.asStateFlow()
+
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
 
@@ -52,6 +65,12 @@ class DetailViewModel @Inject constructor(
 
         currentVideoId = extractVideoId(videoUrl)
         currentVideoUrl = videoUrl
+
+        // 切换视频时重置评论状态，使新视频的评论可被重新加载
+        _comments.value = emptyList()
+        _commentsLoaded.value = false
+        _commentsError.value = null
+        _isLoadingComments.value = false
 
         viewModelScope.launch {
             try {
@@ -105,6 +124,37 @@ class DetailViewModel @Inject constructor(
                 _downloadQualities.value = emptyList()
             } finally {
                 _isLoadingQualities.value = false
+            }
+        }
+    }
+
+    /**
+     * 加载评论列表。
+     * 已加载过则不重复请求，除非 force=true。
+     */
+    fun loadComments(force: Boolean = false) {
+        if (currentVideoId.isEmpty()) return
+        if (_commentsLoaded.value && !force) {
+            AppLogger.d("DetailViewModel", "Comments already loaded, skip")
+            return
+        }
+        AppLogger.d("DetailViewModel", "loadComments called, videoId: $currentVideoId")
+        _isLoadingComments.value = true
+        _commentsError.value = null
+
+        viewModelScope.launch {
+            try {
+                val list = withContext(Dispatchers.IO) {
+                    repository.getComments(currentVideoId)
+                }
+                AppLogger.d("DetailViewModel", "Got ${list.size} comments")
+                _comments.value = list
+                _commentsLoaded.value = true
+            } catch (e: Exception) {
+                AppLogger.e("DetailViewModel", "Error loading comments: ${e.message}", e)
+                _commentsError.value = e.message ?: "评论加载失败"
+            } finally {
+                _isLoadingComments.value = false
             }
         }
     }

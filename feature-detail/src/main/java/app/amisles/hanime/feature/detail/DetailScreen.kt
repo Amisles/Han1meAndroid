@@ -58,9 +58,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,10 +104,16 @@ fun DetailScreen(
     val downloadQualities by viewModel.downloadQualities.collectAsState()
     val isLoadingQualities by viewModel.isLoadingQualities.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
+    val comments by viewModel.comments.collectAsState()
+    val isLoadingComments by viewModel.isLoadingComments.collectAsState()
+    val commentsError by viewModel.commentsError.collectAsState()
+    val commentsLoaded by viewModel.commentsLoaded.collectAsState()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
     var showDescription by remember { mutableStateOf(false) }
+    // 0 = 相关影片，1 = 评论
+    var selectedTab by remember { mutableStateOf(0) }
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -137,6 +145,7 @@ fun DetailScreen(
 
     LaunchedEffect(videoUrl) {
         if (videoUrl != null && videoUrl.isNotEmpty()) {
+            selectedTab = 0
             viewModel.loadVideoDetail(videoUrl)
         }
     }
@@ -539,89 +548,117 @@ fun DetailScreen(
                 }
             }
 
-            if (detail.relatedVideos.isNotEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.detail_related),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary,
-                        modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp)
-                    )
-                }
-
-                items(detail.relatedVideos) { video ->
-                    val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-                    val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
-
+            if (detail.relatedVideos.isNotEmpty() || commentsLoaded || isLoadingComments) {
+                item(key = "tab_bar") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 15.dp, vertical = 2.dp)
-                            .background(HanimeCard)
-                            .padding(vertical = 4.dp, horizontal = 6.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onVideoClick(video.videoUrl) },
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 15.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        app.amisles.hanime.core.ui.components.VideoThumbnail(
-                            thumbnailUrl = video.thumbnailUrl,
-                            emoji = emoji,
-                            gradient = gradient,
-                            duration = "",
-                            likeRate = "",
-                            viewCount = "",
-                            crop = true,
-                            modifier = Modifier
-                                .width(120.dp)
-                                .height(90.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                        CommentTabButton(
+                            text = stringResource(R.string.detail_tab_related),
+                            isSelected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            modifier = Modifier.weight(1f)
                         )
+                        CommentTabButton(
+                            text = stringResource(R.string.detail_tab_comments),
+                            isSelected = selectedTab == 1,
+                            onClick = {
+                                selectedTab = 1
+                                if (!commentsLoaded && !isLoadingComments) {
+                                    viewModel.loadComments()
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
 
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.Center
+                if (selectedTab == 0) {
+                    items(detail.relatedVideos) { video ->
+                        val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
+                        val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 15.dp, vertical = 2.dp)
+                                .background(HanimeCard)
+                                .padding(vertical = 4.dp, horizontal = 6.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onVideoClick(video.videoUrl) },
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = video.title,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = HanimeTextPrimary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                            app.amisles.hanime.core.ui.components.VideoThumbnail(
+                                thumbnailUrl = video.thumbnailUrl,
+                                emoji = emoji,
+                                gradient = gradient,
+                                duration = "",
+                                likeRate = "",
+                                viewCount = "",
+                                crop = true,
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .height(90.dp)
+                                    .clip(RoundedCornerShape(6.dp))
                             )
-                            if (video.author.isNotEmpty()) {
-                                Text(
-                                    text = video.author,
-                                    fontSize = 10.sp,
-                                    color = HanimePrimary,
-                                    modifier = Modifier
-                                        .padding(top = 2.dp)
-                                        .clickable { onAuthorClick(video.author) }
-                                )
-                            }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(top = 2.dp)
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = video.duration,
-                                    fontSize = 9.sp,
-                                    color = HanimeTextSecondary
+                                    text = video.title,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = HanimeTextPrimary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = video.likeRate,
-                                    fontSize = 9.sp,
-                                    color = HanimeTextSecondary
-                                )
-                                Text(
-                                    text = video.viewCount,
-                                    fontSize = 9.sp,
-                                    color = HanimeTextSecondary
-                                )
+                                if (video.author.isNotEmpty()) {
+                                    Text(
+                                        text = video.author,
+                                        fontSize = 10.sp,
+                                        color = HanimePrimary,
+                                        modifier = Modifier
+                                            .padding(top = 2.dp)
+                                            .clickable { onAuthorClick(video.author) }
+                                    )
+                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text = video.duration,
+                                        fontSize = 9.sp,
+                                        color = HanimeTextSecondary
+                                    )
+                                    Text(
+                                        text = video.likeRate,
+                                        fontSize = 9.sp,
+                                        color = HanimeTextSecondary
+                                    )
+                                    Text(
+                                        text = video.viewCount,
+                                        fontSize = 9.sp,
+                                        color = HanimeTextSecondary
+                                    )
+                                }
                             }
                         }
+                    }
+                } else {
+                    item(key = "comments_section") {
+                        CommentSection(
+                            comments = comments,
+                            isLoading = isLoadingComments,
+                            error = commentsError,
+                            onRetry = { viewModel.loadComments(force = true) }
+                        )
                     }
                 }
             }
@@ -755,6 +792,191 @@ private fun shareVideo(context: Context, title: String, url: String) {
     val chooser = Intent.createChooser(intent, "分享视频")
     chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(chooser)
+}
+
+/**
+ * 评论/相关影片 Tab 按钮
+ */
+@Composable
+private fun CommentTabButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (isSelected) HanimePrimary else HanimeCard)
+            .border(
+                width = 1.dp,
+                color = if (isSelected) HanimePrimary else HanimeBorder,
+                shape = RoundedCornerShape(6.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (isSelected) Color.White else HanimeTextPrimary
+        )
+    }
+}
+
+/**
+ * 评论区：包含加载中、错误、空、列表四种状态
+ */
+@Composable
+private fun CommentSection(
+    comments: List<app.amisles.hanime.domain.model.Comment>,
+    isLoading: Boolean,
+    error: String?,
+    onRetry: () -> Unit
+) {
+    when {
+        isLoading -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    color = HanimePrimary,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+        error != null -> {
+            KaomojiErrorView(
+                message = error,
+                onRetry = onRetry
+            )
+        }
+        comments.isEmpty() -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.comment_empty),
+                    fontSize = 14.sp,
+                    color = HanimeTextSecondary
+                )
+            }
+        }
+        else -> {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                comments.forEach { comment ->
+                    CommentItem(comment = comment)
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(0.5.dp)
+                            .padding(horizontal = 15.dp)
+                            .background(Color.White.copy(alpha = 0.06f))
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+/**
+ * 单条评论
+ */
+@Composable
+private fun CommentItem(comment: app.amisles.hanime.domain.model.Comment) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 15.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        coil3.compose.AsyncImage(
+            model = comment.avatarUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = comment.username,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = HanimeTextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Text(
+                    text = comment.time,
+                    fontSize = 11.sp,
+                    color = HanimeTextSecondary
+                )
+            }
+
+            Text(
+                text = comment.content,
+                fontSize = 14.sp,
+                color = HanimeTextPrimary,
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            Row(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.ThumbUp,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = HanimeTextSecondary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (comment.likeCount > 0) comment.likeCount.toString() else "0",
+                        fontSize = 12.sp,
+                        color = HanimeTextSecondary
+                    )
+                }
+                if (comment.replyCount > 0) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Comment,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = HanimeTextSecondary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(R.string.comment_reply_count, comment.replyCount),
+                            fontSize = 12.sp,
+                            color = HanimeTextSecondary
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**

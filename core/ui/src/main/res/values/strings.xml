@@ -69,6 +69,13 @@
     <string name="detail_no_download">暂无下载资源</string>
     <string name="detail_download_added">已添加下载任务</string>
     <string name="detail_download_button">下载此视频</string>
+
+    <!-- Comments -->
+    <string name="detail_tab_related">相关影片</string>
+    <string name="detail_tab_comments">评论</string>
+    <string name="comment_empty">暂无评论</string>
+    <string name="comment_load_failed">评论加载失败</string>
+    <string name="comment_reply_count">%1$d 则回覆</string>
     
     <!-- Download -->
     <string name="download_empty">暂无下载任务</string>

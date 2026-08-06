@@ -257,6 +257,22 @@ class NetworkService @Inject constructor(
             }
         }
     }
+
+    /**
+     * 拉取视频评论 JSON。
+     *
+     * 官网接口：GET /loadComment?id={videoId}&type=video&content=comment-tablink
+     * 返回 JSON：{"comments": "<HTML>", "content": "comment-tablink"}
+     */
+    suspend fun fetchComments(videoId: String): String {
+        AppLogger.log("NetworkService", "fetchComments called, videoId: $videoId")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val url = "$baseUrl/loadComment?id=$videoId&type=video&content=comment-tablink"
+            AppLogger.log("NetworkService", "Fetching comments from: $url")
+            executeRequest(buildRequest(url))
+        }
+    }
 }
 
 data class FetchResult(val html: String, val baseUrl: String)
