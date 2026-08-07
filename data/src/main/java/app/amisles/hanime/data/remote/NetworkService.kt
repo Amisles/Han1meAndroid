@@ -26,6 +26,9 @@ class NetworkService @Inject constructor(
     private val authorPageParser: AuthorPageParser,
     private val playlistParser: PlaylistParser
 ) {
+    // 入口拦截器：非官方域名首次请求前自动探测 /enter 获取入口 cookie
+    private val entryInterceptor = EntryInterceptor()
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -33,6 +36,7 @@ class NetworkService @Inject constructor(
         .followRedirects(true)
         .followSslRedirects(true)
         .cookieJar(HCookieJar)
+        .addInterceptor(entryInterceptor)
         .build()
 
     private val noRedirectClient by lazy {

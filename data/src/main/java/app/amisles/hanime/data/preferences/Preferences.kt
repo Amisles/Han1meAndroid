@@ -103,7 +103,9 @@ object Preferences {
 
     fun setBaseUrl(url: String) {
         val trimmed = url.trim().trimEnd('/')
-        val safeUrl = if (trimmed.isEmpty()) DEFAULT_BASE_URL else trimmed
+        // 只保留协议+域名，去除路径（如镜像站的 /enter 入口）
+        val hostOnly = Regex("^(https?://[^/]+)").find(trimmed)?.value
+        val safeUrl = if (hostOnly.isNullOrEmpty()) DEFAULT_BASE_URL else hostOnly
         sp.edit { putString(SP_BASE_URL, safeUrl) }
         _baseUrlFlow.value = safeUrl
     }
