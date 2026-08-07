@@ -1,7 +1,9 @@
 package app.amisles.hanime.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.PlaylistSummary
 import kotlinx.coroutines.CancellationException
@@ -10,11 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistListPageViewModel @Inject constructor(
-    private val networkService: NetworkService
+    private val networkService: NetworkService,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _playlists = MutableStateFlow<List<PlaylistSummary>>(emptyList())
@@ -35,7 +39,7 @@ class PlaylistListPageViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _error.value = e.message ?: "加载失败"
+                _error.value = e.message ?: context.getString(R.string.common_load_failed)
             } finally {
                 _isLoading.value = false
             }
