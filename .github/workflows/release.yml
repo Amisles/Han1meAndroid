@@ -27,11 +27,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. 安装 Android SDK 包（ubuntu-latest 已预装 sdkmanager，直接用命令更可靠）
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+      # 3. 配置 Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 3.1 安装项目所需的 SDK 平台与 build-tools
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
 
       # 4. 缓存 Gradle 依赖（加速后续构建）
       - name: Cache Gradle
