@@ -27,13 +27,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. 配置 Android SDK
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      # 3.1 安装项目所需的 SDK 平台与 build-tools
-      - name: Install SDK packages
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+      # 3. 接受 SDK 许可协议
+      - name: Accept SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
       # 4. 缓存 Gradle 依赖（加速后续构建）
       - name: Cache Gradle
