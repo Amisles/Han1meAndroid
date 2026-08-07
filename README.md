@@ -150,6 +150,40 @@ core:network
 
 ---
 
+## 贡献与支持
+
+欢迎参与本项目！无论是反馈 Bug、建议功能，还是提交代码，都能让 HanimeAndroid 变得更好。
+
+### 反馈问题（Issue）
+
+- 提交前请先检索 [已有 Issue](../../issues)，避免重复
+- 新建 Issue 时请选择对应模板，并填写：
+  - 复现步骤与预期 / 实际表现
+  - App 版本、Android 版本、设备型号
+  - 相关日志（位于 App `filesDir/hanime_app.log`）或截图
+- 非公开或安全相关问题，请通过 [Security Advisory](../../security/advisories/new) 提交
+
+### 提交代码（Pull Request）
+
+1. Fork 本仓库并新建分支：`git checkout -b feat/your-feature` 或 `fix/your-bugfix`
+2. 遵循现有代码风格与 MVVM + 多模块架构约定
+3. 如改动涉及网络或解析，请补充 / 更新对应单元测试
+4. PR 标题建议使用约定式提交（`feat:` / `fix:` / `docs:` / `refactor:` …）
+5. 提交 PR 时请关联相关 Issue，并简要说明改动点与测试方式
+6. 等待 Review，根据反馈在同一分支上追加提交即可
+
+### 支持项目
+
+如果这个项目对你有帮助，欢迎在仓库右上角点个 ⭐ Star —— 你的支持是持续维护的动力！
+
+也可以通过以下方式帮助项目：
+
+- 在 Issue 中提出改进建议
+- 翻译 / 校对多语言资源（简中 / 繁中 / English / 日本語）
+- 提交 PR 修复 Bug 或实现「未来更新计划」中的功能
+
+---
+
 ## 开源协议
 
 本项目采用 [GNU General Public License v3.0](LICENSE) 协议开源。
