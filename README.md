@@ -1,6 +1,12 @@
-# HanimeAndroid
+<p align="center">
+  <img src="docs/logo.png" width="120" height="120" alt="HanimeAndroid Logo">
+</p>
 
-开源的第三方 Hanime Android 客户端，基于 Jetpack Compose 构建原生界面，采用 MVVM + Repository 架构与多模块化设计。
+<h1 align="center">HanimeAndroid</h1>
+
+<p align="center">
+  开源的第三方 Hanime Android 客户端，基于 Jetpack Compose 构建原生界面，采用 MVVM + Repository 架构与多模块化设计。
+</p>
 
 ## 功能
 
@@ -11,6 +17,7 @@
 - 批量下载管理（一键批量选择、多任务同时下载）
 - 本地收藏与观看历史（Room 持久化、自动去重）
 - 账号登录与 Cookie 管理
+- 视频评论区（评论列表、回复展开、点赞数显示）
 - 作者主页浏览（作品统计、视频分区、播放列表分区）
 - 播放列表查看（公开播放列表浏览、批量加入下载）
 - 多语言切换（简体中文 / 繁體中文 / English / 日本語，热切换即时生效）
@@ -85,35 +92,6 @@ hanime/
     |-- profile/                # 个人中心、登录、收藏、观看历史
     `-- settings/               # 设置页（多语言/并发数/自定义 BaseURL）、关于页、作者主页
 ```
-
-## 模块化与依赖方向
-
-```
-         ┌───────────────────────────────────────────────────┐
-         │  feature-*  (home / search / detail / download / │
-         │              profile / settings)                  │
-         └────────┬─────────────────────┬────────────────────┘
-                  │ depends on          │ depends on
-                  ▼                     ▼
-           ┌──────────┐           ┌──────────┐
-           │ core:ui  │──────────▶│core:common│
-           └────┬─────┘           └────┬─────┘
-                │ depends on            │
-                ▼                       ▼
-           ┌──────────┐           ┌──────────────┐
-           │   data   │──────────▶│ domain:model │
-           └────┬─────┘           └──────────────┘
-                │ depends on
-                ▼
-           ┌─────────────┐
-           │ core:network│
-           └─────────────┘
-```
-
-- 单向依赖：`feature → data → core → domain`，禁止反向依赖
-- 每个 feature 模块包含 **单一 UI 屏幕 + 对应 ViewModel**，通过 `hiltViewModel()` 获取注入
-- data 模块所有组件（Repository/Parser/DownloadManager/CookieJar/Preferences）均通过 `@Inject` 构造函数或 Hilt `@Module` 提供
-
 ## 架构设计
 
 ### MVVM + 单向数据流
@@ -168,7 +146,7 @@ core:network
 | --- | --- | --- |
 | 🟢 高 | 完善多语言支持 | 补齐所有硬编码字符串的资源化、拉取服务端文案、RTL 布局适配、区域化时间/数字格式 |
 | 🟡 中 | 优化 UI 样式 | 统一卡片圆角 / 间距 / 字重规范、播放页控制栏交互重构、动效与过渡动画完善、响应式布局适配平板 |
-| 🔴 中 | 新增视频评论功能 | 视频详情页评论区、回复/点赞、评论分页加载、评论举报与敏感词过滤 |
+| 🔵 中 | 评论功能增强 | 评论分页加载、发表评论、点赞/举报、敏感词过滤 |
 
 ---
 
