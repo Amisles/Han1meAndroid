@@ -163,6 +163,9 @@
     <string name="about_license">Open Source License</string>
     <string name="about_license_name">GNU General Public License v3.0</string>
     <string name="about_acknowledgements">Acknowledgements</string>
+    <string name="about_project_links">Project Links</string>
+    <string name="about_github_repo">GitHub Repository</string>
+    <string name="about_feedback">Feedback</string>
     <string name="about_feature_1">Video browsing and search</string>
     <string name="about_feature_2">HLS streaming playback</string>
     <string name="about_feature_3">Offline video download</string>

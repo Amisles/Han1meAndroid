@@ -189,6 +189,9 @@
     <string name="about_license">开源协议</string>
     <string name="about_license_name">GNU General Public License v3.0</string>
     <string name="about_acknowledgements">致谢</string>
+    <string name="about_project_links">项目地址</string>
+    <string name="about_github_repo">GitHub 仓库</string>
+    <string name="about_feedback">问题反馈</string>
     <string name="about_feature_1">视频浏览与搜索</string>
     <string name="about_feature_2">HLS 流媒体播放</string>
     <string name="about_feature_3">视频离线下载</string>

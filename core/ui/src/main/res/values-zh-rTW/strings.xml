@@ -163,6 +163,9 @@
     <string name="about_license">開源協議</string>
     <string name="about_license_name">GNU General Public License v3.0</string>
     <string name="about_acknowledgements">致謝</string>
+    <string name="about_project_links">專案連結</string>
+    <string name="about_github_repo">GitHub 儲存庫</string>
+    <string name="about_feedback">問題回報</string>
     <string name="about_feature_1">影片瀏覽與搜尋</string>
     <string name="about_feature_2">HLS 串流媒體播放</string>
     <string name="about_feature_3">影片離線下載</string>

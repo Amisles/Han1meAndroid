@@ -163,6 +163,9 @@
     <string name="about_license">オープンソースライセンス</string>
     <string name="about_license_name">GNU General Public License v3.0</string>
     <string name="about_acknowledgements">謝辞</string>
+    <string name="about_project_links">プロジェクトリンク</string>
+    <string name="about_github_repo">GitHubリポジトリ</string>
+    <string name="about_feedback">フィードバック</string>
     <string name="about_feature_1">動画閲覧と検索</string>
     <string name="about_feature_2">HLSストリーミング再生</string>
     <string name="about_feature_3">動画オフラインダウンロード</string>

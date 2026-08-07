@@ -1,7 +1,11 @@
 package app.amisles.hanime.feature.settings
 
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +29,8 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.text.font.FontWeight
@@ -188,6 +195,12 @@ fun AboutScreen(
         }.getOrNull() ?: "unknown"
     }
 
+    fun openUrl(url: String) {
+        runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -228,24 +241,13 @@ fun AboutScreen(
             item {
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Box(
+                Image(
+                    painter = painterResource(R.drawable.ic_app_logo),
+                    contentDescription = "App Logo",
                     modifier = Modifier
                         .size(84.dp)
                         .clip(CircleShape)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(HanimePrimary, Color(0xFFb71c1c))
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "H",
-                        fontSize = 38.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -265,6 +267,90 @@ fun AboutScreen(
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = stringResource(R.string.about_project_links),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HanimePrimary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 15.dp, vertical = 6.dp)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 15.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = HanimeCard)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { openUrl("https://github.com/Amisles/HanimeAndroid") }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Code,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = HanimePrimary
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.about_github_repo),
+                                    fontSize = 14.sp,
+                                    color = HanimeTextPrimary
+                                )
+                                Text(
+                                    text = "github.com/Amisles/HanimeAndroid",
+                                    fontSize = 11.sp,
+                                    color = HanimeTextSecondary
+                                )
+                            }
+                        }
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(0.5.dp)
+                                .padding(horizontal = 16.dp)
+                                .background(Color.White.copy(alpha = 0.06f))
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { openUrl("https://github.com/Amisles/HanimeAndroid/issues") }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.BugReport,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = HanimePrimary
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.about_feedback),
+                                    fontSize = 14.sp,
+                                    color = HanimeTextPrimary
+                                )
+                                Text(
+                                    text = "github.com/Amisles/HanimeAndroid/issues",
+                                    fontSize = 11.sp,
+                                    color = HanimeTextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Card(
                     modifier = Modifier
