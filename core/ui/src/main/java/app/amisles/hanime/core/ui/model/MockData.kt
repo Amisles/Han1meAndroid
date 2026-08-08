@@ -7,10 +7,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimePrimaryLight
-import app.amisles.hanime.core.ui.theme.HanimeCard
 
 data class Video(
     val id: String,

@@ -42,7 +42,6 @@ class DownloadService : Service() {
 
         const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
 
-        // SharedPreferences 名称（与 Preferences 一致）及键，用于服务重启时恢复最后任务标题
         private const val PREFS_NAME = "hanime_app_prefs"
         private const val PREF_LAST_DL_TITLE = "last_download_title"
         private const val PREF_LAST_DL_PROGRESS = "last_download_progress"
@@ -51,7 +50,6 @@ class DownloadService : Service() {
          * 启动下载前台服务并显示初始进度通知。
          */
         fun startDownload(context: Context, taskId: Int, title: String) {
-            // 持久化当前任务信息，服务被杀死重建时可恢复
             runCatching {
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
                     putString(PREF_LAST_DL_TITLE, title)

@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -47,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeBanner
-import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
@@ -57,7 +55,6 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import kotlinx.coroutines.launch

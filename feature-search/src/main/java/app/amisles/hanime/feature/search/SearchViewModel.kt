@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.data.repository.HanimeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

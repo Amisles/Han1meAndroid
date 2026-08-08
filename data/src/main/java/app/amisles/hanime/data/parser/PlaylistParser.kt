@@ -7,7 +7,6 @@ import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 import javax.inject.Inject
 import javax.inject.Singleton
 

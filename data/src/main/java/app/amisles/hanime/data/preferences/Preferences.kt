@@ -66,7 +66,13 @@ object Preferences {
         _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())
         _savedUserIdFlow.value = sp.getString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
-        _baseUrlFlow.value = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
+        // 清洗历史存储的 baseUrl（可能含 /enter 等路径），回写以保证后续拼接正确
+        val rawBaseUrl = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
+        val safeBaseUrl = sanitizeBaseUrl(rawBaseUrl)
+        if (safeBaseUrl != rawBaseUrl) {
+            sp.edit { putString(SP_BASE_URL, safeBaseUrl) }
+        }
+        _baseUrlFlow.value = safeBaseUrl
         _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
         _shareCountFlow.value = sp.getInt(SP_SHARE_COUNT, 0)
     }
@@ -102,12 +108,19 @@ object Preferences {
     }
 
     fun setBaseUrl(url: String) {
-        val trimmed = url.trim().trimEnd('/')
-        // 只保留协议+域名，去除路径（如镜像站的 /enter 入口）
-        val hostOnly = Regex("^(https?://[^/]+)").find(trimmed)?.value
-        val safeUrl = if (hostOnly.isNullOrEmpty()) DEFAULT_BASE_URL else hostOnly
+        val safeUrl = sanitizeBaseUrl(url)
         sp.edit { putString(SP_BASE_URL, safeUrl) }
         _baseUrlFlow.value = safeUrl
+    }
+
+    /**
+     * 只保留协议+域名，去除路径（如镜像站的 /enter 入口）。
+     * 确保后续拼接 /search、/watch 等路径时不会产生 /enter/search 这类无效 URL。
+     */
+    private fun sanitizeBaseUrl(url: String): String {
+        val trimmed = url.trim().trimEnd('/')
+        val hostOnly = Regex("^(https?://[^/]+)").find(trimmed)?.value
+        return if (hostOnly.isNullOrEmpty()) DEFAULT_BASE_URL else hostOnly
     }
 
     fun saveLogin(cookieString: String, userId: String? = null) {

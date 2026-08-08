@@ -15,10 +15,8 @@ import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.Reply
-import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomePageData
-import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory

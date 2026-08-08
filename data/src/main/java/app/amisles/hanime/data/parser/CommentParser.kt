@@ -11,32 +11,6 @@ import javax.inject.Singleton
 
 /**
  * 评论解析器
- *
- * 解析官网 loadComment 接口返回的 JSON：
- * {
- *   "comments": "<HTML 字符串>",
- *   "content": "comment-tablink"
- * }
- *
- * HTML 结构：
- * <div id="comment-create-form-wrapper">...</div>          // 输入框，跳过
- * <div id="comment-start">
- *   <a><img class="img-circle" src="avatar"></a>            // 头像
- *   <div class="report-btn-wrapper">                        // 评论主体
- *     <div class="comment-index-text"><a>username&nbsp;<span>time</span></a></div>
- *     <div class="comment-index-text">content</div>
- *     <span class="report-btn" data-reportable-id="commentId">more_vert</span>
- *   </div>
- *   <div id="comment-like-form-wrapper">                    // 点赞/回复区
- *     <span class="material-icons-outlined">thumb_up</span>
- *     <span>likeCount</span>                                // 可能为 display:none
- *     <span class="material-icons-outlined">thumb_down</span>
- *     <span>回复</span>
- *     <div class="load-replies-btn" data-commentid="...">查看 N 则回覆</div>  // 可选
- *   </div>
- *   <br>
- *   ... 下一条评论
- * </div>
  */
 @Singleton
 class CommentParser @Inject constructor() {

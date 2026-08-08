@@ -1,5 +1,3 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package app.amisles.hanime.feature.profile
 
 import android.webkit.CookieManager
@@ -84,6 +82,7 @@ private fun isLoggedInRedirect(url: String): Boolean {
     return host.any { url.contains(it) } && !isLoginPage(url) && !url.contains("/logout")
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onBackClick: () -> Unit,

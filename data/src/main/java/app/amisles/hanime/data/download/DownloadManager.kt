@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import kotlin.math.max
 import android.content.Intent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject

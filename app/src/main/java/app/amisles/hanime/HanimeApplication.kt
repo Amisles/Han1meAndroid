@@ -3,7 +3,6 @@ package app.amisles.hanime
 import android.app.Application
 import android.content.Context
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import dagger.hilt.android.HiltAndroidApp
 
