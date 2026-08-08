@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.core.common.util.AppLogger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,25 +15,21 @@ import javax.inject.Singleton
 @Singleton
 class SearchPageParser @Inject constructor(private val videoListParser: VideoListParser) {
 
+    private fun isVideoLink(url: String): Boolean {
+        val path = runCatching { URI(url).path }.getOrNull() ?: return false
+        return path.startsWith("/watch")
+    }
+
     fun parse(html: String, baseUrl: String): List<HanimeVideo> {
         val doc: Document = Jsoup.parse(html, baseUrl)
         val videos = videoListParser.parseVideoList(doc, baseUrl)
-        val filtered = videos.filter {
-            it.videoUrl.startsWith("https://hanime1.me/watch") ||
-            it.videoUrl.startsWith("https://hanimeone.me/watch") ||
-            it.videoUrl.startsWith("/watch")
-        }
-        return filtered
+        return videos.filter { isVideoLink(it.videoUrl) }
     }
 
     fun parseWithPagination(html: String, baseUrl: String): SearchResult {
         val doc: Document = Jsoup.parse(html, baseUrl)
         val videos = videoListParser.parseVideoList(doc, baseUrl)
-        val filtered = videos.filter {
-            it.videoUrl.startsWith("https://hanime1.me/watch") ||
-            it.videoUrl.startsWith("https://hanimeone.me/watch") ||
-            it.videoUrl.startsWith("/watch")
-        }
+        val filtered = videos.filter { isVideoLink(it.videoUrl) }
 
         val (currentPage, totalPages, hasNextPage) = parsePagination(doc)
 
