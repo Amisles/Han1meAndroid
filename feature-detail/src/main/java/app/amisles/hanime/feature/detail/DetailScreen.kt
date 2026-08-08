@@ -230,7 +230,7 @@ fun DetailScreen(
             val detail = videoDetail!!
 
             item {
-                Column(modifier = Modifier.padding(15.dp)) {
+                Column(modifier = Modifier.padding(6.dp)) {
                     Text(
                         text = detail.title,
                         fontSize = 18.sp,
@@ -275,7 +275,7 @@ fun DetailScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = 6.dp)
                     ) {
                         if (detail.releaseDate.isNotEmpty()) {
                             Text(
@@ -297,7 +297,7 @@ fun DetailScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 15.dp)
+                                .padding(bottom = 6.dp)
                                 .clickable { showDescription = !showDescription },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -332,7 +332,7 @@ fun DetailScreen(
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(bottom = 20.dp)
+                        modifier = Modifier.padding(bottom = 6.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -421,11 +421,11 @@ fun DetailScreen(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = HanimeTextPrimary,
-                            modifier = Modifier.padding(bottom = 10.dp)
+                            modifier = Modifier.padding(bottom = 6.dp)
                         )
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 6.dp)
                         ) {
                             items(detail.tags) { tag ->
                                 val cleanedTag = remember(tag) {
@@ -457,13 +457,13 @@ fun DetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 15.dp)
+                            .padding(horizontal = 6.dp)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(HanimeCard, RoundedCornerShape(8.dp))
-                                .padding(12.dp),
+                                .padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -510,7 +510,7 @@ fun DetailScreen(
 
                 item {
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(playlist.videos) { video ->
@@ -558,7 +558,7 @@ fun DetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 15.dp, vertical = 8.dp),
+                            .padding(horizontal = 6.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         CommentTabButton(
@@ -589,9 +589,8 @@ fun DetailScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 15.dp, vertical = 2.dp)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                                 .background(HanimeCard)
-                                .padding(vertical = 4.dp, horizontal = 6.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onVideoClick(video.videoUrl) },
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
