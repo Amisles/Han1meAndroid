@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -42,7 +41,6 @@ import coil3.compose.AsyncImage
 fun Banner(
     bannerData: HanimeBanner,
     onPlayClick: () -> Unit = {},
-    onInfoClick: () -> Unit = {},
     onSearchClick: (String) -> Unit = {}
 ) {
     Box(
@@ -137,7 +135,6 @@ fun Banner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
-                        .weight(1f)
                         .background(Color.White, RoundedCornerShape(6.dp))
                         .padding(7.dp)
                         .clickable {
@@ -160,36 +157,6 @@ fun Banner(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
-                        .padding(7.dp)
-                        .clickable {
-                            if (bannerData.videoUrl.isNotEmpty()) {
-                                onInfoClick()
-                            } else {
-                                onSearchClick(bannerData.title)
-                            }
-                        }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = stringResource(R.string.common_more_info),
-                        tint = HanimeTextPrimary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.common_more_info),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = HanimeTextPrimary
                     )
                 }
             }

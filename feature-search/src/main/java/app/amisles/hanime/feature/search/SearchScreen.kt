@@ -32,6 +32,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,7 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -111,6 +115,7 @@ fun SearchScreen(
     val genreValue by viewModel.genre.collectAsState()
 
     val localQuery = remember { mutableStateOf(query) }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf("全部") }
     val selectedSort = remember { mutableStateOf(sortOptions[0]) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -171,6 +176,14 @@ fun SearchScreen(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(24.dp)),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        viewModel.setQuery(localQuery.value)
+                        viewModel.executeSearch()
+                        keyboardController?.hide()
+                    }
+                ),
                 shape = RoundedCornerShape(24.dp),
                 textStyle = androidx.compose.ui.text.TextStyle(
                     color = Color.White,

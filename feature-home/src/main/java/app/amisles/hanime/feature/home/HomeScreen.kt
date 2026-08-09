@@ -183,7 +183,6 @@ fun HomeScreenContent(
                     Banner(
                         bannerData = it,
                         onPlayClick = { onVideoClick(it.videoUrl) },
-                        onInfoClick = { onVideoClick(it.videoUrl) },
                         onSearchClick = onSearchClick
                     )
                 }
