@@ -119,7 +119,6 @@
     <string name="profile_stat_watch">Watched</string>
     <string name="profile_stat_favorite">Favorites</string>
     <string name="profile_stat_download">Downloads</string>
-    <string name="profile_stat_share">Shared</string>
     <string name="login_title">Login</string>
     <string name="login_account_title">Login with Website Account</string>
     <string name="login_email">Email</string>
@@ -156,6 +155,8 @@
     <string name="settings_language_zh_tw">繁體中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_ja">日本語</string>
+    <string name="settings_concurrent_count_suffix"></string>
+    <string name="settings_concurrent_set_toast">Set to %1$d concurrent downloads</string>
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_intro_title">About App</string>

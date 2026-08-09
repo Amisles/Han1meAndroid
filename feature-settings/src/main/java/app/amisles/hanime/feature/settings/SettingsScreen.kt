@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CleaningServices
@@ -41,14 +40,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Layers
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Layers
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimeBackground
@@ -68,6 +70,98 @@ fun appLanguageOptions() = listOf(
 )
 
 @Composable
+private fun <T> SettingsDropdownCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    selectedLabel: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<Pair<T, String>>,
+    selectedValue: T,
+    onSelect: (T) -> Unit
+) {
+    var boxWidthPx by remember { mutableStateOf(0) }
+    var menuWidthPx by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 15.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = HanimeCard),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Box(modifier = Modifier.onSizeChanged { boxWidthPx = it.width }) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onExpandedChange(!expanded) }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = HanimePrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    color = HanimeTextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = selectedLabel,
+                    fontSize = 14.sp,
+                    color = HanimeTextSecondary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = HanimeTextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .rotate(if (expanded) 0f else -90f)
+                )
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { onExpandedChange(false) },
+                modifier = Modifier
+                    .onSizeChanged { menuWidthPx = it.width }
+                    .background(HanimeCard),
+                offset = DpOffset(
+                    x = with(density) {
+                        (boxWidthPx - menuWidthPx).coerceAtLeast(0).toDp()
+                    },
+                    y = 0.dp
+                )
+            ) {
+                options.forEach { (value, label) ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = label,
+                                fontSize = 14.sp,
+                                color = if (value == selectedValue) HanimePrimary else HanimeTextSecondary,
+                                fontWeight = if (value == selectedValue) FontWeight.Medium else FontWeight.Normal
+                            )
+                        },
+                        onClick = {
+                            onSelect(value)
+                            onExpandedChange(false)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SettingsScreen(
     onBackClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {}
@@ -81,6 +175,9 @@ fun SettingsScreen(
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(baseUrl) }
+
+    val languageOptions = appLanguageOptions()
+    val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
 
     Column(
         modifier = Modifier
@@ -98,7 +195,7 @@ fun SettingsScreen(
             IconButton(onClick = onBackClick) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.common_back),
                     tint = HanimeTextPrimary,
                     modifier = Modifier.size(22.dp)
                 )
@@ -116,139 +213,40 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = HanimeCard),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Box {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { appLanguageMenuExpanded = true }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Language,
-                        contentDescription = null,
-                        tint = HanimePrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.settings_app_language),
-                        fontSize = 15.sp,
-                        color = HanimeTextPrimary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = appLanguageOptions().find { it.code == appLanguage }?.label ?: stringResource(R.string.settings_language_zh_cn),
-                        fontSize = 14.sp,
-                        color = HanimeTextSecondary
-                    )
-                    Icon(
-                        imageVector = if (appLanguageMenuExpanded) Icons.Default.ArrowDropDown else Icons.Default.ArrowRight,
-                        contentDescription = null,
-                        tint = HanimeTextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = appLanguageMenuExpanded,
-                    onDismissRequest = { appLanguageMenuExpanded = false },
-                    offset = DpOffset(x = 0.dp, y = 0.dp)
-                ) {
-                    appLanguageOptions().forEach { option ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = option.label,
-                                    fontSize = 14.sp,
-                                    color = if (option.code == appLanguage) HanimePrimary else HanimeTextSecondary,
-                                    fontWeight = if (option.code == appLanguage) FontWeight.Medium else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                appLanguageMenuExpanded = false
-                                Preferences.setAppLanguage(option.code)
-                                // 重建 Activity 以应用语言变更
-                                (context as? android.app.Activity)?.recreate()
-                            }
-                        )
-                    }
-                }
+        // 应用语言
+        SettingsDropdownCard(
+            icon = Icons.Outlined.Language,
+            title = stringResource(R.string.settings_app_language),
+            selectedLabel = languageOptions.find { it.code == appLanguage }?.label
+                ?: stringResource(R.string.settings_language_zh_cn),
+            expanded = appLanguageMenuExpanded,
+            onExpandedChange = { appLanguageMenuExpanded = it },
+            options = languageOptions.map { it.code to it.label },
+            selectedValue = appLanguage,
+            onSelect = { code ->
+                Preferences.setAppLanguage(code)
+                (context as? android.app.Activity)?.recreate()
             }
-        }
+        )
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = HanimeCard),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Box {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { downloadConcurrentMenuExpanded = true }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Layers,
-                        contentDescription = null,
-                        tint = HanimePrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = stringResource(R.string.settings_max_concurrent),
-                        fontSize = 15.sp,
-                        color = HanimeTextPrimary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = "${maxDownloadConcurrent}个",
-                        fontSize = 14.sp,
-                        color = HanimeTextSecondary
-                    )
-                    Icon(
-                        imageVector = if (downloadConcurrentMenuExpanded) Icons.Default.ArrowDropDown else Icons.Default.ArrowRight,
-                        contentDescription = null,
-                        tint = HanimeTextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = downloadConcurrentMenuExpanded,
-                    onDismissRequest = { downloadConcurrentMenuExpanded = false },
-                    modifier = Modifier.background(HanimeCard),
-                    offset = DpOffset(x = 0.dp, y = 0.dp)
-                ) {
-                    (1..5).forEach { count ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "${count}个",
-                                    fontSize = 14.sp,
-                                    color = if (count == maxDownloadConcurrent) HanimePrimary else HanimeTextSecondary,
-                                    fontWeight = if (count == maxDownloadConcurrent) FontWeight.Medium else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                Preferences.setMaxDownloadConcurrent(count)
-                                downloadConcurrentMenuExpanded = false
-                                Toast.makeText(context, "已设置为${count}个同时下载", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    }
-                }
+        // 同时下载数
+        SettingsDropdownCard(
+            icon = Icons.Default.Layers,
+            title = stringResource(R.string.settings_max_concurrent),
+            selectedLabel = "$maxDownloadConcurrent$concurrentCountSuffix",
+            expanded = downloadConcurrentMenuExpanded,
+            onExpandedChange = { downloadConcurrentMenuExpanded = it },
+            options = (1..5).map { it to "$it$concurrentCountSuffix" },
+            selectedValue = maxDownloadConcurrent,
+            onSelect = { count ->
+                Preferences.setMaxDownloadConcurrent(count)
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.settings_concurrent_set_toast, count),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
-        }
+        )
 
         Card(
             modifier = Modifier
@@ -350,7 +348,7 @@ fun SettingsScreen(
                     showClearCacheDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_cache_cleared), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text("确定", color = HanimePrimary)
+                    Text(stringResource(R.string.common_confirm), color = HanimePrimary)
                 }
             },
             dismissButton = {

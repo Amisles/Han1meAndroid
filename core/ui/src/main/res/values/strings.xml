@@ -135,7 +135,6 @@
     <string name="profile_stat_watch">观看</string>
     <string name="profile_stat_favorite">收藏</string>
     <string name="profile_stat_download">下载</string>
-    <string name="profile_stat_share">分享</string>
     
     <!-- Login -->
     <string name="login_title">登录</string>
@@ -180,6 +179,8 @@
     <string name="settings_language_zh_tw">繁體中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_ja">日本語</string>
+    <string name="settings_concurrent_count_suffix">个</string>
+    <string name="settings_concurrent_set_toast">已设置为%1$d个同时下载</string>
     
     <!-- About -->
     <string name="about_title">关于我们</string>
