@@ -82,7 +82,7 @@ import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimePrimaryLight
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
-import app.amisles.hanime.data.preferences.Preferences
+
 import kotlinx.coroutines.launch
 
 @Composable
@@ -786,7 +786,6 @@ fun DetailScreen(
 }
 
 private fun shareVideo(context: Context, title: String, url: String) {
-    Preferences.incrementShareCount()
     val shareText = if (url.isNotEmpty()) "$title\n$url" else title
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"

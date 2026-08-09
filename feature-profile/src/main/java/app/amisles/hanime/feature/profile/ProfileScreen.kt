@@ -96,7 +96,6 @@ fun ProfileScreen(
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
     val favoriteCount by profileViewModel.favoriteCount.collectAsStateWithLifecycle()
     val downloadCount by profileViewModel.downloadCount.collectAsStateWithLifecycle()
-    val shareCount by Preferences.shareCountFlow.collectAsStateWithLifecycle()
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -209,11 +208,6 @@ fun ProfileScreen(
                 StatItem(
                     count = downloadCount.toString(),
                     label = stringResource(R.string.profile_stat_download),
-                    modifier = Modifier.weight(1f)
-                )
-                StatItem(
-                    count = shareCount.toString(),
-                    label = stringResource(R.string.profile_stat_share),
                     modifier = Modifier.weight(1f)
                 )
             }

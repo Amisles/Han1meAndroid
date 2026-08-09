@@ -20,7 +20,6 @@ object Preferences {
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
     private const val SP_APP_LANGUAGE = "app_language"
-    private const val SP_SHARE_COUNT = "share_count"
 
     // 默认官网地址
     const val DEFAULT_BASE_URL = "https://hanime1.me"
@@ -55,9 +54,6 @@ object Preferences {
     private val _appLanguageFlow = MutableStateFlow(LANGUAGE_ZH_CN)
     val appLanguageFlow: StateFlow<String> = _appLanguageFlow.asStateFlow()
 
-    private val _shareCountFlow = MutableStateFlow(0)
-    val shareCountFlow: StateFlow<Int> = _shareCountFlow.asStateFlow()
-
     fun init(context: Context) {
         // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
         sp = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -74,7 +70,6 @@ object Preferences {
         }
         _baseUrlFlow.value = safeBaseUrl
         _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
-        _shareCountFlow.value = sp.getInt(SP_SHARE_COUNT, 0)
     }
 
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
@@ -91,20 +86,9 @@ object Preferences {
 
     val appLanguage: String get() = _appLanguageFlow.value
 
-    val shareCount: Int get() = _shareCountFlow.value
-
     fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
         _appLanguageFlow.value = lang
-    }
-
-    /**
-     * 递增分享计数。每次用户触发分享视频时调用，用于个人中心统计展示。
-     */
-    fun incrementShareCount() {
-        val newCount = _shareCountFlow.value + 1
-        sp.edit { putInt(SP_SHARE_COUNT, newCount) }
-        _shareCountFlow.value = newCount
     }
 
     fun setBaseUrl(url: String) {
