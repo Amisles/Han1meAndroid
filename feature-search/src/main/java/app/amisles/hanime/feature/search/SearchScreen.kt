@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -41,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -115,6 +117,21 @@ fun SearchScreen(
     val selectedFilter = remember { mutableStateOf("全部") }
     val selectedSort = remember { mutableStateOf(sortOptions[0]) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+
+    // 滚动接近底部自动加载下一页
+    androidx.compose.runtime.LaunchedEffect(listState, videos, isLoadingMore, hasMore) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            totalItems > 0 && lastVisible >= totalItems - 3
+        }.collect { shouldLoad ->
+            if (shouldLoad && hasMore && !isLoadingMore && videos.isNotEmpty()) {
+                viewModel.loadMore()
+            }
+        }
+    }
 
     androidx.compose.runtime.LaunchedEffect(initialKeyword) {
         if (!initialKeyword.isNullOrEmpty()) {
@@ -446,6 +463,7 @@ fun SearchScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.padding(15.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 80.dp)
@@ -523,62 +541,29 @@ fun SearchScreen(
                     }
                 }
 
+                // 加载中指示器（自动触发加载时显示）
                 if (isLoadingMore) {
                     item {
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.search_loading_more),
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
-                } else if (hasMore && videos.isNotEmpty()) {
+                } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
                     item {
-                        Column(
+                        Text(
+                            text = stringResource(R.string.search_no_more),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "第${currentPage}/${totalPages}页",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.search_load_more),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .clickable { viewModel.loadMore() }
-                                    .padding(horizontal = 20.dp, vertical = 6.dp)
-                            )
-                        }
-                    }
-                } else if (videos.isNotEmpty() && totalPages > 1) {
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = stringResource(R.string.search_no_more),
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     }
                 }
             }

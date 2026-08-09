@@ -107,7 +107,6 @@ fun ProfileScreen(
     val menuItems = buildList {
         add(ProfileMenuItem(Icons.Default.History, stringResource(R.string.profile_watch_history)) { onNavigate("history") })
         add(ProfileMenuItem(Icons.Default.Favorite, stringResource(R.string.profile_favorites)) { onNavigate("favorite") })
-        add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_download_manager)) { onNavigate("download") })
         add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_batch_download)) { onNavigate("batchDownload") })
         add(ProfileMenuItem(Icons.Default.Settings, stringResource(R.string.profile_settings)) { onNavigate("settings") })
         add(ProfileMenuItem(Icons.Default.Info, stringResource(R.string.profile_about)) { onNavigate("about") })
