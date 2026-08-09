@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,9 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 
 @Composable
 fun Header(
@@ -31,7 +29,7 @@ fun Header(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 15.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -40,25 +38,25 @@ fun Header(
                 text = title,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "H",
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "anime1",
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = ".me",
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -70,7 +68,7 @@ fun Header(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = stringResource(R.string.common_search),
-            tint = HanimeTextPrimary,
+            tint = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
                 .size(22.dp)
                 .clickable { onSearchNavigate() }

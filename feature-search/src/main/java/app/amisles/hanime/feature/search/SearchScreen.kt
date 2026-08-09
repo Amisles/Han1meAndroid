@@ -182,17 +182,17 @@ fun SearchScreen(
                 ),
                 shape = RoundedCornerShape(24.dp),
                 textStyle = androidx.compose.ui.text.TextStyle(
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 15.sp
                 ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.Black,
-                    unfocusedContainerColor = Color.Black,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.surface,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                     cursorColor = MaterialTheme.colorScheme.primary,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 trailingIcon = {
                     if (localQuery.value.isNotEmpty()) {
@@ -225,7 +225,7 @@ fun SearchScreen(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "搜索",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -246,7 +246,7 @@ fun SearchScreen(
                         text = filter,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal,
-                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 12.dp, vertical = 6.dp)

@@ -76,10 +76,10 @@ fun BatchDownloadScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.batch_title), color = Color.White) },
+                title = { Text(stringResource(R.string.batch_title), color = MaterialTheme.colorScheme.onBackground) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
@@ -161,14 +161,14 @@ private fun SearchSection(
         OutlinedTextField(
             value = authorIdInput,
             onValueChange = onInputChange,
-            label = { Text(stringResource(R.string.batch_author_id_placeholder), color = Color.Gray) },
+            label = { Text(stringResource(R.string.batch_author_id_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
             modifier = Modifier.weight(1f),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = Color.Gray
+                unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
 
@@ -182,7 +182,7 @@ private fun SearchSection(
             if (isSearching) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp
                 )
             } else {
@@ -204,20 +204,20 @@ private fun AuthorInfoSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = stringResource(R.string.batch_author_name, authorName),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "ID: $authorId",
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
             Text(
@@ -288,9 +288,9 @@ private fun VideoItem(
             ),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                isDisabled -> Color(0xFF2A2A2A)
-                video.isSelected -> Color(0xFF1A3A1A)
-                else -> Color(0xFF2A2A2A)
+                isDisabled -> MaterialTheme.colorScheme.surface
+                video.isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                else -> MaterialTheme.colorScheme.surface
             }
         )
     ) {
@@ -311,9 +311,9 @@ private fun VideoItem(
                     contentDescription = null,
                     tint = when {
                         video.isDownloaded -> MaterialTheme.colorScheme.primary
-                        isDisabled -> Color.Gray
+                        isDisabled -> MaterialTheme.colorScheme.onSurfaceVariant
                         video.isSelected -> MaterialTheme.colorScheme.primary
-                        else -> Color.Gray
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     modifier = Modifier.size(24.dp)
                 )
@@ -336,7 +336,7 @@ private fun VideoItem(
                 ) {
                     Text(
                         text = video.title,
-                        color = if (isDisabled) Color.Gray else Color.White,
+                        color = if (isDisabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         fontSize = 14.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -344,7 +344,7 @@ private fun VideoItem(
                     if (video.duration.isNotEmpty()) {
                         Text(
                             text = video.duration,
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
                         )
                     }
@@ -407,7 +407,7 @@ private fun VideoItem(
                                     ) {
                                         Text(
                                             text = stringResource(R.string.batch_quality_label) + ": ",
-                                            color = Color.Gray,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
                                         )
                                         video.qualities.getOrNull(video.selectedQualityIndex)?.let { quality ->
@@ -421,7 +421,7 @@ private fun VideoItem(
                                     }
                                     Text(
                                         text = stringResource(R.string.batch_qualities_available, video.qualities.size),
-                                        color = Color.Gray,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp
                                     )
                                 }
@@ -485,7 +485,7 @@ private fun QualitySelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.batch_select_quality), color = Color.White) },
+        title = { Text(stringResource(R.string.batch_select_quality), color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column {
                 qualities.forEachIndexed { index, quality ->
@@ -503,7 +503,7 @@ private fun QualitySelectionDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = quality.quality,
-                            color = if (index == selectedIndex) MaterialTheme.colorScheme.primary else Color.White,
+                            color = if (index == selectedIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                             fontSize = 16.sp
                         )
                     }
@@ -515,7 +515,7 @@ private fun QualitySelectionDialog(
                 Text(stringResource(R.string.common_close), color = MaterialTheme.colorScheme.primary)
             }
         },
-        containerColor = Color(0xFF2A2A2A)
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -539,7 +539,7 @@ private fun LoadMoreButton(
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("加载更多")
+                Text(stringResource(R.string.search_load_more))
             }
         }
     }
@@ -555,7 +555,7 @@ private fun BottomActionBar(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -565,7 +565,7 @@ private fun BottomActionBar(
         ) {
             OutlinedButton(
                 onClick = onSelectAll,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
             ) {
                 Text(stringResource(R.string.common_select_all))
             }
@@ -574,7 +574,7 @@ private fun BottomActionBar(
 
             Text(
                 text = stringResource(R.string.search_selected_count, selectedCount),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp
             )
 
@@ -584,13 +584,13 @@ private fun BottomActionBar(
                 onClick = onDownload,
                 enabled = selectedCount > 0 && !isDownloading,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedCount > 0) MaterialTheme.colorScheme.primary else Color.Gray
+                    containerColor = if (selectedCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
                 if (isDownloading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -612,7 +612,7 @@ private fun ErrorBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF3A1A1A))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Row(
             modifier = Modifier
@@ -622,11 +622,11 @@ private fun ErrorBanner(
         ) {
             Text(
                 text = message,
-                color = Color.Red,
+                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_close), tint = Color.White)
+                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_close), tint = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
     }
@@ -646,20 +646,20 @@ private fun EmptyStateHint() {
             Icon(
                 imageVector = Icons.Default.Download,
                 contentDescription = null,
-                tint = Color.Gray,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(64.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.batch_intro_title),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.batch_intro_input_id),
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
         }
