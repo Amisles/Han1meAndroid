@@ -157,6 +157,10 @@
     <string name="settings_language_ja">日本語</string>
     <string name="settings_concurrent_count_suffix"></string>
     <string name="settings_concurrent_set_toast">Set to %1$d concurrent downloads</string>
+    <string name="settings_theme_mode">Theme Mode</string>
+    <string name="settings_theme_system">Follow System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_intro_title">About App</string>

@@ -121,7 +121,7 @@ fun HanimeApp() {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HanimeBackground,
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBottomBar) {
                 BottomNav(

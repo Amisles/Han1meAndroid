@@ -157,6 +157,10 @@
     <string name="settings_language_ja">日本語</string>
     <string name="settings_concurrent_count_suffix">個</string>
     <string name="settings_concurrent_set_toast">同時ダウンロード数を%1$d個に設定しました</string>
+    <string name="settings_theme_mode">テーマモード</string>
+    <string name="settings_theme_system">システムに従う</string>
+    <string name="settings_theme_light">ライト</string>
+    <string name="settings_theme_dark">ダーク</string>
     <string name="about_title">アプリ情報</string>
     <string name="about_version">バージョン %1$s</string>
     <string name="about_intro_title">アプリ概要</string>

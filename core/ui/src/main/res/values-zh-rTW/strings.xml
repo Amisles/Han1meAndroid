@@ -157,6 +157,10 @@
     <string name="settings_language_ja">日本語</string>
     <string name="settings_concurrent_count_suffix">個</string>
     <string name="settings_concurrent_set_toast">已設定為%1$d個同時下載</string>
+    <string name="settings_theme_mode">主題模式</string>
+    <string name="settings_theme_system">跟隨系統</string>
+    <string name="settings_theme_light">淺色</string>
+    <string name="settings_theme_dark">深色</string>
     <string name="about_title">關於我們</string>
     <string name="about_version">版本 %1$s</string>
     <string name="about_intro_title">應用簡介</string>

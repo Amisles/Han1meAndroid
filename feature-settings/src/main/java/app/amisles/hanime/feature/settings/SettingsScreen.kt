@@ -52,8 +52,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Layers
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.outlined.Palette
 
 data class LanguageOption(val code: String, val label: String)
 
@@ -166,14 +168,21 @@ fun SettingsScreen(
     val maxDownloadConcurrent by Preferences.maxDownloadConcurrentFlow.collectAsState()
     val baseUrl by Preferences.baseUrlFlow.collectAsState()
     val appLanguage by Preferences.appLanguageFlow.collectAsState()
+    val themeMode by Preferences.themeModeFlow.collectAsState()
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var appLanguageMenuExpanded by remember { mutableStateOf(false) }
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
+    var themeModeMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(baseUrl) }
 
     val languageOptions = appLanguageOptions()
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
+    val themeModeOptions = listOf(
+        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+        ThemeMode.DARK to stringResource(R.string.settings_theme_dark)
+    )
 
     Column(
         modifier = Modifier
@@ -222,6 +231,21 @@ fun SettingsScreen(
             onSelect = { code ->
                 Preferences.setAppLanguage(code)
                 (context as? android.app.Activity)?.recreate()
+            }
+        )
+
+        // 主题模式
+        SettingsDropdownCard(
+            icon = Icons.Outlined.Palette,
+            title = stringResource(R.string.settings_theme_mode),
+            selectedLabel = themeModeOptions.find { it.first == themeMode }?.second
+                ?: stringResource(R.string.settings_theme_system),
+            expanded = themeModeMenuExpanded,
+            onExpandedChange = { themeModeMenuExpanded = it },
+            options = themeModeOptions,
+            selectedValue = themeMode,
+            onSelect = { mode ->
+                Preferences.setThemeMode(mode)
             }
         )
 
