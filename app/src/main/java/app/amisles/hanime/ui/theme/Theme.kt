@@ -11,6 +11,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import app.amisles.hanime.data.preferences.ThemeMode
 
 private val HanimeDarkColorScheme = darkColorScheme(
     primary = HanimePrimary,
@@ -29,30 +30,35 @@ private val HanimeDarkColorScheme = darkColorScheme(
     error = HanimePrimary
 )
 
-// 当前应用仅提供深色主题；浅色模式暂保留占位，后续如需可自定义配色
 private val HanimeLightColorScheme = lightColorScheme(
     primary = HanimePrimary,
-    onPrimary = HanimeTextPrimary,
-    primaryContainer = HanimeCard,
-    onPrimaryContainer = HanimeTextPrimary,
+    onPrimary = HanimeTextPrimaryLight,
+    primaryContainer = HanimeCardLight,
+    onPrimaryContainer = HanimeTextPrimaryLight,
     secondary = HanimePrimaryLight,
-    onSecondary = HanimeTextPrimary,
-    background = HanimeBackground,
-    onBackground = HanimeTextPrimary,
-    surface = HanimeCard,
-    onSurface = HanimeTextPrimary,
-    surfaceVariant = HanimeBorder,
-    onSurfaceVariant = HanimeTextSecondary,
-    outline = HanimeBorder,
+    onSecondary = HanimeTextPrimaryLight,
+    background = HanimeBackgroundLight,
+    onBackground = HanimeTextPrimaryLight,
+    surface = HanimeCardLight,
+    onSurface = HanimeTextPrimaryLight,
+    surfaceVariant = HanimeBorderLight,
+    onSurfaceVariant = HanimeTextSecondaryLight,
+    outline = HanimeBorderLight,
     error = HanimePrimary
 )
 
 @Composable
 fun HanimeTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current

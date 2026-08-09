@@ -20,6 +20,7 @@ object Preferences {
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
     private const val SP_APP_LANGUAGE = "app_language"
+    private const val SP_THEME_MODE = "theme_mode"
 
     // 默认官网地址
     const val DEFAULT_BASE_URL = "https://hanime1.me"
@@ -54,6 +55,9 @@ object Preferences {
     private val _appLanguageFlow = MutableStateFlow(LANGUAGE_ZH_CN)
     val appLanguageFlow: StateFlow<String> = _appLanguageFlow.asStateFlow()
 
+    private val _themeModeFlow = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeModeFlow: StateFlow<ThemeMode> = _themeModeFlow.asStateFlow()
+
     fun init(context: Context) {
         // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
         sp = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -70,6 +74,7 @@ object Preferences {
         }
         _baseUrlFlow.value = safeBaseUrl
         _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
+        _themeModeFlow.value = ThemeMode.fromName(sp.getString(SP_THEME_MODE, null))
     }
 
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
@@ -86,9 +91,16 @@ object Preferences {
 
     val appLanguage: String get() = _appLanguageFlow.value
 
+    val themeMode: ThemeMode get() = _themeModeFlow.value
+
     fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
         _appLanguageFlow.value = lang
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        sp.edit { putString(SP_THEME_MODE, mode.name) }
+        _themeModeFlow.value = mode
     }
 
     fun setBaseUrl(url: String) {

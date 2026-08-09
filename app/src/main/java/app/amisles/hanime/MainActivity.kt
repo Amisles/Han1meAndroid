@@ -9,11 +9,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,6 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.preferences.ThemeMode
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.feature.detail.DetailScreen
 import app.amisles.hanime.feature.download.DownloadScreen
@@ -42,6 +46,7 @@ import app.amisles.hanime.feature.settings.SettingsScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.ui.theme.HanimeBackground
+import app.amisles.hanime.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.ui.theme.HanimeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -67,12 +72,30 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(HanimeBackground.hashCode()),
-            navigationBarStyle = SystemBarStyle.dark(HanimeBackground.hashCode())
-        )
         setContent {
-            HanimeTheme {
+            val themeMode by Preferences.themeModeFlow.collectAsState()
+            val darkTheme = when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            // 根据主题模式动态调整系统栏图标颜色
+            SideEffect {
+                val bgArgb = if (darkTheme) HanimeBackground else HanimeBackgroundLight
+                enableEdgeToEdge(
+                    statusBarStyle = if (darkTheme) {
+                        SystemBarStyle.dark(bgArgb.hashCode())
+                    } else {
+                        SystemBarStyle.light(bgArgb.hashCode(), bgArgb.hashCode())
+                    },
+                    navigationBarStyle = if (darkTheme) {
+                        SystemBarStyle.dark(bgArgb.hashCode())
+                    } else {
+                        SystemBarStyle.light(bgArgb.hashCode(), bgArgb.hashCode())
+                    }
+                )
+            }
+            HanimeTheme(themeMode = themeMode) {
                 HanimeApp()
             }
         }
