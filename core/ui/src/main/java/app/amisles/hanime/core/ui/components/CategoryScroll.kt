@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -16,9 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.model.categoryList
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
 @Composable
 fun CategoryScroll(
@@ -29,7 +27,7 @@ fun CategoryScroll(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 15.dp, vertical = 12.dp)
             .horizontalScroll(rememberScrollState())
     ) {
@@ -39,7 +37,7 @@ fun CategoryScroll(
                 text = category,
                 fontSize = 14.sp,
                 fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                color = if (isSelected) HanimeTextPrimary else HanimeTextSecondary,
+                color = if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(horizontal = 8.dp)
                     .clickable {

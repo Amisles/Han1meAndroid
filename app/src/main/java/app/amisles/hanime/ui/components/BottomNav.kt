@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -38,30 +40,40 @@ fun BottomNav(
     currentRoute: String,
     onNavigate: (String) -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { /* 不执行任何操作，仅消费触摸事件 */ }
-            .navigationBarsPadding()
-            .padding(top = 8.dp, bottom = 12.dp)
-            .padding(top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .background(MaterialTheme.colorScheme.surface)
     ) {
-        screens.forEach { screen ->
-            val isSelected = currentRoute.startsWith(screen.route)
-            Icon(
-                imageVector = screen.icon,
-                contentDescription = stringResource(screen.labelResId),
-                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { onNavigate(screen.route) }
-            )
+        // 顶部分隔线，浅色/深色模式下均能与页面背景区分出清晰边界
+        HorizontalDivider(
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 不执行任何操作，仅消费触摸事件 */ }
+                .navigationBarsPadding()
+                .padding(top = 8.dp, bottom = 12.dp)
+                .padding(top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            screens.forEach { screen ->
+                val isSelected = currentRoute.startsWith(screen.route)
+                Icon(
+                    imageVector = screen.icon,
+                    contentDescription = stringResource(screen.labelResId),
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable { onNavigate(screen.route) }
+                )
+            }
         }
     }
 }
