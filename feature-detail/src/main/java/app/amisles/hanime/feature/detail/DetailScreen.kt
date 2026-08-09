@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,7 +87,8 @@ fun DetailScreen(
     onVideoClick: (String) -> Unit = {},
     onTagClick: (String) -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    onAuthorPageClick: (String) -> Unit = {}
+    onAuthorPageClick: (String) -> Unit = {},
+    onNavigateToLogin: () -> Unit = {}
 ) {
     val viewModel: DetailViewModel = hiltViewModel()
     val context = LocalContext.current
@@ -103,6 +105,9 @@ fun DetailScreen(
     val repliesCache by viewModel.repliesCache.collectAsState()
     val loadingReplies by viewModel.loadingReplies.collectAsState()
     val repliesError by viewModel.repliesError.collectAsState()
+    val isPostingComment by viewModel.isPostingComment.collectAsState()
+    val postCommentError by viewModel.postCommentError.collectAsState()
+    val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsState()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
@@ -655,7 +660,15 @@ fun DetailScreen(
                             repliesCache = repliesCache,
                             loadingReplies = loadingReplies,
                             repliesError = repliesError,
-                            onLoadReplies = { commentId -> viewModel.loadReplies(commentId) }
+                            onLoadReplies = { commentId -> viewModel.loadReplies(commentId) },
+                            isLogin = isLogin,
+                            isPostingComment = isPostingComment,
+                            postCommentError = postCommentError,
+                            onPostComment = { text ->
+                                viewModel.postComment(text)
+                            },
+                            onClearPostError = { viewModel.clearPostCommentError() },
+                            onNavigateToLogin = onNavigateToLogin
                         )
                     }
                 }
@@ -824,7 +837,7 @@ private fun CommentTabButton(
 }
 
 /**
- * 评论区：包含加载中、错误、空、列表四种状态
+ * 评论区：包含输入框、加载中、错误、空、列表五种状态
  */
 @Composable
 private fun CommentSection(
@@ -835,45 +848,61 @@ private fun CommentSection(
     repliesCache: Map<String, List<app.amisles.hanime.domain.model.Reply>>,
     loadingReplies: Set<String>,
     repliesError: Map<String, String?>,
-    onLoadReplies: (String) -> Unit
+    onLoadReplies: (String) -> Unit,
+    isLogin: Boolean,
+    isPostingComment: Boolean,
+    postCommentError: String?,
+    onPostComment: (String) -> Unit,
+    onClearPostError: () -> Unit,
+    onNavigateToLogin: () -> Unit
 ) {
-    when {
-        isLoading -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 30.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(28.dp)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 评论输入框
+        CommentInputBar(
+            isLogin = isLogin,
+            isPosting = isPostingComment,
+            error = postCommentError,
+            onPost = onPostComment,
+            onClearError = onClearPostError,
+            onNavigateToLogin = onNavigateToLogin
+        )
+
+        when {
+            isLoading -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 30.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            error != null -> {
+                KaomojiErrorView(
+                    message = error,
+                    onRetry = onRetry
                 )
             }
-        }
-        error != null -> {
-            KaomojiErrorView(
-                message = error,
-                onRetry = onRetry
-            )
-        }
-        comments.isEmpty() -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.comment_empty),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            comments.isEmpty() -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.comment_empty),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        }
-        else -> {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            else -> {
                 comments.forEach { comment ->
                     CommentItem(
                         comment = comment,
@@ -887,11 +916,118 @@ private fun CommentSection(
                             .fillMaxWidth()
                             .height(0.5.dp)
                             .padding(horizontal = 15.dp)
-                            .background(Color.White.copy(alpha = 0.06f))
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
+        }
+    }
+}
+
+/**
+ * 评论输入栏：未登录时提示点击登录；已登录时显示输入框和发送按钮。
+ */
+@Composable
+private fun CommentInputBar(
+    isLogin: Boolean,
+    isPosting: Boolean,
+    error: String?,
+    onPost: (String) -> Unit,
+    onClearError: () -> Unit,
+    onNavigateToLogin: () -> Unit
+) {
+    var inputText by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 15.dp, vertical = 10.dp)
+    ) {
+        if (!isLogin) {
+            // 未登录：点击跳转登录页
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onNavigateToLogin() }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.comment_login_required),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            // 已登录：输入框 + 发送按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = inputText,
+                    onValueChange = {
+                        inputText = it
+                        if (error != null) onClearError()
+                    },
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.comment_input_hint),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    singleLine = false,
+                    maxLines = 3,
+                    enabled = !isPosting,
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+                IconButton(
+                    onClick = {
+                        if (inputText.isNotBlank() && !isPosting) {
+                            onPost(inputText)
+                            inputText = ""
+                        }
+                    },
+                    enabled = !isPosting && inputText.isNotBlank()
+                ) {
+                    if (isPosting) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.Send,
+                            contentDescription = stringResource(R.string.comment_post_button),
+                            tint = if (inputText.isNotBlank()) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 错误提示
+        if (error != null) {
+            Text(
+                text = error,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+            )
         }
     }
 }

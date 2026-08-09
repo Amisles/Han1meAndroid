@@ -26,5 +26,9 @@ data class VideoDetail(
     val authorPageUrl: String = "",
     val description: String,
     val relatedVideos: List<HanimeVideo> = emptyList(),
-    val playlist: PlaylistInfo? = null
+    val playlist: PlaylistInfo? = null,
+    // 详情页CSRF Token
+    val csrfToken: String = "",
+    // 当前评论数
+    val commentCount: Int = 0
 )

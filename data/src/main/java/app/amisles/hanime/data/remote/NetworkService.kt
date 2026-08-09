@@ -293,6 +293,66 @@ class NetworkService @Inject constructor(
             executeRequest(buildRequest(url))
         }
     }
+
+    /**
+     * 发表视频评论。
+     *
+     * 官网接口：POST /createComment
+     * Content-Type: application/x-www-form-urlencoded
+     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
+     *
+     * Body 参数：
+     * - _token: CSRF Token
+     * - comment-user-id: 当前登录用户 ID
+     * - comment-type: 固定 "video"
+     * - comment-foreign-id: 视频 ID
+     * - comment-count: 当前评论数
+     * - comment-text: 评论内容
+     *
+     * 返回 JSON：{"comment_id": ..., "comment_count": ..., "single_video_comment": "<HTML>"}
+     */
+    suspend fun postComment(
+        videoId: String,
+        commentText: String,
+        commentCount: Int,
+        csrfToken: String,
+        userId: String
+    ): String {
+        AppLogger.log("NetworkService", "postComment called, videoId: $videoId, userId: $userId")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val form = FormBody.Builder()
+                .add("_token", csrfToken)
+                .add("comment-user-id", userId)
+                .add("comment-type", "video")
+                .add("comment-foreign-id", videoId)
+                .add("comment-count", commentCount.toString())
+                .add("comment-text", commentText)
+                .build()
+            val req = Request.Builder()
+                .url("$baseUrl/createComment")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", "$baseUrl/")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+            AppLogger.log("NetworkService", "Posting comment to: $baseUrl/createComment")
+            client.newCall(req).execute().use { response ->
+                val code = response.code
+                AppLogger.log("NetworkService", "postComment response code: $code")
+                val body = response.body?.string()
+                if (!response.isSuccessful) {
+                    throw Exception("发表评论失败 (HTTP $code)")
+                }
+                body ?: throw Exception("发表评论返回空响应")
+            }
+        }
+    }
 }
 
 data class FetchResult(val html: String, val baseUrl: String)

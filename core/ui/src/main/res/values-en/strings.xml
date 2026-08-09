@@ -69,6 +69,13 @@
     <string name="comment_hide_replies">Hide replies</string>
     <string name="comment_reply_load_failed">Failed to load replies</string>
     <string name="comment_reply_to">Reply to %1$s</string>
+    <string name="comment_input_hint">Write a comment…</string>
+    <string name="comment_post_button">Post</string>
+    <string name="comment_posting">Posting…</string>
+    <string name="comment_post_success">Comment posted</string>
+    <string name="comment_post_failed">Failed to post comment</string>
+    <string name="comment_login_required">Please log in to post a comment</string>
+    <string name="comment_empty_content">Comment cannot be empty</string>
 
     <string name="download_empty">No download tasks</string>
     <string name="download_empty_hint">Download videos from the detail page</string>

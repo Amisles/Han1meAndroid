@@ -69,6 +69,13 @@
     <string name="comment_hide_replies">返信を非表示</string>
     <string name="comment_reply_load_failed">返信の読み込みに失敗しました</string>
     <string name="comment_reply_to">%1$s への返信</string>
+    <string name="comment_input_hint">コメントを書く…</string>
+    <string name="comment_post_button">投稿</string>
+    <string name="comment_posting">投稿中…</string>
+    <string name="comment_post_success">コメントを投稿しました</string>
+    <string name="comment_post_failed">コメントの投稿に失敗しました</string>
+    <string name="comment_login_required">コメントを投稿するにはログインしてください</string>
+    <string name="comment_empty_content">コメントを入力してください</string>
 
     <string name="download_empty">ダウンロードタスクがありません</string>
     <string name="download_empty_hint">詳細ページから動画をダウンロードしてください</string>

@@ -30,6 +30,47 @@ class CommentParser @Inject constructor() {
         }
     }
 
+    /**
+     * 解析 createComment 接口返回的 JSON。
+     *
+     * 官网响应：
+     * {
+     *   "comment_id": 502418,
+     *   "comment_count": 14,
+     *   "single_video_comment": "<单条评论 HTML>"
+     * }
+     *
+     * single_video_comment 的结构与详情页评论列表单条评论相同：
+     * <a><img class="img-circle" src="avatar"></a>
+     * <div class="report-btn-wrapper">...</div>
+     * <div id="comment-like-form-wrapper">...</div>
+     *
+     * @return Pair(新评论对象, 新评论总数)，解析失败时为 null
+     */
+    fun parsePostedComment(json: String): Pair<Comment, Int>? {
+        if (json.isBlank()) return null
+        return try {
+            val obj = JSONObject(json)
+            val newCount = obj.optInt("comment_count", 0)
+            val html = obj.optString("single_video_comment", "")
+            if (html.isEmpty()) {
+                AppLogger.log("CommentParser", "single_video_comment field is empty")
+                return null
+            }
+            val doc = Jsoup.parse(html)
+            // single_video_comment 直接以 <a><img class="img-circle"> 开头
+            val img = doc.selectFirst("img.img-circle") ?: run {
+                AppLogger.log("CommentParser", "No avatar found in posted comment HTML")
+                return null
+            }
+            val comment = parseSingleComment(img) ?: return null
+            Pair(comment, newCount)
+        } catch (e: Exception) {
+            AppLogger.logError("CommentParser", "Failed to parse posted comment: ${e.message}", e)
+            null
+        }
+    }
+
     private fun parseHtml(html: String): List<Comment> {
         val doc = Jsoup.parse(html)
         val commentStart = doc.selectFirst("#comment-start") ?: run {

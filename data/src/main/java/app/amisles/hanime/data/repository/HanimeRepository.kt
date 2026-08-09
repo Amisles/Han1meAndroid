@@ -185,6 +185,39 @@ class HanimeRepository @Inject constructor(
         return commentParser.parseReplies(json)
     }
 
+    /**
+     * 发表视频评论。
+     *
+     * @param videoId 视频 ID
+     * @param commentText 评论内容
+     * @param commentCount 当前评论数（从 VideoDetail.commentCount 获取）
+     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
+     * @return Pair(新评论对象, 新评论总数)，失败抛异常
+     */
+    suspend fun postComment(
+        videoId: String,
+        commentText: String,
+        commentCount: Int,
+        csrfToken: String
+    ): Pair<Comment, Int> {
+        val userId = Preferences.savedUserId.ifBlank {
+            throw IllegalStateException("未登录，无法发表评论")
+        }
+        if (csrfToken.isBlank()) {
+            throw IllegalStateException("CSRF Token 缺失，请刷新页面后重试")
+        }
+        val json = networkService.postComment(
+            videoId = videoId,
+            commentText = commentText,
+            commentCount = commentCount,
+            csrfToken = csrfToken,
+            userId = userId
+        )
+        AppLogger.log("HanimeRepository", "postComment JSON received, length: ${json.length}")
+        return commentParser.parsePostedComment(json)
+            ?: throw IllegalStateException("评论发表成功但解析失败")
+    }
+
     suspend fun login(email: String, password: String): Result<String> = runCatching {
         val page = try {
             networkService.fetchLoginPageWithBaseUrl()

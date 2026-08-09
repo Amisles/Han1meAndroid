@@ -88,6 +88,15 @@ class WatchPageParser @Inject constructor(
                 relatedVideos
             }
 
+            // 解析 CSRF Token
+            val csrfToken = doc.selectFirst("meta[name=\"csrf-token\"]")?.attr("content")?.trim() ?: ""
+
+            // 解析当前评论数：优先从 createComment 表单的 comment-count 隐藏 input 获取
+            val commentCount = doc.selectFirst("input[name=\"comment-count\"]")
+                ?.attr("value")?.trim()?.toIntOrNull()
+                ?: Regex("comment-count\"\\s+value=\"(\\d+)\"").find(html)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                ?: 0
+
             if (defaultSourceUrl.isEmpty() && sources.isNotEmpty()) {
                 val defaultSource = sources.find { it.size == 720 } ?: sources.first()
                 return VideoDetail(
@@ -103,7 +112,9 @@ class WatchPageParser @Inject constructor(
                     authorPageUrl = authorPageUrl,
                     description = description,
                     relatedVideos = filteredRelatedVideos,
-                    playlist = playlist
+                    playlist = playlist,
+                    csrfToken = csrfToken,
+                    commentCount = commentCount
                 )
             }
 
@@ -120,7 +131,9 @@ class WatchPageParser @Inject constructor(
                 authorPageUrl = authorPageUrl,
                 description = description,
                 relatedVideos = filteredRelatedVideos,
-                playlist = playlist
+                playlist = playlist,
+                csrfToken = csrfToken,
+                commentCount = commentCount
             )
         } catch (e: Exception) {
             AppLogger.logError("WatchPageParser", "Error parsing watch page: ${e.message}", e)

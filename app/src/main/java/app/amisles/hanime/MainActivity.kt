@@ -396,6 +396,9 @@ fun HanimeApp() {
                     },
                     onAuthorPageClick = { authorPageUrl ->
                         navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}")
+                    },
+                    onNavigateToLogin = {
+                        navController.navigate("login")
                     }
                 )
             }
