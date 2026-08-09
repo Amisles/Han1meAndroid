@@ -63,12 +63,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeBorder
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 
 private val LOGIN_URLS = listOf("https://hanime1.me/login", "https://hanimeone.me/login")
 
@@ -100,13 +95,13 @@ fun LoginScreen(
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
-        containerColor = HanimeBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         stringResource(R.string.login_title),
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -115,11 +110,11 @@ fun LoginScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "返回",
-                            tint = HanimeTextPrimary
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = HanimeBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         }
     ) { innerPadding ->
@@ -127,16 +122,16 @@ fun LoginScreen(
             Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(HanimeBackground)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             TabRow(
                 selectedTabIndex = tabIndex,
-                containerColor = HanimeCard,
-                contentColor = HanimeTextPrimary,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onBackground,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         height = 2.dp
                     )
                 },
@@ -146,8 +141,8 @@ fun LoginScreen(
                     Tab(
                         selected = tabIndex == idx,
                         onClick = { tabIndex = idx; vm.reset() },
-                        selectedContentColor = HanimePrimary,
-                        unselectedContentColor = HanimeTextSecondary
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ) {
                         Text(
                             title,
@@ -196,13 +191,13 @@ private fun EmailPasswordTab(
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             stringResource(R.string.login_account_title),
-            color = HanimeTextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Text(
             "如遇到 Cloudflare 验证或登录失败，请切换到 WebView 登录。",
-            color = HanimeTextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             lineHeight = 18.sp
         )
@@ -211,7 +206,7 @@ private fun EmailPasswordTab(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text(stringResource(R.string.login_email), color = HanimeTextSecondary) },
+            label = { Text(stringResource(R.string.login_email), color = MaterialTheme.colorScheme.onSurfaceVariant) },
             singleLine = true,
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(
@@ -225,7 +220,7 @@ private fun EmailPasswordTab(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text(stringResource(R.string.login_password), color = HanimeTextSecondary) },
+            label = { Text(stringResource(R.string.login_password), color = MaterialTheme.colorScheme.onSurfaceVariant) },
             singleLine = true,
             enabled = !isLoading,
             visualTransformation = PasswordVisualTransformation(),
@@ -285,9 +280,9 @@ private fun EmailPasswordTab(
                     .height(48.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = HanimePrimary,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
-                    disabledContainerColor = HanimePrimary.copy(alpha = .5f),
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .5f),
                     disabledContentColor = Color.White.copy(alpha = .6f)
                 )
             ) {
@@ -392,13 +387,13 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(HanimeBackground),
+                    .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = HanimePrimary, strokeWidth = 2.5.dp)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 2.5.dp)
                     Spacer(Modifier.height(10.dp))
-                    Text("正在加载登录页...", color = HanimeTextSecondary, fontSize = 12.sp)
+                    Text("正在加载登录页...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
         }
@@ -429,13 +424,13 @@ private fun ManualCookieTab(vm: LoginViewModel) {
         Spacer(Modifier.height(6.dp))
         Text(
             "手动粘贴 Cookie",
-            color = HanimeTextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Text(
             "从浏览器登录官网后，打开开发者工具复制 Cookie 粘贴到这里。\n格式：laravel_session=xxx; XSRF-TOKEN=yyy",
-            color = HanimeTextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             lineHeight = 18.sp
         )
@@ -443,7 +438,7 @@ private fun ManualCookieTab(vm: LoginViewModel) {
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
-            label = { Text("Cookie 字符串", color = HanimeTextSecondary) },
+            label = { Text("Cookie 字符串", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             enabled = !isLoading,
             minLines = 6,
             maxLines = 12,
@@ -468,9 +463,9 @@ private fun ManualCookieTab(vm: LoginViewModel) {
                 .height(48.dp),
             shape = RoundedCornerShape(10.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = HanimePrimary,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
-                disabledContainerColor = HanimePrimary.copy(alpha = .5f),
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .5f),
                 disabledContentColor = Color.White.copy(alpha = .6f)
             )
         ) {
@@ -493,19 +488,19 @@ private fun ManualCookieTab(vm: LoginViewModel) {
 
 @Composable
 private fun outlinedDefaults() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = HanimeTextPrimary,
-    unfocusedTextColor = HanimeTextPrimary,
-    disabledTextColor = HanimeTextSecondary,
-    cursorColor = HanimePrimary,
-    focusedContainerColor = HanimeCard,
-    unfocusedContainerColor = HanimeCard,
-    disabledContainerColor = HanimeCard,
-    errorContainerColor = HanimeCard,
-    focusedBorderColor = HanimePrimary,
-    unfocusedBorderColor = HanimeBorder,
-    disabledBorderColor = HanimeBorder,
+    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedContainerColor = MaterialTheme.colorScheme.surface,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+    disabledContainerColor = MaterialTheme.colorScheme.surface,
+    errorContainerColor = MaterialTheme.colorScheme.surface,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    disabledBorderColor = MaterialTheme.colorScheme.outline,
     errorBorderColor = Color(0xFFff6b6b),
-    focusedLabelColor = HanimePrimary,
-    unfocusedLabelColor = HanimeTextSecondary,
+    focusedLabelColor = MaterialTheme.colorScheme.primary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
     errorLabelColor = Color(0xFFff6b6b)
 )

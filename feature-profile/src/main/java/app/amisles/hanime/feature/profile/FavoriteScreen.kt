@@ -50,11 +50,7 @@ import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun FavoriteScreen(
@@ -85,13 +81,13 @@ fun FavoriteScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HanimeBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 15.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -108,7 +104,7 @@ fun FavoriteScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = if (isSelectionMode) "取消" else "返回",
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -117,14 +113,14 @@ fun FavoriteScreen(
                 text = if (isSelectionMode) "已选 ${selectedIds.size} 项" else stringResource(R.string.profile_favorites),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f)
             )
             if (!isSelectionMode && favorites.isNotEmpty()) {
                 Text(
                     text = "管理",
                     fontSize = 14.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable { isSelectionMode = true }
                         .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -133,7 +129,7 @@ fun FavoriteScreen(
                 Text(
                     text = "全选",
                     fontSize = 14.sp,
-                    color = if (selectedIds.size == favorites.size) HanimeTextSecondary else HanimePrimary,
+                    color = if (selectedIds.size == favorites.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable {
                             selectedIds = if (selectedIds.size == favorites.size) {
@@ -152,7 +148,7 @@ fun FavoriteScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = HanimePrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (favorites.isEmpty()) {
             Box(
@@ -170,13 +166,13 @@ fun FavoriteScreen(
                     Text(
                         text = stringResource(R.string.favorite_empty),
                         fontSize = 16.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = stringResource(R.string.favorite_empty_hint),
                         fontSize = 13.sp,
-                        color = HanimeTextSecondary.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -242,14 +238,14 @@ fun FavoriteScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 15.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "已选择 ${selectedIds.size} 项",
                     fontSize = 14.sp,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -280,7 +276,7 @@ fun FavoriteScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .background(HanimeCard, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
                     .clickable(enabled = false) {},
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -289,13 +285,13 @@ fun FavoriteScreen(
                     text = stringResource(R.string.favorite_delete_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
                     text = "确定删除 \"$deleteTargetTitle\" 吗？",
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 Row(
@@ -305,7 +301,7 @@ fun FavoriteScreen(
                     Text(
                         text = stringResource(R.string.common_cancel),
                         fontSize = 14.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { showDeleteConfirm = false }
@@ -354,7 +350,7 @@ private fun FavoriteVideoItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 8.dp)
-            .background(if (isSelectionMode && isSelected) HanimePrimary.copy(alpha = 0.1f) else HanimeCard)
+            .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
             .padding(8.dp)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
@@ -369,8 +365,8 @@ private fun FavoriteVideoItem(
                 checked = isSelected,
                 onCheckedChange = onCheckedChange,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = HanimePrimary,
-                    uncheckedColor = HanimeTextSecondary
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 modifier = Modifier.size(24.dp)
             )
@@ -398,7 +394,7 @@ private fun FavoriteVideoItem(
                 text = video.title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -406,7 +402,7 @@ private fun FavoriteVideoItem(
                 Text(
                     text = video.author,
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -418,21 +414,21 @@ private fun FavoriteVideoItem(
                     Text(
                         text = video.duration,
                         fontSize = 10.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (video.likeRate.isNotEmpty()) {
                     Text(
                         text = video.likeRate,
                         fontSize = 10.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (video.viewCount.isNotEmpty()) {
                     Text(
                         text = video.viewCount,
                         fontSize = 10.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

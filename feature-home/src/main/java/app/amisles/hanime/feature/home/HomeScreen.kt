@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -53,10 +54,6 @@ import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -132,14 +129,14 @@ fun HomeScreenContent(
         state = pullState,
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
     LazyColumn(
         state = listState,
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         item(key = "home-header") {
@@ -201,12 +198,12 @@ fun HomeScreenContent(
                             text = section.title,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = HanimeTextPrimary
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
                             text = "${stringResource(R.string.common_view_more)} →",
                             fontSize = 13.sp,
-                            color = HanimeTextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable { onViewMore(section.title) }
                         )
                     }
@@ -256,7 +253,7 @@ private fun HomeSkeletonScreen() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Banner 骨架占位：260dp 高度，全宽，圆角
         Box(
@@ -264,7 +261,7 @@ private fun HomeSkeletonScreen() {
                 .fillMaxWidth()
                 .height(260.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(HanimeCard)
+                .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )
 
@@ -276,7 +273,7 @@ private fun HomeSkeletonScreen() {
                     .padding(horizontal = 15.dp, vertical = 15.dp)
                     .size(width = 120.dp, height = 18.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .alpha(alpha)
             )
 
@@ -310,7 +307,7 @@ private fun SkeletonVideoCard(alpha: Float) {
             modifier = Modifier
                 .size(width = 200.dp, height = 133.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(HanimeCard)
+                .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -320,7 +317,7 @@ private fun SkeletonVideoCard(alpha: Float) {
                 .fillMaxWidth()
                 .height(14.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(HanimeCard)
+                .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )
         Spacer(modifier = Modifier.height(6.dp))
@@ -330,7 +327,7 @@ private fun SkeletonVideoCard(alpha: Float) {
                 .width(120.dp)
                 .height(14.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(HanimeCard)
+                .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )
     }

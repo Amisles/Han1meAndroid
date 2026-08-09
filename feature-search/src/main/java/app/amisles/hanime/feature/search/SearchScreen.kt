@@ -29,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -58,11 +59,6 @@ import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.categoryList
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
 val filterTypes = listOf("全部") + categoryList
 
@@ -157,13 +153,13 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HanimeBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 15.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -172,7 +168,7 @@ fun SearchScreen(
                 onValueChange = {
                     localQuery.value = it
                 },
-                placeholder = { Text(stringResource(R.string.search_placeholder), color = HanimeTextSecondary) },
+                placeholder = { Text(stringResource(R.string.search_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(24.dp)),
@@ -192,9 +188,9 @@ fun SearchScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.Black,
                     unfocusedContainerColor = Color.Black,
-                    focusedBorderColor = HanimePrimary,
-                    unfocusedBorderColor = HanimeCard,
-                    cursorColor = HanimePrimary,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surface,
+                    cursorColor = MaterialTheme.colorScheme.primary,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White
                 ),
@@ -203,7 +199,7 @@ fun SearchScreen(
                         Text(
                             text = "✕",
                             fontSize = 18.sp,
-                            color = HanimeTextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable {
                                 localQuery.value = ""
                                 viewModel.setQuery("")
@@ -219,7 +215,7 @@ fun SearchScreen(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(HanimePrimary)
+                    .background(MaterialTheme.colorScheme.primary)
                     .clickable {
                         viewModel.setQuery(localQuery.value)
                         viewModel.executeSearch()
@@ -238,7 +234,7 @@ fun SearchScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HanimeBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 15.dp, vertical = 12.dp)
         ) {
             LazyRow(
@@ -250,9 +246,9 @@ fun SearchScreen(
                         text = filter,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Normal,
-                        color = if (isSelected) Color.White else HanimeTextPrimary,
+                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
-                            .background(if (isSelected) HanimePrimary else HanimeCard)
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .clickable {
@@ -274,7 +270,7 @@ fun SearchScreen(
                 Text(
                     text = stringResource(R.string.search_sort),
                     fontSize = 13.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -283,7 +279,7 @@ fun SearchScreen(
                     Row(
                         modifier = Modifier
                             .width(sortDropdownWidth)
-                            .background(HanimeCard, RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
                             .clickable { sortMenuExpanded = true }
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -292,13 +288,13 @@ fun SearchScreen(
                         Text(
                             text = selectedSort.value.label,
                             fontSize = 13.sp,
-                            color = HanimePrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = "选择排序",
-                            tint = HanimePrimary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -314,7 +310,7 @@ fun SearchScreen(
                                     Text(
                                         text = option.label,
                                         fontSize = 14.sp,
-                                        color = if (isSelected) HanimePrimary else HanimeTextSecondary,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
                                     )
                                 },
@@ -328,7 +324,7 @@ fun SearchScreen(
                                         Icon(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = null,
-                                            tint = HanimePrimary,
+                                            tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -347,7 +343,7 @@ fun SearchScreen(
                     .height(200.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = HanimePrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (error != null && videos.isEmpty()) {
             KaomojiErrorView(
@@ -370,12 +366,12 @@ fun SearchScreen(
                         text = stringResource(R.string.search_history),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = HanimeTextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "清空",
                         fontSize = 12.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.clickable { viewModel.clearSearchHistory() }
                     )
                 }
@@ -391,7 +387,7 @@ fun SearchScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(HanimeCard, RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                                 .clickable {
                                     localQuery.value = historyQuery
                                     viewModel.setQuery(historyQuery)
@@ -405,14 +401,14 @@ fun SearchScreen(
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = null,
-                                tint = HanimeTextSecondary,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
                             // 历史关键词
                             Text(
                                 text = historyQuery,
                                 fontSize = 14.sp,
-                                color = HanimeTextPrimary,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -427,7 +423,7 @@ fun SearchScreen(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "删除",
-                                    tint = HanimeTextSecondary,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -444,7 +440,7 @@ fun SearchScreen(
                     Text(
                         text = "输入关键词或选择分类开始搜索",
                         fontSize = 14.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -461,7 +457,7 @@ fun SearchScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(HanimeCard, RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                             .padding(vertical = 4.dp, horizontal = 6.dp)
                             .clickable { onVideoClick(video.videoUrl) },
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -489,7 +485,7 @@ fun SearchScreen(
                                 text = video.title,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = HanimeTextPrimary,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -497,7 +493,7 @@ fun SearchScreen(
                                 Text(
                                     text = video.author,
                                     fontSize = 10.sp,
-                                    color = HanimePrimary,
+                                    color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
                                         .padding(top = 2.dp)
                                         .clickable { onAuthorClick(video.author) }
@@ -510,17 +506,17 @@ fun SearchScreen(
                                 Text(
                                     text = video.duration,
                                     fontSize = 9.sp,
-                                    color = HanimeTextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = video.likeRate,
                                     fontSize = 9.sp,
-                                    color = HanimeTextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = video.viewCount,
                                     fontSize = 9.sp,
-                                    color = HanimeTextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -535,12 +531,12 @@ fun SearchScreen(
                                 .padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            CircularProgressIndicator(color = HanimePrimary)
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = stringResource(R.string.search_loading_more),
                                 fontSize = 13.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -555,14 +551,14 @@ fun SearchScreen(
                             Text(
                                 text = "第${currentPage}/${totalPages}页",
                                 fontSize = 13.sp,
-                                color = HanimeTextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             Text(
                                 text = stringResource(R.string.search_load_more),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = HanimePrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .clickable { viewModel.loadMore() }
                                     .padding(horizontal = 20.dp, vertical = 6.dp)
@@ -580,7 +576,7 @@ fun SearchScreen(
                             Text(
                                 text = stringResource(R.string.search_no_more),
                                 fontSize = 13.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -75,13 +76,6 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeBorder
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimePrimaryLight
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
 import kotlinx.coroutines.launch
 
@@ -155,14 +149,14 @@ fun DetailScreen(
         modifier = Modifier
             .fillMaxSize()
             .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
-            .background(if (isPlayerFullscreen) Color.Black else HanimeBackground)
+            .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
     ) {
         if (!isPlayerFullscreen) {
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(HanimeBackground)
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 15.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -173,7 +167,7 @@ fun DetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
-                            tint = HanimeTextPrimary,
+                            tint = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -215,7 +209,7 @@ fun DetailScreen(
                 ) {
                     Text(
                         text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp
                     )
                 }
@@ -231,7 +225,7 @@ fun DetailScreen(
                         text = detail.title,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
@@ -263,7 +257,7 @@ fun DetailScreen(
                                 text = detail.author,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = HanimePrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -277,14 +271,14 @@ fun DetailScreen(
                             Text(
                                 text = "${stringResource(R.string.detail_release_date)}: ${detail.releaseDate}",
                                 fontSize = 12.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         if (detail.fileSize.isNotEmpty()) {
                             Text(
                                 text = "${stringResource(R.string.detail_file_size)}: ${detail.fileSize}",
                                 fontSize = 12.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -300,14 +294,14 @@ fun DetailScreen(
                             Text(
                                 text = if (showDescription) stringResource(R.string.detail_collapse) else stringResource(R.string.detail_expand),
                                 fontSize = 13.sp,
-                                color = HanimePrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = if (showDescription) "▲" else "▼",
                                 fontSize = 10.sp,
-                                color = HanimePrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
 
@@ -315,11 +309,11 @@ fun DetailScreen(
                             Text(
                                 text = detail.description,
                                 fontSize = 13.sp,
-                                color = HanimeTextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 22.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(HanimeCard, RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                                     .padding(12.dp)
                                     .padding(bottom = 15.dp)
                             )
@@ -335,8 +329,8 @@ fun DetailScreen(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier
                                 .weight(1f)
-                                .background(HanimeCard, RoundedCornerShape(6.dp))
-                                .border(1.dp, HanimeBorder, RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                                 .padding(10.dp)
                                 .clickable {
                                     showDownloadDialog = true
@@ -347,14 +341,14 @@ fun DetailScreen(
                                 imageVector = Icons.Default.Download,
                                 contentDescription = "下载",
                                 modifier = Modifier.size(16.dp),
-                                tint = HanimeTextPrimary
+                                tint = MaterialTheme.colorScheme.onBackground
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.detail_download),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = HanimeTextPrimary
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
 
@@ -363,8 +357,8 @@ fun DetailScreen(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier
                                 .weight(1f)
-                                .background(HanimeCard, RoundedCornerShape(6.dp))
-                                .border(1.dp, HanimeBorder, RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                                 .padding(10.dp)
                                 .clickable { viewModel.toggleFavorite() }
                         ) {
@@ -372,14 +366,14 @@ fun DetailScreen(
                                 imageVector = Icons.Default.Favorite,
                                 contentDescription = "收藏",
                                 modifier = Modifier.size(16.dp),
-                                tint = if (isFavorite) HanimePrimary else HanimeTextPrimary
+                                tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = if (isFavorite) stringResource(R.string.detail_unfavorite) else stringResource(R.string.detail_favorite),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isFavorite) HanimePrimary else HanimeTextPrimary
+                                color = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
                             )
                         }
 
@@ -388,8 +382,8 @@ fun DetailScreen(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier
                                 .weight(1f)
-                                .background(HanimeCard, RoundedCornerShape(6.dp))
-                                .border(1.dp, HanimeBorder, RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                                 .padding(10.dp)
                                 .clickable {
                                     shareVideo(context, detail.title, videoUrl.orEmpty())
@@ -399,14 +393,14 @@ fun DetailScreen(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "分享",
                                 modifier = Modifier.size(16.dp),
-                                tint = HanimeTextPrimary
+                                tint = MaterialTheme.colorScheme.onBackground
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.detail_share),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = HanimeTextPrimary
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
@@ -416,7 +410,7 @@ fun DetailScreen(
                             text = stringResource(R.string.detail_tags),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = HanimeTextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
                         LazyRow(
@@ -434,10 +428,10 @@ fun DetailScreen(
                                 Text(
                                     text = tag,
                                     fontSize = 12.sp,
-                                    color = HanimeTextPrimary,
+                                    color = MaterialTheme.colorScheme.onBackground,
                                     modifier = Modifier
-                                        .background(HanimeCard)
-                                        .border(1.dp, HanimeBorder, RoundedCornerShape(4.dp))
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
                                         .padding(horizontal = 10.dp, vertical = 5.dp)
                                         .clickable { onTagClick(cleanedTag) }
                                 )
@@ -458,7 +452,7 @@ fun DetailScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(HanimeCard, RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                                 .padding(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -469,7 +463,7 @@ fun DetailScreen(
                                         fontSize = 11.sp,
                                         color = Color.Black,
                                         modifier = Modifier
-                                            .background(HanimePrimaryLight, RoundedCornerShape(4.dp))
+                                            .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(4.dp))
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -477,7 +471,7 @@ fun DetailScreen(
                                         text = playlist.title,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = HanimeTextPrimary,
+                                        color = MaterialTheme.colorScheme.onBackground,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f)
@@ -490,13 +484,13 @@ fun DetailScreen(
                                     Text(
                                         text = playlist.author,
                                         fontSize = 12.sp,
-                                        color = HanimePrimary,
+                                        color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.clickable { onAuthorClick(playlist.author) }
                                     )
                                     Text(
                                         text = " · " + stringResource(R.string.detail_playlist_count, playlist.videoCount),
                                         fontSize = 12.sp,
-                                        color = HanimeTextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -538,7 +532,7 @@ fun DetailScreen(
                                     text = video.title,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = HanimeTextPrimary,
+                                    color = MaterialTheme.colorScheme.onBackground,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(top = 6.dp)
@@ -586,7 +580,7 @@ fun DetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
-                                .background(HanimeCard)
+                                .background(MaterialTheme.colorScheme.surface)
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onVideoClick(video.videoUrl) },
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -614,7 +608,7 @@ fun DetailScreen(
                                     text = video.title,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = HanimeTextPrimary,
+                                    color = MaterialTheme.colorScheme.onBackground,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -622,7 +616,7 @@ fun DetailScreen(
                                     Text(
                                         text = video.author,
                                         fontSize = 10.sp,
-                                        color = HanimePrimary,
+                                        color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
                                             .padding(top = 2.dp)
                                             .clickable { onAuthorClick(video.author) }
@@ -635,17 +629,17 @@ fun DetailScreen(
                                     Text(
                                         text = video.duration,
                                         fontSize = 9.sp,
-                                        color = HanimeTextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = video.likeRate,
                                         fontSize = 9.sp,
-                                        color = HanimeTextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = video.viewCount,
                                         fontSize = 9.sp,
-                                        color = HanimeTextSecondary
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -687,7 +681,7 @@ fun DetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
-                    .background(HanimeCard, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(16.dp)
                     .clickable(enabled = false) {},
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -696,19 +690,19 @@ fun DetailScreen(
                     text = stringResource(R.string.detail_select_quality),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
                 if (isLoadingQualities) {
                     CircularProgressIndicator(
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(20.dp)
                     )
                 } else if (downloadQualities.isEmpty()) {
                     Text(
                         text = stringResource(R.string.detail_no_download),
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(20.dp)
                     )
@@ -718,7 +712,7 @@ fun DetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 6.dp)
-                                .background(HanimeBackground, RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
                                 .clickable {
                                     viewModel.startDownload(quality)
                                     showDownloadDialog = false
@@ -737,14 +731,14 @@ fun DetailScreen(
                                 Text(
                                     text = quality.quality,
                                     fontSize = 14.sp,
-                                    color = HanimeTextPrimary,
+                                    color = MaterialTheme.colorScheme.onBackground,
                                     fontWeight = FontWeight.Medium
                                 )
                                 if (quality.fileSize.isNotEmpty() && quality.fileSize != "N/A") {
                                     Text(
                                         text = quality.fileSize,
                                         fontSize = 12.sp,
-                                        color = HanimeTextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(top = 2.dp)
                                     )
                                 }
@@ -752,7 +746,7 @@ fun DetailScreen(
                             Text(
                                 text = stringResource(R.string.detail_download),
                                 fontSize = 13.sp,
-                                color = HanimePrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -762,7 +756,7 @@ fun DetailScreen(
                 Text(
                     text = stringResource(R.string.common_cancel),
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(top = 8.dp)
                         .clickable { showDownloadDialog = false }
@@ -778,8 +772,8 @@ fun DetailScreen(
     ) { data ->
         Snackbar(
             snackbarData = data,
-            containerColor = HanimeCard,
-            contentColor = HanimeTextPrimary,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onBackground,
             shape = RoundedCornerShape(8.dp)
         )
     }
@@ -810,10 +804,10 @@ private fun CommentTabButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(if (isSelected) HanimePrimary else HanimeCard)
+            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
             .border(
                 width = 1.dp,
-                color = if (isSelected) HanimePrimary else HanimeBorder,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(6.dp)
             )
             .clickable(onClick = onClick)
@@ -824,7 +818,7 @@ private fun CommentTabButton(
             text = text,
             fontSize = 14.sp,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isSelected) Color.White else HanimeTextPrimary
+            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground
         )
     }
 }
@@ -852,7 +846,7 @@ private fun CommentSection(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 CircularProgressIndicator(
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(28.dp)
                 )
@@ -874,7 +868,7 @@ private fun CommentSection(
                 Text(
                     text = stringResource(R.string.comment_empty),
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -942,7 +936,7 @@ private fun CommentItem(
                         text = comment.username,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -950,14 +944,14 @@ private fun CommentItem(
                     Text(
                         text = comment.time,
                         fontSize = 11.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Text(
                     text = comment.content,
                     fontSize = 14.sp,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     lineHeight = 20.sp,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -972,13 +966,13 @@ private fun CommentItem(
                             imageVector = Icons.Default.ThumbUp,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = HanimeTextSecondary
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (comment.likeCount > 0) comment.likeCount.toString() else "0",
                             fontSize = 12.sp,
-                            color = HanimeTextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     // 展开/收起回复按钮（放在点赞同一行，红色主题色）
@@ -999,7 +993,7 @@ private fun CommentItem(
                                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = HanimePrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
@@ -1009,7 +1003,7 @@ private fun CommentItem(
                                     stringResource(R.string.comment_view_replies, comment.replyCount)
                                 },
                                 fontSize = 12.sp,
-                                color = HanimePrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -1043,7 +1037,7 @@ private fun ReplyList(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 46.dp, top = 8.dp)
-            .background(HanimeCard, shape = RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp))
             .padding(10.dp)
     ) {
         when {
@@ -1054,7 +1048,7 @@ private fun ReplyList(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     CircularProgressIndicator(
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(20.dp)
                     )
@@ -1068,13 +1062,13 @@ private fun ReplyList(
                     Text(
                         text = stringResource(R.string.comment_reply_load_failed),
                         fontSize = 12.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.common_retry),
                         fontSize = 12.sp,
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable(onClick = onRetry)
                     )
                 }
@@ -1128,7 +1122,7 @@ private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
                     text = reply.username,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -1136,7 +1130,7 @@ private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
                 Text(
                     text = reply.time,
                     fontSize = 10.sp,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -1146,7 +1140,7 @@ private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
                 Text(
                     text = stringResource(R.string.comment_reply_to, replyToUser),
                     fontSize = 11.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -1154,7 +1148,7 @@ private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
             Text(
                 text = reply.content,
                 fontSize = 13.sp,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -1168,12 +1162,12 @@ private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
                     imageVector = Icons.Default.ThumbUp,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = HanimeTextSecondary
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = if (reply.likeCount > 0) reply.likeCount.toString() else "0",
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1199,7 +1193,7 @@ private fun DetailSkeletonScreen() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // 播放器区域
         Box(
@@ -1216,7 +1210,7 @@ private fun DetailSkeletonScreen() {
                     .fillMaxWidth(0.85f)
                     .height(20.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .alpha(alpha)
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -1225,7 +1219,7 @@ private fun DetailSkeletonScreen() {
                     .fillMaxWidth(0.6f)
                     .height(20.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .alpha(alpha)
             )
 
@@ -1240,7 +1234,7 @@ private fun DetailSkeletonScreen() {
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
                 Box(
@@ -1248,7 +1242,7 @@ private fun DetailSkeletonScreen() {
                         .width(100.dp)
                         .height(14.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
             }
@@ -1262,7 +1256,7 @@ private fun DetailSkeletonScreen() {
                         .width(120.dp)
                         .height(12.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
                 Box(
@@ -1270,7 +1264,7 @@ private fun DetailSkeletonScreen() {
                         .width(100.dp)
                         .height(12.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
             }
@@ -1285,7 +1279,7 @@ private fun DetailSkeletonScreen() {
                             .weight(1f)
                             .height(42.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(HanimeCard)
+                            .background(MaterialTheme.colorScheme.surface)
                             .alpha(alpha)
                     )
                 }
@@ -1301,7 +1295,7 @@ private fun DetailSkeletonScreen() {
                             .width(60.dp)
                             .height(26.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(HanimeCard)
+                            .background(MaterialTheme.colorScheme.surface)
                             .alpha(alpha)
                     )
                 }
@@ -1317,7 +1311,7 @@ private fun DetailSkeletonScreen() {
                 .width(100.dp)
                 .height(18.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(HanimeCard)
+                .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )
 
@@ -1328,7 +1322,7 @@ private fun DetailSkeletonScreen() {
                     .fillMaxWidth()
                     .padding(horizontal = 15.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1337,7 +1331,7 @@ private fun DetailSkeletonScreen() {
                     modifier = Modifier
                         .size(width = 120.dp, height = 90.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(HanimeBackground)
+                        .background(MaterialTheme.colorScheme.background)
                         .alpha(alpha)
                 )
                 Column(
@@ -1349,7 +1343,7 @@ private fun DetailSkeletonScreen() {
                             .fillMaxWidth()
                             .height(14.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(HanimeBackground)
+                            .background(MaterialTheme.colorScheme.background)
                             .alpha(alpha)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
@@ -1358,7 +1352,7 @@ private fun DetailSkeletonScreen() {
                             .width(80.dp)
                             .height(12.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(HanimeBackground)
+                            .background(MaterialTheme.colorScheme.background)
                             .alpha(alpha)
                     )
                 }

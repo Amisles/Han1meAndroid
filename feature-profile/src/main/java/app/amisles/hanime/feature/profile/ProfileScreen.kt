@@ -48,11 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeBorder
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 
 private data class ProfileMenuItem(
     val iconVector: ImageVector,
@@ -74,12 +70,12 @@ private fun StatItem(
             text = count,
             fontSize = 17.sp,
             fontWeight = FontWeight.SemiBold,
-            color = HanimeTextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = label,
             fontSize = 11.sp,
-            color = HanimeTextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 3.dp)
         )
     }
@@ -131,7 +127,7 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Column(
@@ -139,7 +135,7 @@ fun ProfileScreen(
                 .fillMaxWidth()
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(HanimePrimary, HanimeBackground)
+                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background)
                     )
                 )
                 .padding(20.dp)
@@ -155,7 +151,7 @@ fun ProfileScreen(
                     text = if (isLogin) letter else "👤",
                     fontSize = 22.sp,
                     textAlign = TextAlign.Center,
-                    color = if (isLogin) HanimeTextPrimary else Color.Unspecified,
+                    color = if (isLogin) MaterialTheme.colorScheme.onBackground else Color.Unspecified,
                     modifier = Modifier
                         .width(56.dp)
                         .height(56.dp)
@@ -174,7 +170,7 @@ fun ProfileScreen(
                         text = if (isLogin) stringResource(R.string.profile_member) else stringResource(R.string.profile_not_logged_in),
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                     Text(
@@ -229,20 +225,20 @@ fun ProfileScreen(
                         imageVector = item.iconVector,
                         contentDescription = item.text,
                         modifier = Modifier.size(22.dp),
-                        tint = HanimeTextPrimary
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
 
                     Text(
                         text = item.text,
                         fontSize = 15.sp,
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.weight(1f)
                     )
 
                     Text(
                         text = "→",
                         fontSize = 13.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -251,7 +247,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(HanimeBorder)
+                            .background(MaterialTheme.colorScheme.outline)
                     )
                 }
             }

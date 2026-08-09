@@ -51,11 +51,7 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 import coil3.compose.AsyncImage
 
 @Composable
@@ -81,7 +77,7 @@ fun AuthorScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
@@ -94,7 +90,7 @@ fun AuthorScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "返回",
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -132,7 +128,7 @@ private fun AuthorContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -146,7 +142,7 @@ private fun AuthorContent(
                     text = authorData.authorName,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(top = 12.dp)
                 )
                 Row(
@@ -154,12 +150,12 @@ private fun AuthorContent(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = authorData.subscriberCount, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = HanimePrimary)
-                        Text(text = "订阅者", fontSize = 12.sp, color = HanimeTextSecondary)
+                        Text(text = authorData.subscriberCount, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        Text(text = "订阅者", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = authorData.videoCount, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = HanimePrimary)
-                        Text(text = "视频", fontSize = 12.sp, color = HanimeTextSecondary)
+                        Text(text = authorData.videoCount, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                        Text(text = "视频", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -172,12 +168,12 @@ private fun AuthorContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "影片", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = HanimeTextPrimary)
+                    Text(text = "影片", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                     if (authorData.uploadedPageUrl.isNotEmpty()) {
                         Text(
                             text = "查看更多 →",
                             fontSize = 13.sp,
-                            color = HanimeTextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable { onViewAllVideos(authorData.uploadedPageUrl) }
                         )
                     }
@@ -202,12 +198,12 @@ private fun AuthorContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "播放清单", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = HanimeTextPrimary)
+                    Text(text = "播放清单", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                     if (authorData.playlistsPageUrl.isNotEmpty()) {
                         Text(
                             text = "查看更多 →",
                             fontSize = 13.sp,
-                            color = HanimeTextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable { onViewAllPlaylists(authorData.playlistsPageUrl) }
                         )
                     }
@@ -237,7 +233,7 @@ private fun PlaylistSummaryCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
-            .background(HanimeCard, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -263,7 +259,7 @@ private fun PlaylistSummaryCard(
                 text = playlist.title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -271,9 +267,9 @@ private fun PlaylistSummaryCard(
                 modifier = Modifier.padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = playlist.author, fontSize = 11.sp, color = HanimePrimary)
+                Text(text = playlist.author, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                 if (playlist.publishTime.isNotEmpty()) {
-                    Text(text = " · ${playlist.publishTime}", fontSize = 11.sp, color = HanimeTextSecondary)
+                    Text(text = " · ${playlist.publishTime}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -296,13 +292,13 @@ private fun AuthorSkeletonScreen() {
         label = "author-skeleton-alpha"
     )
 
-    LazyColumn(modifier = Modifier.fillMaxSize().background(HanimeBackground)) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // 作者头部卡片（头像 + 名称 + 统计）
         item(key = "skeleton-author-header") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -310,7 +306,7 @@ private fun AuthorSkeletonScreen() {
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
-                        .background(HanimeBackground)
+                        .background(MaterialTheme.colorScheme.background)
                         .alpha(alpha)
                 )
                 Box(
@@ -319,7 +315,7 @@ private fun AuthorSkeletonScreen() {
                         .height(18.dp)
                         .padding(top = 12.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeBackground)
+                        .background(MaterialTheme.colorScheme.background)
                         .alpha(alpha)
                 )
                 Row(
@@ -332,7 +328,7 @@ private fun AuthorSkeletonScreen() {
                                 .width(40.dp)
                                 .height(16.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(HanimeBackground)
+                                .background(MaterialTheme.colorScheme.background)
                                 .alpha(alpha)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -341,7 +337,7 @@ private fun AuthorSkeletonScreen() {
                                 .width(28.dp)
                                 .height(12.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(HanimeBackground)
+                                .background(MaterialTheme.colorScheme.background)
                                 .alpha(alpha)
                         )
                     }
@@ -351,7 +347,7 @@ private fun AuthorSkeletonScreen() {
                                 .width(40.dp)
                                 .height(16.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(HanimeBackground)
+                                .background(MaterialTheme.colorScheme.background)
                                 .alpha(alpha)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -360,7 +356,7 @@ private fun AuthorSkeletonScreen() {
                                 .width(28.dp)
                                 .height(12.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(HanimeBackground)
+                                .background(MaterialTheme.colorScheme.background)
                                 .alpha(alpha)
                         )
                     }
@@ -380,7 +376,7 @@ private fun AuthorSkeletonScreen() {
                         .width(50.dp)
                         .height(15.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
                 Box(
@@ -388,7 +384,7 @@ private fun AuthorSkeletonScreen() {
                         .width(70.dp)
                         .height(13.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
             }
@@ -406,7 +402,7 @@ private fun AuthorSkeletonScreen() {
                             .width(200.dp)
                             .height(210.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(HanimeCard)
+                            .background(MaterialTheme.colorScheme.surface)
                             .alpha(alpha)
                     ) {}
                 }
@@ -425,7 +421,7 @@ private fun AuthorSkeletonScreen() {
                         .width(70.dp)
                         .height(15.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
                 Box(
@@ -433,7 +429,7 @@ private fun AuthorSkeletonScreen() {
                         .width(70.dp)
                         .height(13.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(HanimeCard)
+                        .background(MaterialTheme.colorScheme.surface)
                         .alpha(alpha)
                 )
             }
@@ -446,7 +442,7 @@ private fun AuthorSkeletonScreen() {
                     .fillMaxWidth()
                     .padding(horizontal = 15.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -455,7 +451,7 @@ private fun AuthorSkeletonScreen() {
                     modifier = Modifier
                         .size(width = 120.dp, height = 68.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(HanimeBackground)
+                        .background(MaterialTheme.colorScheme.background)
                         .alpha(alpha)
                 )
                 Column(
@@ -467,7 +463,7 @@ private fun AuthorSkeletonScreen() {
                             .fillMaxWidth()
                             .height(13.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(HanimeBackground)
+                            .background(MaterialTheme.colorScheme.background)
                             .alpha(alpha)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
@@ -476,7 +472,7 @@ private fun AuthorSkeletonScreen() {
                             .width(80.dp)
                             .height(11.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(HanimeBackground)
+                            .background(MaterialTheme.colorScheme.background)
                             .alpha(alpha)
                     )
                 }

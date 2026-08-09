@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.theme.HanimeGold
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 
@@ -87,7 +87,7 @@ fun VideoThumbnail(
                 text = duration,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Medium,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(3.dp)
@@ -119,7 +119,7 @@ fun VideoThumbnail(
                         text = " $viewCount",
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Normal,
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .padding(start = 2.dp)
                             .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(3.dp))

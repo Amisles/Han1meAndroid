@@ -23,6 +23,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,11 +54,6 @@ import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Header
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import coil3.compose.AsyncImage
 import java.io.File
 
@@ -87,13 +83,13 @@ fun DownloadScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HanimeBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 15.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -105,7 +101,7 @@ fun DownloadScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.common_cancel),
-                        tint = HanimeTextPrimary,
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -114,13 +110,13 @@ fun DownloadScreen(
                     text = stringResource(R.string.search_selected_count, selectedIds.size),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = stringResource(R.string.common_select_all),
                     fontSize = 14.sp,
-                    color = if (selectedIds.size == tasks.size) HanimeTextSecondary else HanimePrimary,
+                    color = if (selectedIds.size == tasks.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable {
                             selectedIds = if (selectedIds.size == tasks.size) {
@@ -151,12 +147,12 @@ fun DownloadScreen(
                     text = stringResource(R.string.download_empty),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = stringResource(R.string.download_empty_hint),
                     fontSize = 12.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -317,7 +313,7 @@ fun DownloadScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 15.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -325,7 +321,7 @@ fun DownloadScreen(
                     Text(
                         text = stringResource(R.string.common_manage),
                         fontSize = 14.sp,
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clickable { isSelectionMode = true }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -334,7 +330,7 @@ fun DownloadScreen(
                 Text(
                     text = stringResource(R.string.search_selected_count, selectedIds.size),
                     fontSize = 14.sp,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -360,20 +356,20 @@ fun DownloadScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 15.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = stringResource(R.string.download_task_count, tasks.size),
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = stringResource(R.string.common_manage),
                     fontSize = 14.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable { isSelectionMode = true }
@@ -394,7 +390,7 @@ fun DownloadScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .background(HanimeCard, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
                     .clickable(enabled = false) {},
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -403,13 +399,13 @@ fun DownloadScreen(
                     text = stringResource(R.string.download_delete_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
                     text = stringResource(R.string.download_delete_message),
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -420,7 +416,7 @@ fun DownloadScreen(
                     Text(
                         text = stringResource(R.string.common_cancel),
                         fontSize = 14.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { showDeleteConfirm = false }
@@ -472,8 +468,8 @@ private fun SectionHeader(
                 checked = allSelected,
                 onCheckedChange = { onToggleAll(allSelected) },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = HanimePrimary,
-                    uncheckedColor = HanimeTextSecondary
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 modifier = Modifier.size(20.dp)
             )
@@ -483,7 +479,7 @@ private fun SectionHeader(
             text = title,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = HanimeTextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
     }
 }
@@ -512,7 +508,7 @@ fun DownloadTaskItem(
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
             .background(
-                if (isSelectionMode && isSelected) HanimePrimary.copy(alpha = 0.1f) else HanimeCard,
+                if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
                 RoundedCornerShape(8.dp)
             )
             .padding(12.dp)
@@ -525,8 +521,8 @@ fun DownloadTaskItem(
                 checked = isSelected,
                 onCheckedChange = { onToggleSelection() },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = HanimePrimary,
-                    uncheckedColor = HanimeTextSecondary
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 modifier = Modifier.size(24.dp)
             )
@@ -551,7 +547,7 @@ fun DownloadTaskItem(
                 Text(
                     text = task.quality,
                     fontSize = 11.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -565,7 +561,7 @@ fun DownloadTaskItem(
                 text = task.title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -574,7 +570,7 @@ fun DownloadTaskItem(
                 Text(
                     text = "${formatFileSize(task.downloadedBytes)} / ${formatFileSize(task.totalBytes)}",
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Box(
@@ -582,46 +578,46 @@ fun DownloadTaskItem(
                         .fillMaxWidth()
                         .padding(top = 4.dp)
                         .height(3.dp)
-                        .background(HanimeBackground, RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.background, RoundedCornerShape(2.dp))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progress)
                             .height(3.dp)
-                            .background(HanimePrimary, RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
                     )
                 }
                 Text(
                     text = stringResource(R.string.download_downloading),
                     fontSize = 10.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 3.dp)
                 )
             } else if (task.status == DownloadStatus.COMPLETED) {
                 Text(
                     text = formatFileSize(task.totalBytes),
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
                     text = stringResource(R.string.download_completed),
                     fontSize = 10.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 3.dp)
                 )
             } else if (task.status == DownloadStatus.PENDING) {
                 Text(
                     text = stringResource(R.string.download_pending),
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             } else if (task.status == DownloadStatus.FAILED) {
                 Text(
                     text = formatFileSize(task.downloadedBytes) + " / " + formatFileSize(task.totalBytes),
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
@@ -634,13 +630,13 @@ fun DownloadTaskItem(
                 Text(
                     text = "${formatFileSize(task.downloadedBytes)} / ${formatFileSize(task.totalBytes)}",
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
                     text = stringResource(R.string.download_paused),
                     fontSize = 10.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 3.dp)
                 )
             }
@@ -659,7 +655,7 @@ fun DownloadTaskItem(
                             Icon(
                                 imageVector = Icons.Default.Pause,
                                 contentDescription = "暂停",
-                                tint = HanimeTextPrimary,
+                                tint = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -672,7 +668,7 @@ fun DownloadTaskItem(
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "继续",
-                                tint = HanimePrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -685,7 +681,7 @@ fun DownloadTaskItem(
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "重试",
-                                tint = HanimePrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -698,7 +694,7 @@ fun DownloadTaskItem(
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "播放",
-                                tint = HanimePrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }

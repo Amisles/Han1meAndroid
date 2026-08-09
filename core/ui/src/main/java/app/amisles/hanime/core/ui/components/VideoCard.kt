@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,9 +23,6 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
 @Composable
 fun VideoCard(
@@ -68,7 +66,7 @@ fun VideoCard(
                 text = video.title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -78,14 +76,14 @@ fun VideoCard(
                     Text(
                         text = video.author,
                         fontSize = 11.sp,
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { onAuthorClick(video.author) }
                     )
                     if (video.publishTime.isNotEmpty()) {
                         Text(
                             text = " • ${video.publishTime}",
                             fontSize = 11.sp,
-                            color = HanimeTextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

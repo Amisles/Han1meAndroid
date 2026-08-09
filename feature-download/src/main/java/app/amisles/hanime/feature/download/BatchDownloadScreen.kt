@@ -33,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -61,8 +62,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimePrimary
 import coil3.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +73,7 @@ fun BatchDownloadScreen(
     val state by viewModel.state.collectAsState()
 
     Scaffold(
-        containerColor = HanimeBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.batch_title), color = Color.White) },
@@ -83,7 +82,7 @@ fun BatchDownloadScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = HanimeBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
         bottomBar = {
@@ -168,7 +167,7 @@ private fun SearchSection(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                focusedBorderColor = HanimePrimary,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = Color.Gray
             )
         )
@@ -178,7 +177,7 @@ private fun SearchSection(
         Button(
             onClick = onSearch,
             enabled = !isSearching,
-            colors = ButtonDefaults.buttonColors(containerColor = HanimePrimary)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             if (isSearching) {
                 CircularProgressIndicator(
@@ -223,7 +222,7 @@ private fun AuthorInfoSection(
             )
             Text(
                 text = stringResource(R.string.batch_loading_page, currentPage),
-                color = HanimePrimary,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp
             )
         }
@@ -311,9 +310,9 @@ private fun VideoItem(
                     },
                     contentDescription = null,
                     tint = when {
-                        video.isDownloaded -> HanimePrimary
+                        video.isDownloaded -> MaterialTheme.colorScheme.primary
                         isDisabled -> Color.Gray
-                        video.isSelected -> HanimePrimary
+                        video.isSelected -> MaterialTheme.colorScheme.primary
                         else -> Color.Gray
                     },
                     modifier = Modifier.size(24.dp)
@@ -355,7 +354,7 @@ private fun VideoItem(
                         video.isDownloaded -> {
                             Text(
                                 text = stringResource(R.string.batch_status_downloaded),
-                                color = HanimePrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 4.dp)
@@ -373,7 +372,7 @@ private fun VideoItem(
                         isDownloading -> {
                             Text(
                                 text = stringResource(R.string.batch_status_added),
-                                color = HanimePrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 4.dp)
@@ -387,13 +386,13 @@ private fun VideoItem(
                                 ) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(12.dp),
-                                        color = HanimePrimary,
+                                        color = MaterialTheme.colorScheme.primary,
                                         strokeWidth = 1.5.dp
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = stringResource(R.string.batch_loading_qualities),
-                                        color = HanimePrimary,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -414,7 +413,7 @@ private fun VideoItem(
                                         video.qualities.getOrNull(video.selectedQualityIndex)?.let { quality ->
                                             Text(
                                                 text = quality.quality,
-                                                color = HanimePrimary,
+                                                color = MaterialTheme.colorScheme.primary,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
@@ -447,7 +446,7 @@ private fun VideoItem(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = HanimePrimary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -504,7 +503,7 @@ private fun QualitySelectionDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = quality.quality,
-                            color = if (index == selectedIndex) HanimePrimary else Color.White,
+                            color = if (index == selectedIndex) MaterialTheme.colorScheme.primary else Color.White,
                             fontSize = 16.sp
                         )
                     }
@@ -513,7 +512,7 @@ private fun QualitySelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_close), color = HanimePrimary)
+                Text(stringResource(R.string.common_close), color = MaterialTheme.colorScheme.primary)
             }
         },
         containerColor = Color(0xFF2A2A2A)
@@ -532,11 +531,11 @@ private fun LoadMoreButton(
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
-            CircularProgressIndicator(color = HanimePrimary)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         } else {
             OutlinedButton(
                 onClick = onLoadMore,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = HanimePrimary)
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
@@ -585,7 +584,7 @@ private fun BottomActionBar(
                 onClick = onDownload,
                 enabled = selectedCount > 0 && !isDownloading,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedCount > 0) HanimePrimary else Color.Gray
+                    containerColor = if (selectedCount > 0) MaterialTheme.colorScheme.primary else Color.Gray
                 )
             ) {
                 if (isDownloading) {

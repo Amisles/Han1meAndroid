@@ -50,11 +50,7 @@ import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -101,13 +97,13 @@ fun HistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(HanimeBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 15.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -124,7 +120,7 @@ fun HistoryScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = if (isSelectionMode) "取消" else "返回",
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -133,14 +129,14 @@ fun HistoryScreen(
                 text = if (isSelectionMode) "已选 ${selectedIds.size} 项" else "观看历史",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f)
             )
             if (!isSelectionMode && history.isNotEmpty()) {
                 Text(
                     text = "管理",
                     fontSize = 14.sp,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable { isSelectionMode = true }
                         .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -149,7 +145,7 @@ fun HistoryScreen(
                 Text(
                     text = "全选",
                     fontSize = 14.sp,
-                    color = if (selectedIds.size == history.size) HanimeTextSecondary else HanimePrimary,
+                    color = if (selectedIds.size == history.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable {
                             selectedIds = if (selectedIds.size == history.size) {
@@ -168,7 +164,7 @@ fun HistoryScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = HanimePrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (history.isEmpty()) {
             Box(
@@ -186,13 +182,13 @@ fun HistoryScreen(
                     Text(
                         text = stringResource(R.string.history_empty),
                         fontSize = 16.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "观看的视频会自动记录在这里",
                         fontSize = 13.sp,
-                        color = HanimeTextSecondary.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -211,7 +207,7 @@ fun HistoryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 15.dp, vertical = 8.dp)
-                            .background(if (isSelectionMode && isSelected) HanimePrimary.copy(alpha = 0.1f) else HanimeCard)
+                            .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface)
                             .padding(8.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .combinedClickable(
@@ -246,8 +242,8 @@ fun HistoryScreen(
                                     }
                                 },
                                 colors = CheckboxDefaults.colors(
-                                    checkedColor = HanimePrimary,
-                                    uncheckedColor = HanimeTextSecondary
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 ),
                                 modifier = Modifier.size(24.dp)
                             )
@@ -275,7 +271,7 @@ fun HistoryScreen(
                                 text = video.title,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = HanimeTextPrimary,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -283,14 +279,14 @@ fun HistoryScreen(
                                 Text(
                                     text = video.author,
                                     fontSize = 11.sp,
-                                    color = HanimeTextSecondary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
                             Text(
                                 text = formatWatchedTime(video.watchedAt),
                                 fontSize = 10.sp,
-                                color = HanimeTextSecondary.copy(alpha = 0.8f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
@@ -328,14 +324,14 @@ fun HistoryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 15.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "已选择 ${selectedIds.size} 项",
                     fontSize = 14.sp,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -361,14 +357,14 @@ fun HistoryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HanimeCard)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 15.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "${history.size} 条记录",
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -395,7 +391,7 @@ fun HistoryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .background(HanimeCard, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
                     .clickable(enabled = false) {},
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -404,13 +400,13 @@ fun HistoryScreen(
                     text = "确认删除",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
                     text = "确定删除选中的 ${selectedIds.size} 条记录吗？",
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 Row(
@@ -420,7 +416,7 @@ fun HistoryScreen(
                     Text(
                         text = "取消",
                         fontSize = 14.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { showDeleteConfirm = false }
@@ -460,7 +456,7 @@ fun HistoryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .background(HanimeCard, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
                     .clickable(enabled = false) {},
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -469,7 +465,7 @@ fun HistoryScreen(
                     text = "确认清空所有观看历史？",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 Row(
@@ -479,7 +475,7 @@ fun HistoryScreen(
                     Text(
                         text = "取消",
                         fontSize = 14.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { showClearConfirm = false }
@@ -489,7 +485,7 @@ fun HistoryScreen(
                     Text(
                         text = "清空",
                         fontSize = 14.sp,
-                        color = HanimePrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)

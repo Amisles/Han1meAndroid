@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,10 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.HanimeBanner
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import coil3.compose.AsyncImage
 
 @Composable
@@ -61,7 +58,7 @@ fun Banner(
                     .fillMaxSize()
                     .background(
                         brush = Brush.linearGradient(
-                            colors = listOf(HanimePrimary, HanimeBackground)
+                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background)
                         )
                     )
             ) {
@@ -80,8 +77,8 @@ fun Banner(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            HanimeBackground.copy(alpha = 0.6f),
-                            HanimeBackground
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                            MaterialTheme.colorScheme.background
                         ),
                         startY = 0f,
                         endY = Float.POSITIVE_INFINITY
@@ -99,7 +96,7 @@ fun Banner(
                 text = bannerData.title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
                 modifier = Modifier.padding(bottom = 6.dp)
             )
@@ -107,7 +104,7 @@ fun Banner(
             Text(
                 text = "${bannerData.author} • ${bannerData.viewCount} • ${bannerData.publishTime}",
                 fontSize = 12.sp,
-                color = HanimeTextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 10.dp)
             )
 
@@ -118,7 +115,7 @@ fun Banner(
                     Text(
                         text = tag,
                         fontSize = 11.sp,
-                        color = HanimeTextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .background(Color.White.copy(alpha = 0.2f))
                             .padding(horizontal = 8.dp, vertical = 2.dp)

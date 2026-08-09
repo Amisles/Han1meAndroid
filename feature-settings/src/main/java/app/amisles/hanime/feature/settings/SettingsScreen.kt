@@ -53,11 +53,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Layers
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 
 data class LanguageOption(val code: String, val label: String)
 
@@ -88,7 +84,7 @@ private fun <T> SettingsDropdownCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = HanimeCard),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(10.dp)
     ) {
         Box(modifier = Modifier.onSizeChanged { boxWidthPx = it.width }) {
@@ -102,26 +98,26 @@ private fun <T> SettingsDropdownCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = HanimePrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = title,
                     fontSize = 15.sp,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = selectedLabel,
                     fontSize = 14.sp,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = null,
-                    tint = HanimeTextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .size(20.dp)
                         .rotate(if (expanded) 0f else -90f)
@@ -132,7 +128,7 @@ private fun <T> SettingsDropdownCard(
                 onDismissRequest = { onExpandedChange(false) },
                 modifier = Modifier
                     .onSizeChanged { menuWidthPx = it.width }
-                    .background(HanimeCard),
+                    .background(MaterialTheme.colorScheme.surface),
                 offset = DpOffset(
                     x = with(density) {
                         (boxWidthPx - menuWidthPx).coerceAtLeast(0).toDp()
@@ -146,7 +142,7 @@ private fun <T> SettingsDropdownCard(
                             Text(
                                 text = label,
                                 fontSize = 14.sp,
-                                color = if (value == selectedValue) HanimePrimary else HanimeTextSecondary,
+                                color = if (value == selectedValue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (value == selectedValue) FontWeight.Medium else FontWeight.Normal
                             )
                         },
@@ -182,7 +178,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
@@ -196,7 +192,7 @@ fun SettingsScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back),
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -204,7 +200,7 @@ fun SettingsScreen(
                 text = stringResource(R.string.profile_settings),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .weight(1f)
                     .padding(end = 48.dp)
@@ -256,7 +252,7 @@ fun SettingsScreen(
                     baseUrlInput = baseUrl
                     showBaseUrlDialog = true
                 },
-            colors = CardDefaults.cardColors(containerColor = HanimeCard),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(10.dp)
         ) {
             Row(
@@ -268,7 +264,7 @@ fun SettingsScreen(
                 Icon(
                     imageVector = Icons.Outlined.Link,
                     contentDescription = null,
-                    tint = HanimePrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
@@ -276,19 +272,19 @@ fun SettingsScreen(
                     Text(
                         text = stringResource(R.string.settings_base_url),
                         fontSize = 15.sp,
-                        color = HanimeTextPrimary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = baseUrl,
                         fontSize = 12.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
                 }
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = HanimeTextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -299,7 +295,7 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 15.dp, vertical = 6.dp)
                 .clickable { showClearCacheDialog = true },
-            colors = CardDefaults.cardColors(containerColor = HanimeCard),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(10.dp)
         ) {
             Row(
@@ -311,20 +307,20 @@ fun SettingsScreen(
                 Icon(
                     imageVector = Icons.Outlined.CleaningServices,
                     contentDescription = null,
-                    tint = HanimePrimary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = stringResource(R.string.settings_clear_cache),
                     fontSize = 15.sp,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = HanimeTextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -334,11 +330,11 @@ fun SettingsScreen(
     if (showClearCacheDialog) {
         AlertDialog(
             onDismissRequest = { showClearCacheDialog = false },
-            title = { Text(stringResource(R.string.settings_clear_cache_title), color = HanimeTextPrimary) },
+            title = { Text(stringResource(R.string.settings_clear_cache_title), color = MaterialTheme.colorScheme.onBackground) },
             text = {
                 Text(
                     stringResource(R.string.settings_clear_cache_message),
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 14.sp
                 )
             },
@@ -348,27 +344,27 @@ fun SettingsScreen(
                     showClearCacheDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_cache_cleared), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text(stringResource(R.string.common_confirm), color = HanimePrimary)
+                    Text(stringResource(R.string.common_confirm), color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearCacheDialog = false }) {
-                    Text(stringResource(R.string.common_cancel), color = HanimeTextSecondary)
+                    Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = HanimeCard
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
     if (showBaseUrlDialog) {
         AlertDialog(
             onDismissRequest = { showBaseUrlDialog = false },
-            title = { Text(stringResource(R.string.settings_base_url_title), color = HanimeTextPrimary) },
+            title = { Text(stringResource(R.string.settings_base_url_title), color = MaterialTheme.colorScheme.onBackground) },
             text = {
                 Column {
                     Text(
                         stringResource(R.string.settings_base_url_hint),
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
@@ -379,13 +375,13 @@ fun SettingsScreen(
                             Text(
                                 text = Preferences.DEFAULT_BASE_URL,
                                 fontSize = 14.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         singleLine = true,
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontSize = 14.sp,
-                            color = HanimeTextPrimary
+                            color = MaterialTheme.colorScheme.onBackground
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -397,7 +393,7 @@ fun SettingsScreen(
                     showBaseUrlDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_base_url_updated), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text(stringResource(R.string.common_save), color = HanimePrimary)
+                    Text(stringResource(R.string.common_save), color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
@@ -407,10 +403,10 @@ fun SettingsScreen(
                     showBaseUrlDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_base_url_restored), Toast.LENGTH_SHORT).show()
                 }) {
-                    Text(stringResource(R.string.common_restore_default), color = HanimeTextSecondary)
+                    Text(stringResource(R.string.common_restore_default), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = HanimeCard
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 }

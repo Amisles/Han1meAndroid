@@ -52,11 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 
 data class OpenSourceProject(
     val name: String,
@@ -203,7 +199,7 @@ fun AboutScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HanimeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         Row(
@@ -217,7 +213,7 @@ fun AboutScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "返回",
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -226,7 +222,7 @@ fun AboutScreen(
                 text = stringResource(R.string.about_title),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .weight(1f)
                     .padding(end = 48.dp),
@@ -254,7 +250,7 @@ fun AboutScreen(
                     text = "Hanime Android",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = HanimeTextPrimary
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -262,7 +258,7 @@ fun AboutScreen(
                 Text(
                     text = stringResource(R.string.about_version, appVersion),
                     fontSize = 12.sp,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -271,7 +267,7 @@ fun AboutScreen(
                     text = stringResource(R.string.about_project_links),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp, vertical = 6.dp)
@@ -282,7 +278,7 @@ fun AboutScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = HanimeCard)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         Row(
@@ -297,18 +293,18 @@ fun AboutScreen(
                                 imageVector = Icons.Outlined.Code,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = HanimePrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = stringResource(R.string.about_github_repo),
                                     fontSize = 14.sp,
-                                    color = HanimeTextPrimary
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                                 Text(
                                     text = "github.com/Amisles/HanimeAndroid",
                                     fontSize = 11.sp,
-                                    color = HanimeTextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -331,18 +327,18 @@ fun AboutScreen(
                                 imageVector = Icons.Outlined.BugReport,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = HanimePrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = stringResource(R.string.about_feedback),
                                     fontSize = 14.sp,
-                                    color = HanimeTextPrimary
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                                 Text(
                                     text = "github.com/Amisles/HanimeAndroid/issues",
                                     fontSize = 11.sp,
-                                    color = HanimeTextSecondary
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -356,21 +352,21 @@ fun AboutScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = HanimeCard)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = stringResource(R.string.about_intro_title),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = HanimePrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
                         Text(
                             text = "Hanime Android 是一款开源的第三方 Hanime 客户端，提供流畅的视频浏览、搜索、在线播放与离线下载功能。本项目基于 AGG 9.2.1 + Kotlin 2.4.10 + Jetpack Compose BOM 2026.06 构建，采用 MVVM + Repository 架构，UI 层、解析层、网络层清晰解耦。网络层使用 OkHttp 5.4.0，图片加载使用 Coil 3.5.0，数据持久化使用 Room 2.8.4，视频播放基于 Media3 1.10.1。项目以 GPLv3.0 协议完全开源，欢迎社区自由学习与二次开发。",
                             fontSize = 13.sp,
                             lineHeight = 20.sp,
-                            color = HanimeTextPrimary
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }
@@ -381,7 +377,7 @@ fun AboutScreen(
                     text = stringResource(R.string.about_features_title),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp, vertical = 6.dp)
@@ -392,7 +388,7 @@ fun AboutScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = HanimeCard)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         val features = appFeatures()
@@ -408,12 +404,12 @@ fun AboutScreen(
                                     imageVector = feature.icon,
                                     contentDescription = feature.title,
                                     modifier = Modifier.size(20.dp),
-                                    tint = HanimePrimary
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     text = feature.title,
                                     fontSize = 14.sp,
-                                    color = HanimeTextPrimary
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                             }
                             if (index < features.size - 1) {
@@ -437,7 +433,7 @@ fun AboutScreen(
                         .padding(horizontal = 15.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = HanimePrimary.copy(alpha = 0.12f)
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -449,34 +445,34 @@ fun AboutScreen(
                             Icon(
                                 imageVector = Icons.Outlined.Info,
                                 contentDescription = stringResource(R.string.about_license),
-                                tint = HanimePrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
                                 text = stringResource(R.string.about_license),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = HanimePrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         Text(
                             text = stringResource(R.string.about_license_name),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = HanimeTextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
                         Text(
                             text = "本项目采用 GPLv3.0 协议开源。您可以自由地使用、研究、修改和分发本软件，但分发本软件或其衍生作品时，必须同样以 GPLv3.0 协议开源完整源代码，并保留原始版权声明与协议文本。任何再分发不得施加超出 GPLv3.0 的额外限制。",
                             fontSize = 12.sp,
                             lineHeight = 19.sp,
-                            color = HanimeTextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "https://www.gnu.org/licenses/gpl-3.0.html",
                             fontSize = 11.sp,
-                            color = HanimePrimary
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -487,7 +483,7 @@ fun AboutScreen(
                     text = stringResource(R.string.about_acknowledgements),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp, vertical = 6.dp)
@@ -500,7 +496,7 @@ fun AboutScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 15.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = HanimeCard)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(
@@ -512,20 +508,20 @@ fun AboutScreen(
                                 text = project.name,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = HanimeTextPrimary,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
                                 text = project.version,
                                 fontSize = 11.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
                             text = project.description,
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
-                            color = HanimeTextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
                         Row(
@@ -535,14 +531,14 @@ fun AboutScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(HanimePrimary.copy(alpha = 0.15f))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                                     .padding(horizontal = 7.dp, vertical = 2.5.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = project.license,
                                     fontSize = 10.sp,
-                                    color = HanimePrimary,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -550,7 +546,7 @@ fun AboutScreen(
                             Text(
                                 text = project.url,
                                 fontSize = 10.5.sp,
-                                color = HanimeTextSecondary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -562,7 +558,7 @@ fun AboutScreen(
                 Text(
                     text = "Made with ♥ by the Open Source Community",
                     fontSize = 11.sp,
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(30.dp))
             }
