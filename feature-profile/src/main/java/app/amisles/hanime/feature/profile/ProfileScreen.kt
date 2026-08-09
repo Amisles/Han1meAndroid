@@ -29,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import androidx.compose.material3.MaterialTheme
 
 private data class ProfileMenuItem(
@@ -88,10 +92,22 @@ fun ProfileScreen(
     val context = LocalContext.current
     val profileViewModel: ProfileViewModel = hiltViewModel()
     val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
+    val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
     val displayName by Preferences.savedUserIdFlow.collectAsStateWithLifecycle()
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
     val favoriteCount by profileViewModel.favoriteCount.collectAsStateWithLifecycle()
     val downloadCount by profileViewModel.downloadCount.collectAsStateWithLifecycle()
+
+    var showLoginUnsupportedDialog by remember { mutableStateOf(false) }
+
+    // 登录入口统一拦截：当前镜像站不支持登录时弹窗提示，否则跳转登录页
+    val tryNavigateToLogin: () -> Unit = {
+        if (isLoginSupported) {
+            onNavigate("login")
+        } else {
+            showLoginUnsupportedDialog = true
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -143,7 +159,7 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(15.dp),
                 modifier = Modifier.clickable(enabled = !isLogin) {
-                    if (!isLogin) onNavigate("login")
+                    if (!isLogin) tryNavigateToLogin()
                 }
             ) {
                 Text(
@@ -177,7 +193,7 @@ fun ProfileScreen(
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.7f),
                         modifier = Modifier.clickable(enabled = !isLogin) {
-                            if (!isLogin) onNavigate("login")
+                            if (!isLogin) tryNavigateToLogin()
                         }
                     )
                 }
@@ -253,5 +269,15 @@ fun ProfileScreen(
         }
 
         Spacer(modifier = Modifier.height(80.dp))
+    }
+
+    if (showLoginUnsupportedDialog) {
+        LoginUnsupportedDialog(
+            onGoToSettings = {
+                showLoginUnsupportedDialog = false
+                onNavigate("settings")
+            },
+            onDismiss = { showLoginUnsupportedDialog = false }
+        )
     }
 }

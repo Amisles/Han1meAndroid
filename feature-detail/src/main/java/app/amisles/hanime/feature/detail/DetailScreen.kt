@@ -74,6 +74,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
@@ -88,7 +89,8 @@ fun DetailScreen(
     onTagClick: (String) -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onAuthorPageClick: (String) -> Unit = {},
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val viewModel: DetailViewModel = hiltViewModel()
     val context = LocalContext.current
@@ -108,12 +110,23 @@ fun DetailScreen(
     val isPostingComment by viewModel.isPostingComment.collectAsState()
     val postCommentError by viewModel.postCommentError.collectAsState()
     val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsState()
+    val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsState()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
     var showDescription by remember { mutableStateOf(false) }
     // 0 = 相关影片，1 = 评论
     var selectedTab by remember { mutableStateOf(0) }
+    var showLoginUnsupportedDialog by remember { mutableStateOf(false) }
+
+    // 评论登录入口拦截：不支持登录时弹窗提示，否则跳转登录页
+    val tryNavigateToLogin: () -> Unit = {
+        if (isLoginSupported) {
+            onNavigateToLogin()
+        } else {
+            showLoginUnsupportedDialog = true
+        }
+    }
     
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -668,7 +681,7 @@ fun DetailScreen(
                                 viewModel.postComment(text)
                             },
                             onClearPostError = { viewModel.clearPostCommentError() },
-                            onNavigateToLogin = onNavigateToLogin
+                            onNavigateToLogin = tryNavigateToLogin
                         )
                     }
                 }
@@ -788,6 +801,16 @@ fun DetailScreen(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onBackground,
             shape = RoundedCornerShape(8.dp)
+        )
+    }
+
+    if (showLoginUnsupportedDialog) {
+        LoginUnsupportedDialog(
+            onGoToSettings = {
+                showLoginUnsupportedDialog = false
+                onNavigateToSettings()
+            },
+            onDismiss = { showLoginUnsupportedDialog = false }
         )
     }
 }

@@ -293,7 +293,8 @@ fun HanimeApp() {
             composable("login") {
                 LoginScreen(
                     onBackClick = { navController.popBackStack() },
-                    onLoginSuccess = { navController.popBackStack() }
+                    onLoginSuccess = { navController.popBackStack() },
+                    onNavigateToSettings = { navController.navigate("settings") }
                 )
             }
             composable(
@@ -399,6 +400,9 @@ fun HanimeApp() {
                     },
                     onNavigateToLogin = {
                         navController.navigate("login")
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate("settings")
                     }
                 )
             }

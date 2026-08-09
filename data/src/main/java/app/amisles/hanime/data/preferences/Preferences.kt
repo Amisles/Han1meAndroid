@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.preferences
 
 import android.content.Context
+import android.net.Uri
 import android.webkit.CookieManager
 import androidx.core.content.edit
 import app.amisles.hanime.data.cookie.CookieString
@@ -8,6 +9,10 @@ import app.amisles.hanime.data.cookie.HCookieJar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.GlobalScope
 
 object Preferences {
 
@@ -24,6 +29,9 @@ object Preferences {
 
     // 默认官网地址
     const val DEFAULT_BASE_URL = "https://hanime1.me"
+
+    // 支持登录的官方域名（其余镜像站登录接口返回“站点维护中”）
+    private val LOGIN_SUPPORTED_DOMAINS = setOf("hanime1.me", "hanimeone.me")
 
     // 支持的语言代码
     const val LANGUAGE_ZH_CN = "zh-CN"
@@ -88,6 +96,25 @@ object Preferences {
     val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
 
     val baseUrl: String get() = _baseUrlFlow.value
+
+    /**
+     * 当前 baseUrl 是否为支持登录的官方域名（hanime1.me / hanimeone.me）。
+     * 镜像站登录接口会返回“站点维护中”，需在 UI 层提前拦截并提示用户。
+     */
+    val isLoginSupported: Boolean
+        get() = isLoginSupportedHost(baseUrl)
+
+    /**
+     * 登录支持状态的反应式 Flow，baseUrl 变化时自动更新。
+     */
+    val loginSupportedFlow: StateFlow<Boolean> = _baseUrlFlow
+        .map { isLoginSupportedHost(it) }
+        .stateIn(GlobalScope, SharingStarted.Eagerly, isLoginSupportedHost(_baseUrlFlow.value))
+
+    private fun isLoginSupportedHost(url: String): Boolean {
+        val host = runCatching { Uri.parse(url).host?.lowercase() }.getOrNull() ?: return false
+        return host in LOGIN_SUPPORTED_DOMAINS
+    }
 
     val appLanguage: String get() = _appLanguageFlow.value
 

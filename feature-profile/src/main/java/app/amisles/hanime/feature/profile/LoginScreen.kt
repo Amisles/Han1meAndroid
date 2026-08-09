@@ -63,6 +63,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.LoginUnsupportedBanner
+import app.amisles.hanime.data.preferences.Preferences
 import androidx.compose.material3.MaterialTheme
 
 private val LOGIN_URLS = listOf("https://hanime1.me/login", "https://hanimeone.me/login")
@@ -81,10 +83,12 @@ private fun isLoggedInRedirect(url: String): Boolean {
 @Composable
 fun LoginScreen(
     onBackClick: () -> Unit,
-    onLoginSuccess: () -> Unit = {}
+    onLoginSuccess: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val vm: LoginViewModel = hiltViewModel()
     val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState) {
         if (uiState is LoginViewModel.UiState.Success) {
@@ -124,6 +128,12 @@ fun LoginScreen(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
+            // 当前镜像站不支持登录时，顶部显示常驻提示横幅
+            // WebView/手动 Cookie 仍可使用（WebView 使用官方域名加载登录页）
+            if (!isLoginSupported) {
+                LoginUnsupportedBanner(onGoToSettings = onNavigateToSettings)
+            }
+
             TabRow(
                 selectedTabIndex = tabIndex,
                 containerColor = MaterialTheme.colorScheme.surface,

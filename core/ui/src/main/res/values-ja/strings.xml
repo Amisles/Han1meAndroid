@@ -136,6 +136,10 @@
     <string name="login_failed">ログイン失敗</string>
     <string name="login_cookie_empty">Cookieは空にできません</string>
     <string name="login_save_failed">保存失敗</string>
+    <string name="login_not_supported_title">このミラーサイトはログインに対応していません</string>
+    <string name="login_not_supported_message">hanime1.me と hanimeone.me のみログインに対応しています。他のミラーサイトのログイン API は「サイトメンテナンス中」を返します。設定でサイト URL を上記のドメインに切り替えてから再試行してください。</string>
+    <string name="login_not_supported_go_settings">設定へ移動</string>
+    <string name="login_not_supported_dismiss">了解しました</string>
     <string name="favorite_empty">お気に入りがありません</string>
     <string name="favorite_empty_hint">好きな動画を見つけましょう</string>
     <string name="favorite_delete_title">削除の確認</string>

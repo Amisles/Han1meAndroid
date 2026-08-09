@@ -9,6 +9,12 @@ build/
 *.dex
 *.class
 
+# 抓包/调试临时文件
+*.har
+cookies.txt
+jar.txt
+评论.txt
+
 # Android Studio 配置
 .idea/
 !app/.idea/.gitignore

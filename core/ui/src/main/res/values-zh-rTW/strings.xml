@@ -136,6 +136,10 @@
     <string name="login_failed">登入失敗</string>
     <string name="login_cookie_empty">Cookie 不能為空</string>
     <string name="login_save_failed">儲存失敗</string>
+    <string name="login_not_supported_title">目前鏡像站不支援登入</string>
+    <string name="login_not_supported_message">僅 hanime1.me 與 hanimeone.me 支援登入功能，其餘鏡像站登入介面會回傳「網站維護中」。請在設定中將官網網址切換為上述網域後重試。</string>
+    <string name="login_not_supported_go_settings">前往設定</string>
+    <string name="login_not_supported_dismiss">我知道了</string>
     <string name="favorite_empty">暫無收藏</string>
     <string name="favorite_empty_hint">去發現喜歡的影片吧</string>
     <string name="favorite_delete_title">確認刪除</string>

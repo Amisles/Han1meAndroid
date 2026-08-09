@@ -136,6 +136,10 @@
     <string name="login_failed">Login failed</string>
     <string name="login_cookie_empty">Cookie cannot be empty</string>
     <string name="login_save_failed">Save failed</string>
+    <string name="login_not_supported_title">Login not supported on this mirror</string>
+    <string name="login_not_supported_message">Only hanime1.me and hanimeone.me support login. Other mirror sites return “site under maintenance”. Please switch the site URL to one of the official domains in Settings.</string>
+    <string name="login_not_supported_go_settings">Go to Settings</string>
+    <string name="login_not_supported_dismiss">Got it</string>
     <string name="favorite_empty">No favorites</string>
     <string name="favorite_empty_hint">Discover videos you like</string>
     <string name="favorite_delete_title">Confirm Delete</string>

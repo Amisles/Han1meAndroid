@@ -154,6 +154,10 @@
     <string name="login_failed">登录失败</string>
     <string name="login_cookie_empty">Cookie 不能为空</string>
     <string name="login_save_failed">保存失败</string>
+    <string name="login_not_supported_title">当前镜像站不支持登录</string>
+    <string name="login_not_supported_message">仅 hanime1.me 与 hanimeone.me 支持登录功能，其余镜像站登录接口会返回“站点维护中”。请在设置中将官网网址切换为上述域名后重试。</string>
+    <string name="login_not_supported_go_settings">前往设置</string>
+    <string name="login_not_supported_dismiss">我知道了</string>
     
     <!-- Favorite -->
     <string name="favorite_empty">暂无收藏</string>
