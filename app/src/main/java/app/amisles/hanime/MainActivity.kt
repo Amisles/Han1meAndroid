@@ -43,6 +43,7 @@ import app.amisles.hanime.feature.settings.AuthorScreen
 import app.amisles.hanime.ui.screens.PlaylistDetailScreen
 import app.amisles.hanime.ui.screens.PlaylistListPageScreen
 import app.amisles.hanime.feature.settings.SettingsScreen
+import app.amisles.hanime.feature.settings.DiagnosticsScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.ui.theme.HanimeBackground
@@ -279,10 +280,16 @@ fun HanimeApp() {
                 SettingsScreen(
                     onBackClick = { navController.popBackStack() },
                     onNavigate = { route ->
-                        if (route == "about") {
-                            navController.navigate("about")
+                        when (route) {
+                            "about" -> navController.navigate("about")
+                            "diagnostics" -> navController.navigate("diagnostics")
                         }
                     }
+                )
+            }
+            composable("diagnostics") {
+                DiagnosticsScreen(
+                    onBackClick = { navController.popBackStack() }
                 )
             }
             composable("batchDownload") {

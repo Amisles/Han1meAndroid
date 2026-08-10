@@ -172,6 +172,21 @@
     <string name="settings_theme_system">Follow System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
+    <string name="settings_diagnostics">Network Diagnostics</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">Site Availability Diagnostics</string>
+    <string name="diagnostics_description">Checks DNS, connectivity, certificate, mirror status and login status of the current mirror site to help identify common issues.</string>
+    <string name="diagnostics_run">Start Diagnostics</string>
+    <string name="diagnostics_running">Running…</string>
+    <string name="diagnostics_rerun">Re-run</string>
+    <string name="diagnostics_latency">%1$d ms</string>
+    <string name="diagnostics_suggestion_prefix">Suggestion:</string>
+    <string name="diagnostics_status_ok">OK</string>
+    <string name="diagnostics_status_fail">Failed</string>
+    <string name="diagnostics_status_skipped">Skipped</string>
+    <string name="diagnostics_status_running">Running</string>
+
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_intro_title">About App</string>

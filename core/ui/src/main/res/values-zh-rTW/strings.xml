@@ -172,6 +172,21 @@
     <string name="settings_theme_system">跟隨系統</string>
     <string name="settings_theme_light">淺色</string>
     <string name="settings_theme_dark">深色</string>
+    <string name="settings_diagnostics">網路診斷</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">站點可用性診斷</string>
+    <string name="diagnostics_description">檢測目前鏡像站的 DNS、連線、憑證、鏡像狀態與登入狀態，協助定位常見問題。</string>
+    <string name="diagnostics_run">開始診斷</string>
+    <string name="diagnostics_running">診斷中…</string>
+    <string name="diagnostics_rerun">重新診斷</string>
+    <string name="diagnostics_latency">%1$d ms</string>
+    <string name="diagnostics_suggestion_prefix">建議：</string>
+    <string name="diagnostics_status_ok">正常</string>
+    <string name="diagnostics_status_fail">異常</string>
+    <string name="diagnostics_status_skipped">跳過</string>
+    <string name="diagnostics_status_running">檢測中</string>
+
     <string name="about_title">關於我們</string>
     <string name="about_version">版本 %1$s</string>
     <string name="about_intro_title">應用簡介</string>

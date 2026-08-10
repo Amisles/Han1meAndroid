@@ -196,7 +196,21 @@
     <string name="settings_theme_system">跟随系统</string>
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_dark">深色</string>
-    
+    <string name="settings_diagnostics">网络诊断</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">站点可用性诊断</string>
+    <string name="diagnostics_description">检测当前镜像站的 DNS、连接、证书、镜像状态与登录状态，帮助定位常见问题。</string>
+    <string name="diagnostics_run">开始诊断</string>
+    <string name="diagnostics_running">诊断中…</string>
+    <string name="diagnostics_rerun">重新诊断</string>
+    <string name="diagnostics_latency">%1$d ms</string>
+    <string name="diagnostics_suggestion_prefix">建议：</string>
+    <string name="diagnostics_status_ok">正常</string>
+    <string name="diagnostics_status_fail">异常</string>
+    <string name="diagnostics_status_skipped">跳过</string>
+    <string name="diagnostics_status_running">检测中</string>
+
     <!-- About -->
     <string name="about_title">关于我们</string>
     <string name="about_version">版本 %1$s</string>
