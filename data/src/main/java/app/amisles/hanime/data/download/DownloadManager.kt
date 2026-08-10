@@ -54,9 +54,14 @@ class DownloadManager @Inject constructor(
     private val taskIdCounter = AtomicInteger(0)
     private val scope = CoroutineScope(Dispatchers.IO)
     private val tasksLock = ReentrantLock()
+    // 并发下载的绝对硬上限：信号量固定容量、创建后不再重建，
+    // 避免 updateConcurrencyLimit 重建对象导致在途任务持有的旧许可成为孤儿。
+    private val downloadSemaphore: Semaphore = Semaphore(MAX_CONCURRENT)
+    // 用户可配置的有效并发上限（1..MAX_CONCURRENT），作为调度软门限（由状态计数控制）
     @Volatile
-    private var downloadSemaphore: Semaphore = Semaphore(Preferences.maxDownloadConcurrent)
-    private val semaphoreLock = Any()
+    private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
+    // 进度落盘节流：进度类更新仅按此间隔写 DB，状态切换始终立即落盘，减少写放大
+    private val lastPersistTime = ConcurrentHashMap<Int, Long>()
 
     private val downloadDir: File
         get() {
@@ -131,7 +136,12 @@ class DownloadManager @Inject constructor(
             persistTask(task)
             AppLogger.log("DownloadManager", "Starting download $taskId: $title ($quality)")
 
-            startDownloadWithConcurrencyInternal(task)
+            // 槽位未满则立即开始；否则保持 PENDING，由完成后的链式调度拾起
+            if (currentDownloadingCount() < concurrencyLimit) {
+                startDownloadWithConcurrencyInternal(task)
+            } else {
+                AppLogger.log("DownloadManager", "下载槽位已满($concurrencyLimit)，任务 $taskId 进入等待队列")
+            }
 
             return taskId
         }
@@ -146,9 +156,8 @@ class DownloadManager @Inject constructor(
 
         val job = scope.launch {
             try {
-                // 等待获取信号量许可
-                val semaphore = synchronized(semaphoreLock) { downloadSemaphore }
-                semaphore.withPermit {
+                // 等待获取信号量许可（固定容量硬上限）
+                downloadSemaphore.withPermit {
                     AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取)")
 
                     updateTask(task.id) { it.copy(status = DownloadStatus.DOWNLOADING) }
@@ -179,7 +188,7 @@ class DownloadManager @Inject constructor(
             val pendingTask = _tasks.value.firstOrNull {
                 it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)
             }
-            if (pendingTask != null) {
+            if (pendingTask != null && currentDownloadingCount() < concurrencyLimit) {
                 AppLogger.log("DownloadManager", "启动下一个等待任务: ${pendingTask.title}")
                 startDownloadWithConcurrencyInternal(pendingTask)
             }
@@ -187,21 +196,17 @@ class DownloadManager @Inject constructor(
     }
 
     fun updateConcurrencyLimit(maxConcurrent: Int) {
-        val safeMax = maxConcurrent.coerceIn(1, 5)
-        synchronized(semaphoreLock) {
-            downloadSemaphore = Semaphore(safeMax)
-        }
+        val safeMax = maxConcurrent.coerceIn(1, MAX_CONCURRENT)
+        // 仅更新软门限；信号量固定容量，不再重建对象（避免旧许可成为孤儿）
+        concurrencyLimit = safeMax
         AppLogger.log("DownloadManager", "并发下载数已更新为: $safeMax")
 
         tasksLock.withLock {
-            val downloadingCount = _tasks.value.count { it.status == DownloadStatus.DOWNLOADING }
             val pendingTasks = _tasks.value.filter {
                 it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)
             }
-            val availableSlots = safeMax - downloadingCount
-
-            if (availableSlots > 0) {
-                pendingTasks.take(availableSlots).forEach { task ->
+            pendingTasks.forEach { task ->
+                if (currentDownloadingCount() < concurrencyLimit) {
                     startDownloadWithConcurrencyInternal(task)
                 }
             }
@@ -293,7 +298,12 @@ class DownloadManager @Inject constructor(
             _tasks.value = _tasks.value.map { task ->
                 if (task.id == taskId) {
                     val newTask = updater(task)
-                    persistTask(newTask)
+                    val statusChanged = newTask.status != task.status
+                    // 进度更新走内存态驱动 UI；仅状态切换或达到节流间隔才落盘，降低写放大
+                    if (statusChanged || shouldPersistProgress(taskId)) {
+                        lastPersistTime[taskId] = System.currentTimeMillis()
+                        persistTask(newTask)
+                    }
                     // 触发进度回调，通知外部更新通知栏
                     if (newTask.status == DownloadStatus.DOWNLOADING && newTask.totalBytes > 0) {
                         val progress = (newTask.downloadedBytes * 100 / newTask.totalBytes).toInt()
@@ -308,6 +318,22 @@ class DownloadManager @Inject constructor(
             }
         }
     }
+
+    /**
+     * 进度类落盘节流：距上次落盘超过 [PROGRESS_PERSIST_INTERVAL_MS] 才允许写 DB。
+     * 状态切换（由调用方判断）不走此节流，始终立即落盘。
+     */
+    private fun shouldPersistProgress(taskId: Int): Boolean {
+        val now = System.currentTimeMillis()
+        val last = lastPersistTime[taskId] ?: 0L
+        return now - last >= PROGRESS_PERSIST_INTERVAL_MS
+    }
+
+    /**
+     * 当前正在下载的任务数，作为并发软门限的调度依据。
+     */
+    private fun currentDownloadingCount(): Int =
+        _tasks.value.count { it.status == DownloadStatus.DOWNLOADING }
 
     private fun persistTask(task: DownloadTask) {
         scope.launch {
@@ -334,17 +360,8 @@ class DownloadManager @Inject constructor(
     fun pauseDownload(taskId: Int) {
         downloadJobs[taskId]?.cancel()
         downloadJobs.remove(taskId)
-        tasksLock.withLock {
-            _tasks.value = _tasks.value.map { task ->
-                if (task.id == taskId) {
-                    val newTask = task.copy(status = DownloadStatus.PAUSED)
-                    persistTask(newTask)
-                    newTask
-                } else {
-                    task
-                }
-            }
-        }
+        // 复用 updateTask：状态切换（→PAUSED）会立即落盘
+        updateTask(taskId) { it.copy(status = DownloadStatus.PAUSED) }
         AppLogger.log("DownloadManager", "Download paused: $taskId")
     }
 
@@ -378,9 +395,8 @@ class DownloadManager @Inject constructor(
 
         val job = scope.launch {
             try {
-                // 等待获取信号量许可
-                val semaphore = synchronized(semaphoreLock) { downloadSemaphore }
-                semaphore.withPermit {
+                // 等待获取信号量许可（固定容量硬上限）
+                downloadSemaphore.withPermit {
                     AppLogger.log("DownloadManager", "恢复下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
 
                     updateTask(taskId) { it.copy(status = DownloadStatus.DOWNLOADING) }
@@ -493,6 +509,11 @@ class DownloadManager @Inject constructor(
     }
 
     private companion object {
+        // 并发下载绝对硬上限（信号量固定容量），与用户可配置并发上限的上界一致
+        const val MAX_CONCURRENT = 5
+        // 进度类 DB 落盘节流间隔（ms）：进度更新走内存态，仅按此间隔写 DB
+        const val PROGRESS_PERSIST_INTERVAL_MS = 3000L
+
         // DownloadService 的完整类名。data 模块不能直接依赖 app 模块，
         // 因此通过显式类名的 Intent 将进度转发给 app 模块中的 DownloadService。
         const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
