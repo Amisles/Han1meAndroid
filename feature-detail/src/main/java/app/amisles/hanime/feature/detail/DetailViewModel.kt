@@ -11,6 +11,7 @@ import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,37 +108,41 @@ class DetailViewModel @Inject constructor(
         _repliesError.value = emptyMap()
 
         viewModelScope.launch {
-            try {
-                val detail = withContext(Dispatchers.IO) {
-                    repository.getVideoDetail(videoUrl)
-                }
-                AppLogger.d("DetailViewModel", "Got video detail: ${detail.title}, sources: ${detail.videoSources.size}")
-                _videoDetail.value = detail
-                if (currentVideoId.isNotEmpty()) {
-                    val history = WatchHistory(
-                        id = currentVideoId,
-                        title = detail.title,
-                        thumbnailUrl = detail.posterUrl,
-                        videoUrl = currentVideoUrl,
-                        author = detail.author,
-                        duration = detail.releaseDate,
-                        watchedAt = System.currentTimeMillis()
-                    )
-                    withContext(Dispatchers.IO) {
-                        repository.addWatchHistory(history)
-                    }
-                }
-
-                val isFav = withContext(Dispatchers.IO) {
-                    repository.isFavorite(currentVideoId)
-                }
-                _isFavorite.value = isFav
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error loading video detail: ${e.message}", e)
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
+            val result = withContext(Dispatchers.IO) {
+                repository.getVideoDetail(videoUrl)
             }
+            when (result) {
+                is AppResult.Success -> {
+                    val detail = result.data
+                    AppLogger.d("DetailViewModel", "Got video detail: ${detail.title}, sources: ${detail.videoSources.size}")
+                    _videoDetail.value = detail
+                    if (currentVideoId.isNotEmpty()) {
+                        val history = WatchHistory(
+                            id = currentVideoId,
+                            title = detail.title,
+                            thumbnailUrl = detail.posterUrl,
+                            videoUrl = currentVideoUrl,
+                            author = detail.author,
+                            duration = detail.releaseDate,
+                            watchedAt = System.currentTimeMillis()
+                        )
+                        withContext(Dispatchers.IO) {
+                            repository.addWatchHistory(history)
+                        }
+                    }
+
+                    val isFav = withContext(Dispatchers.IO) {
+                        repository.isFavorite(currentVideoId)
+                    }
+                    _isFavorite.value = isFav
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("DetailViewModel", "Error loading video detail: ${result.message}", result.exception)
+                    _error.value = result.message
+                }
+                is AppResult.Loading -> {}
+            }
+            _isLoading.value = false
         }
     }
 
@@ -147,18 +152,21 @@ class DetailViewModel @Inject constructor(
         _isLoadingQualities.value = true
 
         viewModelScope.launch {
-            try {
-                val qualities = withContext(Dispatchers.IO) {
-                    repository.getDownloadQualities(currentVideoId)
-                }
-                AppLogger.d("DetailViewModel", "Got ${qualities.size} download qualities")
-                _downloadQualities.value = qualities
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error loading download qualities: ${e.message}", e)
-                _downloadQualities.value = emptyList()
-            } finally {
-                _isLoadingQualities.value = false
+            val result = withContext(Dispatchers.IO) {
+                repository.getDownloadQualities(currentVideoId)
             }
+            when (result) {
+                is AppResult.Success -> {
+                    AppLogger.d("DetailViewModel", "Got ${result.data.size} download qualities")
+                    _downloadQualities.value = result.data
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("DetailViewModel", "Error loading download qualities: ${result.message}", result.exception)
+                    _downloadQualities.value = emptyList()
+                }
+                is AppResult.Loading -> {}
+            }
+            _isLoadingQualities.value = false
         }
     }
 
@@ -177,19 +185,22 @@ class DetailViewModel @Inject constructor(
         _commentsError.value = null
 
         viewModelScope.launch {
-            try {
-                val list = withContext(Dispatchers.IO) {
-                    repository.getComments(currentVideoId)
-                }
-                AppLogger.d("DetailViewModel", "Got ${list.size} comments")
-                _comments.value = list
-                _commentsLoaded.value = true
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error loading comments: ${e.message}", e)
-                _commentsError.value = e.message ?: "评论加载失败"
-            } finally {
-                _isLoadingComments.value = false
+            val result = withContext(Dispatchers.IO) {
+                repository.getComments(currentVideoId)
             }
+            when (result) {
+                is AppResult.Success -> {
+                    AppLogger.d("DetailViewModel", "Got ${result.data.size} comments")
+                    _comments.value = result.data
+                    _commentsLoaded.value = true
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("DetailViewModel", "Error loading comments: ${result.message}", result.exception)
+                    _commentsError.value = result.message ?: "评论加载失败"
+                }
+                is AppResult.Loading -> {}
+            }
+            _isLoadingComments.value = false
         }
     }
 
@@ -212,18 +223,21 @@ class DetailViewModel @Inject constructor(
         _repliesError.value = _repliesError.value - commentId
 
         viewModelScope.launch {
-            try {
-                val list = withContext(Dispatchers.IO) {
-                    repository.getReplies(commentId)
-                }
-                AppLogger.d("DetailViewModel", "Got ${list.size} replies for comment $commentId")
-                _repliesCache.value = _repliesCache.value + (commentId to list)
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error loading replies: ${e.message}", e)
-                _repliesError.value = _repliesError.value + (commentId to (e.message ?: "回复加载失败"))
-            } finally {
-                _loadingReplies.value = _loadingReplies.value - commentId
+            val result = withContext(Dispatchers.IO) {
+                repository.getReplies(commentId)
             }
+            when (result) {
+                is AppResult.Success -> {
+                    AppLogger.d("DetailViewModel", "Got ${result.data.size} replies for comment $commentId")
+                    _repliesCache.value = _repliesCache.value + (commentId to result.data)
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("DetailViewModel", "Error loading replies: ${result.message}", result.exception)
+                    _repliesError.value = _repliesError.value + (commentId to (result.message ?: "回复加载失败"))
+                }
+                is AppResult.Loading -> {}
+            }
+            _loadingReplies.value = _loadingReplies.value - commentId
         }
     }
 
@@ -259,29 +273,33 @@ class DetailViewModel @Inject constructor(
         _postCommentError.value = null
 
         viewModelScope.launch {
-            try {
-                val (newComment, newCount) = withContext(Dispatchers.IO) {
-                    repository.postComment(
-                        videoId = currentVideoId,
-                        commentText = trimmed,
-                        commentCount = detail.commentCount,
-                        csrfToken = detail.csrfToken
-                    )
-                }
-                // 追加新评论到列表头部
-                _comments.value = listOf(newComment) + _comments.value
-                _lastPostedComment.value = newComment
-
-                // 更新 VideoDetail 中的 commentCount
-                _videoDetail.value = detail.copy(commentCount = newCount)
-
-                AppLogger.d("DetailViewModel", "Comment posted: id=${newComment.id}, newCount=$newCount")
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error posting comment: ${e.message}", e)
-                _postCommentError.value = e.message ?: "发表评论失败"
-            } finally {
-                _isPostingComment.value = false
+            val result = withContext(Dispatchers.IO) {
+                repository.postComment(
+                    videoId = currentVideoId,
+                    commentText = trimmed,
+                    commentCount = detail.commentCount,
+                    csrfToken = detail.csrfToken
+                )
             }
+            when (result) {
+                is AppResult.Success -> {
+                    val (newComment, newCount) = result.data
+                    // 追加新评论到列表头部
+                    _comments.value = listOf(newComment) + _comments.value
+                    _lastPostedComment.value = newComment
+
+                    // 更新 VideoDetail 中的 commentCount
+                    _videoDetail.value = detail.copy(commentCount = newCount)
+
+                    AppLogger.d("DetailViewModel", "Comment posted: id=${newComment.id}, newCount=$newCount")
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("DetailViewModel", "Error posting comment: ${result.message}", result.exception)
+                    _postCommentError.value = result.message ?: "发表评论失败"
+                }
+                is AppResult.Loading -> {}
+            }
+            _isPostingComment.value = false
         }
     }
 

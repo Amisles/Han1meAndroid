@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -109,32 +110,36 @@ class SearchViewModel @Inject constructor(
         _hasMore.value = true
 
         viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    repository.searchVideosWithPagination(
-                        query = _query.value,
-                        genre = _genre.value,
-                        sort = _sort.value,
-                        page = currentPageNum
-                    )
-                }
-                Log.i("SearchViewModel", "Search returned ${result.videos.size} results, page ${result.currentPage}/${result.totalPages}")
-                _videos.value = result.videos
-                _currentPage.value = result.currentPage
-                _totalPages.value = result.totalPages
-                _hasMore.value = result.hasNextPage
-                if (_query.value.isNotEmpty()) {
-                    withContext(Dispatchers.IO) {
-                        repository.addSearchHistory(_query.value)
+            val result = withContext(Dispatchers.IO) {
+                repository.searchVideosWithPagination(
+                    query = _query.value,
+                    genre = _genre.value,
+                    sort = _sort.value,
+                    page = currentPageNum
+                )
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    val data = result.data
+                    Log.i("SearchViewModel", "Search returned ${data.videos.size} results, page ${data.currentPage}/${data.totalPages}")
+                    _videos.value = data.videos
+                    _currentPage.value = data.currentPage
+                    _totalPages.value = data.totalPages
+                    _hasMore.value = data.hasNextPage
+                    if (_query.value.isNotEmpty()) {
+                        withContext(Dispatchers.IO) {
+                            repository.addSearchHistory(_query.value)
+                        }
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("SearchViewModel", "Search failed: ${e.message}", e)
-                _videos.value = emptyList()
-                _error.value = e.message ?: "搜索失败，请重试"
-            } finally {
-                _isLoading.value = false
+                is AppResult.Error -> {
+                    Log.e("SearchViewModel", "Search failed: ${result.message}", result.exception)
+                    _videos.value = emptyList()
+                    _error.value = result.message
+                }
+                is AppResult.Loading -> {}
             }
+            _isLoading.value = false
         }
     }
 
@@ -146,28 +151,32 @@ class SearchViewModel @Inject constructor(
         currentPageNum++
 
         viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    repository.searchVideosWithPagination(
-                        query = _query.value,
-                        genre = _genre.value,
-                        sort = _sort.value,
-                        page = currentPageNum
-                    )
-                }
-                Log.i("SearchViewModel", "LoadMore returned ${result.videos.size} results, page ${result.currentPage}/${result.totalPages}")
-                if (result.videos.isNotEmpty()) {
-                    _videos.value = _videos.value + result.videos
-                }
-                _currentPage.value = result.currentPage
-                _totalPages.value = result.totalPages
-                _hasMore.value = result.hasNextPage
-            } catch (e: Exception) {
-                Log.e("SearchViewModel", "LoadMore failed: ${e.message}", e)
-                _hasMore.value = false
-            } finally {
-                _isLoadingMore.value = false
+            val result = withContext(Dispatchers.IO) {
+                repository.searchVideosWithPagination(
+                    query = _query.value,
+                    genre = _genre.value,
+                    sort = _sort.value,
+                    page = currentPageNum
+                )
             }
+            when (result) {
+                is AppResult.Success -> {
+                    val data = result.data
+                    Log.i("SearchViewModel", "LoadMore returned ${data.videos.size} results, page ${data.currentPage}/${data.totalPages}")
+                    if (data.videos.isNotEmpty()) {
+                        _videos.value = _videos.value + data.videos
+                    }
+                    _currentPage.value = data.currentPage
+                    _totalPages.value = data.totalPages
+                    _hasMore.value = data.hasNextPage
+                }
+                is AppResult.Error -> {
+                    Log.e("SearchViewModel", "LoadMore failed: ${result.message}", result.exception)
+                    _hasMore.value = false
+                }
+                is AppResult.Loading -> {}
+            }
+            _isLoadingMore.value = false
         }
     }
 

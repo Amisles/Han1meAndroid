@@ -7,6 +7,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,24 +49,28 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             AppLogger.d("HomeViewModel", "Coroutine started, switching to IO dispatcher")
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    repository.getHomeData()
-                }
-                AppLogger.d("HomeViewModel", "Repository returned ${result.sections.size} sections, banner: ${result.banner != null}")
-                _sections.value = result.sections
-                _banner.value = result.banner
-                _videos.value = result.sections.flatMap { it.videos }
-            } catch (e: Exception) {
-                AppLogger.e("HomeViewModel", "Error loading home data: ${e.message}", e)
-                _sections.value = emptyList()
-                _videos.value = emptyList()
-                _banner.value = null
-                _error.value = e.message ?: "加载失败，请检查网络后重试"
-            } finally {
-                AppLogger.d("HomeViewModel", "Setting isLoading=false")
-                _isLoading.value = false
+            val result = withContext(Dispatchers.IO) {
+                repository.getHomeData()
             }
+            when (result) {
+                is AppResult.Success -> {
+                    AppLogger.d("HomeViewModel", "Repository returned ${result.data.sections.size} sections, banner: ${result.data.banner != null}")
+                    _sections.value = result.data.sections
+                    _banner.value = result.data.banner
+                    _videos.value = result.data.sections.flatMap { it.videos }
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("HomeViewModel", "Error loading home data: ${result.message}", result.exception)
+                    _sections.value = emptyList()
+                    _videos.value = emptyList()
+                    _banner.value = null
+                    _error.value = result.message
+                }
+                is AppResult.Loading -> {
+                    // 首页加载中状态由 _isLoading 控制
+                }
+            }
+            _isLoading.value = false
         }
     }
 }

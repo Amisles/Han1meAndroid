@@ -21,6 +21,7 @@ import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -124,44 +125,60 @@ class HanimeRepository @Inject constructor(
             0
         }
     }
-    suspend fun getHomeData(): HomePageData {
-        val result = networkService.fetchHomePageWithBaseUrl()
-        AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-        return homePageParser.parse(result.html, result.baseUrl)
-    }
-
-    suspend fun searchVideos(query: String, genre: String? = null, sort: String? = null, page: Int = 1): List<HanimeVideo> {
-        try {
-            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
-            AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return searchPageParser.parse(result.html, result.baseUrl)
+    suspend fun getHomeData(): AppResult<HomePageData> {
+        return try {
+            val result = networkService.fetchHomePageWithBaseUrl()
+            AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppResult.success(homePageParser.parse(result.html, result.baseUrl))
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in searchVideos: ${e.message}", e)
-            return emptyList()
+            AppLogger.logError("HanimeRepository", "Error in getHomeData: ${e.message}", e)
+            AppResult.error(e.message ?: "加载首页失败", e)
         }
     }
 
-    suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1): SearchResult {
-        val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
-        AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-        return searchPageParser.parseWithPagination(result.html, result.baseUrl)
+    suspend fun searchVideos(query: String, genre: String? = null, sort: String? = null, page: Int = 1): AppResult<List<HanimeVideo>> {
+        return try {
+            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
+            AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppResult.success(searchPageParser.parse(result.html, result.baseUrl))
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in searchVideos: ${e.message}", e)
+            AppResult.error(e.message ?: "搜索失败", e)
+        }
     }
 
-    suspend fun getVideoDetail(videoUrl: String): VideoDetail {
-        val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
-        AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-        return watchPageParser.parse(result.html, result.baseUrl)
-            ?: throw IllegalStateException("无法解析视频详情页")
+    suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1): AppResult<SearchResult> {
+        return try {
+            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
+            AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppResult.success(searchPageParser.parseWithPagination(result.html, result.baseUrl))
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in searchVideosWithPagination: ${e.message}", e)
+            AppResult.error(e.message ?: "搜索失败", e)
+        }
     }
 
-    suspend fun getDownloadQualities(videoId: String): List<DownloadQuality> {
-        try {
+    suspend fun getVideoDetail(videoUrl: String): AppResult<VideoDetail> {
+        return try {
+            val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
+            AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            val detail = watchPageParser.parse(result.html, result.baseUrl)
+                ?: return AppResult.error("无法解析视频详情页")
+            AppResult.success(detail)
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getVideoDetail: ${e.message}", e)
+            AppResult.error(e.message ?: "加载视频详情失败", e)
+        }
+    }
+
+    suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
+        return try {
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
             AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
-            return downloadPageParser.parse(result.html, result.baseUrl)
+            AppResult.success(downloadPageParser.parse(result.html, result.baseUrl))
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getDownloadQualities: ${e.message}", e)
-            return emptyList()
+            AppResult.error(e.message ?: "获取下载画质失败", e)
         }
     }
 
@@ -169,20 +186,30 @@ class HanimeRepository @Inject constructor(
      * 拉取视频评论列表。
      * 不捕获异常，让上层 ViewModel 显示颜文字错误提示。
      */
-    suspend fun getComments(videoId: String): List<Comment> {
-        val json = networkService.fetchComments(videoId)
-        AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
-        return commentParser.parse(json)
+    suspend fun getComments(videoId: String): AppResult<List<Comment>> {
+        return try {
+            val json = networkService.fetchComments(videoId)
+            AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
+            AppResult.success(commentParser.parse(json))
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getComments: ${e.message}", e)
+            AppResult.error(e.message ?: "加载评论失败", e)
+        }
     }
 
     /**
      * 拉取评论的回复列表。
      * 不捕获异常，让上层 ViewModel 处理错误。
      */
-    suspend fun getReplies(commentId: String): List<Reply> {
-        val json = networkService.fetchReplies(commentId)
-        AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
-        return commentParser.parseReplies(json)
+    suspend fun getReplies(commentId: String): AppResult<List<Reply>> {
+        return try {
+            val json = networkService.fetchReplies(commentId)
+            AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
+            AppResult.success(commentParser.parseReplies(json))
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getReplies: ${e.message}", e)
+            AppResult.error(e.message ?: "加载回复失败", e)
+        }
     }
 
     /**
@@ -199,26 +226,33 @@ class HanimeRepository @Inject constructor(
         commentText: String,
         commentCount: Int,
         csrfToken: String
-    ): Pair<Comment, Int> {
-        val userId = Preferences.savedUserId.ifBlank {
-            throw IllegalStateException("未登录，无法发表评论")
+    ): AppResult<Pair<Comment, Int>> {
+        return try {
+            val userId = Preferences.savedUserId.ifBlank {
+                return AppResult.error("未登录，无法发表评论")
+            }
+            if (csrfToken.isBlank()) {
+                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+            }
+            val json = networkService.postComment(
+                videoId = videoId,
+                commentText = commentText,
+                commentCount = commentCount,
+                csrfToken = csrfToken,
+                userId = userId
+            )
+            AppLogger.log("HanimeRepository", "postComment JSON received, length: ${json.length}")
+            val parsed = commentParser.parsePostedComment(json)
+                ?: return AppResult.error("评论发表成功但解析失败")
+            AppResult.success(parsed)
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in postComment: ${e.message}", e)
+            AppResult.error(e.message ?: "发表评论失败", e)
         }
-        if (csrfToken.isBlank()) {
-            throw IllegalStateException("CSRF Token 缺失，请刷新页面后重试")
-        }
-        val json = networkService.postComment(
-            videoId = videoId,
-            commentText = commentText,
-            commentCount = commentCount,
-            csrfToken = csrfToken,
-            userId = userId
-        )
-        AppLogger.log("HanimeRepository", "postComment JSON received, length: ${json.length}")
-        return commentParser.parsePostedComment(json)
-            ?: throw IllegalStateException("评论发表成功但解析失败")
     }
 
-    suspend fun login(email: String, password: String): Result<String> = runCatching {
+    suspend fun login(email: String, password: String): AppResult<String> {
+        return runCatching {
         val page = try {
             networkService.fetchLoginPageWithBaseUrl()
         } catch (t: Throwable) {
@@ -270,6 +304,13 @@ class HanimeRepository @Inject constructor(
         val userId = LoginParser.parseUserIdFromSetCookies(result.setCookies)
         Preferences.saveLogin(mergedCookie, userId)
         mergedCookie
+        }.fold(
+            onSuccess = { AppResult.success(it) },
+            onFailure = { e ->
+                AppLogger.logError("HanimeRepository", "Login failed: ${e.message}", e)
+                AppResult.error(e.message ?: "登录失败", e)
+            }
+        )
     }
 
     suspend fun saveLoginCookie(cookieString: String): Boolean {

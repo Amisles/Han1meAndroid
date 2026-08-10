@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,10 +39,10 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             val result = repository.login(cleanEmail, password)
-            result.onSuccess { cookie ->
-                _uiState.value = UiState.Success(cookie.length)
-            }.onFailure { t ->
-                _uiState.value = UiState.Error(t.message ?: "登录失败")
+            when (result) {
+                is AppResult.Success -> _uiState.value = UiState.Success(result.data.length)
+                is AppResult.Error -> _uiState.value = UiState.Error(result.message)
+                is AppResult.Loading -> {}
             }
         }
     }
