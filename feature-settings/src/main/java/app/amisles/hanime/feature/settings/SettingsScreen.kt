@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.settings
 
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +56,8 @@ import app.amisles.hanime.data.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 data class LanguageOption(val code: String, val label: String)
 
@@ -162,19 +164,37 @@ private fun <T> SettingsDropdownCard(
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit = {},
-    onNavigate: (String) -> Unit = {}
+    onNavigate: (String) -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val maxDownloadConcurrent by Preferences.maxDownloadConcurrentFlow.collectAsState()
-    val baseUrl by Preferences.baseUrlFlow.collectAsState()
-    val appLanguage by Preferences.appLanguageFlow.collectAsState()
-    val themeMode by Preferences.themeModeFlow.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 处理一次性 UI 事件（Toast / recreate）
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is SettingsUiEvent.Toast -> {
+                    val msg = if (event.arg != null) {
+                        context.getString(event.messageResId, event.arg)
+                    } else {
+                        context.getString(event.messageResId)
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
+                SettingsUiEvent.RecreateActivity -> {
+                    (context as? android.app.Activity)?.recreate()
+                }
+            }
+        }
+    }
+
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var appLanguageMenuExpanded by remember { mutableStateOf(false) }
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
     var themeModeMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
-    var baseUrlInput by remember { mutableStateOf(baseUrl) }
+    var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
 
     val languageOptions = appLanguageOptions()
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
@@ -222,44 +242,39 @@ fun SettingsScreen(
         SettingsDropdownCard(
             icon = Icons.Outlined.Language,
             title = stringResource(R.string.settings_app_language),
-            selectedLabel = languageOptions.find { it.code == appLanguage }?.label
+            selectedLabel = languageOptions.find { it.code == uiState.appLanguage }?.label
                 ?: stringResource(R.string.settings_language_zh_cn),
             expanded = appLanguageMenuExpanded,
             onExpandedChange = { appLanguageMenuExpanded = it },
             options = languageOptions.map { it.code to it.label },
-            selectedValue = appLanguage,
-            onSelect = { code ->
-                Preferences.setAppLanguage(code)
-                (context as? android.app.Activity)?.recreate()
-            }
+            selectedValue = uiState.appLanguage,
+            onSelect = { code -> viewModel.setAppLanguage(code) }
         )
 
         // 主题模式
         SettingsDropdownCard(
             icon = Icons.Outlined.Palette,
             title = stringResource(R.string.settings_theme_mode),
-            selectedLabel = themeModeOptions.find { it.first == themeMode }?.second
+            selectedLabel = themeModeOptions.find { it.first == uiState.themeMode }?.second
                 ?: stringResource(R.string.settings_theme_system),
             expanded = themeModeMenuExpanded,
             onExpandedChange = { themeModeMenuExpanded = it },
             options = themeModeOptions,
-            selectedValue = themeMode,
-            onSelect = { mode ->
-                Preferences.setThemeMode(mode)
-            }
+            selectedValue = uiState.themeMode,
+            onSelect = { mode -> viewModel.setThemeMode(mode) }
         )
 
         // 同时下载数
         SettingsDropdownCard(
             icon = Icons.Default.Layers,
             title = stringResource(R.string.settings_max_concurrent),
-            selectedLabel = "$maxDownloadConcurrent$concurrentCountSuffix",
+            selectedLabel = "${uiState.maxDownloadConcurrent}$concurrentCountSuffix",
             expanded = downloadConcurrentMenuExpanded,
             onExpandedChange = { downloadConcurrentMenuExpanded = it },
             options = (1..5).map { it to "$it$concurrentCountSuffix" },
-            selectedValue = maxDownloadConcurrent,
+            selectedValue = uiState.maxDownloadConcurrent,
             onSelect = { count ->
-                Preferences.setMaxDownloadConcurrent(count)
+                viewModel.setMaxDownloadConcurrent(count)
                 Toast.makeText(
                     context,
                     context.getString(R.string.settings_concurrent_set_toast, count),
@@ -273,7 +288,7 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 15.dp, vertical = 6.dp)
                 .clickable {
-                    baseUrlInput = baseUrl
+                    baseUrlInput = uiState.baseUrl
                     showBaseUrlDialog = true
                 },
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -299,7 +314,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = baseUrl,
+                        text = uiState.baseUrl,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -364,7 +379,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    clearAppCache(context)
+                    viewModel.clearAppCache()
                     showClearCacheDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_cache_cleared), Toast.LENGTH_SHORT).show()
                 }) {
@@ -413,7 +428,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    Preferences.setBaseUrl(baseUrlInput)
+                    viewModel.setBaseUrl(baseUrlInput)
                     showBaseUrlDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_base_url_updated), Toast.LENGTH_SHORT).show()
                 }) {
@@ -422,8 +437,8 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = {
+                    viewModel.restoreDefaultBaseUrl()
                     baseUrlInput = Preferences.DEFAULT_BASE_URL
-                    Preferences.setBaseUrl(Preferences.DEFAULT_BASE_URL)
                     showBaseUrlDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_base_url_restored), Toast.LENGTH_SHORT).show()
                 }) {
@@ -432,16 +447,5 @@ fun SettingsScreen(
             },
             containerColor = MaterialTheme.colorScheme.surface
         )
-    }
-}
-
-private fun clearAppCache(context: Context) {
-    try {
-        val cacheDir = context.cacheDir
-        if (cacheDir.exists()) {
-            cacheDir.listFiles()?.forEach { it.deleteRecursively() }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
     }
 }
