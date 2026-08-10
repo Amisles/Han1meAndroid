@@ -245,7 +245,13 @@ class DetailViewModel @Inject constructor(
         val detail = _videoDetail.value
         val title = detail?.title ?: "video"
         val thumbnailUrl = detail?.posterUrl ?: ""
-        downloadManager.startDownload(title, quality.resolution, quality.downloadUrl, thumbnailUrl)
+        downloadManager.startDownload(
+            title,
+            quality.resolution,
+            quality.downloadUrl,
+            thumbnailUrl,
+            currentVideoId
+        )
         AppLogger.d("DetailViewModel", "Started download: ${quality.resolution}")
     }
 

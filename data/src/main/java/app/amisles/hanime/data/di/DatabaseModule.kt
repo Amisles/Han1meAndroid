@@ -29,7 +29,8 @@ object DatabaseModule {
             .addMigrations(
                 FavoriteDatabase.MIGRATION_1_2,
                 FavoriteDatabase.MIGRATION_2_3,
-                FavoriteDatabase.MIGRATION_3_4
+                FavoriteDatabase.MIGRATION_3_4,
+                FavoriteDatabase.MIGRATION_4_5
             )
             .build()
     }

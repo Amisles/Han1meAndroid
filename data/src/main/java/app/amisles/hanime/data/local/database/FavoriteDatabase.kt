@@ -11,7 +11,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 
 @Database(
     entities = [FavoriteVideo::class, WatchHistory::class, DownloadEntity::class, SearchHistoryEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class FavoriteDatabase : RoomDatabase() {
@@ -64,6 +64,18 @@ abstract class FavoriteDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN thumbnailUrl TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        // P1-F2/C3：download_tasks 新增 videoId（去重依据）与 errorMessage（失败原因细分）
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE download_tasks ADD COLUMN videoId TEXT NOT NULL DEFAULT ''"
+                )
+                database.execSQL(
+                    "ALTER TABLE download_tasks ADD COLUMN errorMessage TEXT NOT NULL DEFAULT ''"
                 )
             }
         }

@@ -626,6 +626,15 @@ fun DownloadTaskItem(
                     color = Color(0xFFFF6B6B),
                     modifier = Modifier.padding(top = 3.dp)
                 )
+                // C3：展示细分失败原因（如网络超时、HTTP 4xx/5xx）
+                if (task.errorMessage.isNotBlank()) {
+                    Text(
+                        text = task.errorMessage,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             } else if (task.status == DownloadStatus.PAUSED) {
                 Text(
                     text = "${formatFileSize(task.downloadedBytes)} / ${formatFileSize(task.totalBytes)}",

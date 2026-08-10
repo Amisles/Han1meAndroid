@@ -421,7 +421,8 @@ class BatchDownloadViewModel @Inject constructor(
                             title = video.title,
                             quality = quality.quality,
                             url = quality.downloadUrl,
-                            thumbnailUrl = video.thumbnailUrl
+                            thumbnailUrl = video.thumbnailUrl,
+                            videoId = video.videoId
                         )
                     }
 

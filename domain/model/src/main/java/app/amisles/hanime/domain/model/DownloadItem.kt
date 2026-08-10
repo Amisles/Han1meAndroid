@@ -20,7 +20,11 @@ data class DownloadTask(
     val downloadedBytes: Long = 0,
     val status: DownloadStatus = DownloadStatus.PENDING,
     val filePath: String = "",
-    val thumbnailUrl: String = ""
+    val thumbnailUrl: String = "",
+    // F2：所属视频 id，去重/状态判定以 videoId 为准（CDN 直链不含 id 时旧逻辑误判）
+    val videoId: String = "",
+    // C3：失败原因细分，供 UI 展示（进程重启后保留）
+    val errorMessage: String = ""
 )
 
 enum class DownloadStatus {
@@ -42,7 +46,9 @@ data class DownloadEntity(
     val downloadedBytes: Long,
     val status: String,
     val filePath: String,
-    val thumbnailUrl: String = ""
+    val thumbnailUrl: String = "",
+    val videoId: String = "",
+    val errorMessage: String = ""
 )
 
 @Entity(tableName = "search_history")

@@ -15,11 +15,17 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import java.io.File
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -29,6 +35,14 @@ import android.content.Intent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+
+// D2：用于把进度回调信息带出 tasksLock 后异步派发，避免持锁做跨进程 IPC
+private data class ProgressUpdate(
+    val taskId: Int,
+    val title: String,
+    val progress: Int,
+    val status: DownloadStatus
+)
 
 @Singleton
 class DownloadManager @Inject constructor(
@@ -62,17 +76,29 @@ class DownloadManager @Inject constructor(
     private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
     // 进度落盘节流：进度类更新仅按此间隔写 DB，状态切换始终立即落盘，减少写放大
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
+    // 已分配的下载槽位计数（同步计数器）：在“决定启动”那一刻 +1，
+    // 任务进入终态/暂停/取消时 -1。作为并发门控统一依据，修复 B1/B3/B4
+    // （原 currentDownloadingCount 基于异步状态，突发/批量场景下恒为 0）。
+    private val activeSlots = AtomicInteger(0)
+    // D5：跟踪前台服务是否已通过 startForegroundService 启动，
+    // 后续进度更新改用 startService，避免 Android 12+ 反复 startForegroundService 的时序风险。
+    @Volatile
+    private var downloadServiceStarted = false
 
     private val downloadDir: File
         get() {
-            val dir = File(context.getExternalFilesDir(null), "Downloads")
-            if (!dir.exists()) dir.mkdirs()
-            return dir
+            // D1：外部存储不可用时（部分设备/限存储场景 getExternalFilesDir 返回 null）
+            // 降级到应用私有内部存储，避免 NPE。
+            val base = context.getExternalFilesDir(null)
+                ?.let { File(it, "Downloads") }
+                ?: File(context.filesDir, "Downloads")
+            if (!base.exists()) base.mkdirs()
+            return base
         }
 
     init {
-        onProgressUpdate = { _, title, progress, status ->
-            forwardToService(context, title, progress, status)
+        onProgressUpdate = { taskId, title, progress, status ->
+            forwardToService(context, title, progress, status, taskId)
         }
 
         scope.launch {
@@ -93,7 +119,9 @@ class DownloadManager @Inject constructor(
                         downloadedBytes = entity.downloadedBytes,
                         status = status,
                         filePath = entity.filePath,
-                        thumbnailUrl = entity.thumbnailUrl
+                        thumbnailUrl = entity.thumbnailUrl,
+                        videoId = entity.videoId,
+                        errorMessage = entity.errorMessage
                     )
                 }
                 tasksLock.withLock {
@@ -101,13 +129,27 @@ class DownloadManager @Inject constructor(
                 }
                 taskIdCounter.set(entities.maxOfOrNull { it.id } ?: 0)
                 AppLogger.log("DownloadManager", "Restored ${restoredTasks.size} tasks from DB, taskIdCounter=$taskIdCounter")
+                // H1：恢复出的 PENDING 任务应自动进入调度（受并发上限约束），
+                // 避免进程重启后它们永久挂起、只能手动恢复。
+                startNextPendingTask()
             } catch (e: Exception) {
                 AppLogger.logError("DownloadManager", "Failed to restore tasks: ${e.message}", e)
             }
         }
     }
 
-    fun startDownload(title: String, quality: String, url: String, thumbnailUrl: String = ""): Int {
+    fun startDownload(
+        title: String,
+        quality: String,
+        url: String,
+        thumbnailUrl: String = "",
+        videoId: String = ""
+    ): Int {
+        // A1：入参校验，避免空/非法直链产生“幽灵”FAILED 任务（返回 -1 表示拒绝）
+        if (url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) {
+            AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"$url\" (title=$title, videoId=$videoId)")
+            return -1
+        }
         tasksLock.withLock {
             val existingTask = _tasks.value.find { it.url == url && it.quality == quality }
             if (existingTask != null) {
@@ -129,7 +171,8 @@ class DownloadManager @Inject constructor(
                 url = url,
                 filePath = filePath,
                 status = DownloadStatus.PENDING,
-                thumbnailUrl = thumbnailUrl
+                thumbnailUrl = thumbnailUrl,
+                videoId = videoId
             )
 
             _tasks.value = _tasks.value + task
@@ -137,7 +180,7 @@ class DownloadManager @Inject constructor(
             AppLogger.log("DownloadManager", "Starting download $taskId: $title ($quality)")
 
             // 槽位未满则立即开始；否则保持 PENDING，由完成后的链式调度拾起
-            if (currentDownloadingCount() < concurrencyLimit) {
+            if (activeSlots.get() < concurrencyLimit) {
                 startDownloadWithConcurrencyInternal(task)
             } else {
                 AppLogger.log("DownloadManager", "下载槽位已满($concurrencyLimit)，任务 $taskId 进入等待队列")
@@ -149,33 +192,47 @@ class DownloadManager @Inject constructor(
 
     /**
      * 内部方法，调用者必须持有 tasksLock。
-     * 防止同一任务被重复启动。
+     * 防止同一任务被重复启动。统一负责 activeSlots 的 +1 与（终态/取消时）-1，
+     * 并在结束后调度下一个 PENDING 任务，修复 B1/B3/B4 并发门控失效问题。
      */
-    private fun startDownloadWithConcurrencyInternal(task: DownloadTask) {
+    private fun startDownloadWithConcurrencyInternal(task: DownloadTask, resumeBytes: Long = 0L) {
         if (downloadJobs.containsKey(task.id)) return
+        // 占有槽位（同步计数，作为并发门控统一依据）
+        activeSlots.incrementAndGet()
 
         val job = scope.launch {
             try {
                 // 等待获取信号量许可（固定容量硬上限）
                 downloadSemaphore.withPermit {
-                    AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取)")
+                    AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
 
                     updateTask(task.id) { it.copy(status = DownloadStatus.DOWNLOADING) }
-                    downloadFile(task.id, task.url, task.filePath)
-                    updateTask(task.id) { it.copy(status = DownloadStatus.COMPLETED) }
+                    downloadFile(task.id, task.url, task.filePath, resumeBytes)
+                    // H5/H6 完整性校验：完成前断言下载字节数达标，避免写出不全文件却标记成功
+                    updateTask(task.id) { t ->
+                        if (t.totalBytes > 0 && t.downloadedBytes < t.totalBytes) {
+                            AppLogger.logError(
+                                "DownloadManager",
+                                "完整性校验失败 ${task.title}: ${t.downloadedBytes}/${t.totalBytes}"
+                            )
+                            t.copy(
+                                status = DownloadStatus.FAILED,
+                                errorMessage = "下载不完整（${t.downloadedBytes}/${t.totalBytes} 字节）"
+                            )
+                        } else {
+                            t.copy(status = DownloadStatus.COMPLETED)
+                        }
+                    }
                     AppLogger.log("DownloadManager", "下载完成: ${task.title}")
                 }
-
-                // 任务完成后，尝试启动下一个等待中的任务
-                startNextPendingTask()
-
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
                 AppLogger.logError("DownloadManager", "下载失败 ${task.title}: ${e.message}", e)
-                updateTask(task.id) { it.copy(status = DownloadStatus.FAILED) }
-
-                // 任务失败后，尝试启动下一个等待中的任务
+                updateTask(task.id) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
+            } finally {
+                // 释放槽位并调度下一个等待任务（成功/失败/取消均执行）
+                activeSlots.decrementAndGet()
                 startNextPendingTask()
             }
         }
@@ -188,7 +245,7 @@ class DownloadManager @Inject constructor(
             val pendingTask = _tasks.value.firstOrNull {
                 it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)
             }
-            if (pendingTask != null && currentDownloadingCount() < concurrencyLimit) {
+            if (pendingTask != null && activeSlots.get() < concurrencyLimit) {
                 AppLogger.log("DownloadManager", "启动下一个等待任务: ${pendingTask.title}")
                 startDownloadWithConcurrencyInternal(pendingTask)
             }
@@ -206,7 +263,7 @@ class DownloadManager @Inject constructor(
                 it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)
             }
             pendingTasks.forEach { task ->
-                if (currentDownloadingCount() < concurrencyLimit) {
+                if (activeSlots.get() < concurrencyLimit) {
                     startDownloadWithConcurrencyInternal(task)
                 }
             }
@@ -224,19 +281,50 @@ class DownloadManager @Inject constructor(
             requestBuilder.header("Range", "bytes=$resumeBytes-")
         }
 
-        client.newCall(requestBuilder.build()).execute().use { response ->
-            if (resumeBytes > 0 && response.code != 206 && !response.isSuccessful) {
-                throw Exception("Resume download failed with code ${response.code}")
+        // C3：对瞬时网络异常做有限重试（单次 1s 退避），其余异常按类型细分原因
+        var response: Response? = null
+        var attempt = 0
+        val maxRetries = 1
+        while (response == null && attempt <= maxRetries) {
+            try {
+                response = client.newCall(requestBuilder.build()).execute()
+            } catch (e: Exception) {
+                attempt++
+                if (attempt <= maxRetries) {
+                    AppLogger.log("DownloadManager", "下载请求失败，1s 后重试($attempt): ${e.message}")
+                    delay(1000)
+                } else {
+                    updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
+                    return
+                }
             }
-            if (resumeBytes == 0L && !response.isSuccessful) {
-                throw Exception("Download failed with code ${response.code}")
+        }
+
+        response!!.use { resp ->
+            if (resumeBytes > 0 && resp.code != 206 && !resp.isSuccessful) {
+                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = "HTTP ${resp.code}") }
+                return
+            }
+            if (resumeBytes == 0L && !resp.isSuccessful) {
+                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyHttpError(resp.code)) }
+                return
             }
 
-            val body = response.body ?: throw Exception("Empty response body")
+            val body = resp.body ?: run {
+                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = "响应体为空") }
+                return
+            }
             val bodyLength = body.contentLength()
-            val isPartial = response.code == 206
+
+            // C1：续传但服务器返回 200（忽略 Range），降级为全量重下：
+            // 后续 FileOutputStream(outputFile, false) 会先截断已有部分文件，已下载字节作废。
+            if (resumeBytes > 0 && resp.code == 200) {
+                AppLogger.log("DownloadManager", "服务器不支持 Range(返回 200)，降级为全量重下: $filePath")
+            }
+
+            val isPartial = resp.code == 206
             val totalBytes = if (isPartial && resumeBytes > 0) {
-                val contentRange = response.header("Content-Range")
+                val contentRange = resp.header("Content-Range")
                 val totalFromRange = contentRange?.let {
                     Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull()
                 }
@@ -294,6 +382,7 @@ class DownloadManager @Inject constructor(
      * 原子地更新单个任务。使用 tasksLock 保护读-改-写操作。
      */
     private fun updateTask(taskId: Int, updater: (DownloadTask) -> DownloadTask) {
+        var progressUpdate: ProgressUpdate? = null
         tasksLock.withLock {
             _tasks.value = _tasks.value.map { task ->
                 if (task.id == taskId) {
@@ -304,18 +393,23 @@ class DownloadManager @Inject constructor(
                         lastPersistTime[taskId] = System.currentTimeMillis()
                         persistTask(newTask)
                     }
-                    // 触发进度回调，通知外部更新通知栏
+                    // 仅锁定内记录需回调的信息，真正回调移出锁外执行（见下方 D2 说明）
                     if (newTask.status == DownloadStatus.DOWNLOADING && newTask.totalBytes > 0) {
                         val progress = (newTask.downloadedBytes * 100 / newTask.totalBytes).toInt()
-                        onProgressUpdate?.invoke(taskId, newTask.title, progress, newTask.status)
+                        progressUpdate = ProgressUpdate(taskId, newTask.title, progress, newTask.status)
                     } else if (newTask.status == DownloadStatus.COMPLETED || newTask.status == DownloadStatus.FAILED) {
-                        onProgressUpdate?.invoke(taskId, newTask.title, 100, newTask.status)
+                        progressUpdate = ProgressUpdate(taskId, newTask.title, 100, newTask.status)
                     }
                     newTask
                 } else {
                     task
                 }
             }
+        }
+        // D2：将跨进程 IPC（startForegroundService，经由 onProgressUpdate→forwardToService）移出 tasksLock，
+        // 避免锁被 Binder 调用长时间占用，拖慢 pause/cancel/updateConcurrencyLimit 等取锁操作。
+        progressUpdate?.let { (id, title, progress, status) ->
+            onProgressUpdate?.invoke(id, title, progress, status)
         }
     }
 
@@ -328,12 +422,6 @@ class DownloadManager @Inject constructor(
         val last = lastPersistTime[taskId] ?: 0L
         return now - last >= PROGRESS_PERSIST_INTERVAL_MS
     }
-
-    /**
-     * 当前正在下载的任务数，作为并发软门限的调度依据。
-     */
-    private fun currentDownloadingCount(): Int =
-        _tasks.value.count { it.status == DownloadStatus.DOWNLOADING }
 
     private fun persistTask(task: DownloadTask) {
         scope.launch {
@@ -348,7 +436,9 @@ class DownloadManager @Inject constructor(
                         downloadedBytes = task.downloadedBytes,
                         status = task.status.name,
                         filePath = task.filePath,
-                        thumbnailUrl = task.thumbnailUrl
+                        thumbnailUrl = task.thumbnailUrl,
+                        videoId = task.videoId,
+                        errorMessage = task.errorMessage
                     )
                 )
             } catch (e: Exception) {
@@ -362,6 +452,9 @@ class DownloadManager @Inject constructor(
         downloadJobs.remove(taskId)
         // 复用 updateTask：状态切换（→PAUSED）会立即落盘
         updateTask(taskId) { it.copy(status = DownloadStatus.PAUSED) }
+        // B2：槽位已被释放（job 的 finally 中 decrement），立即尝试调度下一个等待任务，
+        // 避免空出的槽位不拾起 PENDING 任务导致其余任务永久挂起。
+        startNextPendingTask()
         AppLogger.log("DownloadManager", "Download paused: $taskId")
     }
 
@@ -393,30 +486,9 @@ class DownloadManager @Inject constructor(
             0L
         }
 
-        val job = scope.launch {
-            try {
-                // 等待获取信号量许可（固定容量硬上限）
-                downloadSemaphore.withPermit {
-                    AppLogger.log("DownloadManager", "恢复下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
-
-                    updateTask(taskId) { it.copy(status = DownloadStatus.DOWNLOADING) }
-                    downloadFile(taskId, task.url, task.filePath, resumeBytes)
-                    updateTask(taskId) { it.copy(status = DownloadStatus.COMPLETED) }
-                    AppLogger.log("DownloadManager", "Download resumed and completed: ${task.title}")
-                }
-
-                startNextPendingTask()
-
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.logError("DownloadManager", "Resume download failed for ${task.title}: ${e.message}", e)
-                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED) }
-
-                startNextPendingTask()
-            }
-        }
-        downloadJobs[taskId] = job
+        // 复用统一启动函数：受 activeSlots 并发门控约束（修复 B3），并在结束后
+        // 统一 decrement 槽位 + 调度下一个 PENDING 任务
+        startDownloadWithConcurrencyInternal(task, resumeBytes)
         AppLogger.log("DownloadManager", "Resume download started: $taskId")
     }
 
@@ -460,23 +532,46 @@ class DownloadManager @Inject constructor(
     }
 
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean {
-        return _tasks.value.any {
-            it.status == DownloadStatus.COMPLETED &&
-            (it.url.contains(videoId) || it.title.contains(videoId))
+        // F2：有 videoId 时以 videoId 为准（CDN 直链不含 id 也不会误判）；
+        // videoId 为空时回退到 url/title 子串匹配以兼容旧数据。
+        return if (videoId.isBlank()) {
+            _tasks.value.any {
+                it.status == DownloadStatus.COMPLETED &&
+                (it.url.contains(videoId) || it.title.contains(videoId))
+            }
+        } else {
+            _tasks.value.any {
+                it.videoId == videoId && it.status == DownloadStatus.COMPLETED &&
+                (quality.isBlank() || it.quality == quality)
+            }
         }
     }
 
     fun isVideoDownloading(videoId: String, quality: String = ""): Boolean {
-        return _tasks.value.any {
-            (it.url.contains(videoId) || it.title.contains(videoId)) &&
-            (it.status == DownloadStatus.DOWNLOADING ||
-             it.status == DownloadStatus.PENDING ||
-             it.status == DownloadStatus.PAUSED)
+        return if (videoId.isBlank()) {
+            _tasks.value.any {
+                (it.url.contains(videoId) || it.title.contains(videoId)) &&
+                (it.status == DownloadStatus.DOWNLOADING ||
+                 it.status == DownloadStatus.PENDING ||
+                 it.status == DownloadStatus.PAUSED)
+            }
+        } else {
+            _tasks.value.any {
+                it.videoId == videoId &&
+                (quality.isBlank() || it.quality == quality) &&
+                (it.status == DownloadStatus.DOWNLOADING ||
+                 it.status == DownloadStatus.PENDING ||
+                 it.status == DownloadStatus.PAUSED)
+            }
         }
     }
 
     fun getDownloadStatus(videoId: String): DownloadStatus? {
-        val task = _tasks.value.find { it.url.contains(videoId) || it.title.contains(videoId) }
+        val task = if (videoId.isBlank()) {
+            _tasks.value.find { it.url.contains(videoId) || it.title.contains(videoId) }
+        } else {
+            _tasks.value.find { it.videoId == videoId }
+        }
         return task?.status
     }
 
@@ -489,22 +584,59 @@ class DownloadManager @Inject constructor(
         context: Context,
         title: String,
         progress: Int,
-        status: DownloadStatus
+        status: DownloadStatus,
+        taskId: Int
     ) {
         try {
             val intent = Intent().apply {
                 setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
+                putExtra(EXTRA_TASK_ID, taskId)
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_PROGRESS, progress)
                 putExtra(EXTRA_STATUS, status.name)
             }
-            if (status == DownloadStatus.DOWNLOADING) {
+            // D5：首次（服务尚未进入前台）用 startForegroundService 确保进入前台；
+            // 后续进度更新改用 startService，避免 Android 12+ 反复 startForegroundService 的时序竞争。
+            val firstTime = !downloadServiceStarted
+            if (firstTime) {
                 context.startForegroundService(intent)
+                downloadServiceStarted = true
             } else {
                 context.startService(intent)
             }
+            // 收到终态且已无活动任务时复位标记，允许下次新下载重新走 startForegroundService
+            // （服务可能已停止，需重新拉起前台）。
+            if (status == DownloadStatus.COMPLETED || status == DownloadStatus.FAILED) {
+                val stillActive = _tasks.value.any {
+                    it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+                }
+                if (!stillActive) downloadServiceStarted = false
+            }
         } catch (e: Exception) {
             // 忽略转发异常，避免影响下载主流程
+        }
+    }
+
+    // C3：将异常按类型细分为可读的失败原因，便于 UI 展示
+    private fun classifyError(e: Throwable): String {
+        return when (e) {
+            is SocketTimeoutException -> "网络超时，请检查网络后重试"
+            is UnknownHostException -> "无法解析服务器地址（DNS 失败）"
+            is SSLException -> "安全连接失败（SSL 错误）"
+            is ConnectException -> "无法建立连接，请检查网络"
+            is java.io.IOException -> "网络读写错误：${e.message ?: "未知"}"
+            else -> "下载失败：${e.message ?: "未知错误"}"
+        }
+    }
+
+    // C3：将 HTTP 状态码细分为可读的失败原因
+    private fun classifyHttpError(code: Int): String {
+        return when (code) {
+            401, 403 -> "资源不可用（无权限，HTTP $code）"
+            404 -> "资源不存在（HTTP 404）"
+            in 400..499 -> "请求被拒绝（HTTP $code）"
+            in 500..599 -> "服务器错误（HTTP $code）"
+            else -> "下载失败（HTTP $code）"
         }
     }
 
@@ -517,6 +649,7 @@ class DownloadManager @Inject constructor(
         // DownloadService 的完整类名。data 模块不能直接依赖 app 模块，
         // 因此通过显式类名的 Intent 将进度转发给 app 模块中的 DownloadService。
         const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
+        const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
