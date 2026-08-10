@@ -33,7 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,10 +66,10 @@ fun HomeScreen(
     onViewMore: (String) -> Unit = {}
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
-    val sections by viewModel.sections.collectAsState()
-    val banner by viewModel.banner.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val sections by viewModel.sections.collectAsStateWithLifecycle()
+    val banner by viewModel.banner.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
 
     HomeScreenContent(
         sections = sections,

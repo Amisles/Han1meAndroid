@@ -26,7 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,8 +76,8 @@ fun HistoryScreen(
 ) {
     val viewModel: HistoryViewModel = hiltViewModel()
     val context = LocalContext.current
-    val history by viewModel.history.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val history by viewModel.history.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }

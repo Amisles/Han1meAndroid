@@ -26,7 +26,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,8 +59,8 @@ fun FavoriteScreen(
 ) {
     val viewModel: FavoriteViewModel = hiltViewModel()
     val context = LocalContext.current
-    val favorites by viewModel.favorites.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }

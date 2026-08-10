@@ -22,7 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,9 +54,9 @@ fun PlaylistListPageScreen(
     onPlaylistClick: (String) -> Unit = {}
 ) {
     val viewModel: PlaylistListPageViewModel = hiltViewModel()
-    val playlists by viewModel.playlists.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     val displayTitle = title ?: stringResource(CoreR.string.playlist_title)
 
     LaunchedEffect(url) {

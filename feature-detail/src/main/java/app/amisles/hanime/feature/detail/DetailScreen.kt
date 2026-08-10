@@ -43,7 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,23 +94,23 @@ fun DetailScreen(
 ) {
     val viewModel: DetailViewModel = hiltViewModel()
     val context = LocalContext.current
-    val videoDetail by viewModel.videoDetail.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val downloadQualities by viewModel.downloadQualities.collectAsState()
-    val isLoadingQualities by viewModel.isLoadingQualities.collectAsState()
-    val isFavorite by viewModel.isFavorite.collectAsState()
-    val comments by viewModel.comments.collectAsState()
-    val isLoadingComments by viewModel.isLoadingComments.collectAsState()
-    val commentsError by viewModel.commentsError.collectAsState()
-    val commentsLoaded by viewModel.commentsLoaded.collectAsState()
-    val repliesCache by viewModel.repliesCache.collectAsState()
-    val loadingReplies by viewModel.loadingReplies.collectAsState()
-    val repliesError by viewModel.repliesError.collectAsState()
-    val isPostingComment by viewModel.isPostingComment.collectAsState()
-    val postCommentError by viewModel.postCommentError.collectAsState()
-    val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsState()
-    val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsState()
+    val videoDetail by viewModel.videoDetail.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val downloadQualities by viewModel.downloadQualities.collectAsStateWithLifecycle()
+    val isLoadingQualities by viewModel.isLoadingQualities.collectAsStateWithLifecycle()
+    val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
+    val comments by viewModel.comments.collectAsStateWithLifecycle()
+    val isLoadingComments by viewModel.isLoadingComments.collectAsStateWithLifecycle()
+    val commentsError by viewModel.commentsError.collectAsStateWithLifecycle()
+    val commentsLoaded by viewModel.commentsLoaded.collectAsStateWithLifecycle()
+    val repliesCache by viewModel.repliesCache.collectAsStateWithLifecycle()
+    val loadingReplies by viewModel.loadingReplies.collectAsStateWithLifecycle()
+    val repliesError by viewModel.repliesError.collectAsStateWithLifecycle()
+    val isPostingComment by viewModel.isPostingComment.collectAsStateWithLifecycle()
+    val postCommentError by viewModel.postCommentError.collectAsStateWithLifecycle()
+    val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsStateWithLifecycle()
+    val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }

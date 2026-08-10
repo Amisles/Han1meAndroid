@@ -27,7 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,7 +63,7 @@ fun DownloadScreen(
 ) {
     val context = LocalContext.current
     val viewModel: DownloadViewModel = hiltViewModel()
-    val tasks by viewModel.tasks.collectAsState()
+    val tasks by viewModel.tasks.collectAsStateWithLifecycle()
 
     val downloadingTasks = tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
     val completedTasks = tasks.filter { it.status == DownloadStatus.COMPLETED }

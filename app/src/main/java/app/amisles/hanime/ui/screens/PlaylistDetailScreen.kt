@@ -24,7 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +57,9 @@ fun PlaylistDetailScreen(
     onVideoClick: (String) -> Unit = {}
 ) {
     val viewModel: PlaylistDetailViewModel = hiltViewModel()
-    val playlistDetail by viewModel.playlistDetail.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val playlistDetail by viewModel.playlistDetail.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
 
     LaunchedEffect(url) {
         if (url.isNotEmpty()) {

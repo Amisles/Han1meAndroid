@@ -16,7 +16,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val themeMode by Preferences.themeModeFlow.collectAsState()
+            val themeMode by Preferences.themeModeFlow.collectAsStateWithLifecycle()
             val darkTheme = when (themeMode) {
                 ThemeMode.DARK -> true
                 ThemeMode.LIGHT -> false

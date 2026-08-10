@@ -37,7 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -100,17 +100,17 @@ fun SearchScreen(
     onAuthorClick: (String) -> Unit = {}
 ) {
     val viewModel: SearchViewModel = hiltViewModel()
-    val query by viewModel.query.collectAsState()
-    val videos by viewModel.videos.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
-    val hasMore by viewModel.hasMore.collectAsState()
-    val currentPage by viewModel.currentPage.collectAsState()
-    val totalPages by viewModel.totalPages.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val searchHistory by viewModel.searchHistory.collectAsState()
-    val sortValue by viewModel.sort.collectAsState()
-    val genreValue by viewModel.genre.collectAsState()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
+    val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
+    val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
+    val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
+    val sortValue by viewModel.sort.collectAsStateWithLifecycle()
+    val genreValue by viewModel.genre.collectAsStateWithLifecycle()
 
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
