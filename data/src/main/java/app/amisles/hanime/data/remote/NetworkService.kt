@@ -66,8 +66,8 @@ class NetworkService @Inject constructor(
             .build()
     }
 
-    private fun executeRequest(request: Request): String {
-        return client.newCall(request).execute().use { response ->
+    private suspend fun executeRequest(request: Request): String = withContext(Dispatchers.IO) {
+        client.newCall(request).execute().use { response ->
             AppLogger.log("NetworkService", "Response code: ${response.code}")
             if (!response.isSuccessful) {
                 throw Exception("Request failed with code ${response.code}")
@@ -91,11 +91,14 @@ class NetworkService @Inject constructor(
             .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
             .get()
             .build()
-        val resp = client.newCall(req).execute()
-        val code = resp.code
+        val (code, html) = withContext(Dispatchers.IO) {
+            val resp = client.newCall(req).execute()
+            val c = resp.code
+            val h = if (c in 200..399) resp.body?.string().orEmpty() else ""
+            c to h
+        }
         AppLogger.log("NetworkService", "fetchLoginPage code=$code url=$base")
         if (code in 200..399) {
-            val html = resp.body?.string().orEmpty()
             return FetchResult(html, base)
         } else {
             throw Exception("login page HTTP $code")
@@ -124,15 +127,17 @@ class NetworkService @Inject constructor(
             .header("Origin", base)
             .header("X-CSRF-TOKEN", csrfToken)
             .build()
-        noRedirectClient.newCall(req).execute().use { resp ->
-            val code = resp.code
-            val cookies = resp.headers("Set-Cookie")
-            var body: String? = null
-            if (code in 200..299) {
-                body = resp.body?.string()
+        return withContext(Dispatchers.IO) {
+            noRedirectClient.newCall(req).execute().use { resp ->
+                val code = resp.code
+                val cookies = resp.headers("Set-Cookie")
+                var body: String? = null
+                if (code in 200..299) {
+                    body = resp.body?.string()
+                }
+                AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
+                LoginFormResult(code, cookies, body)
             }
-            AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
-            return LoginFormResult(code, cookies, body)
         }
     }
 
