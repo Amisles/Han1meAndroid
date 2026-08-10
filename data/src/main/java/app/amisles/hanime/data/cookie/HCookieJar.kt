@@ -42,9 +42,11 @@ object HCookieJar : CookieJar {
             }
         }
 
-        // 从 Preferences 注入持久化的登录 Cookie + Cloudflare Cookie
-        out += Preferences.loginCookie.toLoginCookieList(host)
-        out += Preferences.cloudFlareCookie.toLoginCookieList(host)
+        // 仅向 baseUrl 所属域名注入登录态 Cookie，避免会话被带向跨域主机造成泄漏
+        if (isBaseUrlHost(host)) {
+            out += Preferences.loginCookie.toLoginCookieList(host)
+            out += Preferences.cloudFlareCookie.toLoginCookieList(host)
+        }
 
         AppLogger.d("HCookieJar", "loadForRequest host=$host cookies=${out.size}")
         return out
@@ -66,8 +68,10 @@ object HCookieJar : CookieJar {
         synchronized(list) {
             list.clear()
             list.addAll(cookies)
-            // 追加持久化登录 Cookie，确保后续请求始终携带
-            list.addAll(Preferences.loginCookie.toLoginCookieList(host))
+            // 仅对 baseUrl 域名追加持久化登录 Cookie，避免存储到跨域主机下
+            if (isBaseUrlHost(host)) {
+                list.addAll(Preferences.loginCookie.toLoginCookieList(host))
+            }
         }
         AppLogger.d("HCookieJar", "saveFromResponse host=$host setCookies=${cookies.size}")
     }
@@ -78,5 +82,15 @@ object HCookieJar : CookieJar {
 
     fun clearAll() {
         cookieMap.clear()
+    }
+
+    /**
+     * 判断请求 host 是否属于当前 baseUrl 域名（含子域），用于限定登录态 Cookie 的注入范围。
+     */
+    private fun isBaseUrlHost(host: String): Boolean {
+        val baseHost = runCatching {
+            android.net.Uri.parse(Preferences.baseUrl).host?.lowercase()
+        }.getOrNull() ?: return false
+        return host == baseHost || host.endsWith(".$baseHost")
     }
 }
