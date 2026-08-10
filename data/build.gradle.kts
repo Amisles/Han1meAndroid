@@ -33,6 +33,9 @@ dependencies {
     implementation(project(":domain:model"))
 
     implementation(libs.androidx.core.ktx)
+
+    // EncryptedSharedPreferences（登录态 Cookie 加密存储）
+    implementation(libs.androidx.security.crypto)
     
     // Network
     implementation(libs.okhttp)

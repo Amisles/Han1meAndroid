@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.preferences
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import android.webkit.CookieManager
 import androidx.core.content.edit
@@ -13,6 +14,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.GlobalScope
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import app.amisles.hanime.core.common.util.AppLogger
+import java.io.File
 
 object Preferences {
 
@@ -68,7 +73,7 @@ object Preferences {
 
     fun init(context: Context) {
         // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
-        sp = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+        sp = provideSecurePreferences(context)
         _loginStateFlow.value = sp.getBoolean(SP_ALREADY_LOGIN, false)
         _loginCookieFlow.value = CookieString(sp.getString(SP_LOGIN_COOKIE, "").orEmpty())
         _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())
@@ -83,6 +88,67 @@ object Preferences {
         _baseUrlFlow.value = safeBaseUrl
         _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
         _themeModeFlow.value = ThemeMode.fromName(sp.getString(SP_THEME_MODE, null))
+    }
+
+    /**
+     * 提供加密的 SharedPreferences 实例（AndroidX Security）。
+     * - 首次从明文旧文件迁移：读取旧值 → 删除旧文件 → 写入加密文件，避免明文会话残留。
+     * - 若 Android Keystore 不可用（极端设备），回退到明文存储并告警，保证可用性优先。
+     */
+    private fun provideSecurePreferences(context: Context): SharedPreferences {
+        val appCtx = context.applicationContext
+        val masterKey = runCatching {
+            MasterKey.Builder(appCtx)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+        }.getOrNull() ?: return fallbackPlain(appCtx)
+
+        val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
+        if (legacyFile.exists()) {
+            // 读取明文旧值（此时旧文件尚在），随后删除再创建加密文件
+            val legacy = appCtx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            val alreadyLogin = legacy.getBoolean(SP_ALREADY_LOGIN, false)
+            val loginCookie = legacy.getString(SP_LOGIN_COOKIE, "").orEmpty()
+            val cfCookie = legacy.getString(SP_CF_COOKIE, "").orEmpty()
+            val savedUserId = legacy.getString(SP_SAVED_USER_ID, "").orEmpty()
+            val maxConcurrent = legacy.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
+            val baseUrl = legacy.getString(SP_BASE_URL, DEFAULT_BASE_URL).orEmpty()
+            val appLang = legacy.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN).orEmpty()
+            val themeMode = legacy.getString(SP_THEME_MODE, ThemeMode.SYSTEM.name).orEmpty()
+            appCtx.deleteSharedPreferences(NAME)
+            val enc = createEncrypted(appCtx, masterKey) ?: return fallbackPlain(appCtx)
+            enc.edit {
+                putBoolean(SP_ALREADY_LOGIN, alreadyLogin)
+                putString(SP_LOGIN_COOKIE, loginCookie)
+                putString(SP_CF_COOKIE, cfCookie)
+                putString(SP_SAVED_USER_ID, savedUserId)
+                putInt(SP_MAX_DOWNLOAD_CONCURRENT, maxConcurrent)
+                putString(SP_BASE_URL, baseUrl)
+                putString(SP_APP_LANGUAGE, appLang)
+                putString(SP_THEME_MODE, themeMode)
+            }
+            AppLogger.log("Preferences", "已将明文偏好迁移至 EncryptedSharedPreferences")
+            return enc
+        }
+        return createEncrypted(appCtx, masterKey) ?: fallbackPlain(appCtx)
+    }
+
+    private fun createEncrypted(context: Context, masterKey: MasterKey): SharedPreferences? = runCatching {
+        EncryptedSharedPreferences.create(
+            context,
+            NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrNull()
+
+    private fun fallbackPlain(context: Context): SharedPreferences {
+        AppLogger.logError(
+            "Preferences",
+            "EncryptedSharedPreferences 不可用，回退明文存储（登录 Cookie 将以明文保存，存在泄露风险）"
+        )
+        return context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
     }
 
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
