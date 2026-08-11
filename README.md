@@ -8,6 +8,10 @@
   开源的第三方 Hanime Android 客户端，基于 Jetpack Compose 构建原生界面，采用 MVVM + Repository 架构与多模块化设计。
 </p>
 
+<p align="center">
+  <b>当前版本：v1.0.0</b>（versionCode 6）· 最低支持 Android 11（API 30）· 目标 Android 16（API 37）
+</p>
+
 ## 功能
 
 - 多区块首页浏览
@@ -16,7 +20,7 @@
 - 后台下载与离线缓存（前台服务通知、断点续传、并发控制）
 - 批量下载管理（一键批量选择、多任务同时下载）
 - 本地收藏与观看历史（Room 持久化、自动去重）
-- 账号登录与 Cookie 管理
+- 账号登录与 Cookie 管理（EncryptedSharedPreferences 加密存储）
 - 视频评论区（评论列表、回复展开、点赞数显示）
 - 作者主页浏览（作品统计、视频分区、播放列表分区）
 - 播放列表查看（公开播放列表浏览、批量加入下载）
@@ -44,7 +48,8 @@
 | 图片加载 | Coil 3 (OkHttp 网络栈) | 3.5.0 |
 | 视频播放 | Media3 ExoPlayer (含 HLS 扩展) | 1.10.1 |
 | 数据持久化 | Room + KSP | 2.8.4 |
-| 键值存储 | SharedPreferences + DataStore Flow 封装 | - |
+| 键值存储 | EncryptedSharedPreferences + DataStore Flow 封装 | - |
+| 安全存储 | AndroidX Security (EncryptedSharedPreferences) | 1.1.0-alpha06 |
 | 符号处理 | KSP | 2.3.10 |
 | Activity | Activity Compose | 1.12.3 |
 | Core KTX | AndroidX Core KTX | 1.13.1 |
@@ -74,7 +79,7 @@ hanime/
 |-- data/                       # 数据层（单一数据源）
 |   |-- cookie/                 # HCookieJar（ConcurrentHashMap 线程安全 + 过期清理）
 |   |-- di/                     # DatabaseModule（Hilt 提供 Room DB/DAO）
-|   |-- download/               # DownloadManager（ReentrantLock + ConcurrentHashMap）
+|   |-- download/               # DownloadManager（Semaphore 并发控制 + AtomicInteger 活跃槽位 + ConcurrentHashMap + ReentrantLock）
 |   |-- local/                  # Room 数据库：AppDatabase、DAO、Entity、Migration
 |   |-- parser/                 # 9 个专用 HTML 解析器（Home/Search/Watch/Download/Playlist/Author...）
 |   |-- preferences/            # Preferences（SharedPreferences + StateFlow 封装）
@@ -123,7 +128,7 @@ core:network
 
 ### 环境要求
 
-- JDK 17 或更高版本
+- JDK 21（AGP 9.x 构建要求；源码兼容级别为 Java 11）
 - Android Studio (支持 AGP 9.x)
 - Kotlin 2.4.10
 
@@ -144,9 +149,8 @@ core:network
 
 | 优先级 | 功能 | 说明 |
 | --- | --- | --- |
-| 🟢 高 | 完善多语言支持 | 补齐所有硬编码字符串的资源化、拉取服务端文案、RTL 布局适配、区域化时间/数字格式 |
 | 🟡 中 | 优化 UI 样式 | 统一卡片圆角 / 间距 / 字重规范、播放页控制栏交互重构、动效与过渡动画完善、响应式布局适配平板 |
-| 🔵 中 | 评论功能增强 | 评论分页加载、发表评论、点赞/举报、敏感词过滤 |
+| 🔵 低 | 下载提速 | 引入单文件分片（字节范围）多线程下载；当前为「多文件并发」（默认 3 路、上限 5 路），非单文件分片 |
 
 ---
 
