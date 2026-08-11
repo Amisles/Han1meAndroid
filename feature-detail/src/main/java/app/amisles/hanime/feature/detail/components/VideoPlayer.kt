@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -127,6 +128,8 @@ fun VideoPlayer(
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
     var qualityBtnBounds by remember { mutableStateOf(Rect.Zero) }
+    // 播放器 Box 在窗口根坐标下的位置，用于把按钮根坐标换算为弹框（播放器局部坐标）的偏移
+    var playerPos by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current
 
     // 手势状态
@@ -342,12 +345,16 @@ fun VideoPlayer(
             )
             .background(Color.Black)
             .onGloballyPositioned { coords ->
+                playerPos = coords.positionInRoot()
                 playerWidth = coords.size.width.toFloat()
                 playerHeight = coords.size.height.toFloat()
             }
             // 双指缩放
             .pointerInput(Unit) {
                 detectTransformGestures { _, _, zoom, _ ->
+                    // 缩放手势视为滑动其他区域，收起弹框
+                    showSpeedMenu = false
+                    showQualityMenu = false
                     if (activeGesture == null || activeGesture == "zoom") {
                         activeGesture = "zoom"
                         videoZoom = (videoZoom * zoom).coerceIn(0.5f, 2.0f)
@@ -359,6 +366,9 @@ fun VideoPlayer(
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragStart = { offset ->
+                        // 横向滑动视为滑动其他区域，收起弹框
+                        showSpeedMenu = false
+                        showQualityMenu = false
                         if (activeGesture == null || activeGesture == "zoom") {
                             activeGesture = "seek"
                             dragStartX = offset.x
@@ -395,6 +405,9 @@ fun VideoPlayer(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragStart = { offset ->
+                        // 垂直滑动视为滑动其他区域，收起弹框
+                        showSpeedMenu = false
+                        showQualityMenu = false
                         if (activeGesture == null || activeGesture == "zoom") {
                             dragStartX = offset.x
                             dragStartY = offset.y
@@ -708,23 +721,39 @@ fun VideoPlayer(
                 }
             }
 
+            // 弹框打开时覆盖一层透明遮罩，点击其他区域即收起弹框
+            if (showSpeedMenu || showQualityMenu) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable {
+                            showSpeedMenu = false
+                            showQualityMenu = false
+                        }
+                )
+            }
+
             if (showSpeedMenu && speedBtnBounds != Rect.Zero) {
                 val scrollState = rememberScrollState()
-                val menuWidthPx = with(density) { 60.dp.toPx() }
+                val menuWidthPx = with(density) { 48.dp.toPx() }
                 val menuHeightPx = with(density) { 120.dp.toPx() }
                 val gapPx = with(density) { 4.dp.toPx() }
+                // 把按钮的根坐标减去播放器根坐标，得到播放器局部坐标，弹框才能准确落在控件正上方
+                val localX = speedBtnBounds.center.x - playerPos.x
+                val localY = speedBtnBounds.top - playerPos.y
                 Column(
                     modifier = Modifier
                         .offset {
                             IntOffset(
-                                (speedBtnBounds.center.x - menuWidthPx / 2f).toInt(),
-                                (speedBtnBounds.top - menuHeightPx - gapPx).toInt()
+                                (localX - menuWidthPx / 2f).toInt(),
+                                (localY - menuHeightPx - gapPx).toInt()
                             )
                         }
-                        .width(60.dp)
+                        .width(48.dp)
                         .height(120.dp)
-                        .background(Color.Black.copy(alpha = 0.9f))
+                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
+                        .clickable { /* 拦截弹框内的点击，避免穿透到遮罩关闭 */ }
                         .padding(2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -747,21 +776,25 @@ fun VideoPlayer(
 
             if (showQualityMenu && sortedSources.isNotEmpty() && qualityBtnBounds != Rect.Zero) {
                 val scrollState = rememberScrollState()
-                val menuWidthPx = with(density) { 70.dp.toPx() }
+                val menuWidthPx = with(density) { 56.dp.toPx() }
                 val menuHeightPx = with(density) { 120.dp.toPx() }
                 val gapPx = with(density) { 4.dp.toPx() }
+                // 把按钮的根坐标减去播放器根坐标，得到播放器局部坐标，弹框才能准确落在控件正上方
+                val localX = qualityBtnBounds.center.x - playerPos.x
+                val localY = qualityBtnBounds.top - playerPos.y
                 Column(
                     modifier = Modifier
                         .offset {
                             IntOffset(
-                                (qualityBtnBounds.center.x - menuWidthPx / 2f).toInt(),
-                                (qualityBtnBounds.top - menuHeightPx - gapPx).toInt()
+                                (localX - menuWidthPx / 2f).toInt(),
+                                (localY - menuHeightPx - gapPx).toInt()
                             )
                         }
-                        .width(70.dp)
+                        .width(56.dp)
                         .height(120.dp)
-                        .background(Color.Black.copy(alpha = 0.9f))
+                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
+                        .clickable { /* 拦截弹框内的点击，避免穿透到遮罩关闭 */ }
                         .padding(2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

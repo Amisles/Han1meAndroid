@@ -71,22 +71,33 @@ fun VideoCard(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.weight(1f))
             if (video.author.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
                         text = video.author,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onAuthorClick(video.author) }
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .clickable { onAuthorClick(video.author) }
                     )
                     if (video.publishTime.isNotEmpty()) {
                         Text(
                             text = " • ${video.publishTime}",
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
