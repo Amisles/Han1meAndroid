@@ -71,7 +71,6 @@ class SearchViewModel @Inject constructor(
     }
 
     fun setGenre(newGenre: String?) {
-        Log.i("SearchViewModel", "setGenre called: old='${_genre.value}', new='$newGenre'")
         if (_genre.value != newGenre) {
             _genre.value = newGenre
             resetSearch()
@@ -79,7 +78,6 @@ class SearchViewModel @Inject constructor(
     }
 
     fun setSort(newSort: String?) {
-        Log.i("SearchViewModel", "setSort called: old='${_sort.value}', new='$newSort'")
         if (_sort.value != newSort) {
             _sort.value = newSort
             resetSearch()
@@ -87,7 +85,6 @@ class SearchViewModel @Inject constructor(
     }
 
     fun resetSearch() {
-        Log.i("SearchViewModel", "resetSearch: query='${_query.value}', sort='${_sort.value}', genre='${_genre.value}'")
         currentPageNum = 1
         _currentPage.value = 1
         _totalPages.value = 1
@@ -100,7 +97,6 @@ class SearchViewModel @Inject constructor(
     }
 
     fun executeSearch() {
-        Log.i("SearchViewModel", "executeSearch: query='${_query.value}', sort='${_sort.value}', genre='${_genre.value}'")
         if (_query.value.isEmpty() && _sort.value == null && _genre.value == null) return
 
         _isLoading.value = true
@@ -121,7 +117,6 @@ class SearchViewModel @Inject constructor(
             when (result) {
                 is AppResult.Success -> {
                     val data = result.data
-                    Log.i("SearchViewModel", "Search returned ${data.videos.size} results, page ${data.currentPage}/${data.totalPages}")
                     _videos.value = data.videos
                     _currentPage.value = data.currentPage
                     _totalPages.value = data.totalPages
@@ -133,7 +128,6 @@ class SearchViewModel @Inject constructor(
                     }
                 }
                 is AppResult.Error -> {
-                    Log.e("SearchViewModel", "Search failed: ${result.message}", result.exception)
                     _videos.value = emptyList()
                     _error.value = result.message
                 }
@@ -162,7 +156,6 @@ class SearchViewModel @Inject constructor(
             when (result) {
                 is AppResult.Success -> {
                     val data = result.data
-                    Log.i("SearchViewModel", "LoadMore returned ${data.videos.size} results, page ${data.currentPage}/${data.totalPages}")
                     if (data.videos.isNotEmpty()) {
                         _videos.value = _videos.value + data.videos
                     }
@@ -171,7 +164,6 @@ class SearchViewModel @Inject constructor(
                     _hasMore.value = data.hasNextPage
                 }
                 is AppResult.Error -> {
-                    Log.e("SearchViewModel", "LoadMore failed: ${result.message}", result.exception)
                     _hasMore.value = false
                 }
                 is AppResult.Loading -> {}

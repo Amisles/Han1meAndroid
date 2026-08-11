@@ -116,8 +116,6 @@ class BatchDownloadViewModel @Inject constructor(
             return
         }
 
-        Log.d("BatchDownload", "开始搜索作者ID: $authorId")
-
         viewModelScope.launch {
             _state.update { it.copy(isSearching = true, error = null, videos = emptyList()) }
 
@@ -162,8 +160,6 @@ class BatchDownloadViewModel @Inject constructor(
                     )
                 }
 
-                Log.d("BatchDownload", "搜索结果: ${batchVideos.size}个视频, ${batchVideos.count { it.isDownloaded }}个已下载")
-
                 _state.update { it.copy(
                     isSearching = false,
                     authorName = result.authorName,
@@ -174,8 +170,6 @@ class BatchDownloadViewModel @Inject constructor(
                     hasNextPage = result.hasNextPage,
                     selectedCount = 0
                 )}
-
-                Log.d("BatchDownload", "搜索成功: ${result.authorName}, ${batchVideos.size}个视频, 第${result.currentPage}/${result.totalPages}页")
 
             } catch (e: IOException) {
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
@@ -230,8 +224,6 @@ class BatchDownloadViewModel @Inject constructor(
                         totalPages = result.totalPages,
                         hasNextPage = result.hasNextPage
                     )}
-
-                    Log.d("BatchDownload", "加载更多成功: 第${result.currentPage}页, 新增${newBatchVideos.size}个视频")
                 }
             } catch (e: IOException) {
                 AppLogger.e("BatchDownloadViewModel", "加载更多失败: ${e.message}", e)
@@ -310,7 +302,7 @@ class BatchDownloadViewModel @Inject constructor(
                 }
             }
 
-            // 并发获取画质列表，限制并发数为3
+            // 并发获取画质列表
             val qualitySemaphore = Semaphore(3)
             selectedVideos.map { video ->
                 async {
@@ -338,8 +330,6 @@ class BatchDownloadViewModel @Inject constructor(
                                     }
                                     currentState.copy(videos = updatedVideos)
                                 }
-
-                                Log.d("BatchDownload", "获取画质成功: ${video.title}, ${qualities.size}个画质")
                             }
                         } catch (e: IOException) {
                             AppLogger.e("BatchDownloadViewModel", "获取画质失败: ${video.videoId}", e)
@@ -370,31 +360,6 @@ class BatchDownloadViewModel @Inject constructor(
             _state.update { it.copy(error = context.getString(R.string.batch_no_videos)) }
             return
         }
-
-        val skippedCount = _state.value.videos.count { it.isSelected && (it.isDownloaded || it.isDownloading) }
-        if (skippedCount > 0) {
-            Log.i("BatchDownload", "已跳过 $skippedCount 个已下载/正在下载的视频")
-        }
-
-        // 打印所有下载链接日志
-        Log.i("BatchDownload", "========== 开始批量下载 ==========")
-        Log.i("BatchDownload", "选中视频数量: ${selectedVideos.size}")
-        Log.i("BatchDownload", "跳过视频数量: $skippedCount")
-        selectedVideos.forEachIndexed { index, video ->
-            val quality = if (video.qualities.isNotEmpty() && video.selectedQualityIndex < video.qualities.size) {
-                video.qualities[video.selectedQualityIndex]
-            } else {
-                null
-            }
-
-            val downloadUrl = quality?.downloadUrl ?: video.videoUrl
-            val qualityStr = quality?.quality ?: "unknown"
-
-            Log.i("BatchDownload", "[$index] ${video.title}")
-            Log.i("BatchDownload", "    画质: $qualityStr")
-            Log.i("BatchDownload", "    链接: $downloadUrl")
-        }
-        Log.i("BatchDownload", "===================================")
 
         // 仅记录有画质信息且实际会下载的视频ID
         val downloadableVideos = selectedVideos.filter {
@@ -435,10 +400,6 @@ class BatchDownloadViewModel @Inject constructor(
                     AppLogger.e("BatchDownloadViewModel", "添加下载失败: ${video.title}", e)
                 }
             }
-
-            // 不在此处设置 isDownloading = false
-            // isDownloading 由 syncDownloadStatuses 根据 downloadingVideoIds 动态管理
-            Log.d("BatchDownload", "批量下载任务已全部添加")
         }
     }
 

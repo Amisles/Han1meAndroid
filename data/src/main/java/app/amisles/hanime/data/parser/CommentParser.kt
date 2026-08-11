@@ -109,7 +109,6 @@ class CommentParser @Inject constructor() {
     private fun parseSingleComment(img: org.jsoup.nodes.Element): Comment? {
         val avatarUrl = img.absUrl("src").ifEmpty { img.attr("src") }
 
-        // img.parent() = <a>，<a>.nextElementSibling() = <div.report-btn-wrapper>
         val aElement = img.parent() ?: return null
         val reportWrapper = aElement.nextElementSibling() ?: return null
         if (!reportWrapper.hasClass("report-btn-wrapper")) return null
@@ -125,7 +124,6 @@ class CommentParser @Inject constructor() {
         if (textDivs.size < 2) return null
 
         val headerLink = textDivs[0].selectFirst("a")
-        // ownText() 不包含子元素文本，正好剥离 <span>时间</span>
         val username = headerLink?.ownText()
             ?.replace("\u00a0", " ")  // &nbsp; → 空格
             ?.trim()

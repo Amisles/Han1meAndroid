@@ -177,7 +177,6 @@ class NetworkService @Inject constructor(
                 append("page=").append(page)
             }
         }
-        Log.i("NetworkService", "Search API URL: $url")
         val html = executeRequest(buildRequest(url))
         return FetchResult(html, baseUrl)
     }
