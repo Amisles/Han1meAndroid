@@ -158,6 +158,25 @@ class WatchPageParserTest {
     }
 
     @Test
+    fun `parse excludes add remove action buttons from tags`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <div class="video-tags-wrapper video-details-wrapper">
+                    <div class="single-video-tag"><a href="/search?query=崩壞：星穹鐵道"><span>#</span>&nbsp;崩壞：星穹鐵道</a></div>
+                    <div class="single-video-tag"><a href="/search?query=緋英"><span>#</span>&nbsp;緋英</a></div>
+                    <div class="single-video-tag" data-toggle="modal" data-target="#signUpModal"><a><span class="material-icons">add</span></a></div>
+                    <div class="single-video-tag" data-toggle="modal" data-target="#signUpModal"><a><span class="material-icons">remove</span></a></div>
+                </div>
+            </body></html>
+        """.trimIndent()
+        val detail = parser.parse(html, baseUrl)!!
+        // add / remove 是官网「添加/移除标签」功能按钮，必须从标签中剔除
+        assertEquals(listOf("# 崩壞：星穹鐵道", "# 緋英"), detail.tags)
+    }
+
+    @Test
     fun `parse with no video sources returns empty list and empty default source`() {
         val html = """
             <html><body>

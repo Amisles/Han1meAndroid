@@ -50,11 +50,29 @@ class WatchPageParser @Inject constructor(
             } else rawTitle
 
             val tags = mutableListOf<String>()
-            val tagElements = doc.select(".video-tags-wrapper .single-video-tag a")
+            val tagElements = doc.select(".video-tags-wrapper .single-video-tag")
             val seenTags = mutableSetOf<String>()
-            for (link in tagElements) {
+            for (tagDiv in tagElements) {
+                // 剔除官网「添加 / 移除标签」功能按钮：
+                // 这类按钮所在的 div 带 data-toggle="modal" / data-target="#signUpModal"，
+                // 且内含 material-icons 图标（add / remove），其 <a> 没有有效的搜索链接。
+                val isActionButton = tagDiv.hasAttr("data-toggle") ||
+                    tagDiv.attr("data-target").contains("signUpModal", ignoreCase = true)
+                if (isActionButton) continue
+                if (tagDiv.selectFirst("span.material-icons, span.material-icons-sharp, span.material-icons-outlined") != null) continue
+
+                val link = tagDiv.selectFirst("a") ?: continue
+                // 兜底：若 <a> 带有链接但不指向搜索（/search?query=），则不是标签，跳过；
+                // 正常标签必为 /search 链接，功能按钮的 <a> 无 href（已被上方过滤）。
+                val href = link.attr("abs:href").ifEmpty { link.attr("href") }
+                if (href.isNotEmpty() && !href.contains("/search", ignoreCase = true)) continue
+
                 val tagText = link.text().trim()
-                if (tagText.isNotEmpty() && !seenTags.contains(tagText) && tagText.length < 30) {
+                    .replace('\u00A0', ' ')
+                    .replace('\u2007', ' ')
+                    .replace('\u202F', ' ')
+                    .trim()
+                if (tagText.isNotEmpty() && tagText.length < 30 && !seenTags.contains(tagText)) {
                     tags.add(tagText)
                     seenTags.add(tagText)
                 }
