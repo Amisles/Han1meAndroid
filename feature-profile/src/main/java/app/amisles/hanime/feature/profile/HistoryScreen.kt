@@ -264,8 +264,10 @@ fun HistoryScreen(
                         )
 
                         Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.Center
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 4.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
                                 text = video.title,
@@ -273,21 +275,26 @@ fun HistoryScreen(
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onBackground,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
                             )
                             if (video.author.isNotEmpty()) {
                                 Text(
                                     text = video.author,
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 2.dp)
                                 )
                             }
                             Text(
                                 text = formatWatchedTime(video.watchedAt),
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                modifier = Modifier.padding(top = 4.dp)
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(top = 2.dp)
                             )
                         }
 
