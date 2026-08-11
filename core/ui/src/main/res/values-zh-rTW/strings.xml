@@ -212,4 +212,35 @@
     <string name="playlist_video_count">%1$d 個影片</string>
     <string name="playlist_videos">影片列表</string>
     <string name="error_load_failed">載入失敗，請檢查網路後重試</string>
+
+    <!-- History (extra) -->
+    <string name="history_title">觀看歷史</string>
+    <string name="history_selected_count">已選 %1$d 項</string>
+    <string name="history_manage">管理</string>
+    <string name="history_delete_title">確認刪除</string>
+    <string name="history_delete_message">確定刪除選取的 %1$d 筆記錄嗎？</string>
+    <string name="history_time_just_now">剛剛觀看</string>
+    <string name="history_time_minutes_ago">%1$d 分鐘前</string>
+    <string name="history_time_hours_ago">%1$d 小時前</string>
+    <string name="history_time_days_ago">%1$d 天前</string>
+
+    <!-- About (extra) -->
+    <string name="about_logo">應用程式圖示</string>
+    <string name="about_app_name">Hanime Android</string>
+    <string name="about_intro_body">Hanime Android 是一款開源的第三方 Hanime 客戶端，提供流暢的影片瀏覽、搜尋、線上播放與離線下載功能。本專案基於 AGP 9.2.1 + Kotlin 2.4.10 + Jetpack Compose BOM 2026.06 建構，採用 MVVM + Repository 架構，UI 層、解析層、網路層清晰解耦。網路層使用 OkHttp 5.4.0，圖片載入使用 Coil 3.5.0，資料持久化使用 Room 2.8.4，影片播放基於 Media3 1.10.1。專案以 GPLv3.0 協議完全開源，歡迎社群自由學習與二次開發。</string>
+    <string name="about_license_body">本專案採用 GPLv3.0 協議開源。您可以自由地使用、研究、修改和分發本軟體，但分發本軟體或其衍生作品時，必須同樣以 GPLv3.0 協議開源完整原始碼，並保留原始版權聲明與協議文字。任何再分發不得施加超出 GPLv3.0 的額外限制。</string>
+    <string name="about_made_with">由開源社群用 ♥ 製作</string>
+    <string name="about_oss_agp_desc">Android 官方建構工具鏈，9.x 內建 Kotlin 編譯支援</string>
+    <string name="about_oss_kotlin_desc">JetBrains 現代 JVM/Android 靜態型別程式語言</string>
+    <string name="about_oss_compose_desc">Google 官方現代 Android UI 工具包，宣告式建構原生介面</string>
+    <string name="about_oss_exoplayer_desc">Android 官方媒體播放器，支援 HLS 高清串流播放</string>
+    <string name="about_oss_okhttp_desc">Square 出品的高效能 HTTP 客戶端，支援 HTTP/2 與連線池</string>
+    <string name="about_oss_jsoup_desc">HTML DOM 解析與 CSS 選擇器庫</string>
+    <string name="about_oss_coil_desc">Kotlin 協程驅動的 Android 圖片載入庫（io.coil-kt.coil3）</string>
+    <string name="about_oss_room_desc">SQLite 之上的 ORM 物件關聯對應持久化庫</string>
+    <string name="about_oss_navigation_desc">Compose 應用中的導航框架</string>
+    <string name="about_oss_lifecycle_desc">MVVM 架構的 ViewModel、StateFlow 與生命週期感知元件</string>
+    <string name="about_oss_activity_desc">Compose 與 Activity 整合，提供 ComponentActivity 與 setContent</string>
+    <string name="about_oss_ksp_desc">Kotlin 符號處理器（KSP2 架構，Room 編譯時產生程式碼）</string>
+    <string name="about_oss_corektx_desc">Android Framework API 的 Kotlin 擴充</string>
 </resources>

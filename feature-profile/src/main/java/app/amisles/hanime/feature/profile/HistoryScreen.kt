@@ -55,16 +55,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@Composable
 private fun formatWatchedTime(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     val minutes = diff / (60 * 1000)
     val hours = diff / (60 * 60 * 1000)
     val days = diff / (24 * 60 * 60 * 1000)
     return when {
-        minutes < 1 -> "刚刚观看"
-        minutes < 60 -> "$minutes 分钟前"
-        hours < 24 -> "$hours 小时前"
-        days < 30 -> "$days 天前"
+        minutes < 1 -> stringResource(R.string.history_time_just_now)
+        minutes < 60 -> stringResource(R.string.history_time_minutes_ago, minutes)
+        hours < 24 -> stringResource(R.string.history_time_hours_ago, hours)
+        days < 30 -> stringResource(R.string.history_time_days_ago, days)
         else -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(timestamp))
     }
 }
@@ -119,14 +120,14 @@ fun HistoryScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = if (isSelectionMode) "取消" else "返回",
+                    contentDescription = if (isSelectionMode) stringResource(R.string.common_cancel) else stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = if (isSelectionMode) "已选 ${selectedIds.size} 项" else "观看历史",
+                text = if (isSelectionMode) stringResource(R.string.history_selected_count, selectedIds.size) else stringResource(R.string.history_title),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -134,7 +135,7 @@ fun HistoryScreen(
             )
             if (!isSelectionMode && history.isNotEmpty()) {
                 Text(
-                    text = "管理",
+                    text = stringResource(R.string.history_manage),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -143,7 +144,7 @@ fun HistoryScreen(
                 )
             } else if (isSelectionMode) {
                 Text(
-                    text = "全选",
+                    text = stringResource(R.string.common_select_all),
                     fontSize = 14.sp,
                     color = if (selectedIds.size == history.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -186,7 +187,7 @@ fun HistoryScreen(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "观看的视频会自动记录在这里",
+                        text = stringResource(R.string.history_empty_hint),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
@@ -305,7 +306,7 @@ fun HistoryScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "删除",
+                                    contentDescription = stringResource(R.string.common_delete),
                                     tint = Color(0xFFFF6B6B),
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -336,13 +337,13 @@ fun HistoryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "已选择 ${selectedIds.size} 项",
+                    text = stringResource(R.string.history_selected_count, selectedIds.size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "删除",
+                    text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
                     color = Color(0xFFFF6B6B),
                     fontWeight = FontWeight.Medium,
@@ -369,13 +370,13 @@ fun HistoryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${history.size} 条记录",
+                    text = stringResource(R.string.history_count, history.size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "清空",
+                    text = stringResource(R.string.common_clear),
                     fontSize = 14.sp,
                     color = Color(0xFFFF6B6B),
                     fontWeight = FontWeight.Medium,
@@ -404,14 +405,14 @@ fun HistoryScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "确认删除",
+                    text = stringResource(R.string.history_delete_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = "确定删除选中的 ${selectedIds.size} 条记录吗？",
+                    text = stringResource(R.string.history_delete_message, selectedIds.size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -421,7 +422,7 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "取消",
+                        text = stringResource(R.string.common_cancel),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -431,7 +432,7 @@ fun HistoryScreen(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "删除",
+                        text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
                         color = Color(0xFFFF6B6B),
                         fontWeight = FontWeight.Medium,
@@ -469,7 +470,7 @@ fun HistoryScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "确认清空所有观看历史？",
+                    text = stringResource(R.string.history_clear_message),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -479,30 +480,30 @@ fun HistoryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "取消",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { showClearConfirm = false }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "清空",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                viewModel.clearHistory()
-                                showClearConfirm = false
-                            }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
+                Text(
+                    text = stringResource(R.string.common_cancel),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showClearConfirm = false }
+                        .padding(vertical = 10.dp),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = stringResource(R.string.common_clear),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            viewModel.clearHistory()
+                            showClearConfirm = false
+                        }
+                        .padding(vertical = 10.dp),
+                    textAlign = TextAlign.Center
+                )
                 }
             }
         }

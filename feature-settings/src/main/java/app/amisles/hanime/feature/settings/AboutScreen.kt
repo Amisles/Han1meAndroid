@@ -57,7 +57,7 @@ import androidx.compose.material3.MaterialTheme
 data class OpenSourceProject(
     val name: String,
     val version: String,
-    val description: String,
+    val descriptionRes: Int,
     val license: String,
     val url: String
 )
@@ -81,91 +81,91 @@ private val openSourceProjects = listOf(
     OpenSourceProject(
         name = "Android Gradle Plugin",
         version = "9.2.1",
-        description = "Android 官方构建工具链，9.x 内置 Kotlin 编译支持",
+        descriptionRes = R.string.about_oss_agp_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/build/releases/gradle-plugin"
     ),
     OpenSourceProject(
         name = "Kotlin",
         version = "2.4.10",
-        description = "JetBrains 现代 JVM/Android 静态类型编程语言",
+        descriptionRes = R.string.about_oss_kotlin_desc,
         license = "Apache 2.0",
         url = "https://kotlinlang.org"
     ),
     OpenSourceProject(
         name = "Jetpack Compose BOM",
         version = "2026.06.00",
-        description = "Google 官方现代 Android UI 工具包，声明式构建原生界面",
+        descriptionRes = R.string.about_oss_compose_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/compose"
     ),
     OpenSourceProject(
         name = "Media3 ExoPlayer",
         version = "1.10.1",
-        description = "Android 官方媒体播放器，支持 HLS 高清流媒体播放",
+        descriptionRes = R.string.about_oss_exoplayer_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/media/media3"
     ),
     OpenSourceProject(
         name = "OkHttp",
         version = "5.4.0",
-        description = "Square 出品的高性能 HTTP 客户端，支持 HTTP/2 与连接池",
+        descriptionRes = R.string.about_oss_okhttp_desc,
         license = "Apache 2.0",
         url = "https://square.github.io/okhttp"
     ),
     OpenSourceProject(
         name = "Jsoup",
         version = "1.22.2",
-        description = "HTML DOM 解析与 CSS 选择器库",
+        descriptionRes = R.string.about_oss_jsoup_desc,
         license = "MIT",
         url = "https://jsoup.org"
     ),
     OpenSourceProject(
         name = "Coil 3",
         version = "3.5.0",
-        description = "Kotlin 协程驱动的 Android 图片加载库（io.coil-kt.coil3）",
+        descriptionRes = R.string.about_oss_coil_desc,
         license = "Apache 2.0",
         url = "https://coil-kt.github.io/coil"
     ),
     OpenSourceProject(
         name = "Room",
         version = "2.8.4",
-        description = "SQLite 之上的 ORM 对象关系映射持久化库",
+        descriptionRes = R.string.about_oss_room_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/room"
     ),
     OpenSourceProject(
         name = "Navigation Compose",
         version = "2.9.8",
-        description = "Compose 应用中的导航框架",
+        descriptionRes = R.string.about_oss_navigation_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/compose/navigation"
     ),
     OpenSourceProject(
         name = "Lifecycle",
         version = "2.10.0",
-        description = "MVVM 架构的 ViewModel、StateFlow 与生命周期感知组件",
+        descriptionRes = R.string.about_oss_lifecycle_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/lifecycle"
     ),
     OpenSourceProject(
         name = "Activity Compose",
         version = "1.12.3",
-        description = "Compose 与 Activity 集成，提供 ComponentActivity 与 setContent",
+        descriptionRes = R.string.about_oss_activity_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/activity"
     ),
     OpenSourceProject(
         name = "KSP",
         version = "2.3.10",
-        description = "Kotlin 符号处理器（KSP2 架构，Room 编译时生成代码）",
+        descriptionRes = R.string.about_oss_ksp_desc,
         license = "Apache 2.0",
         url = "https://kotlinlang.org/docs/ksp-overview.html"
     ),
     OpenSourceProject(
         name = "AndroidX Core KTX",
         version = "1.13.1",
-        description = "Android Framework API 的 Kotlin 扩展",
+        descriptionRes = R.string.about_oss_corektx_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/kotlin/ktx"
     )
@@ -212,7 +212,7 @@ fun AboutScreen(
             IconButton(onClick = onBackClick) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(22.dp)
                 )
@@ -238,7 +238,7 @@ fun AboutScreen(
 
                 Image(
                     painter = painterResource(R.drawable.ic_app_logo),
-                    contentDescription = "App Logo",
+                    contentDescription = stringResource(R.string.about_logo),
                     modifier = Modifier
                         .size(84.dp)
                         .clip(CircleShape)
@@ -247,7 +247,7 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Hanime Android",
+                    text = stringResource(R.string.about_app_name),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -363,7 +363,7 @@ fun AboutScreen(
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
                         Text(
-                            text = "Hanime Android 是一款开源的第三方 Hanime 客户端，提供流畅的视频浏览、搜索、在线播放与离线下载功能。本项目基于 AGG 9.2.1 + Kotlin 2.4.10 + Jetpack Compose BOM 2026.06 构建，采用 MVVM + Repository 架构，UI 层、解析层、网络层清晰解耦。网络层使用 OkHttp 5.4.0，图片加载使用 Coil 3.5.0，数据持久化使用 Room 2.8.4，视频播放基于 Media3 1.10.1。项目以 GPLv3.0 协议完全开源，欢迎社区自由学习与二次开发。",
+                            text = stringResource(R.string.about_intro_body),
                             fontSize = 13.sp,
                             lineHeight = 20.sp,
                             color = MaterialTheme.colorScheme.onBackground
@@ -463,7 +463,7 @@ fun AboutScreen(
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
                         Text(
-                            text = "本项目采用 GPLv3.0 协议开源。您可以自由地使用、研究、修改和分发本软件，但分发本软件或其衍生作品时，必须同样以 GPLv3.0 协议开源完整源代码，并保留原始版权声明与协议文本。任何再分发不得施加超出 GPLv3.0 的额外限制。",
+                            text = stringResource(R.string.about_license_body),
                             fontSize = 12.sp,
                             lineHeight = 19.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -518,7 +518,7 @@ fun AboutScreen(
                             )
                         }
                         Text(
-                            text = project.description,
+                            text = stringResource(project.descriptionRes),
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -556,7 +556,7 @@ fun AboutScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Made with ♥ by the Open Source Community",
+                    text = stringResource(R.string.about_made_with),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

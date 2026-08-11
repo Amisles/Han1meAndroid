@@ -212,4 +212,35 @@
     <string name="playlist_video_count">%1$d 本の動画</string>
     <string name="playlist_videos">動画リスト</string>
     <string name="error_load_failed">読み込み失敗、ネットワークを確認して再試行してください</string>
+
+    <!-- History (extra) -->
+    <string name="history_title">視聴履歴</string>
+    <string name="history_selected_count">%1$d 件選択中</string>
+    <string name="history_manage">管理</string>
+    <string name="history_delete_title">削除の確認</string>
+    <string name="history_delete_message">選択した %1$d 件を削除しますか？</string>
+    <string name="history_time_just_now">今視聴しました</string>
+    <string name="history_time_minutes_ago">%1$d 分前</string>
+    <string name="history_time_hours_ago">%1$d 時間前</string>
+    <string name="history_time_days_ago">%1$d 日前</string>
+
+    <!-- About (extra) -->
+    <string name="about_logo">アプリアイコン</string>
+    <string name="about_app_name">Hanime Android</string>
+    <string name="about_intro_body">Hanime Android はオープンソースのサードパーティ Hanime クライアントで、スムーズな動画の閲覧・検索・オンライン再生・オフライン保存を提供します。AGP 9.2.1 + Kotlin 2.4.10 + Jetpack Compose BOM 2026.06 を基盤とし、MVVM + Repository アーキテクチャを採用、UI 層・解析層・ネットワーク層を明確に分離しています。ネットワーク層は OkHttp 5.4.0、画像読み込みは Coil 3.5.0、永続化は Room 2.8.4、再生は Media3 1.10.1 ベースです。本プロジェクトは GPLv3.0 で完全にオープンソース化されており、コミュニティによる学習と二次開発を歓迎します。</string>
+    <string name="about_license_body">本プロジェクトは GPLv3.0 ライセンスの下でオープンソースとして公開されています。本ソフトウェアを自由に利用・研究・改変・頒布できますが、本ソフトウェアまたはその派生物を頒布する際は、同様に GPLv3.0 ライセンスの下で完全なソースコードを公開し、オリジナルの著作権表示とライセンス本文を保持する必要があります。GPLv3.0 を超える追加制限を再頒布に課してはなりません。</string>
+    <string name="about_made_with">♥ で作られた オープンソースコミュニティにより</string>
+    <string name="about_oss_agp_desc">Android 公式のビルドツールチェーン。9.x は Kotlin コンパイルを内蔵</string>
+    <string name="about_oss_kotlin_desc">JetBrains によるモダンな JVM/Android 向け静的型付け言語</string>
+    <string name="about_oss_compose_desc">Google 公式のモダンな Android UI ツールキット。宣言的にネイティブ UI を構築</string>
+    <string name="about_oss_exoplayer_desc">Android 公式のメディアプレーヤー。HLS の高画質ストリーミングに対応</string>
+    <string name="about_oss_okhttp_desc">Square 製の高性能 HTTP クライアント。HTTP/2 とコネクションプーリングに対応</string>
+    <string name="about_oss_jsoup_desc">HTML DOM 解析と CSS セレクターのライブラリ</string>
+    <string name="about_oss_coil_desc">Kotlin コルーチン駆動の Android 画像読み込みライブラリ (io.coil-kt.coil3)</string>
+    <string name="about_oss_room_desc">SQLite 上の ORM オブジェクトリレーショナルマッピング永続化ライブラリ</string>
+    <string name="about_oss_navigation_desc">Compose アプリ向けのナビゲーションフレームワーク</string>
+    <string name="about_oss_lifecycle_desc">MVVM アーキテクチャの ViewModel・StateFlow・ライフサイクル対応コンポーネント</string>
+    <string name="about_oss_activity_desc">Compose と Activity の統合。ComponentActivity と setContent を提供</string>
+    <string name="about_oss_ksp_desc">Kotlin シンボルプロセッサ (KSP2 アーキテクチャ。Room のコンパイル時にコード生成)</string>
+    <string name="about_oss_corektx_desc">Android Framework API の Kotlin 拡張</string>
 </resources>

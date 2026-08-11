@@ -212,4 +212,35 @@
     <string name="playlist_video_count">%1$d videos</string>
     <string name="playlist_videos">Video List</string>
     <string name="error_load_failed">Load failed, please check your network and retry</string>
+
+    <!-- History (extra) -->
+    <string name="history_title">Watch History</string>
+    <string name="history_selected_count">Selected %1$d</string>
+    <string name="history_manage">Manage</string>
+    <string name="history_delete_title">Confirm Deletion</string>
+    <string name="history_delete_message">Delete the selected %1$d record(s)?</string>
+    <string name="history_time_just_now">Just watched</string>
+    <string name="history_time_minutes_ago">%1$d min ago</string>
+    <string name="history_time_hours_ago">%1$d hr ago</string>
+    <string name="history_time_days_ago">%1$d days ago</string>
+
+    <!-- About (extra) -->
+    <string name="about_logo">App Icon</string>
+    <string name="about_app_name">Hanime Android</string>
+    <string name="about_intro_body">Hanime Android is an open-source third-party Hanime client, providing smooth video browsing, search, online playback and offline download. Built on AGP 9.2.1 + Kotlin 2.4.10 + Jetpack Compose BOM 2026.06 with MVVM + Repository architecture, keeping UI, parsing and network layers clearly decoupled. Networking uses OkHttp 5.4.0, image loading uses Coil 3.5.0, persistence uses Room 2.8.4, and playback is based on Media3 1.10.1. Fully open-sourced under GPLv3.0; community contributions and derivative works are welcome.</string>
+    <string name="about_license_body">This project is open-sourced under the GPLv3.0 license. You are free to use, study, modify, and distribute the software, but when distributing this software or derivative works you must release the complete source code under the same GPLv3.0 license and retain the original copyright notices and license text. No additional restrictions beyond GPLv3.0 may be imposed on any redistribution.</string>
+    <string name="about_made_with">Made with ♥ by the Open Source Community</string>
+    <string name="about_oss_agp_desc">Official Android build toolchain; 9.x has built-in Kotlin compilation support</string>
+    <string name="about_oss_kotlin_desc">Modern statically-typed JVM/Android language by JetBrains</string>
+    <string name="about_oss_compose_desc">Google\'s official modern Android UI toolkit for declarative native UIs</string>
+    <string name="about_oss_exoplayer_desc">Official Android media player with HLS HD streaming support</string>
+    <string name="about_oss_okhttp_desc">High-performance HTTP client by Square with HTTP/2 and connection pooling</string>
+    <string name="about_oss_jsoup_desc">HTML DOM parser and CSS selector library</string>
+    <string name="about_oss_coil_desc">Kotlin-coroutine-driven Android image loading library (io.coil-kt.coil3)</string>
+    <string name="about_oss_room_desc">ORM object-relational mapping persistence library on top of SQLite</string>
+    <string name="about_oss_navigation_desc">Navigation framework for Compose apps</string>
+    <string name="about_oss_lifecycle_desc">ViewModel, StateFlow and lifecycle-aware components for MVVM architecture</string>
+    <string name="about_oss_activity_desc">Compose and Activity integration providing ComponentActivity and setContent</string>
+    <string name="about_oss_ksp_desc">Kotlin Symbol Processor (KSP2 architecture; generates code at Room compile time)</string>
+    <string name="about_oss_corektx_desc">Kotlin extensions for the Android Framework API</string>
 </resources>
