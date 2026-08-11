@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -29,6 +31,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -255,26 +258,31 @@ fun SearchScreen(
                 .padding(horizontal = 15.dp, vertical = 12.dp)
         ) {
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(end = 15.dp)
             ) {
                 items(filterTypes) { filter ->
                     val isSelected = selectedFilter.value == filter
-                    Text(
-                        text = filter,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                    val shape = RoundedCornerShape(16.dp)
+                    Box(
                         modifier = Modifier
+                            .clip(shape)
                             .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(4.dp))
                             .clickable {
                                 selectedFilter.value = filter
                                 val apiValue = if (filter == "全部") null else genreApiValues[filter] ?: filter
                                 viewModel.setGenre(apiValue)
-                            },
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
+                            }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = filter,
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
                 }
             }
 
@@ -396,30 +404,30 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 200.dp)
-                        .padding(horizontal = 15.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .padding(horizontal = 15.dp)
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    items(searchHistory) { historyQuery ->
+                    itemsIndexed(searchHistory) { index, historyQuery ->
                         // 单条历史项：搜索图标 + 关键词 + 删除按钮
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                                 .clickable {
                                     localQuery.value = historyQuery
                                     viewModel.setQuery(historyQuery)
                                     viewModel.executeSearch()
                                 }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             // 搜索图标
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             // 历史关键词
                             Text(
@@ -434,6 +442,7 @@ fun SearchScreen(
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
+                                    .clip(CircleShape)
                                     .clickable { viewModel.removeSearchHistory(historyQuery) },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -444,6 +453,14 @@ fun SearchScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
+                        }
+                        // 项之间用细分割线分隔，最后一项不显示
+                        if (index < searchHistory.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            )
                         }
                     }
                 }
