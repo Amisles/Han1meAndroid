@@ -113,6 +113,11 @@
     <string name="download_notification_downloading">ダウンロード中</string>
     <string name="download_notification_completed">ダウンロード完了</string>
     <string name="download_notification_failed">ダウンロード失敗</string>
+    <string name="download_title">ダウンロード管理</string>
+    <string name="download_pause">一時停止</string>
+    <string name="download_resume">再開</string>
+    <string name="download_choose_player">プレーヤーを選択</string>
+    <string name="download_open_failed">開けませんでした: %1$s</string>
     <string name="batch_title">一括ダウンロード</string>
     <string name="batch_author_id_placeholder">作者IDを入力</string>
     <string name="batch_author_name">作者：%1$s</string>
@@ -127,11 +132,13 @@
     <string name="batch_start_download">ダウンロード開始</string>
     <string name="batch_intro_title">一括ダウンロード機能</string>
     <string name="batch_intro_input_id">作者IDを入力して、その作者のすべての動画を取得</string>
-    <string name="batch_no_videos">ダウンロード可能な動画がありません</string>
+    <string name="batch_no_videos">ダウンロード可能な動画がありません（ダウンロード済みの動画はスキップされました）</string>
     <string name="batch_manager_not_init">ダウンロードマネージャーが初期化されていません</string>
     <string name="batch_enter_author_id">作者IDを入力してください</string>
-    <string name="batch_search_failed">検索失敗、作者IDを確認してください</string>
+    <string name="batch_search_failed">検索失敗、ネットワークまたは作者IDを確認してください</string>
     <string name="batch_no_author_videos">この作者には動画がありません</string>
+    <string name="batch_search_failed_detail">検索失敗: %1$s</string>
+    <string name="batch_qualities_not_loaded">選択した動画の画質情報がまだ読み込まれていません。しばらくしてから再度お試しください</string>
     <string name="profile_watch_history">視聴履歴</string>
     <string name="profile_favorites">お気に入り</string>
     <string name="profile_download_manager">ダウンロード管理</string>

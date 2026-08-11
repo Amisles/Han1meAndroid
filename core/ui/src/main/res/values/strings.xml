@@ -126,7 +126,12 @@
     <string name="download_notification_downloading">正在下载</string>
     <string name="download_notification_completed">下载完成</string>
     <string name="download_notification_failed">下载失败</string>
-    
+    <string name="download_title">下载管理</string>
+    <string name="download_pause">暂停</string>
+    <string name="download_resume">继续</string>
+    <string name="download_choose_player">选择播放器</string>
+    <string name="download_open_failed">打开失败: %1$s</string>
+
     <!-- Batch Download -->
     <string name="batch_title">批量下载</string>
     <string name="batch_author_id_placeholder">输入作者ID</string>
@@ -142,12 +147,14 @@
     <string name="batch_start_download">开始下载</string>
     <string name="batch_intro_title">批量下载功能</string>
     <string name="batch_intro_input_id">输入作者ID，获取该作者的所有视频</string>
-    <string name="batch_no_videos">没有可下载的视频</string>
+    <string name="batch_no_videos">没有可下载的视频（已自动跳过已下载的视频）</string>
     <string name="batch_manager_not_init">下载管理器未初始化</string>
     <string name="batch_enter_author_id">请输入作者ID</string>
-    <string name="batch_search_failed">搜索失败，请检查作者ID</string>
+    <string name="batch_search_failed">搜索失败，请检查网络或作者ID是否正确</string>
     <string name="batch_no_author_videos">该作者没有视频</string>
-    
+    <string name="batch_search_failed_detail">搜索失败: %1$s</string>
+    <string name="batch_qualities_not_loaded">选中视频尚未加载画质信息，请稍候再试</string>
+
     <!-- Profile -->
     <string name="profile_watch_history">观看历史</string>
     <string name="profile_favorites">我的收藏</string>

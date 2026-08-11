@@ -129,7 +129,7 @@ fun DownloadScreen(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             } else {
-                Header(title = "下载管理", onSearchNavigate = { onNavigate("search") })
+                Header(title = stringResource(R.string.download_title), onSearchNavigate = { onNavigate("search") })
             }
         }
 
@@ -664,7 +664,7 @@ fun DownloadTaskItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Pause,
-                                contentDescription = "暂停",
+                                contentDescription = stringResource(R.string.download_pause),
                                 tint = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -677,7 +677,7 @@ fun DownloadTaskItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "继续",
+                                contentDescription = stringResource(R.string.download_resume),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -690,7 +690,7 @@ fun DownloadTaskItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "重试",
+                                contentDescription = stringResource(R.string.common_retry),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -703,7 +703,7 @@ fun DownloadTaskItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "播放",
+                                contentDescription = stringResource(R.string.common_play),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -763,14 +763,14 @@ private fun playVideoFile(context: android.content.Context, filePath: String) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        val chooser = Intent.createChooser(intent, "选择播放器").apply {
+        val chooser = Intent.createChooser(intent, context.getString(R.string.download_choose_player)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
         context.startActivity(chooser)
     } catch (e: IllegalArgumentException) {
-        Toast.makeText(context, "打开失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.download_open_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
     } catch (e: ActivityNotFoundException) {
-        Toast.makeText(context, "打开失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.download_open_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
     }
 }

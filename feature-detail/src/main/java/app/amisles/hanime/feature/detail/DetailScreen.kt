@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
@@ -356,85 +357,29 @@ fun DetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.padding(bottom = 6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-                                .padding(10.dp)
-                                .clickable {
-                                    showDownloadDialog = true
-                                    viewModel.loadDownloadQualities()
-                                }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = "下载",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.detail_download),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-                                .padding(10.dp)
-                                .clickable { viewModel.toggleFavorite() }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = "收藏",
-                                modifier = Modifier.size(16.dp),
-                                tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (isFavorite) stringResource(R.string.detail_unfavorite) else stringResource(R.string.detail_favorite),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-                                .padding(10.dp)
-                                .clickable {
-                                    shareVideo(context, detail.title, videoUrl.orEmpty())
-                                }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "分享",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.detail_share),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
+                        val favoriteTint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                        DetailActionButton(
+                            icon = Icons.Default.Download,
+                            text = stringResource(R.string.detail_download),
+                            onClick = {
+                                showDownloadDialog = true
+                                viewModel.loadDownloadQualities()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        DetailActionButton(
+                            icon = Icons.Default.Favorite,
+                            text = stringResource(if (isFavorite) R.string.detail_unfavorite else R.string.detail_favorite),
+                            onClick = { viewModel.toggleFavorite() },
+                            modifier = Modifier.weight(1f),
+                            tint = favoriteTint
+                        )
+                        DetailActionButton(
+                            icon = Icons.Default.Share,
+                            text = stringResource(R.string.detail_share),
+                            onClick = { shareVideo(context, detail.title, videoUrl.orEmpty()) },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     if (detail.tags.isNotEmpty()) {
@@ -837,6 +782,44 @@ fun DetailScreen(
                 onNavigateToSettings()
             },
             onDismiss = { showLoginUnsupportedDialog = false }
+        )
+    }
+}
+
+/**
+ * 详情页操作按钮：图标在上、文字在下，避免长文本（英文 Unfavorite / 日语お気に入り解除等）换行。
+ */
+@Composable
+private fun DetailActionButton(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.onBackground
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = tint
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = tint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

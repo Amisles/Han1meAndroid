@@ -113,6 +113,11 @@
     <string name="download_notification_downloading">Downloading</string>
     <string name="download_notification_completed">Download completed</string>
     <string name="download_notification_failed">Download failed</string>
+    <string name="download_title">Download Manager</string>
+    <string name="download_pause">Pause</string>
+    <string name="download_resume">Resume</string>
+    <string name="download_choose_player">Choose player</string>
+    <string name="download_open_failed">Failed to open: %1$s</string>
     <string name="batch_title">Batch Download</string>
     <string name="batch_author_id_placeholder">Enter author ID</string>
     <string name="batch_author_name">Author: %1$s</string>
@@ -127,11 +132,13 @@
     <string name="batch_start_download">Start Download</string>
     <string name="batch_intro_title">Batch Download</string>
     <string name="batch_intro_input_id">Enter an author ID to get all their videos</string>
-    <string name="batch_no_videos">No videos to download</string>
+    <string name="batch_no_videos">No videos to download (already-downloaded videos were skipped)</string>
     <string name="batch_manager_not_init">Download manager not initialized</string>
     <string name="batch_enter_author_id">Please enter an author ID</string>
-    <string name="batch_search_failed">Search failed, please check the author ID</string>
+    <string name="batch_search_failed">Search failed, please check your network or author ID</string>
     <string name="batch_no_author_videos">This author has no videos</string>
+    <string name="batch_search_failed_detail">Search failed: %1$s</string>
+    <string name="batch_qualities_not_loaded">Selected videos haven\'t loaded quality info yet, please try again later</string>
     <string name="profile_watch_history">Watch History</string>
     <string name="profile_favorites">Favorites</string>
     <string name="profile_download_manager">Downloads</string>

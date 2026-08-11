@@ -113,6 +113,11 @@
     <string name="download_notification_downloading">正在下載</string>
     <string name="download_notification_completed">下載完成</string>
     <string name="download_notification_failed">下載失敗</string>
+    <string name="download_title">下載管理</string>
+    <string name="download_pause">暫停</string>
+    <string name="download_resume">繼續</string>
+    <string name="download_choose_player">選擇播放器</string>
+    <string name="download_open_failed">打開失敗: %1$s</string>
     <string name="batch_title">批次下載</string>
     <string name="batch_author_id_placeholder">輸入作者ID</string>
     <string name="batch_author_name">作者：%1$s</string>
@@ -127,11 +132,13 @@
     <string name="batch_start_download">開始下載</string>
     <string name="batch_intro_title">批次下載功能</string>
     <string name="batch_intro_input_id">輸入作者ID，取得該作者的所有影片</string>
-    <string name="batch_no_videos">沒有可下載的影片</string>
+    <string name="batch_no_videos">沒有可下載的影片（已自動跳過已下載的影片）</string>
     <string name="batch_manager_not_init">下載管理器未初始化</string>
     <string name="batch_enter_author_id">請輸入作者ID</string>
-    <string name="batch_search_failed">搜尋失敗，請檢查作者ID</string>
+    <string name="batch_search_failed">搜尋失敗，請檢查網絡或作者ID是否正確</string>
     <string name="batch_no_author_videos">該作者沒有影片</string>
+    <string name="batch_search_failed_detail">搜尋失敗: %1$s</string>
+    <string name="batch_qualities_not_loaded">選中影片尚未載入畫質資訊，請稍候再試</string>
     <string name="profile_watch_history">觀看歷史</string>
     <string name="profile_favorites">我的收藏</string>
     <string name="profile_download_manager">下載管理</string>

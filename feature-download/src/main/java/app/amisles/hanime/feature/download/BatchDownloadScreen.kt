@@ -79,7 +79,7 @@ fun BatchDownloadScreen(
                 title = { Text(stringResource(R.string.batch_title), color = MaterialTheme.colorScheme.onBackground) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onBackground)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
@@ -186,7 +186,7 @@ private fun SearchSection(
                     strokeWidth = 2.dp
                 )
             } else {
-                Icon(Icons.Default.Search, contentDescription = "搜索")
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.common_search))
             }
         }
     }

@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.download
 
 import android.util.Log
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.remote.NetworkService
@@ -10,6 +11,7 @@ import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -22,6 +24,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import javax.inject.Inject
 
@@ -44,6 +47,7 @@ data class BatchDownloadState(
 
 @HiltViewModel
 class BatchDownloadViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val networkService: NetworkService,
     private val downloadManager: DownloadManager,
     private val downloadPageParser: DownloadPageParser
@@ -108,7 +112,7 @@ class BatchDownloadViewModel @Inject constructor(
     fun searchAuthor() {
         val authorId = _state.value.authorIdInput.trim()
         if (authorId.isEmpty()) {
-            _state.update { it.copy(error = "请输入作者ID") }
+            _state.update { it.copy(error = context.getString(R.string.batch_enter_author_id)) }
             return
         }
 
@@ -125,7 +129,7 @@ class BatchDownloadViewModel @Inject constructor(
                 if (result == null) {
                     _state.update { it.copy(
                         isSearching = false,
-                        error = "搜索失败，请检查网络或作者ID是否正确"
+                        error = context.getString(R.string.batch_search_failed)
                     )}
                     return@launch
                 }
@@ -133,7 +137,7 @@ class BatchDownloadViewModel @Inject constructor(
                 if (result.videos.isEmpty()) {
                     _state.update { it.copy(
                         isSearching = false,
-                        error = "该作者没有视频"
+                        error = context.getString(R.string.batch_no_author_videos)
                     )}
                     return@launch
                 }
@@ -177,7 +181,7 @@ class BatchDownloadViewModel @Inject constructor(
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
                 _state.update { it.copy(
                     isSearching = false,
-                    error = "搜索失败: ${e.message}"
+                    error = context.getString(R.string.batch_search_failed_detail, e.message ?: "")
                 )}
             }
         }
@@ -363,7 +367,7 @@ class BatchDownloadViewModel @Inject constructor(
         }
 
         if (selectedVideos.isEmpty()) {
-            _state.update { it.copy(error = "没有可下载的视频（已自动跳过已下载的视频）") }
+            _state.update { it.copy(error = context.getString(R.string.batch_no_videos)) }
             return
         }
 
@@ -399,7 +403,7 @@ class BatchDownloadViewModel @Inject constructor(
         val downloadingIds = downloadableVideos.map { it.videoId }.toSet()
 
         if (downloadingIds.isEmpty()) {
-            _state.update { it.copy(error = "选中视频尚未加载画质信息，请稍候再试") }
+            _state.update { it.copy(error = context.getString(R.string.batch_qualities_not_loaded)) }
             return
         }
 
