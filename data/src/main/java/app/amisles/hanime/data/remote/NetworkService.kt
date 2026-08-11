@@ -425,6 +425,58 @@ class NetworkService @Inject constructor(
             }
         }
     }
+
+    /**
+     * 发表评论回复。
+     *
+     * 官网接口：POST /replyComment
+     * Content-Type: application/x-www-form-urlencoded
+     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
+     *
+     * Body 参数：
+     * - _token: CSRF Token
+     * - reply-comment-id: 被回复的评论 ID
+     * - reply-comment-text: 回复内容（回复其他回复时由前端拼上 "@用户名 " 前缀）
+     *
+     * 返回 JSON：{"comment_id": <父评论ID>, "single_video_comment": "<HTML>", "csrf_token": "..."}
+     */
+    suspend fun replyComment(
+        commentId: String,
+        replyText: String,
+        csrfToken: String
+    ): String {
+        AppLogger.log("NetworkService", "replyComment called, commentId: $commentId")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val form = FormBody.Builder()
+                .add("_token", csrfToken)
+                .add("reply-comment-id", commentId)
+                .add("reply-comment-text", replyText)
+                .build()
+            val req = Request.Builder()
+                .url("$baseUrl/replyComment")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", "$baseUrl/")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+            AppLogger.log("NetworkService", "Replying comment to: $baseUrl/replyComment")
+            client.newCall(req).execute().use { response ->
+                val code = response.code
+                AppLogger.log("NetworkService", "replyComment response code: $code")
+                val body = response.body?.string()
+                if (!response.isSuccessful) {
+                    throw IOException("回复评论失败 (HTTP $code)")
+                }
+                body ?: throw IOException("回复评论返回空响应")
+            }
+        }
+    }
 }
 
 data class FetchResult(val html: String, val baseUrl: String)

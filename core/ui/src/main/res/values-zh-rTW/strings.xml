@@ -76,6 +76,8 @@
     <string name="comment_post_failed">發表評論失敗</string>
     <string name="comment_login_required">請先登入後再發表評論</string>
     <string name="comment_empty_content">評論內容不能為空</string>
+    <string name="comment_reply">回覆</string>
+    <string name="comment_reply_hint">寫下你的回覆…</string>
 
     <string name="download_empty">暫無下載任務</string>
     <string name="download_empty_hint">去詳情頁下載影片吧</string>

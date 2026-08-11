@@ -111,6 +111,10 @@ fun DetailScreen(
     val postCommentError by viewModel.postCommentError.collectAsStateWithLifecycle()
     val likingComments by viewModel.likingComments.collectAsStateWithLifecycle()
     val commentLikeError by viewModel.commentLikeError.collectAsStateWithLifecycle()
+    val activeReplyTarget by viewModel.activeReplyTarget.collectAsStateWithLifecycle()
+    val isPostingReply by viewModel.isPostingReply.collectAsStateWithLifecycle()
+    val replyError by viewModel.replyError.collectAsStateWithLifecycle()
+    val expandedReplies by viewModel.expandedReplies.collectAsStateWithLifecycle()
     val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
 
@@ -684,6 +688,8 @@ fun DetailScreen(
                             loadingReplies = loadingReplies,
                             repliesError = repliesError,
                             onLoadReplies = { commentId -> viewModel.loadReplies(commentId) },
+                            expandedReplies = expandedReplies,
+                            onToggleExpand = { commentId -> viewModel.toggleReplies(commentId) },
                             isLogin = isLogin,
                             isPostingComment = isPostingComment,
                             postCommentError = postCommentError,
@@ -693,6 +699,14 @@ fun DetailScreen(
                             onClearPostError = { viewModel.clearPostCommentError() },
                             onToggleLike = { viewModel.toggleCommentLike(it) },
                             likingComments = likingComments,
+                            activeReplyCommentId = activeReplyTarget?.commentId,
+                            replyPrefill = activeReplyTarget?.replyToUsername?.let { "@$it " } ?: "",
+                            isPostingReply = isPostingReply,
+                            replyError = replyError,
+                            onStartReply = { commentId, replyToUsername -> viewModel.startReply(commentId, replyToUsername) },
+                            onSendReply = { text -> viewModel.submitReply(text) },
+                            onCancelReply = { viewModel.cancelReply() },
+                            onClearReplyError = { viewModel.clearReplyError() },
                             onNavigateToLogin = tryNavigateToLogin
                         )
                     }
@@ -884,6 +898,8 @@ private fun CommentSection(
     loadingReplies: Set<String>,
     repliesError: Map<String, String?>,
     onLoadReplies: (String) -> Unit,
+    expandedReplies: Set<String>,
+    onToggleExpand: (String) -> Unit,
     isLogin: Boolean,
     isPostingComment: Boolean,
     postCommentError: String?,
@@ -891,6 +907,14 @@ private fun CommentSection(
     onClearPostError: () -> Unit,
     onToggleLike: (app.amisles.hanime.domain.model.Comment) -> Unit,
     likingComments: Set<String>,
+    activeReplyCommentId: String?,
+    replyPrefill: String,
+    isPostingReply: Boolean,
+    replyError: String?,
+    onStartReply: (String, String?) -> Unit,
+    onSendReply: (String) -> Unit,
+    onCancelReply: () -> Unit,
+    onClearReplyError: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -947,8 +971,20 @@ private fun CommentSection(
                         isLoadingReplies = loadingReplies.contains(comment.id),
                         repliesError = repliesError[comment.id],
                         onLoadReplies = onLoadReplies,
+                        isExpanded = expandedReplies.contains(comment.id),
+                        onToggleExpand = { onToggleExpand(comment.id) },
                         onToggleLike = onToggleLike,
-                        isLiking = likingComments.contains(comment.id)
+                        isLiking = likingComments.contains(comment.id),
+                        isLogin = isLogin,
+                        onNavigateToLogin = onNavigateToLogin,
+                        onReply = { replyToUsername -> onStartReply(comment.id, replyToUsername) },
+                        isReplying = activeReplyCommentId == comment.id,
+                        replyPrefill = replyPrefill,
+                        isPostingReply = isPostingReply,
+                        replyError = replyError,
+                        onSendReply = onSendReply,
+                        onCancelReply = onCancelReply,
+                        onClearReplyError = onClearReplyError
                     )
                     Spacer(
                         modifier = Modifier
@@ -1072,6 +1108,111 @@ private fun CommentInputBar(
 }
 
 /**
+ * 内联回复输入框：缩进对齐到回复列表，支持 @用户名 预填、发送、取消与错误提示。
+ */
+@Composable
+private fun ReplyInputBar(
+    prefill: String,
+    isPosting: Boolean,
+    error: String?,
+    onSend: (String) -> Unit,
+    onCancel: () -> Unit,
+    onClearError: () -> Unit
+) {
+    var inputText by remember(prefill) { mutableStateOf(prefill) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp)
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .padding(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = inputText,
+                onValueChange = {
+                    inputText = it
+                    if (error != null) onClearError()
+                },
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.comment_reply_hint),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(20.dp),
+                singleLine = false,
+                maxLines = 3,
+                enabled = !isPosting,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            )
+            IconButton(
+                onClick = {
+                    if (inputText.isNotBlank() && !isPosting) {
+                        onSend(inputText)
+                        inputText = ""
+                    }
+                },
+                enabled = !isPosting && inputText.isNotBlank()
+            ) {
+                if (isPosting) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Send,
+                        contentDescription = stringResource(R.string.comment_post_button),
+                        tint = if (inputText.isNotBlank()) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // 取消按钮 + 错误提示
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stringResource(R.string.common_cancel),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable(enabled = !isPosting) { onCancel() }
+                    .padding(vertical = 4.dp, horizontal = 8.dp)
+            )
+            if (error != null) {
+                Text(
+                    text = error,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
  * 单条评论（含展开/收起回复）
  */
 @Composable
@@ -1081,11 +1222,21 @@ private fun CommentItem(
     isLoadingReplies: Boolean,
     repliesError: String?,
     onLoadReplies: (String) -> Unit,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
     onToggleLike: (app.amisles.hanime.domain.model.Comment) -> Unit,
-    isLiking: Boolean
+    isLiking: Boolean,
+    isLogin: Boolean,
+    onNavigateToLogin: () -> Unit,
+    onReply: (String?) -> Unit,
+    isReplying: Boolean,
+    replyPrefill: String,
+    isPostingReply: Boolean,
+    replyError: String?,
+    onSendReply: (String) -> Unit,
+    onCancelReply: () -> Unit,
+    onClearReplyError: () -> Unit
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1159,14 +1310,32 @@ private fun CommentItem(
                             color = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
+                    // 回复按钮
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable {
+                                if (isLogin) onReply(null) else onNavigateToLogin()
+                            }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.comment_reply),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     // 展开/收起回复按钮（放在点赞同一行，红色主题色）
                     if (comment.replyCount > 0) {
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .clickable {
-                                    isExpanded = !isExpanded
-                                    if (isExpanded && replies == null && !isLoadingReplies) {
+                                    onToggleExpand()
+                                    if (!isExpanded && replies == null && !isLoadingReplies) {
                                         onLoadReplies(comment.id)
                                     }
                                 }
@@ -1192,6 +1361,18 @@ private fun CommentItem(
                         }
                     }
                 }
+
+                // 内联回复输入框（仅在该评论的回复目标激活时显示）
+                if (isReplying) {
+                    ReplyInputBar(
+                        prefill = replyPrefill,
+                        isPosting = isPostingReply,
+                        error = replyError,
+                        onSend = onSendReply,
+                        onCancel = onCancelReply,
+                        onClearError = onClearReplyError
+                    )
+                }
             }
         }
 
@@ -1201,7 +1382,10 @@ private fun CommentItem(
                 replies = replies,
                 isLoading = isLoadingReplies,
                 error = repliesError,
-                onRetry = { onLoadReplies(comment.id) }
+                onRetry = { onLoadReplies(comment.id) },
+                onReplyToReply = { username -> onReply(username) },
+                isLogin = isLogin,
+                onNavigateToLogin = onNavigateToLogin
             )
         }
     }
@@ -1215,7 +1399,10 @@ private fun ReplyList(
     replies: List<app.amisles.hanime.domain.model.Reply>?,
     isLoading: Boolean,
     error: String?,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onReplyToReply: (String) -> Unit,
+    isLogin: Boolean,
+    onNavigateToLogin: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -1260,7 +1447,12 @@ private fun ReplyList(
             replies != null -> {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     replies.forEachIndexed { index, reply ->
-                        ReplyItem(reply = reply)
+                        ReplyItem(
+                            reply = reply,
+                            onReply = {
+                                if (isLogin) onReplyToReply(reply.username) else onNavigateToLogin()
+                            }
+                        )
                         if (index < replies.size - 1) {
                             Spacer(
                                 modifier = Modifier
@@ -1280,7 +1472,10 @@ private fun ReplyList(
  * 单条回复
  */
 @Composable
-private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
+private fun ReplyItem(
+    reply: app.amisles.hanime.domain.model.Reply,
+    onReply: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1340,18 +1535,34 @@ private fun ReplyItem(reply: app.amisles.hanime.domain.model.Reply) {
             Row(
                 modifier = Modifier.padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ThumbUp,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ThumbUp,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (reply.likeCount > 0) reply.likeCount.toString() else "0",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // 回复这条回复
                 Text(
-                    text = if (reply.likeCount > 0) reply.likeCount.toString() else "0",
+                    text = stringResource(R.string.comment_reply),
                     fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClick = onReply)
+                        .padding(vertical = 2.dp, horizontal = 4.dp)
                 )
             }
         }

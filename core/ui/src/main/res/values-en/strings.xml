@@ -76,6 +76,8 @@
     <string name="comment_post_failed">Failed to post comment</string>
     <string name="comment_login_required">Please log in to post a comment</string>
     <string name="comment_empty_content">Comment cannot be empty</string>
+    <string name="comment_reply">Reply</string>
+    <string name="comment_reply_hint">Write a reply…</string>
 
     <string name="download_empty">No download tasks</string>
     <string name="download_empty_hint">Download videos from the detail page</string>

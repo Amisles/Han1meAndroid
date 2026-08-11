@@ -76,6 +76,8 @@
     <string name="comment_post_failed">コメントの投稿に失敗しました</string>
     <string name="comment_login_required">コメントを投稿するにはログインしてください</string>
     <string name="comment_empty_content">コメントを入力してください</string>
+    <string name="comment_reply">返信</string>
+    <string name="comment_reply_hint">返信を書く…</string>
 
     <string name="download_empty">ダウンロードタスクがありません</string>
     <string name="download_empty_hint">詳細ページから動画をダウンロードしてください</string>

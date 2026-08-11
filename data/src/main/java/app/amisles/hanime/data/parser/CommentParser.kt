@@ -279,6 +279,101 @@ class CommentParser @Inject constructor() {
         }
     }
 
+    /**
+     * 解析 replyComment 接口返回的 JSON：
+     * {
+     *   "comment_id": <父评论ID>,
+     *   "single_video_comment": "<新回复 HTML>",
+     *   "csrf_token": "..."
+     * }
+     *
+     * 与 loadReply 返回的回复结构不同，replyComment 的 single_video_comment 没有外层
+     * report-btn-wrapper，而是：
+     * <div style="padding-top: 12px">
+     *   <a><img class="img-circle" src="avatar"></a>
+     *   <div class="comment-index-text"><a>username&nbsp;<span>time</span></a></div>
+     *   <div class="comment-index-text">content</div>
+     * </div>
+     * <div style="padding-left: 45px; ...">
+     *   <form class="comment-like-form" ...>
+     *     <input name="foreign_id" value="<回复ID>">   // 回复点赞用的 foreign_id 即回复 ID
+     *     <input name="comment-likes-sum" value="0">
+     *     ...
+     *
+     * @return 解析出的 Reply，失败为 null
+     */
+    fun parsePostedReply(json: String): Reply? {
+        if (json.isBlank()) return null
+        return try {
+            val obj = JSONObject(json)
+            val html = obj.optString("single_video_comment", "")
+            if (html.isEmpty()) {
+                AppLogger.log("CommentParser", "single_video_comment field is empty")
+                return null
+            }
+            val doc = Jsoup.parse(html)
+            val img = doc.selectFirst("img.img-circle") ?: run {
+                AppLogger.log("CommentParser", "No avatar found in posted reply HTML")
+                return null
+            }
+            val avatarUrl = img.absUrl("src").ifEmpty { img.attr("src") }
+            val aElement = img.parent() ?: return null
+            // 外层 <div style="padding-top: 12px">
+            val scope = aElement.parent() ?: return null
+
+            // 两个 comment-index-text：第一个"用户名 + 时间"，第二个"内容"
+            val textDivs = scope.select("div.comment-index-text")
+            if (textDivs.size < 2) return null
+            val headerLink = textDivs[0].selectFirst("a")
+            val username = headerLink?.ownText()
+                ?.replace("\u00a0", " ")
+                ?.trim()
+                ?: ""
+            val time = textDivs[0].selectFirst("span")?.text()?.trim() ?: ""
+            val rawContent = textDivs[1].text().trim()
+
+            // 解析 @被回复用户名（回复其他回复时内容以 "@用户名 " 开头）
+            val (replyTo, content) = parseMention(rawContent)
+
+            // 回复 ID：优先找 span.report-btn[data-reportable-id]（可能存在于完整 HTML），
+            // 否则取点赞表单里的 foreign_id（回复点赞用的 foreign_id 即回复 ID）。
+            val replyId = doc.selectFirst("span.report-btn[data-reportable-id]")
+                ?.attr("data-reportable-id")?.trim()
+                .takeIf { !it.isNullOrEmpty() }
+                ?: doc.selectFirst("input[name=foreign_id]")?.attr("value")?.trim()
+                .takeIf { !it.isNullOrEmpty() }
+                ?: "local_${System.currentTimeMillis()}"
+
+            // 点赞区：scope 的下一个兄弟 div（含 comment-like-form）
+            val likeWrapper = scope.nextElementSibling()
+            val likeCount = if (likeWrapper != null) {
+                likeWrapper.selectFirst("input[name=comment-likes-sum]")
+                    ?.attr("value")?.trim()?.toIntOrNull()
+                    ?: extractCountAfter(likeWrapper, "thumb_up")
+            } else 0
+
+            AppLogger.d("CommentParser", "Parsed posted reply id=$replyId username=$username")
+            Reply(
+                id = replyId,
+                username = username,
+                avatarUrl = avatarUrl,
+                time = time,
+                content = content,
+                likeCount = likeCount,
+                replyTo = replyTo
+            )
+        } catch (e: JSONException) {
+            AppLogger.logError("CommentParser", "Failed to parse posted reply: ${e.message}", e)
+            null
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("CommentParser", "Failed to parse posted reply: ${e.message}", e)
+            null
+        } catch (e: NullPointerException) {
+            AppLogger.logError("CommentParser", "Failed to parse posted reply: ${e.message}", e)
+            null
+        }
+    }
+
     private fun parseRepliesHtml(html: String): List<Reply> {
         val doc = Jsoup.parse(html)
         // 回复容器 id 形如 reply-start-{commentId}，直接查找所有 report-btn-wrapper

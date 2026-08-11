@@ -289,6 +289,42 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+    /**
+     * 发表评论回复。
+     * 官网接口：POST /replyComment，凭 reply-comment-id 定位父评论。
+     *
+     * @param commentId 被回复的评论 ID（reply-comment-id）
+     * @param replyText 回复内容（回复其他回复时已带 "@用户名 " 前缀）
+     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
+     * @return 解析出的新回复对象，失败抛异常
+     */
+    suspend fun replyComment(
+        commentId: String,
+        replyText: String,
+        csrfToken: String
+    ): AppResult<Reply> {
+        return try {
+            if (Preferences.savedUserId.isBlank()) {
+                return AppResult.error("未登录，无法回复评论")
+            }
+            if (csrfToken.isBlank()) {
+                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+            }
+            val json = networkService.replyComment(
+                commentId = commentId,
+                replyText = replyText,
+                csrfToken = csrfToken
+            )
+            AppLogger.log("HanimeRepository", "replyComment JSON received, length: ${json.length}")
+            val parsed = commentParser.parsePostedReply(json)
+                ?: return AppResult.error("回复发表成功但解析失败")
+            AppResult.success(parsed)
+        } catch (e: IOException) {
+            AppLogger.logError("HanimeRepository", "Error in replyComment: ${e.message}", e)
+            AppResult.error(e.message ?: "回复评论失败", e)
+        }
+    }
+
     suspend fun login(email: String, password: String): AppResult<String> {
         return runCatching {
         val page = try {

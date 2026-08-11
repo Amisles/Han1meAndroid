@@ -88,6 +88,8 @@
     <string name="comment_login_required">请先登录后再发表评论</string>
     <string name="comment_empty_content">评论内容不能为空</string>
     <string name="comment_like">点赞</string>
+    <string name="comment_reply">回复</string>
+    <string name="comment_reply_hint">写下你的回复…</string>
     
     <!-- Download -->
     <string name="download_empty">暂无下载任务</string>

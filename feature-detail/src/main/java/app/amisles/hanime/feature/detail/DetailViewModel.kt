@@ -90,6 +90,23 @@ class DetailViewModel @Inject constructor(
     private val _repliesError = MutableStateFlow<Map<String, String?>>(emptyMap())
     val repliesError: StateFlow<Map<String, String?>> = _repliesError.asStateFlow()
 
+    // 回复相关状态
+    // 当前正在回复的目标：commentId 为父评论 ID；replyToUsername 非空表示回复某条回复
+    private val _activeReplyTarget = MutableStateFlow<ReplyTarget?>(null)
+    val activeReplyTarget: StateFlow<ReplyTarget?> = _activeReplyTarget.asStateFlow()
+
+    // 是否正在提交回复
+    private val _isPostingReply = MutableStateFlow(false)
+    val isPostingReply: StateFlow<Boolean> = _isPostingReply.asStateFlow()
+
+    // 回复提交错误（未登录 / CSRF 缺失 / 网络失败 / 空内容等）
+    private val _replyError = MutableStateFlow<String?>(null)
+    val replyError: StateFlow<String?> = _replyError.asStateFlow()
+
+    // 已展开回复区的评论 ID 集合（由 ViewModel 驱动，便于发表回复后自动展开）
+    private val _expandedReplies = MutableStateFlow<Set<String>>(emptySet())
+    val expandedReplies: StateFlow<Set<String>> = _expandedReplies.asStateFlow()
+
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
 
@@ -120,6 +137,12 @@ class DetailViewModel @Inject constructor(
         _repliesCache.value = emptyMap()
         _loadingReplies.value = emptySet()
         _repliesError.value = emptyMap()
+
+        // 切换视频时重置回复输入/展开状态
+        _activeReplyTarget.value = null
+        _isPostingReply.value = false
+        _replyError.value = null
+        _expandedReplies.value = emptySet()
 
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -257,6 +280,131 @@ class DetailViewModel @Inject constructor(
             }
             _loadingReplies.value = _loadingReplies.value - commentId
         }
+    }
+
+    /**
+     * 打开某条评论的回复输入框。
+     * replyToUsername 非空表示回复某条回复（内容将带 "@用户名 " 前缀，与官网一致）。
+     * 同时自动展开该评论的回复区，并在尚未加载时拉取回复列表，方便立即看到新回复。
+     */
+    fun startReply(commentId: String, replyToUsername: String? = null) {
+        if (Preferences.savedUserId.isBlank()) {
+            _replyError.value = "请先登录后再回复评论"
+            return
+        }
+        _activeReplyTarget.value = ReplyTarget(commentId, replyToUsername)
+        _expandedReplies.value = _expandedReplies.value + commentId
+        if (!_repliesCache.value.containsKey(commentId)) {
+            loadReplies(commentId)
+        }
+    }
+
+    /**
+     * 关闭回复输入框。
+     */
+    fun cancelReply() {
+        _activeReplyTarget.value = null
+        _replyError.value = null
+    }
+
+    /**
+     * 切换某条评论的回复区展开/收起状态。
+     * 首次展开且尚未加载时拉取回复列表。
+     */
+    fun toggleReplies(commentId: String) {
+        val expanded = _expandedReplies.value
+        _expandedReplies.value = if (expanded.contains(commentId)) {
+            expanded - commentId
+        } else {
+            expanded + commentId
+        }
+        if (!_repliesCache.value.containsKey(commentId)) {
+            loadReplies(commentId)
+        }
+    }
+
+    /**
+     * 提交回复。
+     * 采用乐观更新：先 +1 评论回复数并把临时回复插入列表，接口成功后再用服务端返回的
+     * 真实回复（含真实 ID / 用户名 / 时间）替换临时项；失败回滚并提示错误。
+     */
+    fun submitReply(text: String) {
+        val target = _activeReplyTarget.value ?: return
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) {
+            _replyError.value = "回复内容不能为空"
+            return
+        }
+        val detail = _videoDetail.value
+        if (detail == null || detail.csrfToken.isBlank()) {
+            _replyError.value = "CSRF Token 缺失，请刷新页面后重试"
+            return
+        }
+
+        // 回复其他回复时，内容前补 "@用户名 "（与官网一致），避免与解析/展示重复
+        val finalText = if (!target.replyToUsername.isNullOrEmpty() && !trimmed.startsWith("@")) {
+            "@${target.replyToUsername} $trimmed"
+        } else trimmed
+
+        _isPostingReply.value = true
+        _replyError.value = null
+
+        // 构造临时回复（用户名/头像待服务端返回），用于乐观更新
+        val optimisticReply = Reply(
+            id = "local_${System.currentTimeMillis()}",
+            username = "",
+            avatarUrl = "",
+            time = "刚刚",
+            content = trimmed,
+            likeCount = 0,
+            replyTo = target.replyToUsername
+        )
+        val prevComments = _comments.value
+        val prevReplies = _repliesCache.value
+        // +1 回复数
+        _comments.value = prevComments.map { c ->
+            if (c.id == target.commentId) c.copy(replyCount = c.replyCount + 1) else c
+        }
+        // 追加临时回复
+        _repliesCache.value = prevReplies.toMutableMap().apply {
+            val list = this[target.commentId] ?: emptyList()
+            this[target.commentId] = list + optimisticReply
+        }
+        _expandedReplies.value = _expandedReplies.value + target.commentId
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repository.replyComment(target.commentId, finalText, detail.csrfToken)
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    val newReply = result.data
+                    // 用服务端返回的回复替换临时项：先剔除临时项（防 loadReplies 竞态覆盖），再追加真实回复
+                    _repliesCache.value = _repliesCache.value.toMutableMap().apply {
+                        val list = this[target.commentId] ?: emptyList()
+                        this[target.commentId] = list.filter { it.id != optimisticReply.id } + newReply
+                    }
+                    _activeReplyTarget.value = null
+                    AppLogger.d("DetailViewModel", "Reply posted for comment ${target.commentId}, replyId=${newReply.id}")
+                }
+                is AppResult.Error -> {
+                    // 回滚到提交前状态
+                    _comments.value = prevComments
+                    _repliesCache.value = prevReplies
+                    _replyError.value = result.message ?: "回复评论失败"
+                    AppLogger.e("DetailViewModel", "Error posting reply: ${result.message}", result.exception)
+                }
+                is AppResult.Loading -> {}
+            }
+            _isPostingReply.value = false
+        }
+    }
+
+    /**
+     * 清除回复提交的错误状态。
+     */
+    fun clearReplyError() {
+        _replyError.value = null
     }
 
     fun startDownload(quality: DownloadQuality) {
@@ -440,3 +588,13 @@ class DetailViewModel @Inject constructor(
         return match?.groupValues?.get(1) ?: ""
     }
 }
+
+/**
+ * 评论回复的目标。
+ * @param commentId 被回复的评论 ID（replyComment 接口只认父评论 ID）
+ * @param replyToUsername 非空时表示回复某条回复，提交内容会带 "@用户名 " 前缀
+ */
+data class ReplyTarget(
+    val commentId: String,
+    val replyToUsername: String? = null
+)
