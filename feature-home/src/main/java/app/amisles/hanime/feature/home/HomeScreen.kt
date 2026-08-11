@@ -52,6 +52,7 @@ import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoListItem
+import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import kotlinx.coroutines.launch
 
 /**
@@ -200,7 +201,8 @@ fun HomeScreenContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = section.title,
+                            text = homeSectionTitleResMap[section.title]?.let { stringResource(it) }
+                                ?: section.title,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onBackground

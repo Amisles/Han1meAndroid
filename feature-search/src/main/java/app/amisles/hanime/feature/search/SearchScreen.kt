@@ -61,37 +61,26 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoThumbnail
-import app.amisles.hanime.core.ui.model.categoryList
+import app.amisles.hanime.core.ui.model.Category
+import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 
-val filterTypes = listOf("全部") + categoryList
+val allCategory = Category("", R.string.search_all, "")
+val filterTypes = listOf(allCategory) + categories
 
-data class SortOption(val label: String, val apiValue: String)
+data class SortOption(val label: String, val labelRes: Int, val apiValue: String)
 
 val sortOptions = listOf(
-    SortOption("最新上市", "最新上市"),
-    SortOption("最新上传", "最新上傳"),
-    SortOption("本日排行", "本日排行"),
-    SortOption("本周排行", "本週排行"),
-    SortOption("本月排行", "本月排行"),
-    SortOption("观看次数", "觀看次數"),
-    SortOption("点赞比例", "點讚比例"),
-    SortOption("时长最长", "時長最長"),
-    SortOption("他们在看", "他們在看")
-)
-
-val genreApiValues = mapOf(
-    "里番" to "裏番",
-    "泡面番" to "泡麵番",
-    "Motion Anime" to "Motion Anime",
-    "3DCG" to "3DCG",
-    "2.5D动画" to "2.5D",
-    "2D动画" to "2D動畫",
-    "AI生成" to "AI生成",
-    "MMD" to "MMD",
-    "Cosplay" to "Cosplay",
-    "新番预告" to "新番預告"
+    SortOption("最新上市", R.string.search_sort_new_release, "最新上市"),
+    SortOption("最新上传", R.string.search_sort_new_upload, "最新上傳"),
+    SortOption("本日排行", R.string.search_sort_daily, "本日排行"),
+    SortOption("本周排行", R.string.search_sort_weekly, "本週排行"),
+    SortOption("本月排行", R.string.search_sort_monthly, "本月排行"),
+    SortOption("观看次数", R.string.search_sort_views, "觀看次數"),
+    SortOption("点赞比例", R.string.search_sort_like_ratio, "點讚比例"),
+    SortOption("时长最长", R.string.search_sort_longest, "時長最長"),
+    SortOption("他们在看", R.string.search_sort_watching, "他們在看")
 )
 
 @Composable
@@ -117,7 +106,7 @@ fun SearchScreen(
 
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val selectedFilter = remember { mutableStateOf("全部") }
+    val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
     val selectedSort = remember { mutableStateOf(sortOptions[0]) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -147,10 +136,12 @@ fun SearchScreen(
 
     androidx.compose.runtime.LaunchedEffect(initialGenre) {
         if (!initialGenre.isNullOrBlank()) {
-            val match = filterTypes.firstOrNull { it.equals(initialGenre, ignoreCase = true) }
-            if (match != null && match != "全部") {
+            val match = categories.firstOrNull {
+                it.label.equals(initialGenre, ignoreCase = true) || it.apiValue.equals(initialGenre, ignoreCase = true)
+            }
+            if (match != null) {
                 selectedFilter.value = match
-                viewModel.setGenre(genreApiValues[match] ?: match)
+                viewModel.setGenre(match.apiValue)
                 viewModel.executeSearch()
             }
         }
@@ -244,7 +235,7 @@ fun SearchScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = "搜索",
+                    contentDescription = stringResource(R.string.common_search),
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -261,8 +252,8 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 15.dp)
             ) {
-                items(filterTypes) { filter ->
-                    val isSelected = selectedFilter.value == filter
+                items(items = filterTypes, key = { it.displayRes }) { filter ->
+                    val isSelected = selectedFilter.value.apiValue == filter.apiValue
                     val shape = RoundedCornerShape(16.dp)
                     Box(
                         modifier = Modifier
@@ -270,13 +261,13 @@ fun SearchScreen(
                             .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
                             .clickable {
                                 selectedFilter.value = filter
-                                val apiValue = if (filter == "全部") null else genreApiValues[filter] ?: filter
+                                val apiValue = filter.apiValue.ifEmpty { null }
                                 viewModel.setGenre(apiValue)
                             }
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = filter,
+                            text = stringResource(filter.displayRes),
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
@@ -311,14 +302,14 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = selectedSort.value.label,
+                            text = stringResource(selectedSort.value.labelRes),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "选择排序",
+                            contentDescription = stringResource(R.string.search_sort),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
@@ -333,7 +324,7 @@ fun SearchScreen(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = option.label,
+                                        text = stringResource(option.labelRes),
                                         fontSize = 14.sp,
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
@@ -394,7 +385,7 @@ fun SearchScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "清空",
+                        text = stringResource(R.string.common_clear),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.clickable { viewModel.clearSearchHistory() }
@@ -448,7 +439,7 @@ fun SearchScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "删除",
+                                    contentDescription = stringResource(R.string.common_delete),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -472,7 +463,7 @@ fun SearchScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "输入关键词或选择分类开始搜索",
+                        text = stringResource(R.string.search_empty_hint),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

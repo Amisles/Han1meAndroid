@@ -36,11 +36,30 @@
     <string name="search_loading_more">読み込み中...</string>
     <string name="search_no_more">これ以上ありません</string>
     <string name="search_all">すべて</string>
-    <string name="search_sort_latest">最新順</string>
-    <string name="search_sort_popular">再生回数順</string>
-    <string name="search_sort_top_rated">評価順</string>
+    <string name="search_sort_new_release">最新リリース</string>
+    <string name="search_sort_new_upload">最新アップロード</string>
+    <string name="search_sort_daily">本日ランキング</string>
+    <string name="search_sort_weekly">週間ランキング</string>
+    <string name="search_sort_monthly">月間ランキング</string>
+    <string name="search_sort_views">視聴回数順</string>
+    <string name="search_sort_like_ratio">いいね率</string>
+    <string name="search_sort_longest">尺時間順</string>
+    <string name="search_sort_watching">視聴中</string>
+    <string name="search_empty_hint">キーワードを入力するか、カテゴリを選択して検索を始めましょう</string>
     <string name="search_result_count">%1$d 件</string>
     <string name="search_selected_count">%1$d 件選択中</string>
+
+    <!-- Categories -->
+    <string name="category_li_fan">裏番</string>
+    <string name="category_pao_mian_fan">泡麺番</string>
+    <string name="category_motion_anime">Motion Anime</string>
+    <string name="category_3dcg">3DCG</string>
+    <string name="category_2_5d">2.5Dアニメ</string>
+    <string name="category_2d">2Dアニメ</string>
+    <string name="category_ai_generated">AI生成</string>
+    <string name="category_mmd">MMD</string>
+    <string name="category_cosplay">Cosplay</string>
+    <string name="category_new_preview">新番予告</string>
     <string name="detail_load_failed">動画の読み込みに失敗しました</string>
     <string name="detail_release_date">公開日</string>
     <string name="detail_file_size">ファイルサイズ</string>

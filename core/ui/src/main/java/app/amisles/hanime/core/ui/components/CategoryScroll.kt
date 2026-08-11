@@ -16,13 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.amisles.hanime.core.ui.model.categoryList
+import androidx.compose.ui.res.stringResource
+import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.model.categories
 
 @Composable
 fun CategoryScroll(
     onCategorySelected: (String) -> Unit = {}
 ) {
-    val selectedCategory = remember { mutableStateOf(categoryList[0]) }
+    val selectedCategory = remember { mutableStateOf(categories[0].label) }
 
     Row(
         modifier = Modifier
@@ -31,18 +33,18 @@ fun CategoryScroll(
             .padding(horizontal = 15.dp, vertical = 12.dp)
             .horizontalScroll(rememberScrollState())
     ) {
-        categoryList.forEach { category ->
-            val isSelected = selectedCategory.value == category
+        categories.forEach { category ->
+            val isSelected = selectedCategory.value == category.label
             Text(
-                text = category,
+                text = stringResource(category.displayRes),
                 fontSize = 14.sp,
                 fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                 color = if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(horizontal = 8.dp)
                     .clickable {
-                        selectedCategory.value = category
-                        onCategorySelected(category)
+                        selectedCategory.value = category.label
+                        onCategorySelected(category.label)
                     }
             )
         }

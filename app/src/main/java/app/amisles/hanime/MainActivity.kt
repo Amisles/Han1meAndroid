@@ -36,7 +36,7 @@ import app.amisles.hanime.feature.home.HomeScreen
 import app.amisles.hanime.feature.profile.LoginScreen
 import app.amisles.hanime.feature.profile.ProfileScreen
 import app.amisles.hanime.feature.search.SearchScreen
-import app.amisles.hanime.feature.search.genreApiValues
+import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
@@ -186,12 +186,13 @@ fun HanimeApp() {
                     },
                     onViewMore = { sectionTitle ->
                         val sortMatch = sortOptions.firstOrNull { it.label == sectionTitle }
+                        val categoryMatch = categories.firstOrNull { it.label == sectionTitle }
                         when {
                             sortMatch != null -> {
                                 navController.navigate("search?sort=${Uri.encode(sortMatch.apiValue)}")
                             }
-                            genreApiValues.containsKey(sectionTitle) -> {
-                                navController.navigate("search?genre=${Uri.encode(genreApiValues[sectionTitle])}")
+                            categoryMatch != null -> {
+                                navController.navigate("search?genre=${Uri.encode(categoryMatch.apiValue)}")
                             }
                             else -> {
                                 navController.navigate("search?keyword=${Uri.encode(sectionTitle)}")

@@ -36,11 +36,30 @@
     <string name="search_loading_more">Loading...</string>
     <string name="search_no_more">No more results</string>
     <string name="search_all">All</string>
-    <string name="search_sort_latest">Latest</string>
-    <string name="search_sort_popular">Most Viewed</string>
-    <string name="search_sort_top_rated">Top Rated</string>
+    <string name="search_sort_new_release">New Release</string>
+    <string name="search_sort_new_upload">Latest Upload</string>
+    <string name="search_sort_daily">Daily Ranking</string>
+    <string name="search_sort_weekly">Weekly Ranking</string>
+    <string name="search_sort_monthly">Monthly Ranking</string>
+    <string name="search_sort_views">Most Viewed</string>
+    <string name="search_sort_like_ratio">Like Ratio</string>
+    <string name="search_sort_longest">Longest</string>
+    <string name="search_sort_watching">What They\'re Watching</string>
+    <string name="search_empty_hint">Enter a keyword or select a category to start searching</string>
     <string name="search_result_count">%1$d results</string>
     <string name="search_selected_count">%1$d selected</string>
+
+    <!-- Categories -->
+    <string name="category_li_fan">H-Anime</string>
+    <string name="category_pao_mian_fan">Short Anime</string>
+    <string name="category_motion_anime">Motion Anime</string>
+    <string name="category_3dcg">3DCG</string>
+    <string name="category_2_5d">2.5D Animation</string>
+    <string name="category_2d">2D Animation</string>
+    <string name="category_ai_generated">AI Generated</string>
+    <string name="category_mmd">MMD</string>
+    <string name="category_cosplay">Cosplay</string>
+    <string name="category_new_preview">New Release Preview</string>
     <string name="detail_load_failed">Failed to load video</string>
     <string name="detail_release_date">Release Date</string>
     <string name="detail_file_size">File Size</string>
