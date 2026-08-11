@@ -242,6 +242,17 @@ object Preferences {
         _savedUserIdFlow.value = id
     }
 
+    /**
+     * 保存当前登录用户的数字 ID（来自详情页解析），供评论/点赞等需要用户标识的接口使用。
+     * 该值与登录态一并持久化，重启后由 init() 读回。
+     */
+    fun saveUserId(id: String) {
+        val clean = id.trim()
+        if (clean.isBlank()) return
+        sp.edit { putString(SP_SAVED_USER_ID, clean) }
+        _savedUserIdFlow.value = clean
+    }
+
     fun saveCloudFlareCookie(cookieString: String) {
         val safe = cookieString.take(8192)
         sp.edit { putString(SP_CF_COOKIE, safe) }

@@ -130,6 +130,10 @@ class DetailViewModel @Inject constructor(
                     val detail = result.data
                     AppLogger.d("DetailViewModel", "Got video detail: ${detail.title}, sources: ${detail.videoSources.size}")
                     _videoDetail.value = detail
+                    // 详情页已解析出当前登录用户 ID，持久化后评论/点赞等接口才能通过登录态校验
+                    if (detail.currentUserId.isNotBlank()) {
+                        Preferences.saveUserId(detail.currentUserId)
+                    }
                     if (currentVideoId.isNotEmpty()) {
                         val history = WatchHistory(
                             id = currentVideoId,

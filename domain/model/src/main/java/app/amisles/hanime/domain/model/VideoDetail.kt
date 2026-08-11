@@ -30,5 +30,7 @@ data class VideoDetail(
     // 详情页CSRF Token
     val csrfToken: String = "",
     // 当前评论数
-    val commentCount: Int = 0
+    val commentCount: Int = 0,
+    // 当前登录用户的数字 ID（从详情页解析，用于评论/点赞等需要用户标识的接口）
+    val currentUserId: String = ""
 )
