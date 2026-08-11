@@ -75,7 +75,9 @@ class PlaylistParser @Inject constructor() {
                             videoUrl = videoUrl
                         )
                     )
-                } catch (e: Exception) {
+                } catch (e: IndexOutOfBoundsException) {
+                    AppLogger.logError("PlaylistParser", "Error parsing playlist item: ${e.message}", e)
+                } catch (e: NullPointerException) {
                     AppLogger.logError("PlaylistParser", "Error parsing playlist item: ${e.message}", e)
                 }
             }
@@ -90,7 +92,10 @@ class PlaylistParser @Inject constructor() {
                 videoCount = videoCount,
                 videos = videos
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("PlaylistParser", "Error parsing playlist: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
             AppLogger.logError("PlaylistParser", "Error parsing playlist: ${e.message}", e)
             return null
         }
@@ -101,7 +106,10 @@ class PlaylistParser @Inject constructor() {
         try {
             val doc = Jsoup.parse(html, baseUrl)
             return parsePlaylistSummaries(doc, baseUrl)
-        } catch (e: Exception) {
+        } catch (e: IllegalArgumentException) {
+            AppLogger.logError("PlaylistParser", "Error parsing playlist list page: ${e.message}", e)
+            return emptyList()
+        } catch (e: NullPointerException) {
             AppLogger.logError("PlaylistParser", "Error parsing playlist list page: ${e.message}", e)
             return emptyList()
         }
@@ -140,7 +148,13 @@ class PlaylistParser @Inject constructor() {
                 description = description,
                 videos = videos
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("PlaylistParser", "Error parsing playlist detail page: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
+            AppLogger.logError("PlaylistParser", "Error parsing playlist detail page: ${e.message}", e)
+            return null
+        } catch (e: IllegalArgumentException) {
             AppLogger.logError("PlaylistParser", "Error parsing playlist detail page: ${e.message}", e)
             return null
         }
@@ -196,7 +210,9 @@ class PlaylistParser @Inject constructor() {
                                     publishTime = subtitleTime,
                                     playlistUrl = playlistUrl
                                 ))
-                            } catch (e: Exception) {
+                            } catch (e: IndexOutOfBoundsException) {
+                                AppLogger.logError("PlaylistParser", "Error parsing section playlist item: ${e.message}", e)
+                            } catch (e: NullPointerException) {
                                 AppLogger.logError("PlaylistParser", "Error parsing section playlist item: ${e.message}", e)
                             }
                         }
@@ -234,7 +250,9 @@ class PlaylistParser @Inject constructor() {
                     publishTime = subtitleTime,
                     playlistUrl = playlistUrl
                 ))
-            } catch (e: Exception) {
+            } catch (e: IndexOutOfBoundsException) {
+                AppLogger.logError("PlaylistParser", "Error parsing playlist summary: ${e.message}", e)
+            } catch (e: NullPointerException) {
                 AppLogger.logError("PlaylistParser", "Error parsing playlist summary: ${e.message}", e)
             }
         }
@@ -274,7 +292,9 @@ class PlaylistParser @Inject constructor() {
                     publishTime = publishTime,
                     videoUrl = videoUrl
                 ))
-            } catch (e: Exception) {
+            } catch (e: IndexOutOfBoundsException) {
+                AppLogger.logError("PlaylistParser", "Error parsing playlist detail video: ${e.message}", e)
+            } catch (e: NullPointerException) {
                 AppLogger.logError("PlaylistParser", "Error parsing playlist detail video: ${e.message}", e)
             }
         }

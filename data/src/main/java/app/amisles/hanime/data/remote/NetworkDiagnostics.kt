@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.remote
 
 import app.amisles.hanime.data.preferences.Preferences
+import java.io.IOException
 import java.net.InetAddress
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -136,7 +137,7 @@ class NetworkDiagnostics {
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "DNS 可能被污染，请尝试切换网络环境、使用 VPN，或在设置中切换其他镜像站地址"
             )
-        } catch (e: Exception) {
+        } catch (e: SecurityException) {
             DiagnosticResult(
                 type = DiagnosticType.DNS,
                 status = DiagnosticStatus.FAIL,
@@ -192,7 +193,16 @@ class NetworkDiagnostics {
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "服务器可能离线，请尝试切换镜像站"
             )
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            DiagnosticResult(
+                type = DiagnosticType.CONNECTIVITY,
+                status = DiagnosticStatus.FAIL,
+                title = "连接可达性",
+                detail = "连接异常：${e.javaClass.simpleName} - ${e.message}",
+                latencyMs = System.currentTimeMillis() - start,
+                suggestion = "请检查网络连接"
+            )
+        } catch (e: IllegalArgumentException) {
             DiagnosticResult(
                 type = DiagnosticType.CONNECTIVITY,
                 status = DiagnosticStatus.FAIL,
@@ -252,7 +262,16 @@ class NetworkDiagnostics {
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "证书可能已过期或不被信任，请勿在该站点输入账号密码，尝试切换镜像站"
             )
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            DiagnosticResult(
+                type = DiagnosticType.SSL_CERTIFICATE,
+                status = DiagnosticStatus.FAIL,
+                title = "SSL 证书",
+                detail = "SSL 检测异常：${e.javaClass.simpleName} - ${e.message}",
+                latencyMs = System.currentTimeMillis() - start,
+                suggestion = "请检查网络或切换镜像站"
+            )
+        } catch (e: ClassCastException) {
             DiagnosticResult(
                 type = DiagnosticType.SSL_CERTIFICATE,
                 status = DiagnosticStatus.FAIL,
@@ -310,7 +329,16 @@ class NetworkDiagnostics {
                     )
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            DiagnosticResult(
+                type = DiagnosticType.MIRROR_STATUS,
+                status = DiagnosticStatus.FAIL,
+                title = "镜像站状态",
+                detail = "镜像站检测失败：${e.javaClass.simpleName} - ${e.message}",
+                latencyMs = System.currentTimeMillis() - start,
+                suggestion = "请检查网络或切换镜像站"
+            )
+        } catch (e: IllegalArgumentException) {
             DiagnosticResult(
                 type = DiagnosticType.MIRROR_STATUS,
                 status = DiagnosticStatus.FAIL,
@@ -380,7 +408,16 @@ class NetworkDiagnostics {
                     )
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            DiagnosticResult(
+                type = DiagnosticType.LOGIN_STATUS,
+                status = DiagnosticStatus.FAIL,
+                title = "登录状态",
+                detail = "登录检测失败：${e.javaClass.simpleName} - ${e.message}",
+                latencyMs = System.currentTimeMillis() - start,
+                suggestion = "请检查网络后重试"
+            )
+        } catch (e: IllegalArgumentException) {
             DiagnosticResult(
                 type = DiagnosticType.LOGIN_STATUS,
                 status = DiagnosticStatus.FAIL,

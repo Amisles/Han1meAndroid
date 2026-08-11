@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 
 /**
@@ -40,7 +41,7 @@ class DiagnosticsViewModel @Inject constructor() : ViewModel() {
             try {
                 val results = diagnostics.runAll()
                 _uiState.value = DiagnosticsUiState.Done(results)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("DiagnosticsViewModel", "诊断异常: ${e.message}", e)
                 _uiState.value = DiagnosticsUiState.Done(
                     listOf(

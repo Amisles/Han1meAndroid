@@ -104,7 +104,10 @@ object Preferences {
         }.getOrNull() ?: return fallbackPlain(appCtx)
 
         val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
-        if (legacyFile.exists()) {
+        // 仅当文件存在且确为“明文旧格式”（含可读明文键）时才执行迁移。
+        // 加密存储（EncryptedSharedPreferences）的键是密文且文件也在同一路径，若不加此判定，
+        // 迁移逻辑会在每次启动都误触发：以明文方式读取加密文件得到 null，再将主题/语言等覆盖为默认值。
+        if (legacyFile.exists() && isLegacyPlaintextPrefs(appCtx)) {
             // 读取明文旧值（此时旧文件尚在），随后删除再创建加密文件
             val legacy = appCtx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             val alreadyLogin = legacy.getBoolean(SP_ALREADY_LOGIN, false)
@@ -131,6 +134,19 @@ object Preferences {
             return enc
         }
         return createEncrypted(appCtx, masterKey) ?: fallbackPlain(appCtx)
+    }
+
+    /**
+     * 判断 shared_prefs/$NAME.xml 是否为升级前的“明文旧格式”偏好文件。
+     * 加密存储的键是密文，用明文 SharedPreferences 读取时无法命中已知键，因此以此区分
+     * “待迁移的旧明文文件”与“已加密的文件”，避免迁移逻辑每次启动都误触发并覆盖已保存数据。
+     */
+    private fun isLegacyPlaintextPrefs(context: Context): Boolean {
+        val legacy = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+        return legacy.contains(SP_APP_LANGUAGE)
+            || legacy.contains(SP_THEME_MODE)
+            || legacy.contains(SP_ALREADY_LOGIN)
+            || legacy.contains(SP_BASE_URL)
     }
 
     private fun createEncrypted(context: Context, masterKey: MasterKey): SharedPreferences? = runCatching {
@@ -192,7 +208,8 @@ object Preferences {
     }
 
     fun setThemeMode(mode: ThemeMode) {
-        sp.edit { putString(SP_THEME_MODE, mode.name) }
+        // commit=true：主题选择是用户关键偏好，需同步落盘，避免进程被立即杀死时 apply() 异步写未落地而丢失。
+        sp.edit(commit = true) { putString(SP_THEME_MODE, mode.name) }
         _themeModeFlow.value = mode
     }
 

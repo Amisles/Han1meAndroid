@@ -4,6 +4,7 @@ import android.util.Log
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.Reply
+import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import javax.inject.Inject
@@ -24,7 +25,10 @@ class CommentParser @Inject constructor() {
                 return emptyList()
             }
             parseHtml(html)
-        } catch (e: Exception) {
+        } catch (e: JSONException) {
+            AppLogger.logError("CommentParser", "Failed to parse comments JSON: ${e.message}", e)
+            emptyList()
+        } catch (e: NullPointerException) {
             AppLogger.logError("CommentParser", "Failed to parse comments JSON: ${e.message}", e)
             emptyList()
         }
@@ -65,7 +69,13 @@ class CommentParser @Inject constructor() {
             }
             val comment = parseSingleComment(img) ?: return null
             Pair(comment, newCount)
-        } catch (e: Exception) {
+        } catch (e: JSONException) {
+            AppLogger.logError("CommentParser", "Failed to parse posted comment: ${e.message}", e)
+            null
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("CommentParser", "Failed to parse posted comment: ${e.message}", e)
+            null
+        } catch (e: NullPointerException) {
             AppLogger.logError("CommentParser", "Failed to parse posted comment: ${e.message}", e)
             null
         }
@@ -87,7 +97,9 @@ class CommentParser @Inject constructor() {
             try {
                 val comment = parseSingleComment(img) ?: continue
                 result.add(comment)
-            } catch (e: Exception) {
+            } catch (e: IndexOutOfBoundsException) {
+                Log.w("CommentParser", "Skip a malformed comment: ${e.message}")
+            } catch (e: NullPointerException) {
                 Log.w("CommentParser", "Skip a malformed comment: ${e.message}")
             }
         }
@@ -203,7 +215,10 @@ class CommentParser @Inject constructor() {
                 return emptyList()
             }
             parseRepliesHtml(html)
-        } catch (e: Exception) {
+        } catch (e: JSONException) {
+            AppLogger.logError("CommentParser", "Failed to parse replies JSON: ${e.message}", e)
+            emptyList()
+        } catch (e: NullPointerException) {
             AppLogger.logError("CommentParser", "Failed to parse replies JSON: ${e.message}", e)
             emptyList()
         }
@@ -220,7 +235,9 @@ class CommentParser @Inject constructor() {
             try {
                 val reply = parseSingleReply(wrapper) ?: continue
                 result.add(reply)
-            } catch (e: Exception) {
+            } catch (e: IndexOutOfBoundsException) {
+                Log.w("CommentParser", "Skip a malformed reply: ${e.message}")
+            } catch (e: NullPointerException) {
                 Log.w("CommentParser", "Skip a malformed reply: ${e.message}")
             }
         }

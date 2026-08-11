@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -43,7 +44,7 @@ class ProfileViewModel @Inject constructor(
                     downloadManager.getCompletedDownloadCount()
                 }
                 AppLogger.d("ProfileViewModel", "Counts loaded: watch=${_watchCount.value}, fav=${_favoriteCount.value}, dl=${_downloadCount.value}")
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("ProfileViewModel", "Error loading counts: ${e.message}", e)
             }
         }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.PlaylistSummary
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +39,7 @@ class PlaylistListPageViewModel @Inject constructor(
                 _playlists.value = networkService.fetchPlaylistListPage(url)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 _error.value = e.message ?: context.getString(R.string.common_load_failed)
             } finally {
                 _isLoading.value = false

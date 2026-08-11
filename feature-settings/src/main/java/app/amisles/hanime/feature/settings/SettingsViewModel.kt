@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
+import java.io.IOException
 import javax.inject.Inject
 
 /**
@@ -116,7 +117,9 @@ class SettingsViewModel @Inject constructor(
                 if (cacheDir.exists()) {
                     cacheDir.listFiles()?.forEach { it.deleteRecursively() }
                 }
-            } catch (e: Exception) {
+            } catch (e: SecurityException) {
+                e.printStackTrace()
+            } catch (e: IOException) {
                 e.printStackTrace()
             }
         }

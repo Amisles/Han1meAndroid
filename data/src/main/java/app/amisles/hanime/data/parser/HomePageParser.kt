@@ -76,7 +76,10 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
                 if (sectionVideos.isNotEmpty()) {
                     sections.add(HomeSection(title = title, moreUrl = moreUrl, videos = sectionVideos))
                 }
-            } catch (e: Exception) {
+            } catch (e: IndexOutOfBoundsException) {
+                AppLogger.logError("HomePageParser", "Error parsing section: ${e.message}", e)
+                continue
+            } catch (e: NullPointerException) {
                 AppLogger.logError("HomePageParser", "Error parsing section: ${e.message}", e)
                 continue
             }
@@ -136,7 +139,10 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
                 videoUrl = videoUrl,
                 imageUrl = imageUrl
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("HomePageParser", "Error parsing banner: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
             AppLogger.logError("HomePageParser", "Error parsing banner: ${e.message}", e)
             return null
         }

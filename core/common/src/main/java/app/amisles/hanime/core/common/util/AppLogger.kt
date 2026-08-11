@@ -3,6 +3,7 @@ package app.amisles.hanime.core.common.util
 import android.content.Context
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
 import java.io.PrintWriter
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -62,7 +63,9 @@ object AppLogger {
     fun getLogContent(): String {
         return try {
             if (logFile.exists()) logFile.readText() else "Log file not found"
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            "Error reading log: ${e.message}"
+        } catch (e: UninitializedPropertyAccessException) {
             "Error reading log: ${e.message}"
         }
     }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -35,7 +36,7 @@ class FavoriteViewModel @Inject constructor(
                     repository.getAllFavorites()
                 }
                 _favorites.value = favorites
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("FavoriteViewModel", "Error loading favorites: ${e.message}", e)
                 _favorites.value = emptyList()
             } finally {
@@ -53,7 +54,7 @@ class FavoriteViewModel @Inject constructor(
                     repository.removeFavorite(videoId)
                 }
                 loadFavorites()
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }
         }
@@ -70,7 +71,7 @@ class FavoriteViewModel @Inject constructor(
                     }
                 }
                 loadFavorites()
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }
         }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -32,7 +33,9 @@ class AuthorViewModel @Inject constructor(
             try {
                 val result = networkService.fetchAuthorPage(authorPageUrl)
                 _authorData.value = result
-            } catch (e: Exception) {
+            } catch (e: IOException) {
+                _error.value = e.message ?: "加载失败"
+            } catch (e: IllegalStateException) {
                 _error.value = e.message ?: "加载失败"
             } finally {
                 _isLoading.value = false

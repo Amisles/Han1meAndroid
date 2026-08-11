@@ -56,7 +56,13 @@ class AuthorPageParser @Inject constructor(
                 uploadedPageUrl = uploadedLink,
                 playlistsPageUrl = playlistsLink
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("AuthorPageParser", "Error parsing author page: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
+            AppLogger.logError("AuthorPageParser", "Error parsing author page: ${e.message}", e)
+            return null
+        } catch (e: IllegalArgumentException) {
             AppLogger.logError("AuthorPageParser", "Error parsing author page: ${e.message}", e)
             return null
         }
@@ -66,7 +72,10 @@ class AuthorPageParser @Inject constructor(
         try {
             val doc: Document = Jsoup.parse(html, baseUrl)
             return videoListParser.parseAuthorVideos(doc, baseUrl)
-        } catch (e: Exception) {
+        } catch (e: IllegalArgumentException) {
+            AppLogger.logError("AuthorPageParser", "Error parsing video list page: ${e.message}", e)
+            return emptyList()
+        } catch (e: NullPointerException) {
             AppLogger.logError("AuthorPageParser", "Error parsing video list page: ${e.message}", e)
             return emptyList()
         }

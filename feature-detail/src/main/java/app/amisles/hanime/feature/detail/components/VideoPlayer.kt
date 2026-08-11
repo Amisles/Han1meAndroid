@@ -215,7 +215,7 @@ fun VideoPlayer(
                 controller?.systemBarsBehavior = initialBarsBehavior
             }
             if (activity?.requestedOrientation != initialOrientation) {
-                try { activity?.requestedOrientation = initialOrientation } catch (_: Throwable) {}
+                try { activity?.requestedOrientation = initialOrientation } catch (_: Exception) {}
             }
         }
     }
@@ -316,11 +316,11 @@ fun VideoPlayer(
                 try {
                     activity.requestedOrientation =
                         ActivityInfo.SCREEN_ORIENTATION_SENSOR
-                } catch (_: Throwable) {}
+                } catch (_: Exception) {}
             } else {
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = initialBarsBehavior
-                try { activity.requestedOrientation = initialOrientation } catch (_: Throwable) {}
+                try { activity.requestedOrientation = initialOrientation } catch (_: Exception) {}
             }
         }
     }

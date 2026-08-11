@@ -98,7 +98,10 @@ class VideoListParser @Inject constructor() {
                 publishTime = publishTime,
                 videoUrl = finalVideoUrl
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("VideoListParser", "Error parsing single video: ${e.message}", e)
+            null
+        } catch (e: NullPointerException) {
             AppLogger.logError("VideoListParser", "Error parsing single video: ${e.message}", e)
             null
         }
@@ -163,7 +166,10 @@ class VideoListParser @Inject constructor() {
                 publishTime = publishTime,
                 videoUrl = videoUrl
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("VideoListParser", "Error parsing video item: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
             AppLogger.logError("VideoListParser", "Error parsing video item: ${e.message}", e)
             return null
         }
@@ -193,7 +199,10 @@ class VideoListParser @Inject constructor() {
                 publishTime = "",
                 videoUrl = videoUrl
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("VideoListParser", "Error parsing user tab video item: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
             AppLogger.logError("VideoListParser", "Error parsing user tab video item: ${e.message}", e)
             return null
         }

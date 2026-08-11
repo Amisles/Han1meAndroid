@@ -72,7 +72,9 @@ class SearchPageParser @Inject constructor(private val videoListParser: VideoLis
             }
 
             if (currentPage < totalPages) hasNextPage = true
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("SearchPageParser", "Error parsing pagination: ${e.message}", e)
+        } catch (e: NullPointerException) {
             AppLogger.logError("SearchPageParser", "Error parsing pagination: ${e.message}", e)
         }
 

@@ -22,6 +22,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.File
+import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -32,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import android.content.Intent
+import android.database.sqlite.SQLiteException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -132,7 +134,7 @@ class DownloadManager @Inject constructor(
                 // H1：恢复出的 PENDING 任务应自动进入调度（受并发上限约束），
                 // 避免进程重启后它们永久挂起、只能手动恢复。
                 startNextPendingTask()
-            } catch (e: Exception) {
+            } catch (e: SQLiteException) {
                 AppLogger.logError("DownloadManager", "Failed to restore tasks: ${e.message}", e)
             }
         }
@@ -227,7 +229,7 @@ class DownloadManager @Inject constructor(
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.logError("DownloadManager", "下载失败 ${task.title}: ${e.message}", e)
                 updateTask(task.id) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
             } finally {
@@ -288,7 +290,7 @@ class DownloadManager @Inject constructor(
         while (response == null && attempt <= maxRetries) {
             try {
                 response = client.newCall(requestBuilder.build()).execute()
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 attempt++
                 if (attempt <= maxRetries) {
                     AppLogger.log("DownloadManager", "下载请求失败，1s 后重试($attempt): ${e.message}")
@@ -441,7 +443,7 @@ class DownloadManager @Inject constructor(
                         errorMessage = task.errorMessage
                     )
                 )
-            } catch (e: Exception) {
+            } catch (e: SQLiteException) {
                 AppLogger.logError("DownloadManager", "Failed to persist task ${task.id}: ${e.message}", e)
             }
         }
@@ -506,7 +508,7 @@ class DownloadManager @Inject constructor(
         scope.launch {
             try {
                 downloadDao.deleteDownload(taskId)
-            } catch (e: Exception) {
+            } catch (e: SQLiteException) {
                 AppLogger.logError("DownloadManager", "Failed to delete task $taskId from DB: ${e.message}", e)
             }
         }
@@ -526,7 +528,7 @@ class DownloadManager @Inject constructor(
     suspend fun getCompletedDownloadCount(): Int {
         return try {
             downloadDao.getCompletedCount()
-        } catch (e: Exception) {
+        } catch (e: SQLiteException) {
             getCompletedDownloads().size
         }
     }
@@ -612,7 +614,7 @@ class DownloadManager @Inject constructor(
                 }
                 if (!stillActive) downloadServiceStarted = false
             }
-        } catch (e: Exception) {
+        } catch (e: SecurityException) {
             // 忽略转发异常，避免影响下载主流程
         }
     }

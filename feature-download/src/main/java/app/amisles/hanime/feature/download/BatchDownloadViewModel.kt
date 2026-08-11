@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import javax.inject.Inject
 
 data class BatchDownloadState(
@@ -172,7 +173,7 @@ class BatchDownloadViewModel @Inject constructor(
 
                 Log.d("BatchDownload", "搜索成功: ${result.authorName}, ${batchVideos.size}个视频, 第${result.currentPage}/${result.totalPages}页")
 
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
                 _state.update { it.copy(
                     isSearching = false,
@@ -228,7 +229,7 @@ class BatchDownloadViewModel @Inject constructor(
 
                     Log.d("BatchDownload", "加载更多成功: 第${result.currentPage}页, 新增${newBatchVideos.size}个视频")
                 }
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("BatchDownloadViewModel", "加载更多失败: ${e.message}", e)
                 _state.update { it.copy(isLoadMore = false) }
             }
@@ -336,7 +337,7 @@ class BatchDownloadViewModel @Inject constructor(
 
                                 Log.d("BatchDownload", "获取画质成功: ${video.title}, ${qualities.size}个画质")
                             }
-                        } catch (e: Exception) {
+                        } catch (e: IOException) {
                             AppLogger.e("BatchDownloadViewModel", "获取画质失败: ${video.videoId}", e)
                             // 标记加载失败
                             _state.update { currentState ->
@@ -426,7 +427,7 @@ class BatchDownloadViewModel @Inject constructor(
                         )
                     }
 
-                } catch (e: Exception) {
+                } catch (e: IndexOutOfBoundsException) {
                     AppLogger.e("BatchDownloadViewModel", "添加下载失败: ${video.title}", e)
                 }
             }

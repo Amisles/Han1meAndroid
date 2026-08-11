@@ -135,7 +135,13 @@ class WatchPageParser @Inject constructor(
                 csrfToken = csrfToken,
                 commentCount = commentCount
             )
-        } catch (e: Exception) {
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("WatchPageParser", "Error parsing watch page: ${e.message}", e)
+            return null
+        } catch (e: NullPointerException) {
+            AppLogger.logError("WatchPageParser", "Error parsing watch page: ${e.message}", e)
+            return null
+        } catch (e: IllegalArgumentException) {
             AppLogger.logError("WatchPageParser", "Error parsing watch page: ${e.message}", e)
             return null
         }

@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.download
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -767,7 +768,9 @@ private fun playVideoFile(context: android.content.Context, filePath: String) {
         }
 
         context.startActivity(chooser)
-    } catch (e: Exception) {
+    } catch (e: IllegalArgumentException) {
+        Toast.makeText(context, "打开失败: ${e.message}", Toast.LENGTH_SHORT).show()
+    } catch (e: ActivityNotFoundException) {
         Toast.makeText(context, "打开失败: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }

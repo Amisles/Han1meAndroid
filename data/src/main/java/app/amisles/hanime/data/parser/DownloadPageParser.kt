@@ -30,7 +30,10 @@ class DownloadPageParser @Inject constructor() {
                 parseDownloadTable(table, qualities)
             }
             return qualities
-        } catch (e: Exception) {
+        } catch (e: IllegalArgumentException) {
+            AppLogger.logError("DownloadPageParser", "Error parsing download page: ${e.message}", e)
+            return emptyList()
+        } catch (e: NullPointerException) {
             AppLogger.logError("DownloadPageParser", "Error parsing download page: ${e.message}", e)
             return emptyList()
         }
@@ -66,7 +69,10 @@ class DownloadPageParser @Inject constructor() {
                         downloadUrl = downloadUrl
                     )
                 )
-            } catch (e: Exception) {
+            } catch (e: IndexOutOfBoundsException) {
+                AppLogger.logError("DownloadPageParser", "Error parsing download row: ${e.message}", e)
+                continue
+            } catch (e: NullPointerException) {
                 AppLogger.logError("DownloadPageParser", "Error parsing download row: ${e.message}", e)
                 continue
             }

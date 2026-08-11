@@ -62,11 +62,11 @@ class MainActivity : ComponentActivity() {
      * attachBaseContext 会重新读取 SP 并包装新的 Locale。
      */
     override fun attachBaseContext(newBase: Context) {
-        val lang = runCatching {
-            newBase.getSharedPreferences("hanime_app_prefs", Context.MODE_PRIVATE)
-                .getString("app_language", Preferences.LANGUAGE_ZH_CN)
-                ?: Preferences.LANGUAGE_ZH_CN
-        }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
+        // 注意：Preferences 已在 HanimeApplication.onCreate 中以 EncryptedSharedPreferences 初始化，
+        // 此处若再用明文 getSharedPreferences("hanime_app_prefs") 打开同一文件，会与加密存储冲突，
+        // 导致 Preferences 的“明文→加密”迁移每次启动都误触发，把已保存的主题/语言等覆盖为默认值。
+        // 因此直接读取已初始化的 Preferences 中的语言即可（init 先于 Activity.attachBaseContext 执行）。
+        val lang = runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
         super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
     }
 
