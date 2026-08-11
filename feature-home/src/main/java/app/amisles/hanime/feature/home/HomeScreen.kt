@@ -12,7 +12,6 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,8 +51,13 @@ import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
-import app.amisles.hanime.core.ui.components.VideoCard
+import app.amisles.hanime.core.ui.components.VideoListItem
 import kotlinx.coroutines.launch
+
+/**
+ * 每个首页分区在纵向列表里展示的视频条数（紧凑列表行，替代原横滑大卡片）
+ */
+private const val HOME_SECTION_VISIBLE_COUNT = 6
 
 @Composable
 fun HomeScreen(
@@ -107,18 +110,19 @@ fun HomeScreenContent(
     val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading) {
         val map = mutableMapOf<String, Int>()
         var idx = 0
-        idx++
-        idx++
+        idx++ // header
+        idx++ // category
         if (!isLoading) {
-            if (banner != null) idx++
+            if (banner != null) idx++ // banner
             sections.forEach { section ->
-                map[section.title] = idx
-                idx++
-                idx++
+                map[section.title] = idx // 标题 item 的索引
+                idx += 1 // 标题
+                idx += section.videos.take(HOME_SECTION_VISIBLE_COUNT).size // 视频行
+                idx += 1 // 分区之间的 spacer
             }
-            idx++
+            idx++ // bottom spacer
         } else {
-            idx++
+            idx++ // skeleton
         }
         map
     }
@@ -186,11 +190,12 @@ fun HomeScreenContent(
             }
 
             sections.forEachIndexed { i, section ->
+                val visibleVideos = section.videos.take(HOME_SECTION_VISIBLE_COUNT)
                 item(key = "home-section-title-${section.title}-$i") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 15.dp, vertical = 15.dp),
+                            .padding(horizontal = 15.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -209,19 +214,17 @@ fun HomeScreenContent(
                     }
                 }
 
-                item(key = "home-section-row-${section.title}-$i") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 15.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(section.videos.take(8), key = { it.videoUrl }) { video ->
-                            VideoCard(
-                                video = video,
-                                onClick = { onVideoClick(video.videoUrl) },
-                                onAuthorClick = onAuthorClick
-                            )
-                        }
-                    }
+                items(visibleVideos, key = { it.videoUrl }) { video ->
+                    VideoListItem(
+                        video = video,
+                        onClick = { onVideoClick(video.videoUrl) },
+                        onAuthorClick = onAuthorClick,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                }
+
+                item(key = "home-section-spacer-${section.title}-$i") {
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
             }
 
@@ -265,27 +268,23 @@ private fun HomeSkeletonScreen() {
                 .alpha(alpha)
         )
 
-        // 区块骨架（共 3 个）
+        // 区块骨架（共 3 个），与内容布局一致：标题 + 紧凑列表行
         repeat(3) {
             // 区块标题骨架
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 15.dp, vertical = 15.dp)
+                    .padding(horizontal = 15.dp, vertical = 8.dp)
                     .size(width = 120.dp, height = 18.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     .alpha(alpha)
             )
 
-            // 横向视频卡片骨架列表
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 15.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(4) {
-                    SkeletonVideoCard(alpha = alpha)
-                }
+            // 紧凑列表行骨架
+            repeat(5) {
+                SkeletonVideoRow(alpha = alpha)
             }
+            Spacer(modifier = Modifier.height(6.dp))
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -293,43 +292,50 @@ private fun HomeSkeletonScreen() {
 }
 
 /**
- * 骨架视频卡片：宽 200dp，高 210dp，包含图片占位（3:2）与两行文字占位
+ * 骨架视频列表行：整宽紧凑行，左缩略图（120x90）+ 右两行文字占位，
+ * 与内容区的 VideoListItem 布局一致。
  */
 @Composable
-private fun SkeletonVideoCard(alpha: Float) {
-    Column(
+private fun SkeletonVideoRow(alpha: Float) {
+    Row(
         modifier = Modifier
-            .width(200.dp)
-            .height(210.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // 图片占位（3:2 比例：200 x 133）
+        // 缩略图占位
         Box(
             modifier = Modifier
-                .size(width = 200.dp, height = 133.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .size(width = 120.dp, height = 90.dp)
+                .clip(RoundedCornerShape(6.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        // 第一行文字占位
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(14.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        // 第二行文字占位
-        Box(
-            modifier = Modifier
-                .width(120.dp)
-                .height(14.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
-        )
+                .weight(1f)
+                .padding(vertical = 4.dp)
+        ) {
+            // 标题占位（两行）
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .alpha(alpha)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .alpha(alpha)
+            )
+        }
     }
 }
 
