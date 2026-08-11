@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
@@ -70,11 +71,11 @@ class NetworkService @Inject constructor(
         client.newCall(request).execute().use { response ->
             AppLogger.log("NetworkService", "Response code: ${response.code}")
             if (!response.isSuccessful) {
-                throw Exception("Request failed with code ${response.code}")
+                throw IOException("Request failed with code ${response.code}")
             }
             val body = response.body?.string()
             AppLogger.log("NetworkService", "Response body length: ${body?.length ?: 0}")
-            body ?: throw Exception("Empty response body")
+            body ?: throw IOException("Empty response body")
         }
     }
 
@@ -101,7 +102,7 @@ class NetworkService @Inject constructor(
         if (code in 200..399) {
             return FetchResult(html, base)
         } else {
-            throw Exception("login page HTTP $code")
+            throw IOException("login page HTTP $code")
         }
     }
 
@@ -214,7 +215,7 @@ class NetworkService @Inject constructor(
             try {
                 val html = executeRequest(buildRequest(url))
                 authorPageParser.parseVideoListPage(html, url)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.logError("NetworkService", "Failed to fetch video list page: ${e.message}", e)
                 emptyList()
             }
@@ -227,7 +228,7 @@ class NetworkService @Inject constructor(
             try {
                 val html = executeRequest(buildRequest(url))
                 playlistParser.parseListPage(html, url)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.logError("NetworkService", "Failed to fetch playlist list page: ${e.message}", e)
                 emptyList()
             }
@@ -240,7 +241,7 @@ class NetworkService @Inject constructor(
             try {
                 val html = executeRequest(buildRequest(url))
                 playlistParser.parseDetailPage(html, url)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.logError("NetworkService", "Failed to fetch playlist detail page: ${e.message}", e)
                 null
             }
@@ -260,7 +261,7 @@ class NetworkService @Inject constructor(
                 AppLogger.log("NetworkService", "Fetching user video list from: $url")
                 val html = executeRequest(buildRequest(url))
                 authorPageParser.parseUserVideoList(html, url)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.logError("NetworkService", "Failed to fetch user video list: ${e.message}", e)
                 null
             }
@@ -352,9 +353,75 @@ class NetworkService @Inject constructor(
                 AppLogger.log("NetworkService", "postComment response code: $code")
                 val body = response.body?.string()
                 if (!response.isSuccessful) {
-                    throw Exception("发表评论失败 (HTTP $code)")
+                    throw IOException("发表评论失败 (HTTP $code)")
                 }
-                body ?: throw Exception("发表评论返回空响应")
+                body ?: throw IOException("发表评论返回空响应")
+            }
+        }
+    }
+
+    /**
+     * 切换评论点赞状态（点赞 / 取消点赞）。
+     *
+     * 官网接口：POST /commentLike
+     * Content-Type: application/x-www-form-urlencoded
+     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
+     *
+     * Body 参数（与官网 commentLike 表单一致，凭 like-comment-status 区分点赞/取消）：
+     * - _token: CSRF Token
+     * - foreign_type: 固定 "comment"
+     * - foreign_id: 评论 ID
+     * - is_positive: 固定 "1"
+     * - comment-like-user-id: 当前登录用户 ID
+     * - like-comment-status: 用户当前点赞状态（空/0 = 未点赞→本次点赞；"1" = 已点赞→本次取消）
+     * - comment-likes-count / comment-likes-sum: 评论当前点赞数
+     * - unlike-comment-status: 固定 "0"
+     */
+    suspend fun toggleCommentLike(
+        commentId: String,
+        commentLikeUserId: String,
+        currentLikeStatus: Int,
+        likeCount: Int,
+        csrfToken: String
+    ): String {
+        AppLogger.log(
+            "NetworkService",
+            "toggleCommentLike called, commentId: $commentId, userId: $commentLikeUserId, status: $currentLikeStatus"
+        )
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val form = FormBody.Builder()
+                .add("_token", csrfToken)
+                .add("foreign_type", "comment")
+                .add("foreign_id", commentId)
+                .add("is_positive", "1")
+                .add("comment-like-user-id", commentLikeUserId)
+                .add("like-comment-status", if (currentLikeStatus == 1) "1" else "")
+                .add("comment-likes-count", likeCount.toString())
+                .add("comment-likes-sum", likeCount.toString())
+                .add("unlike-comment-status", "0")
+                .build()
+            val req = Request.Builder()
+                .url("$baseUrl/commentLike")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", "$baseUrl/")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+            AppLogger.log("NetworkService", "Toggling comment like to: $baseUrl/commentLike")
+            client.newCall(req).execute().use { response ->
+                val code = response.code
+                AppLogger.log("NetworkService", "toggleCommentLike response code: $code")
+                val body = response.body?.string()
+                if (!response.isSuccessful) {
+                    throw IOException("评论点赞失败 (HTTP $code)")
+                }
+                body ?: throw IOException("评论点赞返回空响应")
             }
         }
     }

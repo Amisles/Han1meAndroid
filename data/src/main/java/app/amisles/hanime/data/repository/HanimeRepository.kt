@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.repository
 
+import android.database.SQLException
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
@@ -23,6 +24,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.flow.Flow
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,7 +45,7 @@ class HanimeRepository @Inject constructor(
         try {
             favoriteDao.addFavorite(video)
             AppLogger.log("HanimeRepository", "Favorite added successfully")
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding favorite: ${e.message}", e)
         }
     }
@@ -52,7 +54,7 @@ class HanimeRepository @Inject constructor(
         try {
             favoriteDao.removeFavoriteById(videoId)
             AppLogger.log("HanimeRepository", "Favorite removed successfully")
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing favorite: ${e.message}", e)
         }
     }
@@ -60,7 +62,7 @@ class HanimeRepository @Inject constructor(
     suspend fun isFavorite(videoId: String): Boolean {
         return try {
             favoriteDao.isFavorite(videoId)
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error checking favorite: ${e.message}", e)
             false
         }
@@ -71,7 +73,7 @@ class HanimeRepository @Inject constructor(
             val favorites = favoriteDao.getAllFavorites()
             AppLogger.log("HanimeRepository", "Got ${favorites.size} favorites")
             favorites
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error getting favorites: ${e.message}", e)
             emptyList()
         }
@@ -80,7 +82,7 @@ class HanimeRepository @Inject constructor(
     suspend fun getFavoriteCount(): Int {
         return try {
             favoriteDao.getFavoriteCount()
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error getting favorite count: ${e.message}", e)
             0
         }
@@ -90,7 +92,7 @@ class HanimeRepository @Inject constructor(
         try {
             watchHistoryDao.addWatchHistory(history)
             AppLogger.log("HanimeRepository", "Watch history added successfully")
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding watch history: ${e.message}", e)
         }
     }
@@ -103,7 +105,7 @@ class HanimeRepository @Inject constructor(
         try {
             watchHistoryDao.removeWatchHistory(videoId)
             AppLogger.log("HanimeRepository", "Watch history removed successfully")
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing watch history: ${e.message}", e)
         }
     }
@@ -112,7 +114,7 @@ class HanimeRepository @Inject constructor(
         try {
             watchHistoryDao.clearWatchHistory()
             AppLogger.log("HanimeRepository", "Watch history cleared successfully")
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error clearing watch history: ${e.message}", e)
         }
     }
@@ -120,7 +122,7 @@ class HanimeRepository @Inject constructor(
     suspend fun getWatchHistoryCount(): Int {
         return try {
             watchHistoryDao.getWatchHistoryCount()
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error getting watch history count: ${e.message}", e)
             0
         }
@@ -130,7 +132,7 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchHomePageWithBaseUrl()
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(homePageParser.parse(result.html, result.baseUrl))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in getHomeData: ${e.message}", e)
             AppResult.error(e.message ?: "加载首页失败", e)
         }
@@ -141,7 +143,7 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parse(result.html, result.baseUrl))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in searchVideos: ${e.message}", e)
             AppResult.error(e.message ?: "搜索失败", e)
         }
@@ -152,7 +154,7 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parseWithPagination(result.html, result.baseUrl))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in searchVideosWithPagination: ${e.message}", e)
             AppResult.error(e.message ?: "搜索失败", e)
         }
@@ -165,7 +167,7 @@ class HanimeRepository @Inject constructor(
             val detail = watchPageParser.parse(result.html, result.baseUrl)
                 ?: return AppResult.error("无法解析视频详情页")
             AppResult.success(detail)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in getVideoDetail: ${e.message}", e)
             AppResult.error(e.message ?: "加载视频详情失败", e)
         }
@@ -176,7 +178,7 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
             AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(downloadPageParser.parse(result.html, result.baseUrl))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in getDownloadQualities: ${e.message}", e)
             AppResult.error(e.message ?: "获取下载画质失败", e)
         }
@@ -191,7 +193,7 @@ class HanimeRepository @Inject constructor(
             val json = networkService.fetchComments(videoId)
             AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
             AppResult.success(commentParser.parse(json))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in getComments: ${e.message}", e)
             AppResult.error(e.message ?: "加载评论失败", e)
         }
@@ -206,7 +208,7 @@ class HanimeRepository @Inject constructor(
             val json = networkService.fetchReplies(commentId)
             AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
             AppResult.success(commentParser.parseReplies(json))
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in getReplies: ${e.message}", e)
             AppResult.error(e.message ?: "加载回复失败", e)
         }
@@ -245,9 +247,45 @@ class HanimeRepository @Inject constructor(
             val parsed = commentParser.parsePostedComment(json)
                 ?: return AppResult.error("评论发表成功但解析失败")
             AppResult.success(parsed)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in postComment: ${e.message}", e)
             AppResult.error(e.message ?: "发表评论失败", e)
+        }
+    }
+
+    /**
+     * 切换评论点赞状态（点赞 / 取消点赞）。
+     * 官网接口：POST /commentLike，凭 like-comment-status 区分点赞与取消。
+     *
+     * @param commentId 评论 ID（foreign_id）
+     * @param currentLikeStatus 用户当前点赞状态：0=未点赞，1=已点赞（作为 like-comment-status 上传）
+     * @param likeCount 评论当前点赞数（作为 comment-likes-count / comment-likes-sum 上传）
+     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
+     */
+    suspend fun toggleCommentLike(
+        commentId: String,
+        currentLikeStatus: Int,
+        likeCount: Int,
+        csrfToken: String
+    ): AppResult<Unit> {
+        return try {
+            val userId = Preferences.savedUserId.ifBlank {
+                return AppResult.error("请先登录后再点赞评论")
+            }
+            if (csrfToken.isBlank()) {
+                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+            }
+            networkService.toggleCommentLike(
+                commentId = commentId,
+                commentLikeUserId = userId,
+                currentLikeStatus = currentLikeStatus,
+                likeCount = likeCount,
+                csrfToken = csrfToken
+            )
+            AppResult.success(Unit)
+        } catch (e: IOException) {
+            AppLogger.logError("HanimeRepository", "Error in toggleCommentLike: ${e.message}", e)
+            AppResult.error(e.message ?: "评论点赞失败", e)
         }
     }
 
@@ -255,7 +293,7 @@ class HanimeRepository @Inject constructor(
         return runCatching {
         val page = try {
             networkService.fetchLoginPageWithBaseUrl()
-        } catch (t: Throwable) {
+        } catch (t: IOException) {
             val msg = t.message.orEmpty()
             when {
                 "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
@@ -272,7 +310,7 @@ class HanimeRepository @Inject constructor(
             ?: throw IllegalStateException("无法获取 CSRF Token，请切换到 WebView 或手动 Cookie 登录")
         val result = try {
             networkService.postLoginForm(csrf, email, password)
-        } catch (t: Throwable) {
+        } catch (t: IOException) {
             val msg = t.message.orEmpty()
             when {
                 "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
@@ -337,7 +375,7 @@ class HanimeRepository @Inject constructor(
                     searchedAt = System.currentTimeMillis()
                 )
             )
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding search history: ${e.message}", e)
         }
     }
@@ -345,7 +383,7 @@ class HanimeRepository @Inject constructor(
     suspend fun removeSearchHistory(query: String) {
         try {
             searchHistoryDao.removeSearch(query)
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing search history: ${e.message}", e)
         }
     }
@@ -353,7 +391,7 @@ class HanimeRepository @Inject constructor(
     suspend fun clearSearchHistory() {
         try {
             searchHistoryDao.clearAllSearch()
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error clearing search history: ${e.message}", e)
         }
     }

@@ -109,6 +109,8 @@ fun DetailScreen(
     val repliesError by viewModel.repliesError.collectAsStateWithLifecycle()
     val isPostingComment by viewModel.isPostingComment.collectAsStateWithLifecycle()
     val postCommentError by viewModel.postCommentError.collectAsStateWithLifecycle()
+    val likingComments by viewModel.likingComments.collectAsStateWithLifecycle()
+    val commentLikeError by viewModel.commentLikeError.collectAsStateWithLifecycle()
     val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
 
@@ -160,6 +162,14 @@ fun DetailScreen(
         if (videoUrl != null && videoUrl.isNotEmpty()) {
             selectedTab = 0
             viewModel.loadVideoDetail(videoUrl)
+        }
+    }
+
+    // 评论点赞出错时弹出提示
+    LaunchedEffect(commentLikeError) {
+        commentLikeError?.let {
+            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
+            viewModel.clearCommentLikeError()
         }
     }
 
@@ -681,6 +691,8 @@ fun DetailScreen(
                                 viewModel.postComment(text)
                             },
                             onClearPostError = { viewModel.clearPostCommentError() },
+                            onToggleLike = { viewModel.toggleCommentLike(it) },
+                            likingComments = likingComments,
                             onNavigateToLogin = tryNavigateToLogin
                         )
                     }
@@ -877,6 +889,8 @@ private fun CommentSection(
     postCommentError: String?,
     onPostComment: (String) -> Unit,
     onClearPostError: () -> Unit,
+    onToggleLike: (app.amisles.hanime.domain.model.Comment) -> Unit,
+    likingComments: Set<String>,
     onNavigateToLogin: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -932,7 +946,9 @@ private fun CommentSection(
                         replies = repliesCache[comment.id],
                         isLoadingReplies = loadingReplies.contains(comment.id),
                         repliesError = repliesError[comment.id],
-                        onLoadReplies = onLoadReplies
+                        onLoadReplies = onLoadReplies,
+                        onToggleLike = onToggleLike,
+                        isLiking = likingComments.contains(comment.id)
                     )
                     Spacer(
                         modifier = Modifier
@@ -1064,7 +1080,9 @@ private fun CommentItem(
     replies: List<app.amisles.hanime.domain.model.Reply>?,
     isLoadingReplies: Boolean,
     repliesError: String?,
-    onLoadReplies: (String) -> Unit
+    onLoadReplies: (String) -> Unit,
+    onToggleLike: (app.amisles.hanime.domain.model.Comment) -> Unit,
+    isLiking: Boolean
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -1120,18 +1138,25 @@ private fun CommentItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    val liked = comment.likeStatus == 1
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(enabled = !isLiking) { onToggleLike(comment) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ThumbUp,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.comment_like),
                             modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (comment.likeCount > 0) comment.likeCount.toString() else "0",
+                            text = comment.likeCount.toString(),
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     // 展开/收起回复按钮（放在点赞同一行，红色主题色）

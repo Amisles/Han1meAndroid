@@ -14,5 +14,11 @@ data class Comment(
     val time: String,
     val content: String,
     val likeCount: Int,
-    val replyCount: Int
+    val replyCount: Int,
+    /**
+     * 当前用户对该评论的点赞状态。
+     * 0 = 未点赞，1 = 已点赞（默认 0，由本地乐观更新维护，
+     * 评论列表重载时由服务端返回的实际状态覆盖）。
+     */
+    val likeStatus: Int = 0
 )

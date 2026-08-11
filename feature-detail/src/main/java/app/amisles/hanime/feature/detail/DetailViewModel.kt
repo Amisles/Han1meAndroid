@@ -11,6 +11,7 @@ import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -68,6 +70,14 @@ class DetailViewModel @Inject constructor(
     private val _lastPostedComment = MutableStateFlow<Comment?>(null)
     val lastPostedComment: StateFlow<Comment?> = _lastPostedComment.asStateFlow()
 
+    // 正在切换点赞状态的评论 ID 集合（防止重复点击）
+    private val _likingComments = MutableStateFlow<Set<String>>(emptySet())
+    val likingComments: StateFlow<Set<String>> = _likingComments.asStateFlow()
+
+    // 评论点赞错误（未登录 / CSRF 缺失 / 网络失败等）
+    private val _commentLikeError = MutableStateFlow<String?>(null)
+    val commentLikeError: StateFlow<String?> = _commentLikeError.asStateFlow()
+
     // 回复缓存：commentId → 回复列表
     private val _repliesCache = MutableStateFlow<Map<String, List<Reply>>>(emptyMap())
     val repliesCache: StateFlow<Map<String, List<Reply>>> = _repliesCache.asStateFlow()
@@ -101,6 +111,10 @@ class DetailViewModel @Inject constructor(
         _isPostingComment.value = false
         _postCommentError.value = null
         _lastPostedComment.value = null
+
+        // 切换视频时重置评论点赞状态
+        _likingComments.value = emptySet()
+        _commentLikeError.value = null
 
         // 切换视频时清空回复缓存
         _repliesCache.value = emptyMap()
@@ -316,6 +330,65 @@ class DetailViewModel @Inject constructor(
         _postCommentError.value = null
     }
 
+    /**
+     * 切换评论点赞状态（点赞 / 取消点赞）。
+     * 调用官网 /commentLike 接口，凭 like-comment-status 区分点赞与取消。
+     * 采用乐观更新：先本地切换状态与计数，接口失败再回滚到原始状态。
+     */
+    fun toggleCommentLike(comment: Comment) {
+        val detail = _videoDetail.value
+        if (detail == null || detail.csrfToken.isBlank()) {
+            _commentLikeError.value = "CSRF Token 缺失，请刷新页面后重试"
+            return
+        }
+        if (Preferences.savedUserId.isBlank()) {
+            _commentLikeError.value = "请先登录后再点赞评论"
+            return
+        }
+        // 防止同一评论在请求未完成前被重复点击
+        if (_likingComments.value.contains(comment.id)) return
+
+        val willLike = comment.likeStatus != 1
+        val optimistic = comment.copy(
+            likeStatus = if (willLike) 1 else 0,
+            likeCount = (comment.likeCount + if (willLike) 1 else -1).coerceAtLeast(0)
+        )
+        // 乐观更新列表
+        _comments.value = _comments.value.map { if (it.id == comment.id) optimistic else it }
+        _likingComments.value = _likingComments.value + comment.id
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repository.toggleCommentLike(
+                    commentId = comment.id,
+                    currentLikeStatus = comment.likeStatus,
+                    likeCount = comment.likeCount,
+                    csrfToken = detail.csrfToken
+                )
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    AppLogger.d("DetailViewModel", "Comment like toggled for ${comment.id}, willLike=$willLike")
+                }
+                is AppResult.Error -> {
+                    AppLogger.e("DetailViewModel", "Error toggling comment like: ${result.message}", result.exception)
+                    // 回滚到原始状态
+                    _comments.value = _comments.value.map { if (it.id == comment.id) comment else it }
+                    _commentLikeError.value = result.message ?: "评论点赞失败"
+                }
+                is AppResult.Loading -> {}
+            }
+            _likingComments.value = _likingComments.value - comment.id
+        }
+    }
+
+    /**
+     * 清除评论点赞的错误状态。
+     */
+    fun clearCommentLikeError() {
+        _commentLikeError.value = null
+    }
+
     fun toggleFavorite() {
         if (currentVideoId.isEmpty()) return
         AppLogger.d("DetailViewModel", "toggleFavorite called, currentVideoId: $currentVideoId")
@@ -351,7 +424,7 @@ class DetailViewModel @Inject constructor(
                         AppLogger.d("DetailViewModel", "Added to favorites")
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 AppLogger.e("DetailViewModel", "Error toggling favorite: ${e.message}", e)
             }
         }
