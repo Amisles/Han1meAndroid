@@ -60,7 +60,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
+import app.amisles.hanime.core.ui.theme.ResponsiveContent
+import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.emojis
@@ -161,12 +165,13 @@ fun SearchScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-    ) {
+    ResponsiveContent {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -432,7 +437,7 @@ fun SearchScreen(
                             // 删除按钮，保证足够的点击区域
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(48.dp)
                                     .clip(CircleShape)
                                     .clickable { viewModel.removeSearchHistory(historyQuery) },
                                 contentAlignment = Alignment.Center
@@ -470,6 +475,8 @@ fun SearchScreen(
                 }
             }
         } else {
+            val sizeInfo = currentWindowSizeInfo()
+            if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.padding(15.dp),
@@ -575,6 +582,60 @@ fun SearchScreen(
                     }
                 }
             }
+            } else {
+                // 平板：多列网格，按列数分行渲染 VideoCard
+                val columns = sizeInfo.gridColumns
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.padding(15.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    videos.chunked(columns).forEach { rowVideos ->
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                rowVideos.forEach { video ->
+                                    VideoCard(
+                                        video = video,
+                                        onClick = { onVideoClick(video.videoUrl) },
+                                        onAuthorClick = onAuthorClick,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                repeat(columns - rowVideos.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+
+                    if (isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.search_no_more),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
         }
+    }
     }
 }

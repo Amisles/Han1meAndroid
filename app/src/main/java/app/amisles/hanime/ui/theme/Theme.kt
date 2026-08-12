@@ -11,6 +11,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import app.amisles.hanime.core.ui.theme.ProvideWindowSizeInfo
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.data.preferences.ThemeMode
 
 private val HanimeDarkColorScheme = darkColorScheme(
@@ -71,10 +73,12 @@ fun HanimeTheme(
 
     // Disable ripple effects globally for all clickable components
     CompositionLocalProvider(LocalRippleConfiguration provides null) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = Typography,
-            content = content
-        )
+        ProvideWindowSizeInfo {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = if (currentWindowSizeInfo().largeTypography) TypographyLarge else Typography,
+                content = content
+            )
+        }
     }
 }

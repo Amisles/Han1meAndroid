@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.components.VideoCard
+import app.amisles.hanime.core.ui.theme.ResponsiveContent
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.theme.HanimeBackground
 import app.amisles.hanime.ui.theme.HanimePrimary
 import app.amisles.hanime.ui.theme.HanimeTextPrimary
@@ -58,14 +60,15 @@ fun VideoListPageScreen(
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(HanimeBackground).statusBarsPadding()
-    ) {
+    ResponsiveContent {
+        Column(
+            modifier = Modifier.fillMaxSize().background(HanimeBackground).statusBarsPadding()
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { onBackClick() }, modifier = Modifier.size(24.dp)) {
+            IconButton(onClick = { onBackClick() }, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(CoreR.string.common_back),
@@ -95,7 +98,7 @@ fun VideoListPageScreen(
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Fixed(currentWindowSizeInfo().gridColumns),
                 contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -108,5 +111,6 @@ fun VideoListPageScreen(
                 }
             }
         }
+    }
     }
 }

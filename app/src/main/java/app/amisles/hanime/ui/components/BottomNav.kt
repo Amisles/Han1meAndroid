@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,14 +64,19 @@ fun BottomNav(
         ) {
             screens.forEach { screen ->
                 val isSelected = currentRoute.startsWith(screen.route)
-                Icon(
-                    imageVector = screen.icon,
-                    contentDescription = stringResource(screen.labelResId),
-                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                Box(
                     modifier = Modifier
-                        .size(24.dp)
-                        .clickable { onNavigate(screen.route) }
-                )
+                        .size(48.dp)
+                        .clickable { onNavigate(screen.route) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = screen.icon,
+                        contentDescription = stringResource(screen.labelResId),
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }

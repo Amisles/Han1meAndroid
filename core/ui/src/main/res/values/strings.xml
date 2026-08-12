@@ -178,6 +178,21 @@
     <string name="profile_about">关于我们</string>
     <string name="profile_logout">退出登录</string>
     <string name="profile_logout_success">已退出登录</string>
+    <!-- 账户资料（/user/{id}/edit）-->
+    <string name="profile_account">账户资料</string>
+    <string name="profile_account_edit_title">编辑个人档案</string>
+    <string name="profile_account_edit_hint">编辑你在 Hanime1 上显示的用户名称以及登入时使用的电邮地址。</string>
+    <string name="profile_account_name">用户名称</string>
+    <string name="profile_account_email">电邮地址</string>
+    <string name="profile_account_update">更新个人档案</string>
+    <string name="profile_account_not_logged_in">请先登录后查看账户资料</string>
+    <string name="profile_account_load_failed">加载账户资料失败</string>
+    <string name="profile_account_updated">个人档案已更新</string>
+    <string name="profile_account_password">更改密码</string>
+    <string name="profile_account_password_old">旧密码</string>
+    <string name="profile_account_password_new">新密码</string>
+    <string name="profile_account_password_confirm">确认新密码</string>
+    <string name="profile_account_password_tip">更改密码功能敬请期待</string>
     <string name="profile_member">Hanime 会员</string>
     <string name="profile_not_logged_in">未登录</string>
     <string name="profile_logged_in">已登录</string>

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,9 +80,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
+import app.amisles.hanime.core.ui.theme.ResponsiveContent
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.domain.model.VideoDetail
 
 import kotlinx.coroutines.launch
 
@@ -198,79 +203,17 @@ fun DetailScreen(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
-            .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
-    ) {
-        if (!isPlayerFullscreen) {
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(horizontal = 15.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { onBackClick() },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-        }
+    // 平板分栏以根层级全宽渲染，去除 ResponsiveContent 限宽产生的左右空隙；手机/加载/错误态仍由下方 ResponsiveContent 包裹
+        val sizeInfo = currentWindowSizeInfo()
+        // 平板且非全屏、已加载内容（非加载中/非错误空态）时采用左右分栏：
+        // 左侧仅视频播放器，右侧为标题/作者/简介/操作/评论/相关视频等其余组件。
+        // 必须保证 videoDetail 已加载且非错误态，否则 videoDetail!! 会 NPE（首次组合 isLoading 尚未置真、或加载完成但数据为空时均可能命中）
+        // 平板 UI（含加载期骨架）：非全屏 + 非致命错误态（error!=null && videoDetail==null 回落到手机错误页）即启用
+        val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
+            && !(error != null && videoDetail == null)
 
-        if (isLoading) {
-            item(key = "detail_skeleton") {
-                DetailSkeletonScreen()
-            }
-        } else if (error != null && videoDetail == null) {
-            item(key = "detail_error") {
-                KaomojiErrorView(
-                    message = error,
-                    onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
-                )
-            }
-        } else {
-
-        item(key = "video_player") {
-            if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
-                VideoPlayer(
-                    exoPlayer = exoPlayer,
-                    posterUrl = videoDetail!!.posterUrl,
-                    videoSources = videoDetail!!.videoSources,
-                    initialSourceUrl = videoDetail!!.defaultSourceUrl,
-                    isFullscreen = isPlayerFullscreen,
-                    onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                    modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(225.dp)
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
-
-        if (!isPlayerFullscreen && videoDetail != null) {
-            val detail = videoDetail!!
+        // 其余组件抽成 LazyListScope 扩展，手机单列与平板右栏复用。
+        val detailRestItems: LazyListScope.(VideoDetail) -> Unit = { detail ->
 
             item {
                 Column(modifier = Modifier.padding(6.dp)) {
@@ -695,15 +638,163 @@ fun DetailScreen(
                     }
                 }
             }
-        }
-        }
-
-        if (!isPlayerFullscreen && !isLoading) {
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
-    }
+        if (useTabletUI) {
+            if (isLoading) {
+                // 平板加载骨架：左 3/4 视频区占位、右 1/4 详情占位
+                TabletDetailSkeleton()
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    // 左侧：视频播放器（垂直居中）
+                    Box(
+                        modifier = Modifier
+                            .weight(3f)
+                            .fillMaxHeight()
+                            .background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
+                            VideoPlayer(
+                                exoPlayer = exoPlayer,
+                                posterUrl = videoDetail!!.posterUrl,
+                                videoSources = videoDetail!!.videoSources,
+                                initialSourceUrl = videoDetail!!.defaultSourceUrl,
+                                isFullscreen = false,
+                                onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                                modifier = Modifier
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                        // 返回按钮覆盖在播放器左上角
+                        IconButton(
+                            onClick = { onBackClick() },
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .size(48.dp)
+                                .padding(start = 4.dp, top = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    // 右侧：其余组件（可滚动）
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.background)
+                    ) {
+                        if (videoDetail != null) {
+                            detailRestItems(videoDetail!!)
+                        }
+                    }
+                }
+            }
+        } else {
+        ResponsiveContent {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
+                .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
+        ) {
+        if (!isPlayerFullscreen) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(horizontal = 15.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { onBackClick() },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (isLoading) {
+            item(key = "detail_skeleton") {
+                DetailSkeletonScreen()
+            }
+        } else if (error != null && videoDetail == null) {
+            item(key = "detail_error") {
+                KaomojiErrorView(
+                    message = error,
+                    onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
+                )
+            }
+        } else {
+
+        item(key = "video_player") {
+            if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
+                VideoPlayer(
+                    exoPlayer = exoPlayer,
+                    posterUrl = videoDetail!!.posterUrl,
+                    videoSources = videoDetail!!.videoSources,
+                    initialSourceUrl = videoDetail!!.defaultSourceUrl,
+                    isFullscreen = isPlayerFullscreen,
+                    onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                    modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(225.dp)
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
+        if (!isPlayerFullscreen && videoDetail != null) {
+            val detail = videoDetail!!
+            detailRestItems(detail)
+        }
+
+        }
+        }
+        }
+        }
 
     if (showDownloadDialog) {
         Box(
@@ -1831,6 +1922,156 @@ private fun DetailSkeletonScreen() {
                             .background(MaterialTheme.colorScheme.background)
                             .alpha(alpha)
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 平板分栏骨架屏：左侧 3/4 视频区占位（垂直居中），右侧 1/4 详情占位。
+ * 用于平板设备进入详情页的加载期，区别于手机样式的单列骨架。
+ */
+@Composable
+private fun TabletDetailSkeleton() {
+    val transition = rememberInfiniteTransition(label = "tablet-detail-skeleton-shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "tablet-detail-skeleton-alpha"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // 左侧：视频区占位（垂直居中）
+        Box(
+            modifier = Modifier
+                .weight(3f)
+                .fillMaxHeight()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .alpha(alpha)
+            )
+        }
+
+        // 右侧：详情占位
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            item {
+                Column(modifier = Modifier.padding(15.dp)) {
+                    // 标题
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .alpha(alpha)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .alpha(alpha)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 作者行
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .alpha(alpha)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .alpha(alpha)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 元信息行
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .alpha(alpha)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .alpha(alpha)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // 操作按钮行
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        repeat(3) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .alpha(alpha)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // 标签行骨架
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(4) {
+                            Box(
+                                modifier = Modifier
+                                    .width(60.dp)
+                                    .height(26.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .alpha(alpha)
+                            )
+                        }
+                    }
                 }
             }
         }

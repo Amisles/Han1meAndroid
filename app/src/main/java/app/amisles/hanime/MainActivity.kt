@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,7 +47,9 @@ import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.components.BottomNav
+import app.amisles.hanime.ui.components.NavRail
 import app.amisles.hanime.feature.detail.DetailScreen
 import app.amisles.hanime.feature.download.DownloadScreen
 import app.amisles.hanime.feature.profile.FavoriteScreen
@@ -54,6 +57,7 @@ import app.amisles.hanime.feature.profile.HistoryScreen
 import app.amisles.hanime.feature.home.HomeScreen
 import app.amisles.hanime.feature.profile.LoginScreen
 import app.amisles.hanime.feature.profile.ProfileScreen
+import app.amisles.hanime.feature.profile.AccountProfileScreen
 import app.amisles.hanime.feature.profile.SubscriptionsScreen
 import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.core.ui.model.categories
@@ -139,7 +143,10 @@ fun HanimeApp() {
         !currentRoute.startsWith("author") &&
         !currentRoute.startsWith("videoListPage") &&
         !currentRoute.startsWith("playlistListPage") &&
-        !currentRoute.startsWith("playlistDetail")
+        !currentRoute.startsWith("playlistDetail") &&
+        !currentRoute.startsWith("accountEdit")
+
+    val useRail = currentWindowSizeInfo().useNavigationRail
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
@@ -150,12 +157,9 @@ fun HanimeApp() {
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            if (showBottomBar) {
-                BottomNav(
+        Row(modifier = Modifier.fillMaxSize()) {
+            if (showBottomBar && useRail) {
+                NavRail(
                     currentRoute = currentRoute,
                     onNavigate = { route ->
                         if (currentRoute != route) {
@@ -168,8 +172,28 @@ fun HanimeApp() {
                     }
                 )
             }
-        }
-    ) { innerPadding ->
+            Scaffold(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(1f),
+                containerColor = MaterialTheme.colorScheme.background,
+                bottomBar = {
+                    if (showBottomBar && !useRail) {
+                        BottomNav(
+                            currentRoute = currentRoute,
+                            onNavigate = { route ->
+                                if (currentRoute != route) {
+                                    if (!navController.popBackStack(route, inclusive = false)) {
+                                        navController.navigate(route) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+            ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = "home",
@@ -295,6 +319,14 @@ fun HanimeApp() {
                     onVideoClick = { videoUrl ->
                         navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
                     },
+                    onNavigateToLogin = {
+                        navController.navigate("login")
+                    }
+                )
+            }
+            composable("accountEdit") {
+                AccountProfileScreen(
+                    onBackClick = { navController.popBackStack() },
                     onNavigateToLogin = {
                         navController.navigate("login")
                     }
@@ -458,6 +490,7 @@ fun HanimeApp() {
                     }
                 )
             }
+        }
         }
     }
 

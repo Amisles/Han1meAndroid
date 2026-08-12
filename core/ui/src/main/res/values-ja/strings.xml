@@ -161,6 +161,21 @@
     <string name="profile_about">アプリ情報</string>
     <string name="profile_logout">ログアウト</string>
     <string name="profile_logout_success">ログアウトしました</string>
+    <!-- アカウント情報（/user/{id}/edit）-->
+    <string name="profile_account">アカウント</string>
+    <string name="profile_account_edit_title">プロフィールを編集</string>
+    <string name="profile_account_edit_hint">Hanime1 に表示される名前とログイン用メールアドレスを編集します。</string>
+    <string name="profile_account_name">表示名</string>
+    <string name="profile_account_email">メールアドレス</string>
+    <string name="profile_account_update">プロフィールを更新</string>
+    <string name="profile_account_not_logged_in">アカウントを表示するにはログインしてください</string>
+    <string name="profile_account_load_failed">アカウントの読み込みに失敗しました</string>
+    <string name="profile_account_updated">プロフィールを更新しました</string>
+    <string name="profile_account_password">パスワード変更</string>
+    <string name="profile_account_password_old">現在のパスワード</string>
+    <string name="profile_account_password_new">新しいパスワード</string>
+    <string name="profile_account_password_confirm">新しいパスワード（確認）</string>
+    <string name="profile_account_password_tip">パスワード変更は準備中です</string>
     <string name="profile_member">Hanime 会員</string>
     <string name="profile_not_logged_in">未ログイン</string>
     <string name="profile_logged_in">ログイン済み</string>

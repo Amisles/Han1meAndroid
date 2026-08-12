@@ -6,6 +6,7 @@ import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.data.parser.AccountProfileParser
 import app.amisles.hanime.data.parser.CommentParser
 import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
@@ -22,6 +23,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomePageData
 import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.model.SearchResult
+import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
@@ -40,6 +42,7 @@ class HanimeRepository @Inject constructor(
     private val downloadPageParser: DownloadPageParser,
     private val commentParser: CommentParser,
     private val subscribeParser: SubscribeParser,
+    private val accountProfileParser: AccountProfileParser,
     private val favoriteDao: FavoriteDao,
     private val watchHistoryDao: WatchHistoryDao,
     private val searchHistoryDao: SearchHistoryDao
@@ -371,7 +374,64 @@ class HanimeRepository @Inject constructor(
         } catch (e: IOException) {
             Log.i("SubscribeDebug", "!!! toggleSubscribe IOException: ${e.message}")
             AppLogger.logError("HanimeRepository", "Error in toggleSubscribe: ${e.message}", e)
-            AppResult.error(e.message ?: "订阅操作失败", e)
+                AppResult.error(e.message ?: "订阅操作失败", e)
+        }
+    }
+
+    /**
+     * 拉取账户资料（用户名称 + 电邮 + CSRF Token）。
+     * 官网接口：GET /user/{id}/edit，由 [AccountProfileParser] 解析表单当前值。
+     */
+    suspend fun getAccountProfile(): AppResult<AccountProfile> {
+        return try {
+            val userId = Preferences.savedUserId.ifBlank {
+                return AppResult.error("未登录，无法查看账户资料")
+            }
+            val result = networkService.fetchAccountEditPage(userId)
+            AppLogger.log("HanimeRepository", "Account edit page HTML length: ${result.html.length}")
+            val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
+                ?: return AppResult.error("无法解析账户资料页")
+            AppResult.success(profile)
+        } catch (e: IOException) {
+            AppLogger.logError("HanimeRepository", "Error in getAccountProfile: ${e.message}", e)
+            AppResult.error(e.message ?: "加载账户资料失败", e)
+        }
+    }
+
+    /**
+     * 更新账户个人档案（用户名称 + 电邮）。
+     * 官网接口：POST /user/{id}，凭 type=profile 区分「更改密码」分支。
+     *
+     * @param name 新的用户名称
+     * @param email 新的登录电邮
+     * @param csrfToken 账户资料页解析出的 CSRF Token
+     */
+    suspend fun updateAccountProfile(
+        name: String,
+        email: String,
+        csrfToken: String
+    ): AppResult<Unit> {
+        return try {
+            val userId = Preferences.savedUserId.ifBlank {
+                return AppResult.error("未登录，无法更新账户资料")
+            }
+            if (csrfToken.isBlank()) {
+                return AppResult.error("CSRF Token 缺失，请返回重试")
+            }
+            val code = networkService.updateAccountProfile(
+                userId = userId,
+                csrfToken = csrfToken,
+                name = name,
+                email = email
+            )
+            if (code in 300..399) {
+                AppResult.success(Unit)
+            } else {
+                AppResult.error("更新失败（HTTP $code）")
+            }
+        } catch (e: IOException) {
+            AppLogger.logError("HanimeRepository", "Error in updateAccountProfile: ${e.message}", e)
+            AppResult.error(e.message ?: "更新账户资料失败", e)
         }
     }
 

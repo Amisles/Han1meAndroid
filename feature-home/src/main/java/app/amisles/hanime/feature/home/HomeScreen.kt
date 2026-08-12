@@ -52,6 +52,9 @@ import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoListItem
+import app.amisles.hanime.core.ui.theme.ResponsiveContent
+import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import kotlinx.coroutines.launch
 
@@ -110,6 +113,7 @@ fun HomeScreenContent(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
+    val sizeInfo = currentWindowSizeInfo()
 
     val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading) {
         val map = mutableMapOf<String, Int>()
@@ -140,13 +144,14 @@ fun HomeScreenContent(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-    LazyColumn(
-        state = listState,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-    ) {
+        ResponsiveContent {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+        ) {
         item(key = "home-header") {
             Header(
                 onSearchNavigate = onNavigateToSearch,
@@ -222,13 +227,40 @@ fun HomeScreenContent(
                     }
                 }
 
-                items(visibleVideos, key = { it.videoUrl }) { video ->
-                    VideoListItem(
-                        video = video,
-                        onClick = { onVideoClick(video.videoUrl) },
-                        onAuthorClick = onAuthorClick,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                    )
+                if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
+                    items(visibleVideos, key = { it.videoUrl }) { video ->
+                        VideoListItem(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            onAuthorClick = onAuthorClick,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                } else {
+                    // 平板：按列数分行渲染，避免单列在大屏下空旷
+                    val columns = sizeInfo.gridColumns
+                    visibleVideos.chunked(columns).forEach { rowVideos ->
+                        item {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                rowVideos.forEach { video ->
+                                    VideoListItem(
+                                        video = video,
+                                        onClick = { onVideoClick(video.videoUrl) },
+                                        onAuthorClick = onAuthorClick,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 5.dp, vertical = 3.dp)
+                                    )
+                                }
+                                repeat(columns - rowVideos.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
                 }
 
                 item(key = "home-section-spacer-${section.title}-$i") {
@@ -240,6 +272,7 @@ fun HomeScreenContent(
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
+    }
     }
     }
 }

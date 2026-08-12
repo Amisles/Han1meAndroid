@@ -161,6 +161,21 @@
     <string name="profile_about">About</string>
     <string name="profile_logout">Log Out</string>
     <string name="profile_logout_success">Logged out</string>
+    <!-- Account profile (/user/{id}/edit) -->
+    <string name="profile_account">Account</string>
+    <string name="profile_account_edit_title">Edit Profile</string>
+    <string name="profile_account_edit_hint">Edit the display name and the email you use to sign in on Hanime1.</string>
+    <string name="profile_account_name">Display Name</string>
+    <string name="profile_account_email">Email</string>
+    <string name="profile_account_update">Update Profile</string>
+    <string name="profile_account_not_logged_in">Please log in to view your account</string>
+    <string name="profile_account_load_failed">Failed to load account</string>
+    <string name="profile_account_updated">Profile updated</string>
+    <string name="profile_account_password">Change Password</string>
+    <string name="profile_account_password_old">Old Password</string>
+    <string name="profile_account_password_new">New Password</string>
+    <string name="profile_account_password_confirm">Confirm New Password</string>
+    <string name="profile_account_password_tip">Change password is coming soon</string>
     <string name="profile_member">Hanime Member</string>
     <string name="profile_not_logged_in">Not Logged In</string>
     <string name="profile_logged_in">Logged In</string>

@@ -31,15 +31,15 @@ import app.amisles.hanime.core.ui.model.gradients
 fun VideoCard(
     video: HanimeVideo,
     onClick: () -> Unit = {},
-    onAuthorClick: (String) -> Unit = {}
+    onAuthorClick: (String) -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
     val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
 
     Column(
-        modifier = Modifier
-            .width(200.dp)
-            .height(210.dp)
+        modifier = modifier
+            .fillMaxWidth()
             .clickable { onClick() }
     ) {
         Box(
@@ -62,7 +62,6 @@ fun VideoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
                 .padding(top = 6.dp)
         ) {
             Text(
@@ -74,7 +73,6 @@ fun VideoCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.weight(1f))
             if (video.author.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

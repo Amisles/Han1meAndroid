@@ -2,12 +2,14 @@ package app.amisles.hanime.data.remote
 
 import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
+import app.amisles.hanime.data.parser.AccountProfileParser
 import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
 import app.amisles.hanime.data.parser.SubscriptionsParser
 import app.amisles.hanime.data.preferences.Preferences
 import javax.inject.Inject
 import javax.inject.Singleton
+import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscriptionsContent
@@ -28,7 +30,8 @@ import java.util.concurrent.TimeUnit
 class NetworkService @Inject constructor(
     private val authorPageParser: AuthorPageParser,
     private val playlistParser: PlaylistParser,
-    private val subscriptionsParser: SubscriptionsParser
+    private val subscriptionsParser: SubscriptionsParser,
+    private val accountProfileParser: AccountProfileParser
 ) {
     // 入口拦截器：非官方域名首次请求前自动探测 /enter 获取入口 cookie
     private val entryInterceptor = EntryInterceptor()
@@ -232,6 +235,73 @@ class NetworkService @Inject constructor(
             Log.i("SubscriptionsDebug", "<<< Response length: ${html.length} chars")
             logBodyChunks("SubscriptionsDebug", "<<< Response body", html)
             subscriptionsParser.parse(html, url)
+        }
+    }
+
+    /**
+     * 拉取账户资料编辑页（官网 GET /user/{userId}/edit）。
+     * 返回解析所需的 HTML 与 baseUrl 给上层交由 [AccountProfileParser] 解析。
+     */
+    suspend fun fetchAccountEditPage(userId: String): FetchResult {
+        AppLogger.log("NetworkService", "fetchAccountEditPage called, userId: $userId")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val url = "$baseUrl/user/$userId/edit"
+            Log.i("AccountDebug", ">>> GET $url")
+            val html = executeRequest(buildRequest(url))
+            FetchResult(html, baseUrl)
+        }
+    }
+
+    /**
+     * 更新账户个人档案（官网 POST /user/{userId}）。
+     *
+     * 请求体（application/x-www-form-urlencoded，与官网「编辑个人档案」表单一致）：
+     * - _token: CSRF Token
+     * - _method: patch（Laravel 表单伪装 PUT/PATCH）
+     * - type: 固定 "profile"
+     * - name: 用户名称
+     * - email: 电邮地址
+     *
+     * 成功时官网返回 302 重定向回 /user/{userId}/edit（不使用自动跟随重定向的 client，
+     * 以便据此判定成功）。返回 HTTP 状态码供上层判断。
+     */
+    suspend fun updateAccountProfile(
+        userId: String,
+        csrfToken: String,
+        name: String,
+        email: String
+    ): Int {
+        AppLogger.log("NetworkService", "updateAccountProfile called, userId: $userId, name: $name")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val form = FormBody.Builder()
+                .add("_token", csrfToken)
+                .add("_method", "patch")
+                .add("type", "profile")
+                .add("name", name)
+                .add("email", email)
+                .build()
+            val req = Request.Builder()
+                .url("$baseUrl/user/$userId")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", "$baseUrl/user/$userId/edit")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .build()
+            Log.i(
+                "AccountDebug",
+                ">>> POST $baseUrl/user/$userId (type=profile) name=$name email=$email"
+            )
+            noRedirectClient.newCall(req).execute().use { resp ->
+                val code = resp.code
+                Log.i("AccountDebug", "<<< Response code: $code")
+                code
+            }
         }
     }
 

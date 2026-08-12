@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
@@ -50,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
+import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import androidx.compose.material3.MaterialTheme
 
 private data class ProfileMenuItem(
@@ -117,6 +119,7 @@ fun ProfileScreen(
         add(ProfileMenuItem(Icons.Default.Favorite, stringResource(R.string.profile_favorites)) { onNavigate("favorite") })
         if (isLogin) {
             add(ProfileMenuItem(Icons.Default.Subscriptions, stringResource(R.string.subscriptions)) { onNavigate("subscriptions") })
+            add(ProfileMenuItem(Icons.Default.AccountCircle, stringResource(R.string.profile_account)) { onNavigate("accountEdit") })
         }
         add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_batch_download)) { onNavigate("batchDownload") })
         add(ProfileMenuItem(Icons.Default.Settings, stringResource(R.string.profile_settings)) { onNavigate("settings") })
@@ -134,13 +137,14 @@ fun ProfileScreen(
         if (raw.isBlank()) "H" else raw.take(1).uppercase()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-    ) {
+    ResponsiveContent {
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+        ) {
+            Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
@@ -265,6 +269,7 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(80.dp))
     }
+}
 
     if (showLoginUnsupportedDialog) {
         LoginUnsupportedDialog(
