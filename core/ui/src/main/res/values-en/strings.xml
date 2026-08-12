@@ -69,6 +69,12 @@
     <string name="detail_favorite">Favorite</string>
     <string name="detail_unfavorite">Unfavorite</string>
     <string name="detail_share">Share</string>
+    <string name="detail_subscribe">Subscribe</string>
+    <string name="detail_subscribed">Subscribed</string>
+    <string name="detail_subscribe_failed">Subscribe failed</string>
+    <string name="detail_subscribe_login_required">Please log in before subscribing</string>
+    <string name="detail_csrf_missing">CSRF Token missing, please reload the page</string>
+    <string name="detail_subscribe_artist_missing">Author ID missing, cannot subscribe</string>
     <string name="detail_tags">Tags</string>
     <string name="detail_playlist">Playlist</string>
     <string name="detail_playlist_count">%1$d videos</string>
@@ -141,6 +147,13 @@
     <string name="batch_qualities_not_loaded">Selected videos haven\'t loaded quality info yet, please try again later</string>
     <string name="profile_watch_history">Watch History</string>
     <string name="profile_favorites">Favorites</string>
+    <string name="subscriptions">Subscriptions</string>
+    <string name="subscriptions_all">All</string>
+    <string name="subscriptions_all_scope">All subscriptions</string>
+    <string name="subscriptions_author_scope">\'s videos</string>
+    <string name="subscriptions_not_logged_in">Please log in to view your subscriptions</string>
+    <string name="subscriptions_empty">No subscription videos yet</string>
+    <string name="subscriptions_load_failed">Failed to load subscriptions</string>
     <string name="profile_download_manager">Downloads</string>
     <string name="profile_batch_download">Batch Download</string>
     <string name="profile_settings">Settings</string>

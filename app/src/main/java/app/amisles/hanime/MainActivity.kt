@@ -35,6 +35,7 @@ import app.amisles.hanime.feature.profile.HistoryScreen
 import app.amisles.hanime.feature.home.HomeScreen
 import app.amisles.hanime.feature.profile.LoginScreen
 import app.amisles.hanime.feature.profile.ProfileScreen
+import app.amisles.hanime.feature.profile.SubscriptionsScreen
 import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.search.sortOptions
@@ -115,6 +116,7 @@ fun HanimeApp() {
         currentRoute != "login" &&
         currentRoute != "settings" &&
         currentRoute != "batchDownload" &&
+        !currentRoute.startsWith("subscriptions") &&
         !currentRoute.startsWith("author") &&
         !currentRoute.startsWith("videoListPage") &&
         !currentRoute.startsWith("playlistListPage") &&
@@ -253,6 +255,26 @@ fun HanimeApp() {
                 ProfileScreen(
                     onNavigate = { route ->
                         navController.navigate(route)
+                    }
+                )
+            }
+            composable(
+                route = "subscriptions?query={query}",
+                arguments = listOf(navArgument("query") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) { backStackEntry ->
+                val query = backStackEntry.arguments?.getString("query") ?: ""
+                SubscriptionsScreen(
+                    initialQuery = query,
+                    onBackClick = { navController.popBackStack() },
+                    onVideoClick = { videoUrl ->
+                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    },
+                    onNavigateToLogin = {
+                        navController.navigate("login")
                     }
                 )
             }

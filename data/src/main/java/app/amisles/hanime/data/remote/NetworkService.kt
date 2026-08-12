@@ -4,11 +4,13 @@ import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
 import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
+import app.amisles.hanime.data.parser.SubscriptionsParser
 import app.amisles.hanime.data.preferences.Preferences
 import javax.inject.Inject
 import javax.inject.Singleton
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.domain.model.PlaylistDetail
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.common.util.AppLogger
@@ -25,7 +27,8 @@ import java.util.concurrent.TimeUnit
 @Singleton
 class NetworkService @Inject constructor(
     private val authorPageParser: AuthorPageParser,
-    private val playlistParser: PlaylistParser
+    private val playlistParser: PlaylistParser,
+    private val subscriptionsParser: SubscriptionsParser
 ) {
     // 入口拦截器：非官方域名首次请求前自动探测 /enter 获取入口 cookie
     private val entryInterceptor = EntryInterceptor()
@@ -205,6 +208,47 @@ class NetworkService @Inject constructor(
             val html = executeRequest(buildRequest(authorPageUrl))
             authorPageParser.parse(html, authorPageUrl)
                 ?: throw IllegalStateException("无法解析作者主页")
+        }
+    }
+
+    /**
+     * 抓取订阅内容页。
+     * - query 为空：拉取「全部」已订阅作者的视频（官网 https://hanimeone.me/subscriptions）
+     * - query 非空：按作者名筛选，仅显示该作者的视频（官网 https://hanimeone.me/subscriptions?query=<作者名>）
+     * 返回解析后的已订阅作者列表与视频列表。
+     */
+    suspend fun fetchSubscriptionsPage(query: String = ""): SubscriptionsContent {
+        AppLogger.log("NetworkService", "fetchSubscriptionsPage called, query: $query")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val url = if (query.isBlank()) {
+                "$baseUrl/subscriptions"
+            } else {
+                val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
+                "$baseUrl/subscriptions?query=$encoded"
+            }
+            Log.i("SubscriptionsDebug", ">>> GET $url")
+            val html = executeRequest(buildRequest(url))
+            Log.i("SubscriptionsDebug", "<<< Response length: ${html.length} chars")
+            logBodyChunks("SubscriptionsDebug", "<<< Response body", html)
+            subscriptionsParser.parse(html, url)
+        }
+    }
+
+    /**
+     * 将较长的响应体按 logcat 单行上限（~4000 字符）分片打印，避免被截断。
+     */
+    private fun logBodyChunks(tag: String, prefix: String, body: String, chunkSize: Int = 3800) {
+        if (body.isEmpty()) {
+            Log.i(tag, "$prefix: (empty)")
+            return
+        }
+        var index = 0
+        var part = 0
+        while (index < body.length) {
+            val end = minOf(index + chunkSize, body.length)
+            Log.i(tag, "$prefix (part ${++part}): ${body.substring(index, end)}")
+            index = end
         }
     }
 
@@ -473,6 +517,74 @@ class NetworkService @Inject constructor(
                     throw IOException("回复评论失败 (HTTP $code)")
                 }
                 body ?: throw IOException("回复评论返回空响应")
+            }
+        }
+    }
+
+    /**
+     * 订阅 / 取消订阅作者。
+     *
+     * 官网接口：POST /subscribe
+     * Content-Type: application/x-www-form-urlencoded
+     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
+     *
+     * Body 参数（与官网 subscribe 表单一致，凭 subscribe-status 区分订阅/取消）：
+     * - _token: CSRF Token
+     * - subscribe-user-id: 当前登录用户 ID
+     * - subscribe-artist-id: 被订阅作者 ID
+     * - subscribe-status: 空字符串 = 订阅；"1" = 取消订阅
+     *
+     * 返回 JSON：{"subscribeBtn": "<更新后的订阅表单 HTML>", "csrf_token": "..."}
+     */
+    suspend fun toggleSubscribe(
+        csrfToken: String,
+        userId: String,
+        artistId: String,
+        willSubscribe: Boolean
+    ): String {
+        AppLogger.log("NetworkService", "toggleSubscribe called, artistId: $artistId, willSubscribe: $willSubscribe")
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val subscribeStatusValue = if (willSubscribe) "" else "1"
+            val form = FormBody.Builder()
+                .add("_token", csrfToken)
+                .add("subscribe-user-id", userId)
+                .add("subscribe-artist-id", artistId)
+                .add("subscribe-status", subscribeStatusValue)
+                .build()
+            Log.i("SubscribeDebug", ">>> POST $baseUrl/subscribe")
+            Log.i(
+                "SubscribeDebug",
+                ">>> Request body: _token=$csrfToken&subscribe-user-id=$userId&subscribe-artist-id=$artistId&subscribe-status=$subscribeStatusValue"
+            )
+            val req = Request.Builder()
+                .url("$baseUrl/subscribe")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", "$baseUrl/")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+            AppLogger.log("NetworkService", "Toggling subscribe to: $baseUrl/subscribe")
+            client.newCall(req).execute().use { response ->
+                val code = response.code
+                AppLogger.log("NetworkService", "toggleSubscribe response code: $code")
+                val body = response.body?.string()
+                // 无论成功失败都打印响应码与响应体，方便定位（如 419/CSRF 失效/HTML 错误页/重定向登录页）
+                Log.i("SubscribeDebug", "<<< Response code: $code")
+                if (body != null) {
+                    Log.i("SubscribeDebug", "<<< Response body: $body")
+                } else {
+                    Log.i("SubscribeDebug", "<<< Response body: <null>")
+                }
+                if (!response.isSuccessful) {
+                    throw IOException("订阅作者失败 (HTTP $code)")
+                }
+                body ?: throw IOException("订阅作者返回空响应")
             }
         }
     }

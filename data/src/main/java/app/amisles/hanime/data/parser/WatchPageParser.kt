@@ -112,6 +112,11 @@ class WatchPageParser @Inject constructor(
             // 解析当前登录用户的数字 ID（点赞/评论接口需要），来自详情页内的隐藏域或 JS 全局变量
             val currentUserId = parseCurrentUserId(doc, html)
 
+            // 解析订阅作者表单（#video-subscribe-form / #video-subscribe-form-wrapper）
+            // 返回 Triple(artistId, userId, status)
+            val (subscribeArtistId, subscribeUserId, subscribeStatus) =
+                parseSubscribeForm(doc, authorPageUrl, currentUserId)
+
             // 解析当前评论数：优先从 createComment 表单的 comment-count 隐藏 input 获取
             val commentCount = doc.selectFirst("input[name=\"comment-count\"]")
                 ?.attr("value")?.trim()?.toIntOrNull()
@@ -136,7 +141,10 @@ class WatchPageParser @Inject constructor(
                     playlist = playlist,
                     csrfToken = csrfToken,
                     commentCount = commentCount,
-                    currentUserId = currentUserId
+                    currentUserId = currentUserId,
+                    subscribeArtistId = subscribeArtistId,
+                    subscribeUserId = subscribeUserId,
+                    subscribeStatus = subscribeStatus
                 )
             }
 
@@ -156,7 +164,10 @@ class WatchPageParser @Inject constructor(
                 playlist = playlist,
                 csrfToken = csrfToken,
                 commentCount = commentCount,
-                currentUserId = currentUserId
+                currentUserId = currentUserId,
+                subscribeArtistId = subscribeArtistId,
+                subscribeUserId = subscribeUserId,
+                subscribeStatus = subscribeStatus
             )
         } catch (e: IndexOutOfBoundsException) {
             AppLogger.logError("WatchPageParser", "Error parsing watch page: ${e.message}", e)
@@ -220,5 +231,38 @@ class WatchPageParser @Inject constructor(
         }
 
         return ""
+    }
+
+    /**
+     * 从详情页解析订阅作者表单字段。
+     *
+     * 官网订阅表单位于 #video-subscribe-form（外层容器 #video-subscribe-form-wrapper），
+     * 内含隐藏 input：
+     *  - subscribe-artist-id：被订阅作者的数字 ID
+     *  - subscribe-user-id：当前登录用户的数字 ID
+     *  - subscribe-status：当前订阅状态（"" = 未订阅，"1" = 已订阅）
+     *
+     * 兜底策略：
+     *  - 表单缺失时，artistId 从 authorPageUrl 的 /user/{id} 提取；userId 回退 currentUserId。
+     *  - subscribe-status 缺失时记为 ""（未订阅）。
+     *
+     * @return Triple(artistId, userId, status)
+     */
+    private fun parseSubscribeForm(doc: Document, authorPageUrl: String, currentUserId: String): Triple<String, String, String> {
+        val scope = doc.selectFirst("#video-subscribe-form")
+            ?: doc.selectFirst("#video-subscribe-form-wrapper")
+
+        val artistId = scope?.selectFirst("input[name=\"subscribe-artist-id\"]")?.attr("value")?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: Regex("/user/(\\d+)").find(authorPageUrl)?.groupValues?.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            ?: ""
+
+        val userId = scope?.selectFirst("input[name=\"subscribe-user-id\"]")?.attr("value")?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: currentUserId
+
+        val status = scope?.selectFirst("input[name=\"subscribe-status\"]")?.attr("value")?.trim() ?: ""
+
+        return Triple(artistId, userId, status)
     }
 }

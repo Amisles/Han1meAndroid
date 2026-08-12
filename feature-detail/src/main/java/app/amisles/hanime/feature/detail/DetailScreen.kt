@@ -63,6 +63,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.ThumbUp
@@ -101,6 +103,9 @@ fun DetailScreen(
     val downloadQualities by viewModel.downloadQualities.collectAsStateWithLifecycle()
     val isLoadingQualities by viewModel.isLoadingQualities.collectAsStateWithLifecycle()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
+    val isSubscribed by viewModel.isSubscribed.collectAsStateWithLifecycle()
+    val isSubscribing by viewModel.isSubscribing.collectAsStateWithLifecycle()
+    val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
     val comments by viewModel.comments.collectAsStateWithLifecycle()
     val isLoadingComments by viewModel.isLoadingComments.collectAsStateWithLifecycle()
     val commentsError by viewModel.commentsError.collectAsStateWithLifecycle()
@@ -175,6 +180,21 @@ fun DetailScreen(
         commentLikeError?.let {
             snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
             viewModel.clearCommentLikeError()
+        }
+    }
+
+    // 订阅作者出错时弹出提示（错误文案在合成作用域内本地化，再传入 LaunchedEffect）
+    val subscribeErrorText = when (subscribeError) {
+        SubscribeError.NOT_LOGGED_IN -> stringResource(R.string.detail_subscribe_login_required)
+        SubscribeError.CSRF_MISSING -> stringResource(R.string.detail_csrf_missing)
+        SubscribeError.ARTIST_ID_MISSING -> stringResource(R.string.detail_subscribe_artist_missing)
+        SubscribeError.FAILED -> stringResource(R.string.detail_subscribe_failed)
+        null -> ""
+    }
+    LaunchedEffect(subscribeError) {
+        subscribeError?.let {
+            snackbarHostState.showSnackbar(message = subscribeErrorText, duration = SnackbarDuration.Short)
+            viewModel.clearSubscribeError()
         }
     }
 
@@ -267,31 +287,49 @@ fun DetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .padding(bottom = 12.dp)
-                                .clickable {
-                                    if (detail.authorPageUrl.isNotEmpty()) {
-                                        onAuthorPageClick(detail.authorPageUrl)
-                                    } else {
-                                        onAuthorClick(detail.author)
-                                    }
-                                }
                         ) {
-                            if (detail.authorAvatarUrl.isNotEmpty()) {
-                                coil3.compose.AsyncImage(
-                                    model = detail.authorAvatarUrl,
-                                    contentDescription = "作者头像",
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(androidx.compose.foundation.shape.CircleShape),
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            // 左侧：头像 + 作者名（点击进入作者页）
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        if (detail.authorPageUrl.isNotEmpty()) {
+                                            onAuthorPageClick(detail.authorPageUrl)
+                                        } else {
+                                            onAuthorClick(detail.author)
+                                        }
+                                    }
+                            ) {
+                                if (detail.authorAvatarUrl.isNotEmpty()) {
+                                    coil3.compose.AsyncImage(
+                                        model = detail.authorAvatarUrl,
+                                        contentDescription = "作者头像",
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                }
+                                Text(
+                                    text = detail.author,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Text(
-                                text = detail.author,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+
+                            // 右侧：订阅按钮（作者 ID 可解析时展示）
+                            if (detail.subscribeArtistId.isNotEmpty()) {
+                                SubscribeButton(
+                                    isSubscribed = isSubscribed,
+                                    isSubscribing = isSubscribing,
+                                    onClick = { viewModel.toggleSubscribe() }
+                                )
+                            }
                         }
                     }
 
@@ -821,6 +859,66 @@ private fun DetailActionButton(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+/**
+ * 订阅作者按钮：横向胶囊样式（图标 + 文字），置于作者名右侧。
+ * - 未订阅：实心 primary 胶囊 + 订阅
+ * - 已订阅：surfaceVariant 胶囊 + 已订阅
+ * - 请求中：显示环形进度，禁止点击
+ */
+@Composable
+private fun SubscribeButton(
+    isSubscribed: Boolean,
+    isSubscribing: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = if (isSubscribed) {
+        MaterialTheme.colorScheme.surfaceVariant
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val contentColor = if (isSubscribed) {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    } else {
+        MaterialTheme.colorScheme.onPrimary
+    }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor)
+            .clickable(enabled = !isSubscribing, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isSubscribing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = contentColor
+            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = if (isSubscribed) Icons.Default.Person else Icons.Default.PersonAdd,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = contentColor
+                )
+                Text(
+                    text = stringResource(if (isSubscribed) R.string.detail_subscribed else R.string.detail_subscribe),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = contentColor,
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 

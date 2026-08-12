@@ -69,6 +69,12 @@
     <string name="detail_favorite">收藏</string>
     <string name="detail_unfavorite">取消收藏</string>
     <string name="detail_share">分享</string>
+    <string name="detail_subscribe">訂閱</string>
+    <string name="detail_subscribed">已訂閱</string>
+    <string name="detail_subscribe_failed">訂閱操作失敗</string>
+    <string name="detail_subscribe_login_required">請先登入再訂閱作者</string>
+    <string name="detail_csrf_missing">CSRF Token 缺失，請重新整理頁面</string>
+    <string name="detail_subscribe_artist_missing">作者 ID 缺失，無法訂閱</string>
     <string name="detail_tags">標籤</string>
     <string name="detail_playlist">播放清單</string>
     <string name="detail_playlist_count">%1$d 個影片</string>
@@ -141,6 +147,13 @@
     <string name="batch_qualities_not_loaded">選中影片尚未載入畫質資訊，請稍候再試</string>
     <string name="profile_watch_history">觀看歷史</string>
     <string name="profile_favorites">我的收藏</string>
+    <string name="subscriptions">訂閱內容</string>
+    <string name="subscriptions_all">全部</string>
+    <string name="subscriptions_all_scope">全部訂閱</string>
+    <string name="subscriptions_author_scope">的作品</string>
+    <string name="subscriptions_not_logged_in">請先登入再查看訂閱內容</string>
+    <string name="subscriptions_empty">尚無訂閱內容</string>
+    <string name="subscriptions_load_failed">訂閱內容載入失敗</string>
     <string name="profile_download_manager">下載管理</string>
     <string name="profile_batch_download">批次下載</string>
     <string name="profile_settings">設定</string>

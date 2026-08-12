@@ -47,6 +47,17 @@ class DetailViewModel @Inject constructor(
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
 
+    // 订阅作者相关状态
+    private val _isSubscribed = MutableStateFlow(false)
+    val isSubscribed: StateFlow<Boolean> = _isSubscribed.asStateFlow()
+
+    private val _isSubscribing = MutableStateFlow(false)
+    val isSubscribing: StateFlow<Boolean> = _isSubscribing.asStateFlow()
+
+    // 订阅错误（未登录 / CSRF 缺失 / 作者 ID 缺失 / 网络失败等），以枚举区分便于 UI 本地化
+    private val _subscribeError = MutableStateFlow<SubscribeError?>(null)
+    val subscribeError: StateFlow<SubscribeError?> = _subscribeError.asStateFlow()
+
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
     val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
 
@@ -124,6 +135,11 @@ class DetailViewModel @Inject constructor(
         _commentsError.value = null
         _isLoadingComments.value = false
 
+        // 切换视频时重置订阅状态
+        _isSubscribed.value = false
+        _isSubscribing.value = false
+        _subscribeError.value = null
+
         // 切换视频时重置发表评论状态
         _isPostingComment.value = false
         _postCommentError.value = null
@@ -153,9 +169,11 @@ class DetailViewModel @Inject constructor(
                     val detail = result.data
                     AppLogger.d("DetailViewModel", "Got video detail: ${detail.title}, sources: ${detail.videoSources.size}")
                     _videoDetail.value = detail
-                    // 详情页已解析出当前登录用户 ID，持久化后评论/点赞等接口才能通过登录态校验
-                    if (detail.currentUserId.isNotBlank()) {
-                        Preferences.saveUserId(detail.currentUserId)
+                    // 当前登录用户 ID：订阅表单中的 subscribe-user-id 最权威（与官网一致），
+                    // 缺失时回退到 currentUserId（评论/点赞表单解析），持久化供评论/点赞等接口使用
+                    val resolvedUserId = detail.subscribeUserId.ifBlank { detail.currentUserId }
+                    if (resolvedUserId.isNotBlank()) {
+                        Preferences.saveUserId(resolvedUserId)
                     }
                     if (currentVideoId.isNotEmpty()) {
                         val history = WatchHistory(
@@ -176,6 +194,9 @@ class DetailViewModel @Inject constructor(
                         repository.isFavorite(currentVideoId)
                     }
                     _isFavorite.value = isFav
+
+                    // 详情页已解析出订阅状态（subscribeStatus == "1" 表示已订阅），还原高亮
+                    _isSubscribed.value = detail.subscribeStatus == "1"
                 }
                 is AppResult.Error -> {
                     AppLogger.e("DetailViewModel", "Error loading video detail: ${result.message}", result.exception)
@@ -587,6 +608,83 @@ class DetailViewModel @Inject constructor(
         val match = regex.find(url)
         return match?.groupValues?.get(1) ?: ""
     }
+
+    /**
+     * 订阅 / 取消订阅作者。
+     * 调用官网 /subscribe 接口，凭 subscribe-status 区分订阅与取消。
+     * 采用乐观更新：先本地切换订阅状态，接口成功用服务端返回的新状态/新 CSRF Token 修正，
+     * 失败则回滚到原始状态并提示错误。
+     */
+    fun toggleSubscribe() {
+        val detail = _videoDetail.value
+        if (detail == null || detail.subscribeArtistId.isBlank()) {
+            _subscribeError.value = SubscribeError.ARTIST_ID_MISSING
+            return
+        }
+        if (detail.csrfToken.isBlank()) {
+            _subscribeError.value = SubscribeError.CSRF_MISSING
+            return
+        }
+        if (detail.subscribeUserId.isBlank()) {
+            _subscribeError.value = SubscribeError.NOT_LOGGED_IN
+            return
+        }
+        // 防止请求未完成前重复点击
+        if (_isSubscribing.value) return
+
+        val willSubscribe = !_isSubscribed.value
+        // 乐观更新订阅状态
+        _isSubscribed.value = willSubscribe
+        _isSubscribing.value = true
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repository.toggleSubscribe(
+                    userId = detail.subscribeUserId,
+                    artistId = detail.subscribeArtistId,
+                    willSubscribe = willSubscribe,
+                    csrfToken = detail.csrfToken
+                )
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    val res = result.data
+                    // 以服务端返回的新状态为准
+                    _isSubscribed.value = res.subscribeStatus == "1"
+                    // 刷新详情页的 CSRF Token（接口回传的新令牌），保证后续请求有效
+                    if (res.csrfToken.isNotBlank()) {
+                        _videoDetail.value = _videoDetail.value?.copy(csrfToken = res.csrfToken)
+                    }
+                    AppLogger.d("DetailViewModel", "Subscribe toggled for artist ${detail.subscribeArtistId}, willSubscribe=$willSubscribe")
+                }
+                is AppResult.Error -> {
+                    // 回滚到原始状态
+                    _isSubscribed.value = !willSubscribe
+                    _subscribeError.value = SubscribeError.FAILED
+                    AppLogger.e("DetailViewModel", "Error toggling subscribe: ${result.message}", result.exception)
+                }
+                is AppResult.Loading -> {}
+            }
+            _isSubscribing.value = false
+        }
+    }
+
+    /**
+     * 清除订阅操作的错误状态。
+     */
+    fun clearSubscribeError() {
+        _subscribeError.value = null
+    }
+}
+
+/**
+ * 订阅作者操作的错误类型，用于 UI 侧按类型选择本地化文案。
+ */
+enum class SubscribeError {
+    NOT_LOGGED_IN,   // 未登录
+    CSRF_MISSING,    // CSRF Token 缺失
+    ARTIST_ID_MISSING, // 作者 ID 缺失
+    FAILED           // 其他失败（网络/解析等）
 }
 
 /**

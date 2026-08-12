@@ -69,6 +69,12 @@
     <string name="detail_favorite">お気に入り</string>
     <string name="detail_unfavorite">お気に入り解除</string>
     <string name="detail_share">共有</string>
+    <string name="detail_subscribe">購読</string>
+    <string name="detail_subscribed">購読済み</string>
+    <string name="detail_subscribe_failed">購読に失敗しました</string>
+    <string name="detail_subscribe_login_required">購読するにはログインが必要です</string>
+    <string name="detail_csrf_missing">CSRF トークンが不足しています。ページを再読み込みしてください</string>
+    <string name="detail_subscribe_artist_missing">作者 ID が不足しているため購読できません</string>
     <string name="detail_tags">タグ</string>
     <string name="detail_playlist">プレイリスト</string>
     <string name="detail_playlist_count">%1$d 本の動画</string>
@@ -141,6 +147,13 @@
     <string name="batch_qualities_not_loaded">選択した動画の画質情報がまだ読み込まれていません。しばらくしてから再度お試しください</string>
     <string name="profile_watch_history">視聴履歴</string>
     <string name="profile_favorites">お気に入り</string>
+    <string name="subscriptions">購読コンテンツ</string>
+    <string name="subscriptions_all">すべて</string>
+    <string name="subscriptions_all_scope">すべての購読</string>
+    <string name="subscriptions_author_scope">の動画</string>
+    <string name="subscriptions_not_logged_in">購読を表示するにはログインが必要です</string>
+    <string name="subscriptions_empty">購読動画はまだありません</string>
+    <string name="subscriptions_load_failed">購読の読み込みに失敗しました</string>
     <string name="profile_download_manager">ダウンロード管理</string>
     <string name="profile_batch_download">一括ダウンロード</string>
     <string name="profile_settings">設定</string>

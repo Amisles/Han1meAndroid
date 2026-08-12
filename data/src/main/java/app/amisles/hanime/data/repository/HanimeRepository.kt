@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.repository
 
 import android.database.SQLException
+import android.util.Log
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
@@ -10,6 +11,7 @@ import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
 import app.amisles.hanime.data.parser.LoginParser
 import app.amisles.hanime.data.parser.SearchPageParser
+import app.amisles.hanime.data.parser.SubscribeParser
 import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.Comment
@@ -18,6 +20,7 @@ import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomePageData
+import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
@@ -36,6 +39,7 @@ class HanimeRepository @Inject constructor(
     private val watchPageParser: WatchPageParser,
     private val downloadPageParser: DownloadPageParser,
     private val commentParser: CommentParser,
+    private val subscribeParser: SubscribeParser,
     private val favoriteDao: FavoriteDao,
     private val watchHistoryDao: WatchHistoryDao,
     private val searchHistoryDao: SearchHistoryDao
@@ -322,6 +326,52 @@ class HanimeRepository @Inject constructor(
         } catch (e: IOException) {
             AppLogger.logError("HanimeRepository", "Error in replyComment: ${e.message}", e)
             AppResult.error(e.message ?: "回复评论失败", e)
+        }
+    }
+
+    /**
+     * 订阅 / 取消订阅作者。
+     * 官网接口：POST /subscribe，凭 subscribe-status 区分订阅与取消（""=订阅，"1"=取消）。
+     *
+     * @param artistId 被订阅作者的数字 ID（从 VideoDetail.subscribeArtistId 获取）
+     * @param willSubscribe true=订阅，false=取消订阅
+     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
+     * @return 订阅结果（新状态 + 回传 CSRF Token），失败抛异常
+     */
+    suspend fun toggleSubscribe(
+        userId: String,
+        artistId: String,
+        willSubscribe: Boolean,
+        csrfToken: String
+    ): AppResult<SubscribeResult> {
+        return try {
+            if (userId.isBlank()) {
+                return AppResult.error("请先登录后再订阅作者")
+            }
+            if (csrfToken.isBlank()) {
+                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+            }
+            if (artistId.isBlank()) {
+                return AppResult.error("作者 ID 缺失，无法订阅")
+            }
+            Log.i(
+                "SubscribeDebug",
+                ">>> toggleSubscribe(artistId=$artistId, willSubscribe=$willSubscribe) userId=$userId"
+            )
+            val json = networkService.toggleSubscribe(
+                csrfToken = csrfToken,
+                userId = userId,
+                artistId = artistId,
+                willSubscribe = willSubscribe
+            )
+            AppLogger.log("HanimeRepository", "toggleSubscribe JSON received, length: ${json.length}")
+            val parsed = subscribeParser.parse(json)
+                ?: return AppResult.error("订阅操作失败")
+            AppResult.success(parsed)
+        } catch (e: IOException) {
+            Log.i("SubscribeDebug", "!!! toggleSubscribe IOException: ${e.message}")
+            AppLogger.logError("HanimeRepository", "Error in toggleSubscribe: ${e.message}", e)
+            AppResult.error(e.message ?: "订阅操作失败", e)
         }
     }
 
