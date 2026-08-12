@@ -4,6 +4,7 @@
     <string name="nav_search">Search</string>
     <string name="nav_download">Downloads</string>
     <string name="nav_profile">Profile</string>
+    <string name="profile_open">Open My Page</string>
     <string name="common_retry">Retry</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_confirm">Confirm</string>

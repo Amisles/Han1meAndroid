@@ -4,6 +4,7 @@
     <string name="nav_search">検索</string>
     <string name="nav_download">ダウンロード</string>
     <string name="nav_profile">マイページ</string>
+    <string name="profile_open">マイページを開く</string>
     <string name="common_retry">再試行</string>
     <string name="common_cancel">キャンセル</string>
     <string name="common_confirm">確認</string>

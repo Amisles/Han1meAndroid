@@ -9,15 +9,34 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -122,9 +141,18 @@ fun HanimeApp() {
         !currentRoute.startsWith("playlistListPage") &&
         !currentRoute.startsWith("playlistDetail")
 
+    val density = LocalDensity.current
+    var profileOpen by remember { mutableStateOf(false) }
+    val progress by animateFloatAsState(
+        targetValue = if (profileOpen) 1f else 0f,
+        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        label = "profileDrawer"
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBottomBar) {
                 BottomNav(
@@ -200,7 +228,8 @@ fun HanimeApp() {
                                 navController.navigate("search?keyword=${Uri.encode(sectionTitle)}")
                             }
                         }
-                    }
+                    },
+                    onProfileClick = { profileOpen = true }
                 )
             }
             composable(
@@ -248,13 +277,6 @@ fun HanimeApp() {
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }
-                )
-            }
-            composable("profile") {
-                ProfileScreen(
-                    onNavigate = { route ->
-                        navController.navigate(route)
                     }
                 )
             }
@@ -438,4 +460,53 @@ fun HanimeApp() {
             }
         }
     }
+
+    // ---- 我的页面抽屉：左侧滑出，覆盖整个 Scaffold（含底部导航）----
+    val showOverlay = profileOpen || progress > 0.001f
+    if (showOverlay) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f * progress))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { profileOpen = false }
+        )
+        var dragAccum by remember { mutableStateOf(0f) }
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.8f)
+                .graphicsLayer {
+                    val base = -(1f - progress) * size.width
+                    translationX = base + if (dragAccum < 0f) dragAccum else 0f
+                }
+                .background(MaterialTheme.colorScheme.background)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { dragAccum = 0f },
+                        onHorizontalDrag = { change, dragAmount ->
+                            dragAccum += dragAmount
+                            change.consume()
+                        },
+                        onDragEnd = {
+                            val threshold = with(density) { 120.dp.toPx() }
+                            if (dragAccum < -threshold) {
+                                profileOpen = false
+                            }
+                            dragAccum = 0f
+                        }
+                    )
+                }
+        ) {
+            ProfileScreen(
+                onNavigate = { route ->
+                    navController.navigate(route)
+                    profileOpen = false
+                }
+            )
+        }
+    }
+}
 }

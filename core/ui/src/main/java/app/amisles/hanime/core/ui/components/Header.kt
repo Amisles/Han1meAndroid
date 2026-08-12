@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +25,8 @@ import app.amisles.hanime.core.ui.R
 @Composable
 fun Header(
     title: String? = null,
-    onSearchNavigate: () -> Unit = {}
+    onSearchNavigate: () -> Unit = {},
+    onProfileClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -33,6 +35,17 @@ fun Header(
             .padding(horizontal = 15.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (onProfileClick != null) {
+            Icon(
+                imageVector = Icons.Default.Menu,
+                contentDescription = stringResource(R.string.profile_open),
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clickable { onProfileClick() }
+                    .padding(end = 10.dp)
+            )
+        }
         if (title != null) {
             Text(
                 text = title,

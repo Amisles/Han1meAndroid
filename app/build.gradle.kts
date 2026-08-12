@@ -85,6 +85,7 @@ dependencies {
     implementation(project(":feature-download"))
     implementation(project(":feature-profile"))
     implementation(project(":feature-settings"))
+    implementation(libs.androidx.compose.foundation.layout)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

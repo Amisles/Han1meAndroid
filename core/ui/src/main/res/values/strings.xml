@@ -7,6 +7,7 @@
     <string name="nav_search">搜索</string>
     <string name="nav_download">下载</string>
     <string name="nav_profile">我的</string>
+    <string name="profile_open">打开我的页面</string>
     
     <!-- Common -->
     <string name="common_retry">重试</string>

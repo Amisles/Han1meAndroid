@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,10 +29,9 @@ sealed class Screen(val route: String, val labelResId: Int, val icon: androidx.c
     object Home : Screen("home", R.string.nav_home, Icons.Default.Home)
     object Search : Screen("search", R.string.nav_search, Icons.Default.Search)
     object Download : Screen("download", R.string.nav_download, Icons.Default.Download)
-    object Profile : Screen("profile", R.string.nav_profile, Icons.Default.Person)
 }
 
-val screens = listOf(Screen.Home, Screen.Search, Screen.Download, Screen.Profile)
+val screens = listOf(Screen.Home, Screen.Search, Screen.Download)
 
 @Composable
 fun BottomNav(

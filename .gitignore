@@ -32,6 +32,8 @@ local.properties
 
 # HTML 样本文件（调试用）
 *.html
+!src/test/resources/**/*.html
+!**/src/test/resources/**/*.html
 
 # 日志文件
 *.log

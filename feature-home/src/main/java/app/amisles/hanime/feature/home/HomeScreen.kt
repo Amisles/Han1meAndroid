@@ -67,7 +67,8 @@ fun HomeScreen(
     onGenreSearch: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    onViewMore: (String) -> Unit = {}
+    onViewMore: (String) -> Unit = {},
+    onProfileClick: (() -> Unit)? = null
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -86,7 +87,8 @@ fun HomeScreen(
         onGenreSearch = onGenreSearch,
         onNavigateToSearch = onNavigateToSearch,
         onAuthorClick = onAuthorClick,
-        onViewMore = onViewMore
+        onViewMore = onViewMore,
+        onProfileClick = onProfileClick
     )
 }
 
@@ -102,7 +104,8 @@ fun HomeScreenContent(
     onGenreSearch: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    onViewMore: (String) -> Unit = {}
+    onViewMore: (String) -> Unit = {},
+    onProfileClick: (() -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -145,7 +148,10 @@ fun HomeScreenContent(
             .statusBarsPadding()
     ) {
         item(key = "home-header") {
-            Header(onSearchNavigate = onNavigateToSearch)
+            Header(
+                onSearchNavigate = onNavigateToSearch,
+                onProfileClick = onProfileClick
+            )
         }
 
         item(key = "home-category") {
