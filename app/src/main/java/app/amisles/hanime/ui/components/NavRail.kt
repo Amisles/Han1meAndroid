@@ -7,7 +7,6 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 
 /**
  * 平板（Expanded / Medium 宽度）使用的左侧竖向导航栏，替代手机端的底部导航栏。

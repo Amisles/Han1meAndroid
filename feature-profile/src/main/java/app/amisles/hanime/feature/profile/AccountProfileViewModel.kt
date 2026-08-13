@@ -3,7 +3,6 @@ package app.amisles.hanime.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.result.AppResult
-import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.repository.HanimeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

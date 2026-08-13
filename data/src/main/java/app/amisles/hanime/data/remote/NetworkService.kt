@@ -9,7 +9,6 @@ import app.amisles.hanime.data.parser.SubscriptionsParser
 import app.amisles.hanime.data.preferences.Preferences
 import javax.inject.Inject
 import javax.inject.Singleton
-import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscriptionsContent

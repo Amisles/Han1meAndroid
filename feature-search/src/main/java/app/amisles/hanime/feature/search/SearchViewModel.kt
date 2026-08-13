@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.search
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeVideo
