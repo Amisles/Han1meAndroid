@@ -1,13 +1,18 @@
 package app.amisles.hanime.feature.detail.components
 
 import android.app.Activity
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.os.Build
+import android.util.Rational
+import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -34,9 +39,9 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.VolumeDown
-import androidx.compose.material.icons.filled.VolumeMute
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,6 +70,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -109,9 +117,8 @@ fun VideoPlayer(
     }
     val initialBarsBehavior = remember(activity) {
         activity?.window?.let { w ->
-            WindowCompat.getInsetsController(w, w.decorView)?.systemBarsBehavior
-                ?: WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
-        } ?: WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+            WindowCompat.getInsetsController(w, w.decorView).systemBarsBehavior
+        } ?: WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
     }
 
     var isPlaying by remember { mutableStateOf(false) }
@@ -146,6 +153,10 @@ fun VideoPlayer(
     var activeGesture by remember { mutableStateOf<String?>(null) }
     var playerWidth by remember { mutableFloatStateOf(0f) }
     var playerHeight by remember { mutableFloatStateOf(0f) }
+
+    // 画中画与音频-only 状态
+    var isInPip by remember { mutableStateOf(false) }
+    var audioOnly by remember { mutableStateOf(false) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val sortedSources = remember(videoSources) {
@@ -214,8 +225,8 @@ fun VideoPlayer(
         onDispose {
             activity?.window?.let { w ->
                 val controller = WindowCompat.getInsetsController(w, w.decorView)
-                controller?.show(WindowInsetsCompat.Type.systemBars())
-                controller?.systemBarsBehavior = initialBarsBehavior
+                controller.show(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior = initialBarsBehavior
             }
             if (activity?.requestedOrientation != initialOrientation) {
                 try { activity?.requestedOrientation = initialOrientation } catch (_: Exception) {}
@@ -308,6 +319,15 @@ fun VideoPlayer(
         onFullscreenToggle(!isFullscreen)
     }
 
+    fun buildPipParams(): PictureInPictureParams {
+        val ratio = if (playerWidth > 0f && playerHeight > 0f) {
+            Rational(playerWidth.toInt().coerceAtLeast(1), playerHeight.toInt().coerceAtLeast(1))
+        } else {
+            Rational(16, 9)
+        }
+        return PictureInPictureParams.Builder().setAspectRatio(ratio).build()
+    }
+
     LaunchedEffect(isFullscreen, activity) {
         if (activity != null) {
             val window = activity.window
@@ -328,9 +348,31 @@ fun VideoPlayer(
         }
     }
 
-    // 缩放手势结束后自动清除提示（detectTransformGestures 无 onEnd 回调）
-    LaunchedEffect(videoZoom) {
-        if (gestureHint?.startsWith("缩放") == true) {
+    // 全屏播放中按 Home/概览键自动进入画中画（API 26+）；退出 PiP 时复位 isInPip
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, isFullscreen, isPlaying) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (isFullscreen && isPlaying && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                        && activity?.isInPictureInPictureMode != true) {
+                        activity?.enterPictureInPictureMode(buildPipParams())
+                        isInPip = true
+                    }
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    isInPip = false
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // 所有手势提示统一在 800ms 后自动清除（双击快进/快退、缩放、亮度、音量）
+    LaunchedEffect(gestureHint) {
+        if (gestureHint != null) {
             kotlinx.coroutines.delay(800)
             gestureHint = null
             activeGesture = null
@@ -454,10 +496,20 @@ fun VideoPlayer(
                     }
                 )
             }
-            .clickable {
-                isControlsVisible = !isControlsVisible
-                showSpeedMenu = false
-                showQualityMenu = false
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        isControlsVisible = !isControlsVisible
+                        showSpeedMenu = false
+                        showQualityMenu = false
+                    },
+                    onDoubleTap = { offset ->
+                        if (isInPip) return@detectTapGestures
+                        val rewind = offset.x < playerWidth / 2f
+                        if (rewind) seekBackward() else seekForward()
+                        gestureHint = if (rewind) "« 快退 15 秒" else "快进 15 秒 »"
+                    }
+                )
             }
     ) {
         AndroidView(
@@ -470,12 +522,13 @@ fun VideoPlayer(
             update = { view ->
                 view.scaleX = videoZoom
                 view.scaleY = videoZoom
+                view.visibility = if (audioOnly) View.INVISIBLE else View.VISIBLE
             },
             modifier = Modifier.fillMaxSize()
         )
 
         // 手势提示覆盖层
-        if (gestureHint != null) {
+        if (gestureHint != null && !isInPip) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -501,7 +554,7 @@ fun VideoPlayer(
             )
         }
 
-        if (isControlsVisible) {
+        if (isControlsVisible && !isInPip) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -651,12 +704,23 @@ fun VideoPlayer(
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
-                        imageVector = if (isMuted || volume == 0f) Icons.Default.VolumeMute
-                        else if (volume < 0.5f) Icons.Default.VolumeDown
-                        else Icons.Default.VolumeUp,
+                        imageVector = if (isMuted || volume == 0f) Icons.AutoMirrored.Filled.VolumeMute
+                        else if (volume < 0.5f) Icons.AutoMirrored.Filled.VolumeDown
+                        else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = "音量",
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = { audioOnly = !audioOnly },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Text(
+                        text = if (audioOnly) "视频" else "音频",
+                        color = Color.White,
+                        fontSize = 12.sp
                     )
                 }
 
@@ -704,6 +768,19 @@ fun VideoPlayer(
                             text = currentResolution.ifEmpty { "画质" },
                             color = Color.White,
                             fontSize = 11.sp
+                        )
+                    }
+                }
+
+                if (isFullscreen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    IconButton(
+                        onClick = { activity?.enterPictureInPictureMode(buildPipParams()); isInPip = true },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Text(
+                            text = "画中画",
+                            color = Color.White,
+                            fontSize = 12.sp
                         )
                     }
                 }
