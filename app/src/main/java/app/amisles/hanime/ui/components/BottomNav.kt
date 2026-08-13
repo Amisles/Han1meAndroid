@@ -56,9 +56,8 @@ fun BottomNav(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { /* 不执行任何操作，仅消费触摸事件 */ }
-                .navigationBarsPadding()
-                .padding(top = 8.dp, bottom = 12.dp)
-                .padding(top = 8.dp, bottom = 8.dp),
+            .navigationBarsPadding()
+            .padding(top = 4.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {

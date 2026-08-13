@@ -727,7 +727,7 @@ fun DetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)
-                        .padding(horizontal = 15.dp, vertical = 10.dp),
+                        .padding(horizontal = 15.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
