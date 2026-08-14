@@ -330,6 +330,11 @@ class BatchDownloadViewModel @Inject constructor(
                                     }
                                     currentState.copy(videos = updatedVideos)
                                 }
+
+                                // 选择视频并拉取画质后，将下载直链打印到 logcat（INFO 级别，仅打印链接本身）
+                                qualities.forEach { quality ->
+                                    Log.i("BatchDownload", quality.downloadUrl)
+                                }
                             }
                         } catch (e: IOException) {
                             AppLogger.e("BatchDownloadViewModel", "获取画质失败: ${video.videoId}", e)

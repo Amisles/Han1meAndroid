@@ -76,7 +76,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
@@ -149,10 +148,7 @@ fun DetailScreen(
     val scope = rememberCoroutineScope()
 
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = false
-            volume = 1f
-        }
+        ExoPlayerFactory.buildVideoPlayer(context)
     }
 
     LaunchedEffect(videoDetail?.defaultSourceUrl) {
