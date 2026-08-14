@@ -11,7 +11,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -22,6 +23,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.File
+import java.io.RandomAccessFile
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -30,6 +32,7 @@ import javax.net.ssl.SSLException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLongArray
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import android.content.Intent
@@ -273,10 +276,44 @@ class DownloadManager @Inject constructor(
     }
 
     private suspend fun downloadFile(taskId: Int, url: String, filePath: String, resumeBytes: Long = 0L) {
+        // 续传（恢复/失败重试）场景：采用单连接 Range 续传，稳定优先，避免分块恢复的复杂态。
+        if (resumeBytes > 0L) {
+            downloadFileSingle(taskId, url, filePath, resumeBytes)
+            return
+        }
+        // 首下：探测服务器是否支持 Range 分块（发 bytes=0-0 小请求）。
+        val probe = runCatching {
+            client.newCall(
+                Request.Builder().url(url)
+                    .header("User-Agent", DOWNLOAD_UA)
+                    .header("Referer", DOWNLOAD_REFERER)
+                    .header("Range", "bytes=0-0")
+                    .get().build()
+            ).execute()
+        }
+        val probeResp = probe.getOrNull()
+        val totalBytes = probeResp?.header("Content-Range")
+            ?.let { Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull() } ?: 0L
+        val supportsRange = probeResp?.code == 206 && totalBytes > 0L
+        probeResp?.body?.close()
+
+        // 不支持分块，或文件过小不值得切分：降级为单连接下载。
+        if (!supportsRange || totalBytes < MIN_CHUNK_TOTAL_BYTES) {
+            downloadFileSingle(taskId, url, filePath, 0L)
+            return
+        }
+        downloadFileChunked(taskId, url, filePath, totalBytes)
+    }
+
+    /**
+     * 单连接顺序下载（首下降级 / 续传 / 不支持分块路径）。
+     * 复用原有稳定逻辑：支持 Range 续传、失败限次重试、每 500ms 节流更新进度。
+     */
+    private suspend fun downloadFileSingle(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
         val requestBuilder = Request.Builder()
             .url(url)
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36")
-            .header("Referer", "https://hanimeone.me/")
+            .header("User-Agent", DOWNLOAD_UA)
+            .header("Referer", DOWNLOAD_REFERER)
             .get()
 
         if (resumeBytes > 0) {
@@ -312,10 +349,7 @@ class DownloadManager @Inject constructor(
                 return
             }
 
-            val body = resp.body ?: run {
-                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = "响应体为空") }
-                return
-            }
+            val body = resp.body
             val bodyLength = body.contentLength()
 
             // C1：续传但服务器返回 200（忽略 Range），降级为全量重下：
@@ -343,14 +377,13 @@ class DownloadManager @Inject constructor(
                 java.io.FileOutputStream(outputFile, false)
             }
 
-            val buffer = ByteArray(8192)
+            val buffer = ByteArray(SINGLE_BUFFER_SIZE)
             var downloadedBytes = if (isPartial) resumeBytes else 0L
             var lastUpdate = 0L
 
             inputStream.use { input ->
                 outputStream.use { output ->
                     while (true) {
-                        yield()
                         val bytesRead = input.read(buffer)
                         if (bytesRead == -1) break
 
@@ -376,6 +409,96 @@ class DownloadManager @Inject constructor(
                     downloadedBytes = downloadedBytes,
                     totalBytes = if (totalBytes > 0) totalBytes else downloadedBytes
                 )
+            }
+        }
+    }
+
+    /**
+     * 多线程分块并行下载：将文件均分为至多 [MAX_CHUNKS] 块，每块独立 HTTP Range 请求，
+     * 通过 RandomAccessFile.seek 写入各自区间，绕过服务端对单连接的限速。
+     */
+    private suspend fun downloadFileChunked(taskId: Int, url: String, filePath: String, totalBytes: Long) {
+        val rawChunks = (totalBytes / CHUNK_SIZE).toInt().coerceAtLeast(1)
+        val chunkCount = rawChunks.coerceAtMost(MAX_CHUNKS)
+        // 不足 2 块无并行收益，退回单连接
+        if (chunkCount < 2) {
+            downloadFileSingle(taskId, url, filePath, 0L)
+            return
+        }
+        val chunkSize = totalBytes / chunkCount
+        val chunkDownloaded = AtomicLongArray(chunkCount)
+        val completedChunks = AtomicInteger(0)
+
+        val outputFile = File(filePath).apply {
+            if (exists()) delete()
+            parentFile?.mkdirs()
+            createNewFile()
+            // 预分配文件尺寸，避免稀疏文件 / 区间空洞
+            RandomAccessFile(this, "rw").use { it.setLength(totalBytes) }
+        }
+
+        coroutineScope {
+            val chunkJobs = (0 until chunkCount).map { i ->
+                launch(Dispatchers.IO) {
+                    val start = i * chunkSize
+                    val end = if (i == chunkCount - 1) totalBytes - 1 else start + chunkSize - 1
+                    downloadChunk(url, outputFile, i, start, end, chunkDownloaded)
+                    completedChunks.incrementAndGet()
+                }
+            }
+            // 进度上报：聚合各块已下载字节，每 500ms 一次
+            launch(Dispatchers.IO) {
+                while (completedChunks.get() < chunkCount) {
+                    delay(500)
+                    var sum = 0L
+                    for (i in 0 until chunkCount) sum += chunkDownloaded.get(i)
+                    updateTask(taskId) { it.copy(downloadedBytes = sum, totalBytes = totalBytes) }
+                }
+            }
+            chunkJobs.forEach { it.join() }
+        }
+
+        var totalDownloaded = 0L
+        for (i in 0 until chunkCount) totalDownloaded += chunkDownloaded.get(i)
+        updateTask(taskId) { it.copy(downloadedBytes = totalDownloaded, totalBytes = totalBytes) }
+    }
+
+    /**
+     * 下载单个分块（HTTP Range 请求），写入 outputFile 的 [start, end] 区间。
+     * 块内读取循环响应协程取消（暂停 / 取消时及时退出）。
+     */
+    private suspend fun downloadChunk(
+        url: String,
+        outputFile: File,
+        index: Int,
+        start: Long,
+        end: Long,
+        chunkDownloaded: AtomicLongArray
+    ) {
+        val resp = client.newCall(
+            Request.Builder().url(url)
+                .header("User-Agent", DOWNLOAD_UA)
+                .header("Referer", DOWNLOAD_REFERER)
+                .header("Range", "bytes=$start-$end")
+                .get().build()
+        ).execute()
+        resp.use { r ->
+            if (!r.isSuccessful) {
+                throw IOException("分块 $index 下载失败 (HTTP ${r.code})")
+            }
+            val input = r.body.byteStream()
+            input.use { `in` ->
+                RandomAccessFile(outputFile, "rw").use { raf ->
+                    raf.seek(start)
+                    val buffer = ByteArray(CHUNK_BUFFER_SIZE)
+                    while (true) {
+                        if (currentCoroutineContext()[Job]?.isActive != true) break
+                        val bytesRead = `in`.read(buffer)
+                        if (bytesRead == -1) break
+                        raf.write(buffer, 0, bytesRead)
+                        chunkDownloaded.addAndGet(index, bytesRead.toLong())
+                    }
+                }
             }
         }
     }
@@ -655,5 +778,14 @@ class DownloadManager @Inject constructor(
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
+
+        // 分块并行下载参数
+        const val MAX_CHUNKS = 4
+        const val CHUNK_SIZE = 1_500_000L          // 单块目标大小 ~1.5MB
+        const val MIN_CHUNK_TOTAL_BYTES = 2_000_000L // 文件小于 2MB 不分块，直接单连接
+        const val CHUNK_BUFFER_SIZE = 64 * 1024     // 分块读取缓冲 64KB
+        const val SINGLE_BUFFER_SIZE = 64 * 1024    // 单连接读取缓冲 64KB（原 8KB）
+        const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
+        const val DOWNLOAD_REFERER = "https://hanimeone.me/"
     }
 }
