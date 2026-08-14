@@ -11,11 +11,8 @@ import android.util.Rational
 import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import kotlin.math.abs
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -141,15 +138,14 @@ fun VideoPlayer(
 
     // 手势状态
     var gestureHint by remember { mutableStateOf<String?>(null) }
+    // 双击判定：上次单击时间戳（跨手势保留），用于区分单/双击
+    var lastTapTime by remember { mutableLongStateOf(0L) }
     var seekPreview by remember { mutableLongStateOf(0L) }
-    var seekStart by remember { mutableLongStateOf(0L) }
     var brightness by remember {
         val initial = activity?.window?.attributes?.screenBrightness ?: -1f
         mutableFloatStateOf(if (initial < 0f) 0.5f else initial)
     }
     var videoZoom by remember { mutableFloatStateOf(1f) }
-    var dragStartX by remember { mutableFloatStateOf(0f) }
-    var dragStartY by remember { mutableFloatStateOf(0f) }
     var activeGesture by remember { mutableStateOf<String?>(null) }
     var playerWidth by remember { mutableFloatStateOf(0f) }
     var playerHeight by remember { mutableFloatStateOf(0f) }
@@ -391,125 +387,148 @@ fun VideoPlayer(
                 playerWidth = coords.size.width.toFloat()
                 playerHeight = coords.size.height.toFloat()
             }
-            // 双指缩放
+            // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击。
+            // 以「当前按下指针数」为唯一真相源，彻底消除多个独立检测器之间的竞争与状态卡死。
             .pointerInput(Unit) {
-                detectTransformGestures { _, _, zoom, _ ->
-                    // 缩放手势视为滑动其他区域，收起弹框
-                    showSpeedMenu = false
-                    showQualityMenu = false
-                    if (activeGesture == null || activeGesture == "zoom") {
-                        activeGesture = "zoom"
-                        videoZoom = (videoZoom * zoom).coerceIn(0.5f, 2.0f)
-                        gestureHint = "缩放: ${String.format(Locale.getDefault(), "%.1f", videoZoom)}x"
+                while (true) {
+                    awaitPointerEventScope {
+                        var pointerCount = 0
+                        var isZoom = false
+                        var dragMode: String? = null   // "seek" | "brightness" | "volume"
+                        var startX = 0f
+                        var lastX = 0f
+                        var lastY = 0f
+                        var accDx = 0f
+                        var accDy = 0f
+                        var seekStartPos = 0L
+                        var lastPinch = 0f
+                        var downX = 0f
+                        var downY = 0f
+                        var moved = false
+                        var initialized = false
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val presses = event.changes.filter { it.pressed }
+                            pointerCount = presses.size
+                            if (pointerCount == 0) {
+                                // 所有手指抬起：结束本次手势
+                                if (!moved && !isZoom) {
+                                    // 视为一次点击
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastTapTime < 300L) {
+                                        lastTapTime = 0L
+                                        if (!isInPip) {
+                                            val rewind = downX < playerWidth / 2f
+                                            if (rewind) seekBackward() else seekForward()
+                                            gestureHint = if (rewind) "« 快退 15 秒" else "快进 15 秒 »"
+                                        }
+                                    } else {
+                                        lastTapTime = now
+                                        isControlsVisible = !isControlsVisible
+                                        showSpeedMenu = false
+                                        showQualityMenu = false
+                                    }
+                                }
+                                if (dragMode == "seek") {
+                                    exoPlayer.seekTo(seekPreview)
+                                    currentPosition = seekPreview
+                                }
+                                if (dragMode != null || isZoom) {
+                                    gestureHint = null
+                                }
+                                break
+                            }
+
+                            if (pointerCount >= 2 && presses.size >= 2) {
+                                // 双指：缩放（捏合/张开）
+                                val a = presses[0]
+                                val b = presses[1]
+                                val dist = (a.position - b.position).getDistance()
+                                if (!isZoom) {
+                                    isZoom = true
+                                    dragMode = null
+                                    lastPinch = dist
+                                    showSpeedMenu = false
+                                    showQualityMenu = false
+                                }
+                                if (lastPinch > 0f && dist > 0f) {
+                                    val factor = dist / lastPinch
+                                    videoZoom = (videoZoom * factor).coerceIn(0.5f, 2.0f)
+                                    gestureHint = "缩放: ${String.format(Locale.getDefault(), "%.1f", videoZoom)}x"
+                                }
+                                lastPinch = dist
+                            } else if (pointerCount == 1 && !isZoom) {
+                                // 单指：先判定方向，再按模式处理
+                                val c = presses[0]
+                                val x = c.position.x
+                                val y = c.position.y
+                                if (!initialized) {
+                                    downX = x
+                                    downY = y
+                                    lastX = x
+                                    lastY = y
+                                    initialized = true
+                                    event.changes.forEach { it.consume() }
+                                    continue
+                                }
+                                if (dragMode == null) {
+                                    accDx += x - lastX
+                                    accDy += y - lastY
+                                    val slop = 8f
+                                    if (abs(accDx) > slop || abs(accDy) > slop) {
+                                        moved = true
+                                        startX = x
+                                        showSpeedMenu = false
+                                        showQualityMenu = false
+                                        seekStartPos = exoPlayer.currentPosition
+                                        seekPreview = seekStartPos
+                                        dragMode = if (abs(accDx) > abs(accDy)) {
+                                            "seek"
+                                        } else if (x < playerWidth / 2f) {
+                                            "brightness"
+                                        } else {
+                                            "volume"
+                                        }
+                                    }
+                                } else {
+                                    when (dragMode) {
+                                        "seek" -> {
+                                            if (duration > 0 && playerWidth > 0f) {
+                                                val totalDelta = x - startX
+                                                val timeDelta = (totalDelta / playerWidth * duration.toFloat()).toLong()
+                                                seekPreview = (seekStartPos + timeDelta).coerceIn(0L, duration)
+                                                gestureHint = "${formatTime(seekPreview)} / ${formatTime(duration)}"
+                                            }
+                                        }
+                                        "brightness" -> {
+                                            if (playerHeight > 0f) {
+                                                val delta = -(y - lastY) / playerHeight
+                                                brightness = (brightness + delta).coerceIn(0f, 1f)
+                                                setBrightness(brightness)
+                                                gestureHint = "亮度: ${(brightness * 100).toInt()}%"
+                                            }
+                                        }
+                                        "volume" -> {
+                                            if (playerHeight > 0f) {
+                                                val delta = -(y - lastY) / playerHeight
+                                                volume = (volume + delta).coerceIn(0f, 1f)
+                                                exoPlayer.volume = volume
+                                                isMuted = volume == 0f
+                                                gestureHint = "音量: ${(volume * 100).toInt()}%"
+                                            }
+                                        }
+                                    }
+                                }
+                                lastX = x
+                                lastY = y
+                            }
+
+                            // 消费事件，避免父级（如页面/列表）误响应本播放器手势
+                            event.changes.forEach { it.consume() }
+                        }
                     }
                 }
-            }
-            // 水平滑动调节进度
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        // 横向滑动视为滑动其他区域，收起弹框
-                        showSpeedMenu = false
-                        showQualityMenu = false
-                        if (activeGesture == null || activeGesture == "zoom") {
-                            activeGesture = "seek"
-                            dragStartX = offset.x
-                            dragStartY = offset.y
-                            seekStart = exoPlayer.currentPosition
-                            seekPreview = seekStart
-                        }
-                    },
-                    onHorizontalDrag = { change, _ ->
-                        if (activeGesture == "seek" && duration > 0 && playerWidth > 0f) {
-                            val totalDelta = change.position.x - dragStartX
-                            val timeDelta = (totalDelta / playerWidth * duration.toFloat()).toLong()
-                            seekPreview = (seekStart + timeDelta).coerceIn(0L, duration)
-                            gestureHint = "${formatTime(seekPreview)} / ${formatTime(duration)}"
-                        }
-                    },
-                    onDragEnd = {
-                        if (activeGesture == "seek") {
-                            exoPlayer.seekTo(seekPreview)
-                            currentPosition = seekPreview
-                            activeGesture = null
-                            gestureHint = null
-                        }
-                    },
-                    onDragCancel = {
-                        if (activeGesture == "seek") {
-                            activeGesture = null
-                            gestureHint = null
-                        }
-                    }
-                )
-            }
-            // 垂直滑动调节亮度/音量
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragStart = { offset ->
-                        // 垂直滑动视为滑动其他区域，收起弹框
-                        showSpeedMenu = false
-                        showQualityMenu = false
-                        if (activeGesture == null || activeGesture == "zoom") {
-                            dragStartX = offset.x
-                            dragStartY = offset.y
-                            // 左半屏调节亮度，右半屏调节音量
-                            if (offset.x < playerWidth / 2f) {
-                                activeGesture = "brightness"
-                            } else {
-                                activeGesture = "volume"
-                            }
-                        }
-                    },
-                    onVerticalDrag = { _, dragAmount ->
-                        when (activeGesture) {
-                            "brightness" -> {
-                                if (playerHeight > 0f) {
-                                    val delta = -dragAmount / playerHeight
-                                    brightness = (brightness + delta).coerceIn(0f, 1f)
-                                    setBrightness(brightness)
-                                    gestureHint = "亮度: ${(brightness * 100).toInt()}%"
-                                }
-                            }
-                            "volume" -> {
-                                if (playerHeight > 0f) {
-                                    val delta = -dragAmount / playerHeight
-                                    volume = (volume + delta).coerceIn(0f, 1f)
-                                    exoPlayer.volume = volume
-                                    isMuted = volume == 0f
-                                    gestureHint = "音量: ${(volume * 100).toInt()}%"
-                                }
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        if (activeGesture == "brightness" || activeGesture == "volume") {
-                            activeGesture = null
-                            gestureHint = null
-                        }
-                    },
-                    onDragCancel = {
-                        if (activeGesture == "brightness" || activeGesture == "volume") {
-                            activeGesture = null
-                            gestureHint = null
-                        }
-                    }
-                )
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        isControlsVisible = !isControlsVisible
-                        showSpeedMenu = false
-                        showQualityMenu = false
-                    },
-                    onDoubleTap = { offset ->
-                        if (isInPip) return@detectTapGestures
-                        val rewind = offset.x < playerWidth / 2f
-                        if (rewind) seekBackward() else seekForward()
-                        gestureHint = if (rewind) "« 快退 15 秒" else "快进 15 秒 »"
-                    }
-                )
             }
     ) {
         AndroidView(
