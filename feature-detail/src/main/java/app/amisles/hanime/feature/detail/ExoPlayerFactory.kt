@@ -12,6 +12,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * 进程级 ExoPlayer 工厂。
@@ -35,6 +39,9 @@ object ExoPlayerFactory {
 
     private val cacheRef = AtomicReference<SimpleCache?>(null)
 
+    // 预热作用域：仅用于 Application 启动期在 IO 线程构建 SimpleCache（见 prewarmCache）。
+    private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     @Synchronized
     private fun getCache(context: Context): SimpleCache {
         var cache = cacheRef.get()
@@ -51,6 +58,24 @@ object ExoPlayerFactory {
             cacheRef.set(cache)
         }
         return cache
+    }
+
+    /**
+     * 后台预热 SimpleCache，避免首次进入详情页在组合期（主线程）同步执行
+     * StandaloneDatabaseProvider 初始化与缓存目录扫描带来的首开卡顿（播放器审查 P2-7）。
+     *
+     * 典型路径下缓存会在用户导航到详情页之前于 IO 线程构建完成；
+     * 若仍属冷启动（预热尚未完成即打开详情页），[getCache] 会回退到主线程同步构建，
+     * [getCache] 的 @Synchronized 保证两种路径下都只会真实构建一次，不会重复实例化。
+     */
+    fun prewarmCache(context: Context) {
+        warmupScope.launch {
+            try {
+                getCache(context)
+            } catch (_: Exception) {
+                // 预热失败不影响后续主线程兜底构建
+            }
+        }
     }
 
     fun buildVideoPlayer(context: Context): ExoPlayer {

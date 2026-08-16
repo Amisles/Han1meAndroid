@@ -8,7 +8,6 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.util.Rational
-import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,11 +87,119 @@ import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.delay
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+private fun formatTime(ms: Long): String {
+    if (ms <= 0) return "00:00"
+    val hours = TimeUnit.MILLISECONDS.toHours(ms)
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
+    return if (hours > 0) {
+        String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
+}
+
+/**
+ * 进度条（时间文本 + 滑块）。进度状态与轮询下沉到本组合内部，
+ * 播放位置每 0.5s（播放中）/ 1s（暂停中）刷新，只重排自身，不再触发外层 VideoPlayer 重排。
+ */
+@Composable
+private fun PlaybackProgressBar(
+    exoPlayer: ExoPlayer,
+    modifier: Modifier = Modifier
+) {
+    var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
+    var duration by remember { mutableLongStateOf(exoPlayer.duration) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!isDragging) {
+                currentPosition = exoPlayer.currentPosition
+                duration = exoPlayer.duration
+            }
+            delay(if (exoPlayer.isPlaying) 500 else 1000)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(30.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopStart)
+                .offset(y = (-14).dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatTime(currentPosition),
+                color = Color.White,
+                fontSize = 11.sp
+            )
+            Text(
+                text = formatTime(duration),
+                color = Color.White,
+                fontSize = 11.sp
+            )
+        }
+        Slider(
+            value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
+            onValueChange = { value ->
+                isDragging = true
+                currentPosition = (value * duration).toLong()
+            },
+            onValueChangeFinished = {
+                isDragging = false
+                exoPlayer.seekTo(currentPosition)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+            ),
+            thumb = {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .offset(y = 4.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            },
+            track = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .wrapContentHeight(Alignment.CenterVertically)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(Color.White.copy(alpha = 0.3f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(Color.White)
+                    )
+                }
+            }
+        )
+    }
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -119,8 +226,6 @@ fun VideoPlayer(
     }
 
     var isPlaying by remember { mutableStateOf(false) }
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
     var isBuffering by remember { mutableStateOf(false) }
     var isReady by remember { mutableStateOf(false) }
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -129,6 +234,7 @@ fun VideoPlayer(
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
     var showSpeedMenu by remember { mutableStateOf(false) }
     var showQualityMenu by remember { mutableStateOf(false) }
+    var isSwitchingQuality by remember { mutableStateOf(false) }
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
     var qualityBtnBounds by remember { mutableStateOf(Rect.Zero) }
@@ -150,9 +256,8 @@ fun VideoPlayer(
     var playerWidth by remember { mutableFloatStateOf(0f) }
     var playerHeight by remember { mutableFloatStateOf(0f) }
 
-    // 画中画与音频-only 状态
+    // 画中画状态
     var isInPip by remember { mutableStateOf(false) }
-    var audioOnly by remember { mutableStateOf(false) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val sortedSources = remember(videoSources) {
@@ -162,12 +267,13 @@ fun VideoPlayer(
         sortedSources.firstOrNull { it.url == currentSourceUrl }?.resolution ?: ""
     }
 
-    val listener = object : Player.Listener {
+    val listener = remember {
+        object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             isBuffering = playbackState == Player.STATE_BUFFERING
             if (playbackState == Player.STATE_READY) {
                 isReady = true
-                duration = exoPlayer.duration
+                isSwitchingQuality = false
             }
         }
 
@@ -179,7 +285,9 @@ fun VideoPlayer(
             super.onPlayerError(error)
             isBuffering = false
             isReady = true
+            isSwitchingQuality = false
         }
+    }
     }
 
     DisposableEffect(isPlaying) {
@@ -206,9 +314,7 @@ fun VideoPlayer(
         isBuffering = exoPlayer.playbackState == Player.STATE_BUFFERING
         if (exoPlayer.playbackState == Player.STATE_READY) {
             isReady = true
-            duration = exoPlayer.duration
         }
-        currentPosition = exoPlayer.currentPosition
     }
 
     DisposableEffect(Unit) {
@@ -230,34 +336,7 @@ fun VideoPlayer(
         }
     }
 
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
-            currentPosition = exoPlayer.currentPosition
-            kotlinx.coroutines.delay(500)
-        }
-    }
-
-    LaunchedEffect(isReady, isPlaying) {
-        if (isReady && !isPlaying) {
-            while (!isPlaying) {
-                currentPosition = exoPlayer.currentPosition
-                duration = exoPlayer.duration
-                kotlinx.coroutines.delay(1000)
-            }
-        }
-    }
-
-    fun formatTime(ms: Long): String {
-        if (ms <= 0) return "00:00"
-        val hours = TimeUnit.MILLISECONDS.toHours(ms)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
-        return if (hours > 0) {
-            String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-        }
-    }
+    // 进度轮询已下沉到 PlaybackProgressBar（进度状态私有化，避免父组合高频重排）
 
     fun togglePlayPause() {
         if (exoPlayer.isPlaying) {
@@ -269,12 +348,10 @@ fun VideoPlayer(
 
     fun seekBackward() {
         exoPlayer.seekTo((exoPlayer.currentPosition - 15000).coerceAtLeast(0L))
-        currentPosition = exoPlayer.currentPosition
     }
 
     fun seekForward() {
         exoPlayer.seekTo((exoPlayer.currentPosition + 15000).coerceAtMost(exoPlayer.duration))
-        currentPosition = exoPlayer.currentPosition
     }
 
     fun toggleMute() {
@@ -284,8 +361,11 @@ fun VideoPlayer(
 
     fun setBrightness(value: Float) {
         val window = activity?.window ?: return
+        val target = value.coerceIn(0f, 1f)
         val attrs = window.attributes
-        attrs.screenBrightness = value.coerceIn(0f, 1f)
+        // 与当前亮度差异过小则不写 window，避免手势拖动的每帧系统调用
+        if (kotlin.math.abs(attrs.screenBrightness - target) < 0.01f) return
+        attrs.screenBrightness = target
         window.attributes = attrs
     }
 
@@ -296,10 +376,11 @@ fun VideoPlayer(
     }
 
     fun switchQuality(source: VideoSource) {
-        if (source.url == currentSourceUrl) {
+        if (source.url == currentSourceUrl || isSwitchingQuality) {
             showQualityMenu = false
             return
         }
+        isSwitchingQuality = true
         val wasPlaying = exoPlayer.isPlaying
         val position = exoPlayer.currentPosition
         currentSourceUrl = source.url
@@ -309,6 +390,8 @@ fun VideoPlayer(
         exoPlayer.prepare()
         exoPlayer.seekTo(position)
         if (wasPlaying) exoPlayer.play()
+        // isSwitchingQuality 在播放器回调 STATE_READY / onPlayerError 时才复位，
+        // 以真正拦截 prepare 期间的重复切源点击（见 Player.Listener）
     }
 
     fun toggleFullscreen() {
@@ -346,7 +429,7 @@ fun VideoPlayer(
 
     // 全屏播放中按 Home/概览键自动进入画中画（API 26+）；退出 PiP 时复位 isInPip
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, isFullscreen, isPlaying) {
+    DisposableEffect(lifecycleOwner, isFullscreen) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
@@ -383,9 +466,14 @@ fun VideoPlayer(
             )
             .background(Color.Black)
             .onGloballyPositioned { coords ->
-                playerPos = coords.positionInRoot()
-                playerWidth = coords.size.width.toFloat()
-                playerHeight = coords.size.height.toFloat()
+                val w = coords.size.width.toFloat()
+                val h = coords.size.height.toFloat()
+                if (playerWidth != w || playerHeight != h) {
+                    playerWidth = w
+                    playerHeight = h
+                }
+                val pos = coords.positionInRoot()
+                if (playerPos != pos) playerPos = pos
             }
             // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击。
             // 以「当前按下指针数」为唯一真相源，彻底消除多个独立检测器之间的竞争与状态卡死。
@@ -432,7 +520,6 @@ fun VideoPlayer(
                                 }
                                 if (dragMode == "seek") {
                                     exoPlayer.seekTo(seekPreview)
-                                    currentPosition = seekPreview
                                 }
                                 if (dragMode != null || isZoom) {
                                     gestureHint = null
@@ -494,11 +581,12 @@ fun VideoPlayer(
                                 } else {
                                     when (dragMode) {
                                         "seek" -> {
-                                            if (duration > 0 && playerWidth > 0f) {
+                                            val dur = exoPlayer.duration
+                                            if (dur > 0 && playerWidth > 0f) {
                                                 val totalDelta = x - startX
-                                                val timeDelta = (totalDelta / playerWidth * duration.toFloat()).toLong()
-                                                seekPreview = (seekStartPos + timeDelta).coerceIn(0L, duration)
-                                                gestureHint = "${formatTime(seekPreview)} / ${formatTime(duration)}"
+                                                val timeDelta = (totalDelta / playerWidth * dur.toFloat()).toLong()
+                                                seekPreview = (seekStartPos + timeDelta).coerceIn(0L, dur)
+                                                gestureHint = "${formatTime(seekPreview)} / ${formatTime(dur)}"
                                             }
                                         }
                                         "brightness" -> {
@@ -541,7 +629,6 @@ fun VideoPlayer(
             update = { view ->
                 view.scaleX = videoZoom
                 view.scaleY = videoZoom
-                view.visibility = if (audioOnly) View.INVISIBLE else View.VISIBLE
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -648,75 +735,10 @@ fun VideoPlayer(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .height(30.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.TopStart)
-                            .offset(y = (-14).dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = formatTime(currentPosition),
-                            color = Color.White,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            text = formatTime(duration),
-                            color = Color.White,
-                            fontSize = 11.sp
-                        )
-                    }
-                    Slider(
-                        value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
-                        onValueChange = { value ->
-                            currentPosition = (value * duration).toLong()
-                        },
-                        onValueChangeFinished = {
-                            exoPlayer.seekTo(currentPosition)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center),
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                        ),
-                        thumb = {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .offset(y = 4.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                            )
-                        },
-                        track = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(8.dp)
-                                    .wrapContentHeight(Alignment.CenterVertically)
-                                    .clip(RoundedCornerShape(1.dp))
-                                    .background(Color.White.copy(alpha = 0.3f))
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f)
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(1.dp))
-                                        .background(Color.White)
-                                )
-                            }
-                        }
-                    )
-                }
+                PlaybackProgressBar(
+                    exoPlayer = exoPlayer,
+                    modifier = Modifier.weight(1f)
+                )
 
                 IconButton(
                     onClick = { toggleMute() },
@@ -733,17 +755,6 @@ fun VideoPlayer(
                 }
 
                 IconButton(
-                    onClick = { audioOnly = !audioOnly },
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Text(
-                        text = if (audioOnly) "视频" else "音频",
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
-                }
-
-                IconButton(
                     onClick = {
                         showSpeedMenu = !showSpeedMenu
                         showQualityMenu = false
@@ -751,12 +762,13 @@ fun VideoPlayer(
                     modifier = Modifier
                         .size(24.dp)
                         .onGloballyPositioned { coords ->
-                            speedBtnBounds = Rect(
+                            val newBounds = Rect(
                                 left = coords.positionInRoot().x,
                                 top = coords.positionInRoot().y,
                                 right = coords.positionInRoot().x + coords.size.width,
                                 bottom = coords.positionInRoot().y + coords.size.height
                             )
+                            if (speedBtnBounds != newBounds) speedBtnBounds = newBounds
                         }
                 ) {
                     Text(
@@ -775,12 +787,13 @@ fun VideoPlayer(
                         modifier = Modifier
                             .size(36.dp)
                             .onGloballyPositioned { coords ->
-                                qualityBtnBounds = Rect(
+                                val newBounds = Rect(
                                     left = coords.positionInRoot().x,
                                     top = coords.positionInRoot().y,
                                     right = coords.positionInRoot().x + coords.size.width,
                                     bottom = coords.positionInRoot().y + coords.size.height
                                 )
+                                if (qualityBtnBounds != newBounds) qualityBtnBounds = newBounds
                             }
                     ) {
                         Text(

@@ -203,7 +203,7 @@ fun DetailScreen(
         val sizeInfo = currentWindowSizeInfo()
         // 平板且非全屏、已加载内容（非加载中/非错误空态）时采用左右分栏：
         // 左侧仅视频播放器，右侧为标题/作者/简介/操作/评论/相关视频等其余组件。
-        // 必须保证 videoDetail 已加载且非错误态，否则 videoDetail!! 会 NPE（首次组合 isLoading 尚未置真、或加载完成但数据为空时均可能命中）
+        // 必须保证 videoDetail 已加载且非错误态（下方各处均已改用 ?.let/?.takeIf 安全调用，不再使用 !!，避免首次组合或数据为空时的 NPE）
         // 平板 UI（含加载期骨架）：非全屏 + 非致命错误态（error!=null && videoDetail==null 回落到手机错误页）即启用
         val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
             && !(error != null && videoDetail == null)
@@ -657,12 +657,12 @@ fun DetailScreen(
                             .background(Color.Black),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
+                        if (videoDetail != null && videoDetail.defaultSourceUrl.isNotEmpty()) {
                             VideoPlayer(
                                 exoPlayer = exoPlayer,
-                                posterUrl = videoDetail!!.posterUrl,
-                                videoSources = videoDetail!!.videoSources,
-                                initialSourceUrl = videoDetail!!.defaultSourceUrl,
+                                posterUrl = videoDetail.posterUrl,
+                                videoSources = videoDetail.videoSources,
+                                initialSourceUrl = videoDetail.defaultSourceUrl,
                                 isFullscreen = false,
                                 onFullscreenToggle = { full -> isPlayerFullscreen = full },
                                 modifier = Modifier
@@ -703,9 +703,7 @@ fun DetailScreen(
                             .fillMaxHeight()
                             .background(MaterialTheme.colorScheme.background)
                     ) {
-                        if (videoDetail != null) {
-                            detailRestItems(videoDetail!!)
-                        }
+                        videoDetail?.let { detailRestItems(it) }
                     }
                 }
             }
@@ -755,12 +753,12 @@ fun DetailScreen(
         } else {
 
         item(key = "video_player") {
-            if (videoDetail != null && videoDetail!!.defaultSourceUrl.isNotEmpty()) {
+            if (videoDetail != null && videoDetail.defaultSourceUrl.isNotEmpty()) {
                 VideoPlayer(
                     exoPlayer = exoPlayer,
-                    posterUrl = videoDetail!!.posterUrl,
-                    videoSources = videoDetail!!.videoSources,
-                    initialSourceUrl = videoDetail!!.defaultSourceUrl,
+                    posterUrl = videoDetail.posterUrl,
+                    videoSources = videoDetail.videoSources,
+                    initialSourceUrl = videoDetail.defaultSourceUrl,
                     isFullscreen = isPlayerFullscreen,
                     onFullscreenToggle = { full -> isPlayerFullscreen = full },
                     modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
@@ -782,10 +780,7 @@ fun DetailScreen(
             }
         }
 
-        if (!isPlayerFullscreen && videoDetail != null) {
-            val detail = videoDetail!!
-            detailRestItems(detail)
-        }
+        videoDetail?.takeIf { !isPlayerFullscreen }?.let { detailRestItems(it) }
 
         }
         }
