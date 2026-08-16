@@ -85,15 +85,31 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.core.ui.theme.HanimePrimary
+import app.amisles.hanime.feature.detail.ExoPlayerFactory
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
+
+// 长视频阈值：超过则开启解码器常驻（foreground mode），降低切回前台的解码延迟（§4 解码优化）
+private const val LONG_VIDEO_MS = 15L * 60 * 1000
+
+// ABR 升档前需连续稳定的 STATE_READY 次数，避免卡顿网络下的画质来回抖动（§2 码率自适应）
+private const val STABLE_TICKS_FOR_UPGRADE = 4
+
+// 视频缩放模式：Media3 对应 androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT，常量值为 1。
+// 直接取字面值定义，避免不同 Media3 版本对常量导出位置（C / Player / VideoScalingMode 注解）的差异导致编译失败。
+private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
 
 private fun formatTime(ms: Long): String {
     if (ms <= 0) return "00:00"
@@ -111,6 +127,7 @@ private fun formatTime(ms: Long): String {
  * 进度条（时间文本 + 滑块）。进度状态与轮询下沉到本组合内部，
  * 播放位置每 0.5s（播放中）/ 1s（暂停中）刷新，只重排自身，不再触发外层 VideoPlayer 重排。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaybackProgressBar(
     exoPlayer: ExoPlayer,
@@ -210,6 +227,7 @@ fun VideoPlayer(
     posterUrl: String = "",
     videoSources: List<VideoSource> = emptyList(),
     initialSourceUrl: String = "",
+    preloadUrl: String = "",
     isFullscreen: Boolean = false,
     modifier: Modifier = Modifier,
     onFullscreenToggle: (Boolean) -> Unit = {}
@@ -267,14 +285,84 @@ fun VideoPlayer(
         sortedSources.firstOrNull { it.url == currentSourceUrl }?.resolution ?: ""
     }
 
+    // 首帧海报占位（§6 首帧渲染加速）：进入即显示 poster，渲染出首帧后淡出，消除黑屏等待感
+    var showPoster by remember { mutableStateOf(posterUrl.isNotEmpty()) }
+    // ABR 自适应（§2）：连续 rebuffer 计数与播放稳定计数
+    var rebufferCount by remember { mutableStateOf(0) }
+    var autoSwitched by remember { mutableStateOf(false) }
+    var stableTicks by remember { mutableStateOf(0) }
+    // 让 remember 的 Player.Listener 始终读到最新的画质列表，避免 videoSources 变化时闭包陈旧
+    val sourcesRef = remember { mutableStateOf(sortedSources) }
+    sourcesRef.value = sortedSources
+
+    // 切换清晰度（§2 码率自适应）：保留播放进度与播放状态，换源后无缝续播。
+    // 声明在 listener 之前，以便 Player.Listener 的匿名对象方法能前向解析到本函数。
+    fun switchQuality(source: VideoSource) {
+        if (source.url == currentSourceUrl || isSwitchingQuality) {
+            showQualityMenu = false
+            return
+        }
+        isSwitchingQuality = true
+        val wasPlaying = exoPlayer.isPlaying
+        val position = exoPlayer.currentPosition
+        currentSourceUrl = source.url
+        isBuffering = true
+        showQualityMenu = false
+        exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(source.url)))
+        exoPlayer.prepare()
+        exoPlayer.seekTo(position)
+        if (wasPlaying) exoPlayer.play()
+        // isSwitchingQuality 在播放器回调 STATE_READY / onPlayerError 时才复位，
+        // 以真正拦截 prepare 期间的重复切源点击（见 Player.Listener）
+    }
+
     val listener = remember {
         object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             isBuffering = playbackState == Player.STATE_BUFFERING
-            if (playbackState == Player.STATE_READY) {
-                isReady = true
-                isSwitchingQuality = false
+            when (playbackState) {
+                Player.STATE_BUFFERING -> {
+                    // 仅"播放中"的缓冲视为 rebuffer（首帧前的初始缓冲不算），累计触发码率降级
+                    if (isPlaying && !autoSwitched) {
+                        rebufferCount++
+                        if (rebufferCount >= 2) {
+                            val sources = sourcesRef.value
+                            val idx = sources.indexOfFirst { it.url == currentSourceUrl }
+                            if (idx > 0 && !isSwitchingQuality) {
+                                switchQuality(sources[idx - 1]) // 切到更低画质
+                                rebufferCount = 0
+                                autoSwitched = true
+                                stableTicks = 0
+                            }
+                        }
+                    }
+                }
+                Player.STATE_READY -> {
+                    isReady = true
+                    isSwitchingQuality = false
+                    rebufferCount = 0
+                    // 解码优化（§4）：长视频保持解码器热身，降低切回前台的解码延迟
+                    exoPlayer.setForegroundMode(exoPlayer.duration > LONG_VIDEO_MS)
+                    // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
+                    if (autoSwitched) {
+                        stableTicks++
+                        val sources = sourcesRef.value
+                        val idx = sources.indexOfFirst { it.url == currentSourceUrl }
+                        if (stableTicks >= STABLE_TICKS_FOR_UPGRADE && idx in 0 until sources.lastIndex) {
+                            switchQuality(sources[idx + 1])
+                            autoSwitched = false
+                            stableTicks = 0
+                        }
+                    } else {
+                        stableTicks = 0
+                    }
+                }
             }
+        }
+
+        // 首帧渲染完成：淡出海报占位（§6）
+        override fun onRenderedFirstFrame() {
+            showPoster = false
         }
 
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -314,6 +402,26 @@ fun VideoPlayer(
         isBuffering = exoPlayer.playbackState == Player.STATE_BUFFERING
         if (exoPlayer.playbackState == Player.STATE_READY) {
             isReady = true
+        }
+    }
+
+    // 解码优化（§4）：统一缩放模式为 SCALE_TO_FIT，避免画面变形
+    LaunchedEffect(Unit) {
+        exoPlayer.videoScalingMode = VIDEO_SCALING_MODE_SCALE_TO_FIT
+    }
+
+    // 网络感知缓冲（§5）已在 ExoPlayerFactory.buildVideoPlayer 构建期按当前网络类型选定 LoadControl；
+    // Media3 的 ExoPlayer 不提供运行时切换 LoadControl 的公开 API，故此处不再做运行时切换。
+
+    // 切换视频时重置海报占位显示状态（posterUrl 变化即新视频）
+    LaunchedEffect(posterUrl) {
+        showPoster = posterUrl.isNotEmpty()
+    }
+
+    // 下一集预加载（§1）：把相关视频直链首段预热进 SimpleCache，进入即命中本地
+    LaunchedEffect(preloadUrl) {
+        if (preloadUrl.isNotBlank()) {
+            ExoPlayerFactory.warmCacheFor(preloadUrl, context)
         }
     }
 
@@ -373,25 +481,6 @@ fun VideoPlayer(
         playbackSpeed = speed
         exoPlayer.setPlaybackSpeed(speed)
         showSpeedMenu = false
-    }
-
-    fun switchQuality(source: VideoSource) {
-        if (source.url == currentSourceUrl || isSwitchingQuality) {
-            showQualityMenu = false
-            return
-        }
-        isSwitchingQuality = true
-        val wasPlaying = exoPlayer.isPlaying
-        val position = exoPlayer.currentPosition
-        currentSourceUrl = source.url
-        isBuffering = true
-        showQualityMenu = false
-        exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(source.url)))
-        exoPlayer.prepare()
-        exoPlayer.seekTo(position)
-        if (wasPlaying) exoPlayer.play()
-        // isSwitchingQuality 在播放器回调 STATE_READY / onPlayerError 时才复位，
-        // 以真正拦截 prepare 期间的重复切源点击（见 Player.Listener）
     }
 
     fun toggleFullscreen() {
@@ -632,6 +721,23 @@ fun VideoPlayer(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // 首帧海报占位（§6 首帧渲染加速）：首帧渲染前显示 poster，渲染后淡出，消除黑屏等待感
+        if (posterUrl.isNotEmpty()) {
+            val posterAlpha by animateFloatAsState(
+                targetValue = if (showPoster) 1f else 0f,
+                animationSpec = tween(durationMillis = 250),
+                label = "posterAlpha"
+            )
+            AsyncImage(
+                model = posterUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = posterAlpha }
+            )
+        }
 
         // 手势提示覆盖层
         if (gestureHint != null && !isInPip) {

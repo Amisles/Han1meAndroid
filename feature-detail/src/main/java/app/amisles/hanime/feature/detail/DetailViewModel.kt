@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -121,6 +122,9 @@ class DetailViewModel @Inject constructor(
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
 
+    // 进行中的详情加载任务；快速重进页面时取消旧请求，避免重复/竞态（§7 并发请求控制）
+    private var detailLoadJob: Job? = null
+
     fun loadVideoDetail(videoUrl: String) {
         AppLogger.d("DetailViewModel", "loadVideoDetail called, url: $videoUrl")
         _isLoading.value = true
@@ -160,7 +164,8 @@ class DetailViewModel @Inject constructor(
         _replyError.value = null
         _expandedReplies.value = emptySet()
 
-        viewModelScope.launch {
+        detailLoadJob?.cancel() // 取消上一次未完成的详情请求（快速重进页面去重，§7）
+        detailLoadJob = viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.getVideoDetail(videoUrl)
             }

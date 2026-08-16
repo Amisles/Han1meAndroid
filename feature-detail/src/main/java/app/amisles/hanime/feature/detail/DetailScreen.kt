@@ -657,12 +657,14 @@ fun DetailScreen(
                             .background(Color.Black),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (videoDetail != null && videoDetail.defaultSourceUrl.isNotEmpty()) {
+                        val detail = videoDetail
+                        if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
                             VideoPlayer(
                                 exoPlayer = exoPlayer,
-                                posterUrl = videoDetail.posterUrl,
-                                videoSources = videoDetail.videoSources,
-                                initialSourceUrl = videoDetail.defaultSourceUrl,
+                                posterUrl = detail.posterUrl,
+                                videoSources = detail.videoSources,
+                                initialSourceUrl = detail.defaultSourceUrl,
+                                preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
                                 isFullscreen = false,
                                 onFullscreenToggle = { full -> isPlayerFullscreen = full },
                                 modifier = Modifier
@@ -753,12 +755,14 @@ fun DetailScreen(
         } else {
 
         item(key = "video_player") {
-            if (videoDetail != null && videoDetail.defaultSourceUrl.isNotEmpty()) {
+            val detail = videoDetail
+            if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
                 VideoPlayer(
                     exoPlayer = exoPlayer,
-                    posterUrl = videoDetail.posterUrl,
-                    videoSources = videoDetail.videoSources,
-                    initialSourceUrl = videoDetail.defaultSourceUrl,
+                    posterUrl = detail.posterUrl,
+                    videoSources = detail.videoSources,
+                    initialSourceUrl = detail.defaultSourceUrl,
+                    preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
                     isFullscreen = isPlayerFullscreen,
                     onFullscreenToggle = { full -> isPlayerFullscreen = full },
                     modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
