@@ -132,24 +132,15 @@ object ExoPlayerFactory {
      * 读取当前网络类型。无权限/异常时回退 [NetworkClass.OTHER]。
      */
     fun getCurrentNetworkClass(context: Context): NetworkClass {
+        // minSdk 为 API 30，可直接使用 NetworkCapabilities（API 21+），无需已废弃的 ConnectivityManager.TYPE_* 与 activeNetworkInfo
         val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return NetworkClass.OTHER
-        if (Build.VERSION.SDK_INT >= 29) {
-            val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return NetworkClass.OTHER
-            return when {
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                    || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-                    || caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) -> NetworkClass.WIFI
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkClass.CELLULAR
-                else -> NetworkClass.OTHER
-            }
-        }
-        @Suppress("DEPRECATION")
-        val info = cm.activeNetworkInfo
-        @Suppress("DEPRECATION")
-        return when (info?.type) {
-            ConnectivityManager.TYPE_WIFI, ConnectivityManager.TYPE_ETHERNET -> NetworkClass.WIFI
-            ConnectivityManager.TYPE_MOBILE -> NetworkClass.CELLULAR
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return NetworkClass.OTHER
+        return when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                || caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) -> NetworkClass.WIFI
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkClass.CELLULAR
             else -> NetworkClass.OTHER
         }
     }

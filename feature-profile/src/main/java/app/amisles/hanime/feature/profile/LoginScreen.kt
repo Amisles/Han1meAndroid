@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,9 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -112,7 +110,7 @@ fun LoginScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回",
                             tint = MaterialTheme.colorScheme.onBackground
                         )
@@ -134,17 +132,10 @@ fun LoginScreen(
                 LoginUnsupportedBanner(onGoToSettings = onNavigateToSettings)
             }
 
-            TabRow(
+            PrimaryTabRow(
                 selectedTabIndex = tabIndex,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onBackground,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
-                        color = MaterialTheme.colorScheme.primary,
-                        height = 2.dp
-                    )
-                },
                 divider = { }
             ) {
                 listOf("账号密码", "WebView 登录", "手动 Cookie").forEachIndexed { idx, title ->
@@ -365,7 +356,6 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                     post {
                         if (configured.value) return@post
                         configured.value = true
-                        settings.databaseEnabled = true
                         settings.useWideViewPort = true
                         settings.loadWithOverviewMode = true
                         settings.setSupportZoom(false)

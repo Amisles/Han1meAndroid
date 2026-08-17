@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material3.Icon
@@ -125,7 +125,7 @@ fun ProfileScreen(
         add(ProfileMenuItem(Icons.Default.Settings, stringResource(R.string.profile_settings)) { onNavigate("settings") })
         add(ProfileMenuItem(Icons.Default.Info, stringResource(R.string.profile_about)) { onNavigate("about") })
         if (isLogin) {
-            add(ProfileMenuItem(Icons.Default.Logout, stringResource(R.string.profile_logout)) {
+            add(ProfileMenuItem(Icons.AutoMirrored.Filled.Logout, stringResource(R.string.profile_logout)) {
                 Preferences.logout()
                 Toast.makeText(context, context.getString(R.string.profile_logout_success), Toast.LENGTH_SHORT).show()
             })

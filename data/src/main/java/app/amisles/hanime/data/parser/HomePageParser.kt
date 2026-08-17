@@ -38,7 +38,7 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
             try {
                 val h3 = link.selectFirst("h3") ?: continue
                 val originalTitle = h3.ownText().trim().ifEmpty {
-                    h3.textNodes()?.firstOrNull()?.text()?.trim() ?: ""
+                    h3.textNodes().firstOrNull()?.text()?.trim() ?: ""
                 }
                 if (originalTitle.isEmpty()) continue
 

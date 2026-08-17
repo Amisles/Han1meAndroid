@@ -13,13 +13,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import app.amisles.hanime.core.common.util.AppLogger
 import java.io.File
 
 object Preferences {
+
+    // 与 Application 同生命周期的作用域，避免直接使用被标记为 delicate 的 GlobalScope
+    private val preferencesScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private const val NAME = "hanime_app_prefs"
 
@@ -187,7 +192,7 @@ object Preferences {
      */
     val loginSupportedFlow: StateFlow<Boolean> = _baseUrlFlow
         .map { isLoginSupportedHost(it) }
-        .stateIn(GlobalScope, SharingStarted.Eagerly, isLoginSupportedHost(_baseUrlFlow.value))
+        .stateIn(preferencesScope, SharingStarted.Eagerly, isLoginSupportedHost(_baseUrlFlow.value))
 
     private fun isLoginSupportedHost(url: String): Boolean {
         val host = runCatching { Uri.parse(url).host?.lowercase() }.getOrNull() ?: return false

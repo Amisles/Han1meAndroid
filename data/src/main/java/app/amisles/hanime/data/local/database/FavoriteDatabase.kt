@@ -22,8 +22,8 @@ abstract class FavoriteDatabase : RoomDatabase() {
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     """CREATE TABLE IF NOT EXISTS watch_history (
                         id TEXT NOT NULL PRIMARY KEY,
                         title TEXT NOT NULL,
@@ -38,8 +38,8 @@ abstract class FavoriteDatabase : RoomDatabase() {
         }
 
         val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     """CREATE TABLE IF NOT EXISTS download_tasks (
                         id INTEGER NOT NULL PRIMARY KEY,
                         title TEXT NOT NULL,
@@ -51,7 +51,7 @@ abstract class FavoriteDatabase : RoomDatabase() {
                         filePath TEXT NOT NULL
                     )""".trimIndent()
                 )
-                database.execSQL(
+                db.execSQL(
                     """CREATE TABLE IF NOT EXISTS search_history (
                         query TEXT NOT NULL PRIMARY KEY,
                         searchedAt INTEGER NOT NULL
@@ -61,8 +61,8 @@ abstract class FavoriteDatabase : RoomDatabase() {
         }
 
         val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN thumbnailUrl TEXT NOT NULL DEFAULT ''"
                 )
             }
@@ -70,11 +70,11 @@ abstract class FavoriteDatabase : RoomDatabase() {
 
         // download_tasks 新增 videoId（去重依据）与 errorMessage（失败原因细分）
         val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN videoId TEXT NOT NULL DEFAULT ''"
                 )
-                database.execSQL(
+                db.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN errorMessage TEXT NOT NULL DEFAULT ''"
                 )
             }

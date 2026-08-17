@@ -263,7 +263,7 @@ class DetailViewModel @Inject constructor(
                 }
                 is AppResult.Error -> {
                     AppLogger.e("DetailViewModel", "Error loading comments: ${result.message}", result.exception)
-                    _commentsError.value = result.message ?: "评论加载失败"
+                    _commentsError.value = result.message
                 }
                 is AppResult.Loading -> {}
             }
@@ -300,7 +300,7 @@ class DetailViewModel @Inject constructor(
                 }
                 is AppResult.Error -> {
                     AppLogger.e("DetailViewModel", "Error loading replies: ${result.message}", result.exception)
-                    _repliesError.value = _repliesError.value + (commentId to (result.message ?: "回复加载失败"))
+                    _repliesError.value = _repliesError.value + (commentId to result.message)
                 }
                 is AppResult.Loading -> {}
             }
@@ -417,7 +417,7 @@ class DetailViewModel @Inject constructor(
                     // 回滚到提交前状态
                     _comments.value = prevComments
                     _repliesCache.value = prevReplies
-                    _replyError.value = result.message ?: "回复评论失败"
+                    _replyError.value = result.message
                     AppLogger.e("DetailViewModel", "Error posting reply: ${result.message}", result.exception)
                 }
                 is AppResult.Loading -> {}
@@ -493,7 +493,7 @@ class DetailViewModel @Inject constructor(
                 }
                 is AppResult.Error -> {
                     AppLogger.e("DetailViewModel", "Error posting comment: ${result.message}", result.exception)
-                    _postCommentError.value = result.message ?: "发表评论失败"
+                    _postCommentError.value = result.message
                 }
                 is AppResult.Loading -> {}
             }
@@ -552,7 +552,7 @@ class DetailViewModel @Inject constructor(
                     AppLogger.e("DetailViewModel", "Error toggling comment like: ${result.message}", result.exception)
                     // 回滚到原始状态
                     _comments.value = _comments.value.map { if (it.id == comment.id) comment else it }
-                    _commentLikeError.value = result.message ?: "评论点赞失败"
+                    _commentLikeError.value = result.message
                 }
                 is AppResult.Loading -> {}
             }

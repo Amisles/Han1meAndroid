@@ -77,9 +77,10 @@ class NetworkService @Inject constructor(
             if (!response.isSuccessful) {
                 throw IOException("Request failed with code ${response.code}")
             }
-            val body = response.body?.string()
-            AppLogger.log("NetworkService", "Response body length: ${body?.length ?: 0}")
-            body ?: throw IOException("Empty response body")
+            val body = response.body.string()
+            AppLogger.log("NetworkService", "Response body length: ${body.length}")
+            if (body.isEmpty()) throw IOException("Empty response body")
+            body
         }
     }
 
@@ -99,7 +100,7 @@ class NetworkService @Inject constructor(
         val (code, html) = withContext(Dispatchers.IO) {
             val resp = client.newCall(req).execute()
             val c = resp.code
-            val h = if (c in 200..399) resp.body?.string().orEmpty() else ""
+            val h = if (c in 200..399) resp.body.string() else ""
             c to h
         }
         AppLogger.log("NetworkService", "fetchLoginPage code=$code url=$base")
@@ -138,7 +139,7 @@ class NetworkService @Inject constructor(
                 val cookies = resp.headers("Set-Cookie")
                 var body: String? = null
                 if (code in 200..299) {
-                    body = resp.body?.string()
+                    body = resp.body.string()
                 }
                 AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
                 LoginFormResult(code, cookies, body)
@@ -462,11 +463,12 @@ class NetworkService @Inject constructor(
             client.newCall(req).execute().use { response ->
                 val code = response.code
                 AppLogger.log("NetworkService", "postComment response code: $code")
-                val body = response.body?.string()
+                val body = response.body.string()
                 if (!response.isSuccessful) {
                     throw IOException("发表评论失败 (HTTP $code)")
                 }
-                body ?: throw IOException("发表评论返回空响应")
+                if (body.isEmpty()) throw IOException("发表评论返回空响应")
+                body
             }
         }
     }
@@ -528,11 +530,12 @@ class NetworkService @Inject constructor(
             client.newCall(req).execute().use { response ->
                 val code = response.code
                 AppLogger.log("NetworkService", "toggleCommentLike response code: $code")
-                val body = response.body?.string()
+                val body = response.body.string()
                 if (!response.isSuccessful) {
                     throw IOException("评论点赞失败 (HTTP $code)")
                 }
-                body ?: throw IOException("评论点赞返回空响应")
+                if (body.isEmpty()) throw IOException("评论点赞返回空响应")
+                body
             }
         }
     }
@@ -580,11 +583,12 @@ class NetworkService @Inject constructor(
             client.newCall(req).execute().use { response ->
                 val code = response.code
                 AppLogger.log("NetworkService", "replyComment response code: $code")
-                val body = response.body?.string()
+                val body = response.body.string()
                 if (!response.isSuccessful) {
                     throw IOException("回复评论失败 (HTTP $code)")
                 }
-                body ?: throw IOException("回复评论返回空响应")
+                if (body.isEmpty()) throw IOException("回复评论返回空响应")
+                body
             }
         }
     }
@@ -641,13 +645,13 @@ class NetworkService @Inject constructor(
             client.newCall(req).execute().use { response ->
                 val code = response.code
                 AppLogger.log("NetworkService", "toggleSubscribe response code: $code")
-                val body = response.body?.string()
+                val body = response.body.string()
                 // 无论成功失败都打印响应码与响应体，方便定位（如 419/CSRF 失效/HTML 错误页/重定向登录页）
                 Log.i("SubscribeDebug", "<<< Response code: $code")
-                if (body != null) {
+                if (body.isNotEmpty()) {
                     Log.i("SubscribeDebug", "<<< Response body: $body")
                 } else {
-                    Log.i("SubscribeDebug", "<<< Response body: <null>")
+                    Log.i("SubscribeDebug", "<<< Response body: <empty>")
                 }
                 if (!response.isSuccessful) {
                     throw IOException("订阅作者失败 (HTTP $code)")

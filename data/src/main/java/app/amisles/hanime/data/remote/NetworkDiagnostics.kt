@@ -110,7 +110,7 @@ class NetworkDiagnostics {
         return try {
             val addresses = InetAddress.getAllByName(host)
             val latency = System.currentTimeMillis() - start
-            val ipList = addresses.take(3).joinToString(", ") { it.hostAddress }
+            val ipList = addresses.take(3).joinToString(", ") { it.hostAddress ?: "" }
             DiagnosticResult(
                 type = DiagnosticType.DNS,
                 status = DiagnosticStatus.OK,

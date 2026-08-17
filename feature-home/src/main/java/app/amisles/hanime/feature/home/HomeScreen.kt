@@ -411,7 +411,7 @@ private suspend fun LazyListState.smoothScrollToItem(
         return
     }
 
-    val avgSize = visibleItems.map { it.size }.average().toDouble().toInt()
+    val avgSize = visibleItems.map { it.size }.average().toInt()
     if (avgSize <= 0) {
         animateScrollToItem(index, offset)
         return
