@@ -273,6 +273,7 @@ fun VideoPlayer(
     var activeGesture by remember { mutableStateOf<String?>(null) }
     var playerWidth by remember { mutableFloatStateOf(0f) }
     var playerHeight by remember { mutableFloatStateOf(0f) }
+    var isControlTap by remember { mutableStateOf(false) }
 
     // 画中画状态
     var isInPip by remember { mutableStateOf(false) }
@@ -600,12 +601,18 @@ fun VideoPlayer(
                                             if (rewind) seekBackward() else seekForward()
                                             gestureHint = if (rewind) "« 快退 15 秒" else "快进 15 秒 »"
                                         }
-                                    } else {
-                                        lastTapTime = now
-                                        isControlsVisible = !isControlsVisible
-                                        showSpeedMenu = false
-                                        showQualityMenu = false
-                                    }
+                    } else {
+                        lastTapTime = now
+                        if (isControlTap) {
+                            // 单击落在控件上：交由控件自身的 onClick 处理，手势不切换控制栏显隐、也不关闭菜单
+                            isControlTap = false
+                            lastTapTime = 0L
+                        } else {
+                            isControlsVisible = !isControlsVisible
+                            showSpeedMenu = false
+                            showQualityMenu = false
+                        }
+                    }
                                 }
                                 if (dragMode == "seek") {
                                     exoPlayer.seekTo(seekPreview)
@@ -862,6 +869,7 @@ fun VideoPlayer(
 
                 IconButton(
                     onClick = {
+                        isControlTap = true
                         showSpeedMenu = !showSpeedMenu
                         showQualityMenu = false
                     },
@@ -886,10 +894,11 @@ fun VideoPlayer(
 
                 if (sortedSources.isNotEmpty()) {
                     IconButton(
-                        onClick = {
-                            showQualityMenu = !showQualityMenu
-                            showSpeedMenu = false
-                        },
+                    onClick = {
+                        isControlTap = true
+                        showQualityMenu = !showQualityMenu
+                        showSpeedMenu = false
+                    },
                         modifier = Modifier
                             .size(36.dp)
                             .onGloballyPositioned { coords ->
@@ -941,10 +950,11 @@ fun VideoPlayer(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable {
-                            showSpeedMenu = false
-                            showQualityMenu = false
-                        }
+                    .clickable {
+                        isControlTap = true
+                        showSpeedMenu = false
+                        showQualityMenu = false
+                    }
                 )
             }
 
@@ -980,9 +990,10 @@ fun VideoPlayer(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .clickable {
-                                    setPlaybackSpeed(speed)
-                                },
+                            .clickable {
+                                isControlTap = true
+                                setPlaybackSpeed(speed)
+                            },
                             textAlign = TextAlign.Center
                         )
                     }
@@ -1023,9 +1034,10 @@ fun VideoPlayer(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .clickable {
-                                    switchQuality(source)
-                                },
+                            .clickable {
+                                isControlTap = true
+                                switchQuality(source)
+                            },
                             textAlign = TextAlign.Center
                         )
                     }
