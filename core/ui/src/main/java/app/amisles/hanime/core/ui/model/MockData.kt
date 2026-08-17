@@ -29,7 +29,6 @@ data class BannerData(
     val gradient: Pair<Color, Color>
 )
 
-// 渐变色数据
 val gradients = listOf(
     Pair(Color(0xFF667eea), Color(0xFF764ba2)),
     Pair(Color(0xFFf093fb), Color(0xFFf5576c)),
@@ -41,13 +40,11 @@ val gradients = listOf(
     Pair(Color(0xFFffecd2), Color(0xFFfcb69f))
 )
 
-// 表情数据
 val emojis = listOf("🎬", "🎥", "📹", "🎞️", "📽️", "📀", "💿", "🎮")
 
-// 视频分类
-// label：服务器使用的简体标识（用于匹配首页分区标题与深链接参数，不用于界面展示）
+// label：服务端使用的简体标识（匹配首页分区标题与深链接参数，不用于界面展示）
 // displayRes：界面展示的翻译资源
-// apiValue：搜索接口实际使用的参数（部分分类与展示名不同，例如里番→裏番）
+// apiValue：搜索接口实际使用的参数（部分分类与展示名不同，如里番→裏番）
 data class Category(
     val label: String,
     val displayRes: Int,
@@ -81,7 +78,6 @@ val homeSectionTitleResMap = mapOf(
     "他们在看" to R.string.search_sort_watching
 )
 
-// 个人中心菜单项
 val profileMenuItems = listOf(
     Pair(Icons.Default.History, "观看历史"),
     Pair(Icons.Default.Favorite, "我的收藏"),

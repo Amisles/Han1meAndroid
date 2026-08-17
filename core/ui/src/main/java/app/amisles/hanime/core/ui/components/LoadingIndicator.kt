@@ -10,9 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 
-/**
- * 通用加载指示器组件
- */
 @Composable
 fun LoadingIndicator(
     modifier: Modifier = Modifier,

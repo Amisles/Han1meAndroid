@@ -25,9 +25,6 @@ import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 
-/**
- * 通用错误视图组件
- */
 @Composable
 fun ErrorView(
     message: String? = null,

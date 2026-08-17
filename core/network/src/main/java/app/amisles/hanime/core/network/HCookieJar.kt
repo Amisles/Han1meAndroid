@@ -6,19 +6,15 @@ import okhttp3.HttpUrl
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Cookie 管理 Jar
- * 支持：
- * - 从 Set-Cookie 响应头解析并存储 Cookie
- * - 为请求自动注入已存储的 Cookie
- * - 持久化到 SharedPreferences（可选）
- * - 线程安全：使用 ConcurrentHashMap + 同步块保护读写
+ * Cookie 管理 Jar，线程安全（ConcurrentHashMap + 同步块）
+ * 自动存储 Set-Cookie、为请求注入，并支持手动设置与清理
  */
 class HCookieJar : CookieJar {
 
     private val cookieStore: ConcurrentHashMap<String, MutableList<Cookie>> = ConcurrentHashMap()
 
     /**
-     * 存储响应中的 Cookie（线程安全）
+     * 存储响应中的 Cookie
      */
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         val domain = url.host
@@ -33,7 +29,7 @@ class HCookieJar : CookieJar {
     }
 
     /**
-     * 为请求加载已存储的 Cookie（线程安全，同步清理过期）
+     * 加载已存储 Cookie，同步清理过期项
      */
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val domain = url.host
@@ -53,7 +49,7 @@ class HCookieJar : CookieJar {
     }
 
     /**
-     * 手动设置 Cookie（用于登录态恢复，线程安全）
+     * 手动设置 Cookie，用于登录态恢复
      */
     fun setCookie(domain: String, cookieString: String) {
         val cookies = parseCookieString(domain, cookieString)
@@ -61,7 +57,7 @@ class HCookieJar : CookieJar {
     }
 
     /**
-     * 获取指定域名的所有 Cookie（线程安全）
+     * 获取指定域名的 Cookie
      */
     fun getCookies(domain: String): String {
         val cookies = cookieStore[domain] ?: return ""
@@ -71,15 +67,12 @@ class HCookieJar : CookieJar {
     }
 
     /**
-     * 清除所有 Cookie（线程安全）
+     * 清除所有 Cookie
      */
     fun clear() {
         cookieStore.clear()
     }
 
-    /**
-     * 解析 Cookie 字符串
-     */
     private fun parseCookieString(domain: String, cookieString: String): List<Cookie> {
         return cookieString.split("; ").mapNotNull { pair ->
             val parts = pair.split("=", limit = 2)

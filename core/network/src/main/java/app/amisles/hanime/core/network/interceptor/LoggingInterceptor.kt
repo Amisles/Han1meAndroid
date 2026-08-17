@@ -4,8 +4,7 @@ import okhttp3.Interceptor
 import okhttp3.Response
 
 /**
- * 日志拦截器
- * 仅在 DEBUG 模式下启用
+ * 日志拦截器，受 isDebug 控制
  */
 class LoggingInterceptor(
     private val isDebug: Boolean = true

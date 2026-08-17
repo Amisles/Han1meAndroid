@@ -1,9 +1,8 @@
 package app.amisles.hanime.core.common.result
 
 /**
- * 统一结果封装，替代直接返回 null 或抛异常。
- *
- * 命名为 AppResult 以避免与标准库 kotlin.Result（kotlin.* 自动导入）冲突。
+ * 统一结果封装，替代直接返回 null 或抛异常；
+ * 命名为 AppResult 以避免与标准库 kotlin.Result 冲突。
  */
 sealed class AppResult<T> {
     data class Success<T>(val data: T) : AppResult<T>()

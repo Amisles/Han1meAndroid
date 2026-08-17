@@ -14,7 +14,6 @@ import java.util.Locale
 object LocaleHelper {
 
     /**
-     * 用指定的语言包装 Context。
      * 在 Application.attachBaseContext 和 Activity.attachBaseContext 中都必须调用。
      * @param lang 语言代码（如 "zh-CN", "zh-TW", "en", "ja"）
      */
@@ -40,9 +39,7 @@ object LocaleHelper {
         return updated
     }
 
-    /**
-     * 获取语言显示名称（供 Settings UI 使用）
-     */
+    /** 供 Settings UI 使用 */
     fun getLanguageDisplayName(lang: String): String {
         return when (lang) {
             LANGUAGE_ZH_CN -> "简体中文"

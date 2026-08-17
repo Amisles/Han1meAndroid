@@ -10,8 +10,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 统一日志工具
- * 写入到 app's filesDir/hanime_app.log
+ * 统一日志工具，写入 filesDir/hanime_app.log。
  */
 object AppLogger {
     private const val LOG_FILE_NAME = "hanime_app.log"

@@ -4,8 +4,7 @@ import okhttp3.Interceptor
 import okhttp3.Response
 
 /**
- * 浏览器伪装拦截器
- * 添加 User-Agent、Referer、Origin 等 Header
+ * 浏览器伪装拦截器，添加 UA/Referer/Origin Header
  */
 class BrowserInterceptor : Interceptor {
 
@@ -19,7 +18,6 @@ class BrowserInterceptor : Interceptor {
         val originalRequest = chain.request()
         val url = originalRequest.url.toString()
 
-        // 判断是否为视频站点请求
         val isHanimeRequest = url.contains("hanime1.me") ||
                                url.contains("hanimeone.me") ||
                                url.contains("hanime1.")

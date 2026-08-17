@@ -22,8 +22,7 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
 /**
- * 错误视图
- * 默认 fillMaxSize 填充父容器，可传入 modifier 自定义尺寸。
+ * 默认填充父容器，可传 modifier 自定义尺寸。
  */
 @Composable
 fun KaomojiErrorView(
