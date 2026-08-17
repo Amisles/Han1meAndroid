@@ -197,26 +197,34 @@ class DownloadPageParserTest {
     }
 
     @Test
-    fun `parse with empty data-url attribute includes row with empty url`() {
+    fun `parse skips rows with empty data-url attribute`() {
         val html = """
             <html><body>
                 <table class="download-table">
                     <tbody>
                         <tr>
                             <td>1</td>
+                            <td>下載 (480p)</td>
+                            <td>mp4</td>
+                            <td>120MB</td>
+                            <td><a data-url="">DL</a></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
                             <td>下載 (720p)</td>
                             <td>mp4</td>
                             <td>250MB</td>
-                            <td><a data-url="">DL</a></td>
+                            <td><a data-url="https://dl.example.com/720">DL</a></td>
                         </tr>
                     </tbody>
                 </table>
             </body></html>
         """.trimIndent()
         val qualities = parser.parse(html, baseUrl)
-        // 仅跳过缺失 data-url 的 <a>；空 data-url 视为存在，行保留
+        // 空 data-url 视为无效直链，与缺失 data-url 一样跳过（避免将空 URL 传入
+        // Request.url("") 产生异常或幽灵任务）；仅保留带有效直链的行
         assertEquals(1, qualities.size)
-        assertEquals("", qualities[0].downloadUrl)
+        assertEquals("https://dl.example.com/720", qualities[0].downloadUrl)
     }
 
     @Test
