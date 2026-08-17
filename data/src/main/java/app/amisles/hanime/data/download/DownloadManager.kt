@@ -11,6 +11,7 @@ import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,6 +61,10 @@ private data class ProgressUpdate(
     val progress: Int,
     val status: DownloadStatus
 )
+
+// P3-1：分块请求服务器返回 200（忽略 Range）时抛出的标记异常。
+// 用于让下载管理器回退到单连接全量下载，而不是把整任务判失败（200 仅代表「不支持分块」，非网络错误）。
+private class RangeNotSupportedException(message: String) : IOException(message)
 
 // O3：网络类型枚举，用于自适应分块数决策
 private enum class NetworkClass { WIFI, CELLULAR, OTHER }
@@ -121,6 +126,16 @@ class DownloadManager @Inject constructor(
         _tasks.value = taskMap.values.toList()
     }
 
+    // P3-3：进度类更新只替换列表中对应 id 的元素（其余元素引用保持不变，缩小 Compose 重组面），
+    // 避免 updateTask 每次 500ms 进度刷新都从 taskMap 全量重建列表。结构变化（增删/状态切换）仍走 emitTasks()。
+    private fun updateTaskInList(newTask: DownloadTask) {
+        val cur = _tasks.value
+        val idx = cur.indexOfFirst { it.id == newTask.id }
+        if (idx < 0) { emitTasks(); return }
+        if (cur[idx] === newTask) return
+        _tasks.value = cur.toMutableList().also { it[idx] = newTask }
+    }
+
     // 进度更新回调
     var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
 
@@ -131,7 +146,10 @@ class DownloadManager @Inject constructor(
     // 也会在 trackCall 中被立即取消，彻底消除「新建 Call 逃过取消 → 阻塞到 readTimeout(120s)」的窗口。
     private val taskCancelFlags = ConcurrentHashMap<Int, AtomicBoolean>()
     private val taskIdCounter = AtomicInteger(0)
-    private val scope = CoroutineScope(Dispatchers.IO)
+    // P3-2：用 SupervisorJob 作为 scope 根，使单个下载任务的异常不会株连取消其它在途任务
+    // （普通 Job 下任一子协程未捕获异常会取消整个 scope，导致「一个任务失败、全部下载中断」）。
+    private val scopeJob = SupervisorJob()
+    private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val tasksLock = ReentrantLock()
     // 并发下载的绝对硬上限：信号量固定容量、创建后不再重建，
     // 避免 updateConcurrencyLimit 重建对象导致在途任务持有的旧许可成为孤儿。
@@ -732,7 +750,11 @@ class DownloadManager @Inject constructor(
         val chunkAttempts = IntArray(chunkCount)
         val queue = ArrayDeque<Int>().apply { for (i in 0 until chunkCount) if (!chunkDone[i]) addLast(i) }
 
-        coroutineScope {
+        // P3-1：标记「服务器对分块请求返回 200 忽略 Range」，用于触发整任务回退单连接下载
+        val rangeUnsupported = AtomicBoolean(false)
+        try {
+            coroutineScope {
+                val csJob = this.coroutineContext[Job]  // P3-1：捕获外层作用域 Job，便于回退时整体取消 worker/monitor/reporter
             // O4+O5：以「分块队列 + 固定 worker 池」取代一次性全量启动。
             // worker 循环领取分块并下载；慢块/瞬断由 monitor 取消连接后重新入队，
             // 由空闲 worker 以新连接重试，避免单块卡慢拖垮整体（aria2 lowest-speed-limit 语义）。
@@ -761,6 +783,15 @@ class DownloadManager @Inject constructor(
                             // 再 job.cancel()」，该窗口内 isActive 仍为 true，若只看 isActive，
                             // 被主动取消的 Call 会被当成瞬断反复重试，耗尽 5 次后把暂停误判为 FAILED。
                             if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(taskId)) break
+                            // P3-1：检测到服务器不支持分块（返回 200 忽略 Range），标记整任务回退单连接，
+                            // 并取消本作用域让其余 worker/monitor/reporter 立即终止，避免空耗 5 次重试后判失败。
+                            if (e is RangeNotSupportedException) {
+                                AppLogger.log("DownloadManager", "分块下载检测到不支持 Range，回退单连接: ${e.message}")
+                                rangeUnsupported.set(true)
+                                synchronized(queue) { queue.clear() }
+                                csJob?.cancel()
+                                return@launch
+                            }
                             if (attempts >= MAX_CHUNK_ATTEMPTS) {
                                 throw IOException("分块 $idx 重试 $attempts 次仍失败，终止下载", e)
                             }
@@ -849,6 +880,20 @@ class DownloadManager @Inject constructor(
             workers.forEach { it.join() }
             monitor.cancel()
             reporter.cancel()
+            }
+        } catch (ce: kotlinx.coroutines.CancellationException) {
+            // P3-1：因「服务器不支持分块（返回 200 忽略 Range）」主动取消作用域，不视为错误，
+            // 继续走下方回退逻辑；其余取消（用户暂停/取消）原样抛出，由 job 体保留 PAUSED 语义。
+            if (!rangeUnsupported.get()) throw ce
+        }
+
+        // P3-1：分块请求被服务器以 200 拒绝（忽略 Range）→ 回退单连接全量下载。
+        // 已在作用域取消时清空队列并删除位图表，此处用单连接把文件从头写满（FileOutputStream 会截断旧分块数据）。
+        if (rangeUnsupported.get()) {
+            AppLogger.log("DownloadManager", "降级单连接下载: taskId=$taskId, url=$url")
+            if (partmapFile.exists()) partmapFile.delete()
+            downloadFileSingle(taskId, url, filePath, 0L)
+            return
         }
 
         // P2-2：暂停/取消撕销中，直接返回，不做完整性判定。
@@ -911,7 +956,11 @@ class DownloadManager @Inject constructor(
             resp.use { r ->
                 // P1-1 修复：必须收到 206 才表示该响应是 Range 分块；
                 // 若服务器忽略 Range 返回 200/其它，写入会错位到 [start, start+body) 造成文件损坏。
-                if (r.code != 206) {
+                // P3-1：仅当服务器「返回 200 忽略 Range」时抛可降级标记异常（上层回退单连接）；
+                // 其它非 206（403/416/5xx 等）视为真实错误，保持原有重试/失败语义。
+                if (r.code == 200) {
+                    throw RangeNotSupportedException("分块 $index 服务器忽略 Range(HTTP 200)，回退单连接下载")
+                } else if (r.code != 206) {
                     throw IOException("分块 $index 不支持 Range(HTTP ${r.code})，无法安全分块下载")
                 }
                 val input = r.body.byteStream()
@@ -967,10 +1016,11 @@ class DownloadManager @Inject constructor(
         tasksLock.withLock {
             val current = taskMap[taskId] ?: return
             val newTask = updater(current)
-            // P2-3：写入 Map 并派生列表快照
-            taskMap[taskId] = newTask
-            emitTasks()
             val statusChanged = newTask.status != current.status
+            // P2-3/P3-3：写入 Map；状态切换属结构变化需重建列表快照，
+            // 纯进度刷新仅就地替换对应元素（updateTaskInList），避免每次 500ms 都全量重建列表。
+            taskMap[taskId] = newTask
+            if (statusChanged) emitTasks() else updateTaskInList(newTask)
             // 进度更新走内存态驱动 UI；仅状态切换或达到节流间隔才落盘，降低写放大
             if (statusChanged || shouldPersistProgress(taskId)) {
                 lastPersistTime[taskId] = System.currentTimeMillis()
@@ -1135,6 +1185,20 @@ class DownloadManager @Inject constructor(
             }
         }
         AppLogger.log("DownloadManager", "Download cancelled: $taskId")
+    }
+
+    /**
+     * P3-2：显式生命周期出口。单例随进程存在是预期行为，但提供结构化取消入口：
+     * 进程退出、测试拆卸、或需要强制中断所有在途下载时调用，保证协程与在途请求被确定性回收。
+     * scope 根使用 SupervisorJob，单个下载任务的异常不会株连取消其它在途任务（见 scope 声明处）。
+     */
+    fun shutdown() {
+        scopeJob.cancel()
+        downloadJobs.clear()
+        taskCalls.clear()
+        taskCancelFlags.clear()
+        activeSlots.set(0)
+        AppLogger.log("DownloadManager", "shutdown: 已取消下载作用域并清理在途状态")
     }
 
     fun getCompletedDownloads(): List<DownloadTask> {
