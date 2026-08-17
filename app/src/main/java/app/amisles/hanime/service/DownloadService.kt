@@ -139,7 +139,7 @@ class DownloadService : Service() {
             // 默认（含 DOWNLOADING / ACTION_START / PAUSED / PENDING / 无状态）：作为进度通知处理
             else -> {
                 val safeTitle = title ?: ""
-                handleProgress(taskId, safeTitle, progress, startId)
+                handleProgress(taskId, safeTitle, progress, status, startId)
             }
         }
         // START_NOT_STICKY：系统杀死服务后不自动重启（由 DownloadManager 按需重启）
@@ -149,13 +149,14 @@ class DownloadService : Service() {
     /**
      * 处理进度更新（含启动）。每个任务有独立通知 id，互不覆盖。
      */
-    private fun handleProgress(taskId: Int, title: String, progress: Int, startId: Int) {
+    private fun handleProgress(taskId: Int, title: String, progress: Int, status: DownloadStatus?, startId: Int) {
         if (taskId < 0) {
             stopSelfResult(startId)
             return
         }
         activeTasks[taskId] = title to progress
-        val notification = buildProgressNotification(title, progress)
+        // P2-5：将状态传入，使通知文案区分「下载中 xx%」与「已暂停 xx%」
+        val notification = buildProgressNotification(title, progress, status)
         if (!isForegroundStarted) {
             startForeground(notificationId(taskId), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             isForegroundStarted = true
@@ -226,11 +227,16 @@ class DownloadService : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun buildProgressNotification(title: String, progress: Int): Notification {
+    private fun buildProgressNotification(title: String, progress: Int, status: DownloadStatus? = null): Notification {
         val displayTitle = title.ifEmpty { getString(R.string.download_notification_downloading) }
+        // P2-5：进度文案体现百分比；暂停态显示「已暂停 xx%」，其余显示「下载中 xx%」
+        val contentText = when (status) {
+            DownloadStatus.PAUSED -> getString(R.string.download_notification_paused, progress.coerceIn(0, 100))
+            else -> getString(R.string.download_notification_progress, progress.coerceIn(0, 100))
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
-            .setContentText(getString(R.string.download_notification_downloading))
+            .setContentText(contentText)
             .setProgress(100, progress.coerceIn(0, 100), false)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)

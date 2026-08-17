@@ -133,6 +133,8 @@
     <string name="download_notification_downloading">正在下载</string>
     <string name="download_notification_completed">下载完成</string>
     <string name="download_notification_failed">下载失败</string>
+    <string name="download_notification_progress">下载中 %1$d%%</string>
+    <string name="download_notification_paused">已暂停 %1$d%%</string>
     <string name="download_title">下载管理</string>
     <string name="download_pause">暂停</string>
     <string name="download_resume">继续</string>

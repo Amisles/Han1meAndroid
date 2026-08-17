@@ -5,13 +5,10 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import app.amisles.hanime.domain.model.DownloadEntity
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DownloadDao {
-    @Query("SELECT * FROM download_tasks ORDER BY id DESC")
-    fun getAllDownloads(): Flow<List<DownloadEntity>>
-
+    // P2-4：移除未使用的 Flow 版 getAllDownloads()（仅 getAllDownloadsOnce 被 DownloadManager 使用）。
     @Query("SELECT * FROM download_tasks ORDER BY id DESC")
     suspend fun getAllDownloadsOnce(): List<DownloadEntity>
 
