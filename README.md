@@ -9,25 +9,23 @@
 </p>
 
 <p align="center">
-  <b>当前版本：v1.0.0</b>（versionCode 6）· 最低支持 Android 11（API 30）· 目标 Android 16（API 37）
+  <b>当前版本：v1.2.0</b>（versionCode 8）· 最低支持 Android 11（API 30）· 目标 Android 16（API 37）
 </p>
 
 ## 功能
 
-- 多区块首页浏览
-- 多维度搜索与筛选（关键词 / 分类 / 排序，支持任意组合）
-- 多画质在线播放（HLS 流媒体，支持全屏、倍速、画中画、后台播放）
-- 后台下载与离线缓存（前台服务通知、断点续传、并发控制）
-- 批量下载管理（一键批量选择、多任务同时下载）
-- 本地收藏与观看历史（Room 持久化、自动去重）
-- 账号登录与 Cookie 管理（EncryptedSharedPreferences 加密存储）
-- 视频评论区（评论列表、回复展开、点赞数显示）
-- 作者主页浏览（作品统计、视频分区、播放列表分区）
-- 播放列表查看（公开播放列表浏览、批量加入下载）
-- 多语言切换（简体中文 / 繁體中文 / English / 日本語，热切换即时生效）
-- 主题模式切换（浅色 / 深色 / 跟随系统，Material Design 3 动态配色）
-- 搜索历史自动记录（最多 20 条，本地持久化）
-- Hilt 依赖注入架构（全局单例统一管理、ViewModel 构造注入）
+- **首页与发现**：多区块首页浏览、下拉刷新与错误重试
+- **搜索与筛选**：多维度搜索（关键词 / 分类 / 排序，支持任意组合）+ 搜索历史自动记录（最多 20 条，本地持久化）
+- **在线播放**：多画质 HLS 流媒体播放，支持全屏、倍速、画中画（PiP）、后台播放、双击快进/快退、双指缩放
+- **离线下载**：后台下载与离线缓存（前台服务通知、断点续传、多线程分块并行下载、并发控制）、批量下载管理（一键批量选择、多任务同时下载）
+- **收藏与历史**：本地收藏与观看历史（Room 持久化、自动去重）
+- **账号体系**：账号登录与 Cookie 管理（EncryptedSharedPreferences 加密存储）、账户资料编辑（修改昵称与邮箱）
+- **社区互动**：视频评论区（评论列表、回复展开、点赞数显示）、作者主页浏览（作品统计、视频分区、播放列表分区）、一键订阅作者并接入官方订阅内容页
+- **播放列表**：公开播放列表浏览、批量加入下载
+- **个性化**：多语言切换（简体中文 / 繁體中文 / English / 日本語，热切换即时生效）、主题模式切换（浅色 / 深色 / 跟随系统，Material Design 3 动态配色）
+- **平板适配**：响应式框架适配平板导航栏 / 栅格 / 字体与触摸目标
+- **「我的」抽屉**：首页顶栏入口，左侧滑出抽屉聚合账户资料、订阅、设置等入口
+- **工程架构**：Hilt 依赖注入（全局单例统一管理、ViewModel 构造注入）
 
 ## 技术栈
 
@@ -79,9 +77,9 @@ hanime/
 |-- data/                       # 数据层（单一数据源）
 |   |-- cookie/                 # HCookieJar（ConcurrentHashMap 线程安全 + 过期清理）
 |   |-- di/                     # DatabaseModule（Hilt 提供 Room DB/DAO）
-|   |-- download/               # DownloadManager（Semaphore 并发控制 + AtomicInteger 活跃槽位 + ConcurrentHashMap + ReentrantLock）
+|   |-- download/               # DownloadManager（多线程分块下载 + Semaphore 并发控制 + CAS 软槽位 + ConcurrentHashMap + ReentrantLock）
 |   |-- local/                  # Room 数据库：AppDatabase、DAO、Entity、Migration
-|   |-- parser/                 # 9 个专用 HTML 解析器（Home/Search/Watch/Download/Playlist/Author...）
+|   |-- parser/                 # 多个专用 HTML 解析器（首页 / 搜索 / 详情 / 下载 / 播放列表 / 作者 / 订阅 / 评论 / 账户 …）
 |   |-- preferences/            # Preferences（SharedPreferences + StateFlow 封装）
 |   |-- remote/                 # NetworkService（OkHttp + Hilt 单例 + HCookieJar）
 |   `-- repository/             # HanimeRepository（协程 IO 线程调度 + 结果封装）
@@ -149,8 +147,9 @@ core:network
 
 | 优先级 | 功能 | 说明 |
 | --- | --- | --- |
-| 🟡 中 | 优化 UI 样式 | 统一卡片圆角 / 间距 / 字重规范、播放页控制栏交互重构、动效与过渡动画完善、响应式布局适配平板 |
-| 🔵 低 | 下载提速 | 引入单文件分片（字节范围）多线程下载；当前为「多文件并发」（默认 3 路、上限 5 路），非单文件分片 |
+| 🟡 中 | 优化 UI 样式与交互 | 统一卡片圆角 / 间距 / 字重规范、播放页控制栏交互重构、动效与过渡动画完善 |
+
+> ✅ 近期已落地：平板响应式适配（v1.1.0）、单文件分片（字节范围）多线程下载（v1.2.0）。
 
 ---
 
