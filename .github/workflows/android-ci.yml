@@ -1,0 +1,79 @@
+name: Android PR CI
+
+on:
+  pull_request:
+    branches: ["main", "develop"]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: ["main", "develop"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+jobs:
+  build-and-test:
+    name: Build & Unit Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_HOME }}
+          key: android-sdk-${{ runner.os }}-api36
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
+
+      - name: Install SDK packages
+        run: |
+          # 优先稳定渠道安装 compileSdk 对应的 platform 与 build-tools；失败时显式报错并退出
+          sdkmanager "platforms;android-36" "build-tools;35.0.0" || {
+            echo "::error::稳定渠道安装 android-36 失败，尝试 canary 渠道"
+            sdkmanager --channel=3 "platforms;android-36" "build-tools;35.0.0" || {
+              echo "::error::稳定与 canary 渠道均无法安装 android-36，请确认该 SDK 已发布"
+              exit 1
+            }
+          }
+          # 自动接受所有 SDK 许可（避免交互卡住）
+          yes | sdkmanager --licenses || true
+
+      - name: Set up Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests & build debug APK
+        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace --no-daemon
+
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-and-test-reports
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+          retention-days: 7
