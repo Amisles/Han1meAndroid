@@ -8,13 +8,9 @@ import org.jsoup.select.Elements
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 通用视频列表解析器
- */
 @Singleton
 class VideoListParser @Inject constructor() {
 
-    // 从Document解析视频列表
     fun parseVideoList(doc: Document, baseUrl: String): List<HanimeVideo> {
         val videos = mutableListOf<HanimeVideo>()
 
@@ -35,7 +31,6 @@ class VideoListParser @Inject constructor() {
         return videos
     }
 
-    // 解析单个视频容器
     fun parseSingleVideoContainer(container: Element, baseUrl: String): HanimeVideo? {
         return try {
             val videoLink: Element? = container.selectFirst(".video-link")
@@ -107,7 +102,6 @@ class VideoListParser @Inject constructor() {
         }
     }
 
-    // 解析指定区块的视频
     fun parseSectionVideos(doc: Document, baseUrl: String, sectionTitle: String): List<HanimeVideo> {
         val videos = mutableListOf<HanimeVideo>()
         val sectionLinks = doc.select("a.horizontal-row-title")
@@ -134,7 +128,6 @@ class VideoListParser @Inject constructor() {
         return videos
     }
 
-    // 解析单个视频项（作者页面等场景）
     fun parseVideoItem(item: Element, baseUrl: String): HanimeVideo? {
         try {
             val videoLink = item.selectFirst("a.video-link")
@@ -175,7 +168,6 @@ class VideoListParser @Inject constructor() {
         }
     }
 
-    // 解析用户标签视频项
     fun parseUserTabVideoItem(item: Element, baseUrl: String): HanimeVideo? {
         try {
             val videoLink = item.selectFirst("a[href*=\"watch?v=\"]")
@@ -208,7 +200,6 @@ class VideoListParser @Inject constructor() {
         }
     }
 
-    // 解析作者上传的视频列表
     fun parseAuthorVideos(doc: Document, baseUrl: String): List<HanimeVideo> {
         val videos = mutableListOf<HanimeVideo>()
         val videoItems = doc.select(".video-item-container")

@@ -32,7 +32,7 @@ class NetworkService @Inject constructor(
     private val subscriptionsParser: SubscriptionsParser,
     private val accountProfileParser: AccountProfileParser
 ) {
-    // 入口拦截器：非官方域名首次请求前自动探测 /enter 获取入口 cookie
+    // 入口拦截器：非官方域名根路径请求重写为 /enter
     private val entryInterceptor = EntryInterceptor()
 
     private val client = OkHttpClient.Builder()
@@ -52,7 +52,6 @@ class NetworkService @Inject constructor(
             .build()
     }
 
-    // 从用户配置中获取地址
     private fun getCurrentBaseUrl(): String {
         return Preferences.baseUrl
     }

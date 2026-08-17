@@ -9,9 +9,6 @@ import org.jsoup.nodes.Element
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 视频详情页解析器
- */
 @Singleton
 class WatchPageParser @Inject constructor(
     private val videoListParser: VideoListParser,
@@ -106,14 +103,11 @@ class WatchPageParser @Inject constructor(
                 relatedVideos
             }
 
-            // 解析 CSRF Token
             val csrfToken = doc.selectFirst("meta[name=\"csrf-token\"]")?.attr("content")?.trim() ?: ""
 
-            // 解析当前登录用户的数字 ID（点赞/评论接口需要），来自详情页内的隐藏域或 JS 全局变量
+            // 当前登录用户数字 ID（点赞/评论接口需要）
             val currentUserId = parseCurrentUserId(doc, html)
 
-            // 解析订阅作者表单（#video-subscribe-form / #video-subscribe-form-wrapper）
-            // 返回 Triple(artistId, userId, status)
             val (subscribeArtistId, subscribeUserId, subscribeStatus) =
                 parseSubscribeForm(doc, authorPageUrl, currentUserId)
 

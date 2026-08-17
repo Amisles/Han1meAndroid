@@ -68,7 +68,7 @@ abstract class FavoriteDatabase : RoomDatabase() {
             }
         }
 
-        // P1-F2/C3：download_tasks 新增 videoId（去重依据）与 errorMessage（失败原因细分）
+        // download_tasks 新增 videoId（去重依据）与 errorMessage（失败原因细分）
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(

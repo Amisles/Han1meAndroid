@@ -32,13 +32,11 @@ object Preferences {
     private const val SP_APP_LANGUAGE = "app_language"
     private const val SP_THEME_MODE = "theme_mode"
 
-    // 默认官网地址
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
     // 支持登录的官方域名（其余镜像站登录接口返回“站点维护中”）
     private val LOGIN_SUPPORTED_DOMAINS = setOf("hanime1.me", "hanimeone.me")
 
-    // 支持的语言代码
     const val LANGUAGE_ZH_CN = "zh-CN"
     const val LANGUAGE_ZH_TW = "zh-TW"
     const val LANGUAGE_EN = "en"
@@ -104,9 +102,7 @@ object Preferences {
         }.getOrNull() ?: return fallbackPlain(appCtx)
 
         val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
-        // 仅当文件存在且确为“明文旧格式”（含可读明文键）时才执行迁移。
-        // 加密存储（EncryptedSharedPreferences）的键是密文且文件也在同一路径，若不加此判定，
-        // 迁移逻辑会在每次启动都误触发：以明文方式读取加密文件得到 null，再将主题/语言等覆盖为默认值。
+        // 仅当旧文件确为明文格式（含可读明文键）才迁移；否则直接走加密存储，避免每次启动误读加密文件为 null 并覆盖已保存数据。
         if (legacyFile.exists() && isLegacyPlaintextPrefs(appCtx)) {
             // 读取明文旧值（此时旧文件尚在），随后删除再创建加密文件
             val legacy = appCtx.getSharedPreferences(NAME, Context.MODE_PRIVATE)

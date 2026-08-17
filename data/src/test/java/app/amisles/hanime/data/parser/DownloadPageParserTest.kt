@@ -214,8 +214,7 @@ class DownloadPageParserTest {
             </body></html>
         """.trimIndent()
         val qualities = parser.parse(html, baseUrl)
-        // 注意：parser 仅对缺失 data-url 的 <a> 跳过（selectFirst 返回 null），
-        // 空 data-url 字符串不被视为缺失，行会被保留
+        // 仅跳过缺失 data-url 的 <a>；空 data-url 视为存在，行保留
         assertEquals(1, qualities.size)
         assertEquals("", qualities[0].downloadUrl)
     }
@@ -265,8 +264,7 @@ class DownloadPageParserTest {
         """.trimIndent()
         // 第一个表格包含「下載」文本但无有效行；继续找下一个
         val qualities = parser.parse(html, baseUrl)
-        // 注意：fallback 逻辑是找到第一个有 qualities 的表就 break
-        // 第一个表只有一行且 cell 数 < 4，所以 qualities 为空，继续第二个表
+        // 首个表无有效行（cell<4）被跳过，取下一个含 qualities 的表
         assertEquals(1, qualities.size)
         assertEquals("720p", qualities[0].resolution)
     }

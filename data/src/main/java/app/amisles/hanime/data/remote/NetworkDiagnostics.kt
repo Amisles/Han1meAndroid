@@ -13,9 +13,6 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 import java.security.cert.X509Certificate
 
-/**
- * 诊断项类型
- */
 enum class DiagnosticType {
     DNS,
     CONNECTIVITY,
@@ -24,9 +21,6 @@ enum class DiagnosticType {
     LOGIN_STATUS
 }
 
-/**
- * 诊断结果状态
- */
 enum class DiagnosticStatus {
     /** 检测通过 */
     OK,
@@ -38,9 +32,6 @@ enum class DiagnosticStatus {
     SKIPPED
 }
 
-/**
- * 单项诊断结果
- */
 data class DiagnosticResult(
     val type: DiagnosticType,
     val status: DiagnosticStatus,
@@ -48,7 +39,6 @@ data class DiagnosticResult(
     val detail: String,
     /** 请求耗时（毫秒），仅 OK/FAIL 状态有意义 */
     val latencyMs: Long? = null,
-    /** 修复建议 */
     val suggestion: String? = null
 )
 

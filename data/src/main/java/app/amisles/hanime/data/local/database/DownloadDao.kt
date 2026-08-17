@@ -8,7 +8,6 @@ import app.amisles.hanime.domain.model.DownloadEntity
 
 @Dao
 interface DownloadDao {
-    // P2-4：移除未使用的 Flow 版 getAllDownloads()（仅 getAllDownloadsOnce 被 DownloadManager 使用）。
     @Query("SELECT * FROM download_tasks ORDER BY id DESC")
     suspend fun getAllDownloadsOnce(): List<DownloadEntity>
 

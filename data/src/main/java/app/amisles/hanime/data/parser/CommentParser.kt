@@ -10,9 +10,6 @@ import org.jsoup.Jsoup
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 评论解析器
- */
 @Singleton
 class CommentParser @Inject constructor() {
 
@@ -113,7 +110,6 @@ class CommentParser @Inject constructor() {
         val reportWrapper = aElement.nextElementSibling() ?: return null
         if (!reportWrapper.hasClass("report-btn-wrapper")) return null
 
-        // 评论 ID
         val reportBtn = reportWrapper.selectFirst("span.report-btn[data-reportable-id]")
             ?: return null
         val commentId = reportBtn.attr("data-reportable-id").trim()
@@ -131,7 +127,6 @@ class CommentParser @Inject constructor() {
         val time = textDivs[0].selectFirst("span")?.text()?.trim() ?: ""
         val content = textDivs[1].text().trim()
 
-        // 点赞 / 回复区
         val likeWrapper = reportWrapper.nextElementSibling()
         var likeCount = 0
         var replyCount = 0
@@ -393,7 +388,6 @@ class CommentParser @Inject constructor() {
     }
 
     private fun parseSingleReply(wrapper: org.jsoup.nodes.Element): Reply? {
-        // 回复 ID
         val reportBtn = wrapper.selectFirst("span.report-btn[data-reportable-id]")
             ?: return null
         val replyId = reportBtn.attr("data-reportable-id").trim()

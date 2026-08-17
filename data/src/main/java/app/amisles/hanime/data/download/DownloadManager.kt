@@ -54,7 +54,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 
-// D2：用于把进度回调信息带出 tasksLock 后异步派发，避免持锁做跨进程 IPC
+// 避免持锁做跨进程 IPC
 private data class ProgressUpdate(
     val taskId: Int,
     val title: String,
@@ -62,11 +62,10 @@ private data class ProgressUpdate(
     val status: DownloadStatus
 )
 
-// P3-1：分块请求服务器返回 200（忽略 Range）时抛出的标记异常。
-// 用于让下载管理器回退到单连接全量下载，而不是把整任务判失败（200 仅代表「不支持分块」，非网络错误）。
+// 分块请求服务器返回 200（忽略 Range）时抛出的标记异常。
 private class RangeNotSupportedException(message: String) : IOException(message)
 
-// O3：网络类型枚举，用于自适应分块数决策
+// 用于自适应分块数决策
 private enum class NetworkClass { WIFI, CELLULAR, OTHER }
 
 private fun getCurrentNetworkClass(context: Context): NetworkClass {
@@ -92,7 +91,7 @@ private fun getCurrentNetworkClass(context: Context): NetworkClass {
     }
 }
 
-// O3：首下探测结果
+//首下探测结果
 private data class ProbeResult(val supportsRange: Boolean, val totalBytes: Long, val bps: Long)
 
 @Singleton
@@ -101,8 +100,7 @@ class DownloadManager @Inject constructor(
     private val downloadDao: DownloadDao
 ) {
 
-    // O1：解锁 OkHttp 单主机并发上限（默认 Dispatcher.maxRequestsPerHost=5 是隐形瓶颈，
-    // 会限制任何分块并行）。显式配置 16 + 匹配的连接池，并优先 HTTP/2 多路复用。
+    // 解锁 OkHttp 单主机并发上限，显式配置 16 + 匹配的连接池，并优先 HTTP/2 多路复用。
     private val client = OkHttpClient.Builder()
         .dispatcher(Dispatcher().apply { maxRequestsPerHost = MAX_REQUESTS_PER_HOST })
         .connectionPool(ConnectionPool(maxIdleConnections = MAX_IDLE_CONNECTIONS, keepAliveDuration = KEEP_ALIVE_SECONDS, TimeUnit.SECONDS))
@@ -117,11 +115,10 @@ class DownloadManager @Inject constructor(
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
     val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
 
-    // P2-3：以 Map 作为任务权威存储，提供 O(1) 按 id 查找，
-    // 避免 updateTask 每次全量扫描列表；_tasks 仅作为派生给 UI 的列表快照。
+    // 以 Map 作为任务权威存储，提供 O(1) 按 id 查找，
     private val taskMap = ConcurrentHashMap<Int, DownloadTask>()
 
-    // P2-3：由 taskMap 派生 UI 列表快照（List 契约无法避免每次重建，但查找已降至 O(1)）
+    // taskMap 派生 UI 列表快照
     private fun emitTasks() {
         _tasks.value = taskMap.values.toList()
     }
@@ -136,7 +133,6 @@ class DownloadManager @Inject constructor(
         _tasks.value = cur.toMutableList().also { it[idx] = newTask }
     }
 
-    // 进度更新回调
     var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
 
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
@@ -212,7 +208,6 @@ class DownloadManager @Inject constructor(
                     )
                 }
                 tasksLock.withLock {
-                    // P2-3：任务权威存储改为 Map，恢复时直接灌入并派生列表快照
                     taskMap.clear()
                     restoredTasks.forEach { taskMap[it.id] = it }
                     emitTasks()
@@ -294,15 +289,12 @@ class DownloadManager @Inject constructor(
                 videoId = videoId
             )
 
-            // P2-3：写入 Map 并派生列表快照（不再整体拼接列表）
             taskMap[taskId] = task
             emitTasks()
             persistTask(task)
             AppLogger.log("DownloadManager", "Starting download $taskId: $title ($quality)")
 
-            // P2-1 修复：不再在此处做 activeSlots 预判（那正是 check-then-act 竞态的来源）。
-            // 槽位统一由 startDownloadWithConcurrencyInternal 内的 CAS 裁决：
-            // 占到则立即开始，占不到则保持 PENDING，由链式调度拾起。
+            // P2-1 修复：槽位判定与占位统一交由下方 CAS 裁决，占不到则保持 PENDING 由链式调度拾起
             startDownloadWithConcurrencyInternal(task)
 
             return taskId
@@ -310,12 +302,8 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * P2-1：以 CAS 原子获取「软并发槽位」。
-     *
-     * 原实现是「调用方 `activeSlots.get() < concurrencyLimit`」+「本函数 `incrementAndGet()`」
-     * 两步的 check-then-act，中间可被其它线程插入，导致批量/并发启动时 activeSlots 短时突破
-     * 用户配置的 concurrencyLimit（例如配置 2 实际跑到硬信号量上限 5）。
-     * CAS 循环把「判定 + 占位」合成一个原子操作，杜绝突破。
+     * P2-1：以 CAS 原子获取「软并发槽位」，将「判定 + 占位」合为一个原子操作，
+     * 杜绝原 check-then-act（先 get 再 incrementAndGet）在并发/批量启动时突破并发上限。
      */
     private fun tryAcquireSoftSlot(): Boolean {
         while (true) {
@@ -328,10 +316,8 @@ class DownloadManager @Inject constructor(
 
     /**
      * P2-1：从磁盘残留推导续传起点，返回 (单连接续传字节数, 分块续传位图)。
-     *
-     * 提取为独立函数是 P2-1 的必要配套：槽位满时任务会退回 PENDING 稍后启动，
-     * 若届时不重新推导，就会以「首下」语义把已下载的分块整文件重下（进度丢失）。
-     * 同时被 resumeDownloadInternal 复用，保证两条路径判定一致。
+     * 槽位满时任务会退回 PENDING 稍后启动，届时须重新推导，否则以「首下」语义整文件重下；
+     * resumeDownloadInternal 也复用此函数，保证两条路径判定一致。
      */
     private fun deriveResumeState(task: DownloadTask): Pair<Long, BooleanArray?> {
         val file = File(task.filePath)
@@ -357,15 +343,12 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * 内部方法，调用者必须持有 tasksLock。
-     * 防止同一任务被重复启动。统一负责 activeSlots 的 CAS 占位与（终态/取消时）-1，
-     * 并在结束后调度下一个 PENDING 任务，修复 B1/B3/B4 并发门控失效问题。
+     * 内部方法，调用者须持有 tasksLock。统一负责 activeSlots 的 CAS 占位与终态/取消时的 -1，
+     * 结束后调度下一个 PENDING 任务，修复 B1/B3/B4 并发门控失效。
      */
     private fun startDownloadWithConcurrencyInternal(task: DownloadTask, resumeBytes: Long = 0L, resumeChunkMap: BooleanArray? = null) {
         if (downloadJobs.containsKey(task.id)) return
-        // P2-1 修复：以 CAS 原子地「判定 + 占位」，取代原「调用方 get() 判定 + 此处 incrementAndGet()」
-        // 的 check-then-act。占不到槽位时退回 PENDING，由 job finally 的链式调度拾起
-        // （届时会重新推导续传起点，不会丢失已下载分块）。
+        // 占不到槽位则退回 PENDING，由 finally 的链式调度重新推导续传起点后拾起
         if (!tryAcquireSoftSlot()) {
             if (task.status != DownloadStatus.PENDING) {
                 updateTask(task.id) { it.copy(status = DownloadStatus.PENDING) }
@@ -380,7 +363,6 @@ class DownloadManager @Inject constructor(
         // 否则秒失败的任务可能在注册前就跑完 finally，导致条目残留（清理失效）。
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
-                // 等待获取信号量许可（固定容量硬上限）
                 downloadSemaphore.withPermit {
                     AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
 
@@ -388,8 +370,7 @@ class DownloadManager @Inject constructor(
                     downloadFile(task.id, task.url, task.filePath, resumeBytes, resumeChunkMap)
                     // P0-2 修复：任务被取消（暂停/取消）时，保留调用方设置的 PAUSED 状态，
                     // 不在此处改写为 FAILED/COMPLETED。
-                    // P2-2：并列检查撕销标记——新顺序下 downloadFile 可能在 job.cancel() 落地前
-                    // 就因撕销而提前返回，此刻 isActive 仍为 true，若继续走完整性校验会把暂停判成 FAILED。
+                    // P2-2：撕销期（isActive 仍 true）提前返回时跳过完整性校验，避免把暂停判成 FAILED
                     if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(task.id)) {
                         AppLogger.log("DownloadManager", "下载被取消，保留暂停状态: ${task.title}")
                         return@launch
@@ -418,7 +399,7 @@ class DownloadManager @Inject constructor(
             } catch (e: IOException) {
                 // P0-2 修复：Call.cancel() 在暂停/取消时会令阻塞读抛出 IOException，
                 // 这并非真实网络错误，不标记为失败，保留 PAUSED 状态。
-                // P2-2：撕销标记覆盖「已取消 Call 但协程尚未取消」的窗口（此时 isActive 仍为 true）。
+                // P2-2：撕销期（isActive 仍 true）直接保留 PAUSED，不标记失败
                 if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(task.id)) {
                     AppLogger.log("DownloadManager", "下载被取消（IO 中断），保留暂停状态: ${task.title}")
                     return@launch
@@ -457,8 +438,7 @@ class DownloadManager @Inject constructor(
             // activeSlots 判定仅作快速失败的启发式；真正的并发正确性由 tryAcquireSoftSlot 的 CAS 保证
             if (pendingTask != null && activeSlots.get() < concurrencyLimit) {
                 AppLogger.log("DownloadManager", "启动下一个等待任务: ${pendingTask.title}")
-                // P2-1：等待期间可能已有分块下载进度（如 resume 时槽位满而退回 PENDING），
-                // 启动前重新推导续传起点，避免整文件重下
+                // P2-1：等待期间可能已有分块进度，启动前重新推导续传起点，避免整文件重下
                 val (rb, rm) = deriveResumeState(pendingTask)
                 startDownloadWithConcurrencyInternal(pendingTask, rb, rm)
             }
@@ -477,7 +457,7 @@ class DownloadManager @Inject constructor(
             }
             pendingTasks.forEach { task ->
                 if (activeSlots.get() < concurrencyLimit) {
-                    // P2-1：同 startNextPendingTask，启动前重新推导续传起点
+                    // P2-1：启动前重新推导续传起点
                     val (rb, rm) = deriveResumeState(task)
                     startDownloadWithConcurrencyInternal(task, rb, rm)
                 }
@@ -581,8 +561,7 @@ class DownloadManager @Inject constructor(
                 trackCall(taskId, call)
                 response = call.execute()
             } catch (e: IOException) {
-                // P2-2：撕销期（Call 已被主动取消、协程尚未取消）既不重试也不标记失败，
-                // 直接返回让 pauseDownload 设定的 PAUSED 生效
+                // P2-2：撕销期既不重试也不标记失败，直接返回让 PAUSED 生效
                 if (isTaskCancelled(taskId)) return
                 attempt++
                 if (attempt <= maxRetries && currentCoroutineContext()[Job]?.isActive == true) {
@@ -627,8 +606,7 @@ class DownloadManager @Inject constructor(
 
             val inputStream = body.byteStream()
             val outputFile = File(filePath)
-            // P2-4：downloadDir 改为 lazy 单次计算后，不再每次访问都 mkdirs；
-            // 此处补一次父目录兜底，确保运行期目录被清理/卸载重挂后仍能写入（分块路径已有同等处理）
+            // 运行期目录可能被清理/卸载重挂，补一次父目录兜底重建
             outputFile.parentFile?.mkdirs()
             val outputStream = if (resumeBytes > 0 && isPartial) {
                 java.io.FileOutputStream(outputFile, true)
@@ -677,7 +655,6 @@ class DownloadManager @Inject constructor(
      * P2-2：计算单任务允许的分块数上限，使「并发任务数 × 每任务分块数」
      * 不超过全局连接数上限 [MAX_TOTAL_CONNECTIONS]，在保留任务内并行与限制总连接间取平衡。
      */
-    // O3：按「实际在跑的任务数」分配全局连接预算（比 P2-2 用配置上限更准，避免单任务也被限到 1 块）
     private fun effectiveChunkCap(): Int {
         val active = maxOf(activeSlots.get(), 1)
         val perTask = MAX_TOTAL_CONNECTIONS / active
@@ -685,13 +662,9 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * O3+O4+O5+O8：多线程分块并行下载。
-     * - 分块数：首下按网络类型 + 实测吞吐自适应（见 [computeChunkCount]）；续传沿用原分块数（来自位图表）。
-     * - 仅对未完成的块发起请求（O4 核心），已完成块直接计入进度，避免整文件重下。
-     * - O5 慢块驱逐：监控每块实时吞吐，对持续低于阈值的「慢块」取消其连接并重新入队，
-     *   由空闲 worker 以新连接重试，消除个别慢分片拖垮整体进度。
-     * - O8：不再 setLength 预分配（避免空洞），读取/写入缓冲按分块大小自适应放大（256KB–1MB），
-     *   降低系统调用与磁盘 I/O 占比。
+     * 多线程分块并行下载：分块数首下按网络类型 + 实测吞吐自适应（见 [computeChunkCount]），续传沿用位图表；
+     * 仅对未完成块发起请求（O4）；慢块驱逐（O5）对持续低吞吐块取消连接后由空闲 worker 以新连接重试；
+     * 不再 setLength 预分配以避免空洞（O8）。
      */
     private suspend fun downloadFileChunked(
         taskId: Int,
@@ -764,7 +737,7 @@ class DownloadManager @Inject constructor(
             val workerCount = chunkCount.coerceAtMost(MAX_REQUESTS_PER_HOST)
             val workers = (0 until workerCount).map { _ ->
                 launch(Dispatchers.IO) {
-                    // P2-2：撕销标记与 isActive 并列作为退出条件（标记先于协程取消置位）
+                    // P2-2：撕销标记与 isActive 并列作为退出条件
                     while (currentCoroutineContext()[Job]?.isActive == true && !isTaskCancelled(taskId)) {
                         val idx = takeChunk()
                         if (idx < 0) break
@@ -778,10 +751,7 @@ class DownloadManager @Inject constructor(
                         } catch (ce: CancellationException) {
                             throw ce
                         } catch (e: IOException) {
-                            // 任务已取消：停止重试；否则（慢块驱逐/瞬断）重新入队以新连接重试。
-                            // P2-2 关键：必须同时检查撕销标记。pause/cancel 现在「先 cancelTaskCalls
-                            // 再 job.cancel()」，该窗口内 isActive 仍为 true，若只看 isActive，
-                            // 被主动取消的 Call 会被当成瞬断反复重试，耗尽 5 次后把暂停误判为 FAILED。
+                            // 任务已取消则停止重试；否则（慢块驱逐/瞬断）重新入队以新连接重试
                             if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(taskId)) break
                             // P3-1：检测到服务器不支持分块（返回 200 忽略 Range），标记整任务回退单连接，
                             // 并取消本作用域让其余 worker/monitor/reporter 立即终止，避免空耗 5 次重试后判失败。
@@ -810,22 +780,18 @@ class DownloadManager @Inject constructor(
                 }
             }
 
-            // O5：慢块监控器。周期性采样逐块吞吐，对持续低于阈值的分块取消其连接、交 worker 重领
+            // 慢块监控器。周期性采样逐块吞吐，对持续低于阈值的分块取消其连接、交 worker 重领
             // （重置慢速计时，重试用新连接）。仅在分块确有活跃连接时驱逐，避免误杀空闲/已完成块。
             val monitor = launch(Dispatchers.IO) {
                 var prevTime = System.currentTimeMillis()
                 while (completedChunks.get() < chunkCount &&
                     currentCoroutineContext()[Job]?.isActive == true &&
-                    !isTaskCancelled(taskId)) {   // P2-2：撕销期立即停止采样，避免驱逐已被取消的连接
+                    !isTaskCancelled(taskId)) {   // P2-2：撕销期停止采样
                     delay(SLOW_SAMPLE_MS)
                     val now = System.currentTimeMillis()
                     val dt = (now - prevTime) / 1000.0
                     prevTime = now
                     if (dt <= 0) continue
-                    // P2-3 修复：chunkDone 由 worker 在 synchronized(lock) 内写入，
-                    // monitor 原先无锁直读，可见性无保证（此前仅靠 call != null 守卫侥幸缓解）。
-                    // 每轮开始时在锁内快照一次，循环内改读快照：既建立 happens-before，
-                    // 又把取锁次数从「每块一次」降到「每轮一次」，避免与持锁写 partmap 的 reporter 争锁。
                     val doneSnapshot = synchronized(lock) { chunkDone.copyOf() }
                     for (i in 0 until chunkCount) {
                         if (doneSnapshot[i]) continue
@@ -853,12 +819,12 @@ class DownloadManager @Inject constructor(
                 }
             }
 
-            // 进度上报 + 位图表节流落盘（供中断后续传）
+            // 进度上报 + 位图表节流落盘
             val reporter = launch(Dispatchers.IO) {
                 var lastBitmapPersist = 0L
                 while (completedChunks.get() < chunkCount &&
                     currentCoroutineContext()[Job]?.isActive == true &&
-                    !isTaskCancelled(taskId)) {   // P2-2：撕销期主动退出，使下方位图表补写确定性执行
+                    !isTaskCancelled(taskId)) {
                     delay(500)
                     var sum = 0L
                     for (i in 0 until chunkCount) sum += chunkDownloaded.get(i)
@@ -871,7 +837,6 @@ class DownloadManager @Inject constructor(
                         }
                     }
                 }
-                // 收尾补写位图表；任务被取消删档时文件已不存在，跳过以免留下孤儿 partmap
                 if (outputFile.exists()) {
                     synchronized(lock) { writePartmap(partmapFile, chunkCount, chunkDone) }
                 }
@@ -882,8 +847,6 @@ class DownloadManager @Inject constructor(
             reporter.cancel()
             }
         } catch (ce: kotlinx.coroutines.CancellationException) {
-            // P3-1：因「服务器不支持分块（返回 200 忽略 Range）」主动取消作用域，不视为错误，
-            // 继续走下方回退逻辑；其余取消（用户暂停/取消）原样抛出，由 job 体保留 PAUSED 语义。
             if (!rangeUnsupported.get()) throw ce
         }
 
@@ -896,11 +859,6 @@ class DownloadManager @Inject constructor(
             return
         }
 
-        // P2-2：暂停/取消撕销中，直接返回，不做完整性判定。
-        // 新顺序下 workers 可能在 job.cancel() 落地前就因撕销标记退出并走到这里，
-        // 此时 isActive 仍为 true，若继续往下会抛「完整性校验失败」，把一次**暂停**误判为 FAILED。
-        // 仅当目标文件仍存在（暂停语义；cancelDownload 会删文件）时补写位图表，
-        // 尽量保住最后一秒的分块完成信息，同时避免给已删除的任务留下孤儿 partmap。
         if (isTaskCancelled(taskId)) {
             if (outputFile.exists()) {
                 synchronized(lock) { writePartmap(partmapFile, chunkCount, chunkDone) }
@@ -917,8 +875,7 @@ class DownloadManager @Inject constructor(
         val onDisk = runCatching { outputFile.length() }.getOrDefault(0L)
         updateTask(taskId) { it.copy(downloadedBytes = totalDownloaded.coerceAtMost(totalBytes), totalBytes = totalBytes) }
 
-        // P0-1 配套：每个分块已精确校验「写入长度 == 区间长度」，各块区间之和恰为 totalBytes，
-        // 故此处收紧为严格达标，去掉原先的 1 字节容差（该容差会让「末块少 1 字节」的截断静默通过）。
+        // 每个分块已精确校验「写入长度 == 区间长度」，各块区间之和恰为 totalBytes，
         if (allDone && totalDownloaded >= totalBytes && onDisk >= totalBytes) {
             partmapFile.delete()   // O4：成功后清理位图表
         } else {
@@ -987,16 +944,10 @@ class DownloadManager @Inject constructor(
                             if (written >= expected) break
                         }
                     }
-                    // P0-1 修复：必须校验「实际写入 == 期望区间长度」，无条件生效。
-                    // 场景一（数据损坏）：服务器返回 206 但连接中途断流，read() 会正常返回 -1；
-                    //   若不校验则该块被标记 done，块中部留下零字节空洞，而后续更高偏移块的写入
-                    //   会把文件长度撑到 totalBytes，使收尾的字节数/磁盘大小校验双双通过
-                    //   → 损坏文件被静默标记 COMPLETED（末块少 1 字节时尤其隐蔽）。
-                    // 场景二（续传污染）：暂停/取消时读循环由 isActive 判定 break，此前会照样返回成功
-                    //   并置 chunkDone[idx]=true，一旦该状态被写入 *.partmap，续传就会跳过这个不完整块。
-                    // 两种场景都必须阻止「未写满却算完成」：这里统一抛出，由 worker 判定——
-                    //   任务仍活跃 → 重置计数后以新连接整段重下（超过重试上限才判失败）；
-                    //   任务已取消 → 直接 break，不标记 done、不计失败，保留 PAUSED 语义。
+                    // P0-1：必须校验「实际写入 == 期望区间长度」。否则（场景一）连接中途断流使块留零字节空洞，
+                    // 而更高偏移块把文件撑到 totalBytes，收尾校验双双通过→损坏文件被标 COMPLETED；
+                    // （场景二）暂停/取消时读循环 break 后仍会置 chunkDone=true，续传跳过该不完整块。
+                    // 两种都须阻止「未写满却算完成」：未达标则抛异常，由 worker 判定重试或保留 PAUSED。
                     if (written != expected) {
                         throw IOException("分块 $index 写入长度不符：期望 $expected，实际 $written（连接中途断流或被中断）")
                     }
@@ -1042,24 +993,13 @@ class DownloadManager @Inject constructor(
                 else -> null
             }
         }
-        // D2：将跨进程 IPC（startForegroundService，经由 onProgressUpdate→forwardToService）移出 tasksLock，
-        // 避免锁被 Binder 调用长时间占用，拖慢 pause/cancel/updateConcurrencyLimit 等取锁操作。
+        //将跨进程IPC移出 tasksLock，
         progressUpdate?.let { (id, title, progress, status) ->
             onProgressUpdate?.invoke(id, title, progress, status)
         }
     }
-
-    // P0-2：跟踪每个任务当前在途的 OkHttp Call，便于暂停/取消时立即中断底层 socket 读取
-    // P1-2 修复：同一任务的多个分块 worker 在不同线程并发 add，ArrayList 非线程安全，
-    // 与 cancelTaskCalls 的遍历并发时可能抛 ConcurrentModificationException 或漏取消某个 Call
-    // （该连接无法被打断，最长卡到 readTimeout=120s）。改用写时复制列表：add 安全、迭代基于快照。
     private fun trackCall(taskId: Int, call: Call) {
         taskCalls.computeIfAbsent(taskId) { CopyOnWriteArrayList<Call>() }.add(call)
-        // P2-2 修复：登记后立即复查取消标记。
-        // 若本次 add 发生在 cancelTaskCalls 排空列表之后，该 Call 不在被取消的快照里；
-        // 而协程 cancel 无法打断已进入的阻塞 execute()/read()，线程会僵持到 readTimeout(120s)。
-        // 正确性论证：cancelTaskCalls 先置位标记再排空列表，故此处读到 false ⇒ 置位发生在本次检查之后
-        // ⇒ add 发生在置位之前 ⇒ 必然被排空时的快照覆盖。两条路径无遗漏。
         if (taskCancelFlags[taskId]?.get() == true) {
             runCatching { call.cancel() }
         }
@@ -1157,7 +1097,7 @@ class DownloadManager @Inject constructor(
     }
 
     fun cancelDownload(taskId: Int) {
-        // P2-2：同 pauseDownload，先中断阻塞的在途请求再取消协程
+        // P2-2：同暂停，先中断在途请求再取消协程
         cancelTaskCalls(taskId)
         val job = downloadJobs.remove(taskId)
         job?.cancel()
@@ -1173,7 +1113,6 @@ class DownloadManager @Inject constructor(
                 val pm = File(it.filePath + PARTMAP_SUFFIX)
                 if (pm.exists()) pm.delete()
             }
-            // P2-3：从 Map 删除并派生列表快照
             taskMap.remove(taskId)
             emitTasks()
         }
@@ -1377,48 +1316,30 @@ class DownloadManager @Inject constructor(
     }
 
     private companion object {
-        // 并发下载绝对硬上限（信号量固定容量），与用户可配置并发上限的上界一致
         const val MAX_CONCURRENT = 5
-        // 进度类 DB 落盘节流间隔（ms）：进度更新走内存态，仅按此间隔写 DB
         const val PROGRESS_PERSIST_INTERVAL_MS = 3000L
-
-        // DownloadService 的完整类名。data 模块不能直接依赖 app 模块，
-        // 因此通过显式类名的 Intent 将进度转发给 app 模块中的 DownloadService。
         const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
-
-        // ===== O1：解锁 OkHttp 单主机并发上限所需常量 =====
         const val MAX_REQUESTS_PER_HOST = 16
         const val MAX_IDLE_CONNECTIONS = 16
         const val KEEP_ALIVE_SECONDS = 60L
-
-        // ===== O3：自适应分块数所需常量 =====
-        // 单连接吞吐阈值（字节/秒）：高吞吐=低 RTT 已饱和（减连接数），低吞吐=高 RTT/限速（加连接数）
         const val HIGH_SINGLE_BPS = 8L * 1024 * 1024
         const val LOW_SINGLE_BPS = 1_500_000L
         const val PROBE_WINDOW = 512 * 1024          // 吞吐探测窗口 512KB
-
-        // ===== O4：分块续传位图表（sidecar 文件，无需改 DB 表结构） =====
         const val PARTMAP_SUFFIX = ".partmap"
         const val PARTMAP_PERSIST_MS = 1000L
 
-        // ===== O5：慢块驱逐（lowest-speed-limit）所需常量 =====
         const val SLOW_THRESHOLD_BPS = 50 * 1024L   // 单块速率低于 50 KB/s 视为慢块
         const val SLOW_SAMPLE_MS = 2000L            // 逐块吞吐采样周期 2s
         const val SLOW_DURATION_MS = 15000L         // 持续低于阈值 15s 才驱逐，避免抖动误杀
         const val SLOW_GRACE_MS = 8000L             // 新块起步宽限期，期间 0 字节不判慢
         const val MAX_CHUNK_ATTEMPTS = 5            // 单块最大重试/驱逐次数，超限判定整体失败
-
-        // ===== O8：写盘与缓冲优化所需缓冲档位 =====
         const val BUFFER_SIZE_LARGE = 1_048_576     // ≥16MB 分块用 1MB 缓冲
         const val BUFFER_SIZE_MEDIUM = 512 * 1024   // ≥8MB 分块用 512KB 缓冲
-
-        // 分块并行下载参数
         const val MAX_CHUNKS = 8                       // O3：单任务分块硬上限（结合 MAX_TOTAL_CONNECTIONS=8）
-        // P2-2：全局连接数上限（实际在跑任务数 × 每任务分块数 不得超过此值），避免弱网卡被打满
         const val MAX_TOTAL_CONNECTIONS = 8
         const val CHUNK_SIZE = 4_000_000L              // O2：最小分块 4MB，对齐 CDN 4MB/8MB 缓存分片
         const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L // O2：文件 <12MB 不分块，直接单连接

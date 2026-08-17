@@ -11,9 +11,6 @@ import org.jsoup.select.Elements
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 首页解析器
- */
 @Singleton
 class HomePageParser @Inject constructor(private val videoListParser: VideoListParser) {
 

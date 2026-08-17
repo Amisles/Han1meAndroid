@@ -182,8 +182,7 @@ class HomePageParserTest {
 
     @Test
     fun `parse skips section whose wrapper has only invalid containers and no later siblings`() {
-        // parser 会向后扫描最多 5 个兄弟节点寻找视频，若 wrapper 内全是无效容器
-        // 且后续兄弟节点也没有可解析视频，section 会被跳过。
+        // wrapper 内无有效视频且后续兄弟节点也无可解析视频时，section 被跳过（最多向后扫描 5 个兄弟）
         val html = """
             <html><body>
                 <a class="horizontal-row-title"><h3>最新上市</h3></a>

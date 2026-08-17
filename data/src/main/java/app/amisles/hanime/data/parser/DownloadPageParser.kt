@@ -7,9 +7,6 @@ import org.jsoup.nodes.Element
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 下载页解析器
- */
 @Singleton
 class DownloadPageParser @Inject constructor() {
 

@@ -9,9 +9,6 @@ import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 搜索页解析器
- */
 @Singleton
 class SearchPageParser @Inject constructor(private val videoListParser: VideoListParser) {
 

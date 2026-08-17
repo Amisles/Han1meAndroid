@@ -9,9 +9,6 @@ import org.jsoup.nodes.Document
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 作者页面解析器
- */
 @Singleton
 class AuthorPageParser @Inject constructor(
     private val videoListParser: VideoListParser,

@@ -10,13 +10,10 @@ import org.jsoup.nodes.Document
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * 播放列表解析器
- */
 @Singleton
 class PlaylistParser @Inject constructor() {
 
-    // 解析播放列表信息（详情页内嵌的播放列表）
+    // 详情页内嵌播放列表
     fun parse(doc: Document, baseUrl: String): PlaylistInfo? {
         try {
             val playlistWrapper = doc.selectFirst(".video-playlist-wrapper")
@@ -101,7 +98,6 @@ class PlaylistParser @Inject constructor() {
         }
     }
 
-    // 解析播放列表列表页
     fun parseListPage(html: String, baseUrl: String): List<PlaylistSummary> {
         try {
             val doc = Jsoup.parse(html, baseUrl)
@@ -115,7 +111,6 @@ class PlaylistParser @Inject constructor() {
         }
     }
 
-    // 解析播放列表详情页
     fun parseDetailPage(html: String, baseUrl: String): PlaylistDetail? {
         try {
             val doc = Jsoup.parse(html, baseUrl)
@@ -160,7 +155,7 @@ class PlaylistParser @Inject constructor() {
         }
     }
 
-    // 解析作者页面中的播放列表区块
+    // 作者页面播放列表区块
     fun parseSectionPlaylists(doc: Document, baseUrl: String, sectionTitle: String): List<PlaylistSummary> {
         val playlists = mutableListOf<PlaylistSummary>()
         val sectionLinks = doc.select("a.horizontal-row-title")

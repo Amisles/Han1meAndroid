@@ -285,7 +285,6 @@ class WatchPageParserTest {
         // 播放列表包含 v=111，所以推荐视频中 v=111 应被过滤
         assertEquals(1, detail.relatedVideos.size)
         assertEquals("222", detail.relatedVideos[0].id)
-        // 播放列表应被解析
         assertNotNull(detail.playlist)
         assertEquals("My Playlist", detail.playlist!!.title)
     }

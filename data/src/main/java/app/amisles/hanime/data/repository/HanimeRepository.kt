@@ -191,10 +191,6 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    /**
-     * 拉取视频评论列表。
-     * 不捕获异常，让上层 ViewModel 显示颜文字错误提示。
-     */
     suspend fun getComments(videoId: String): AppResult<List<Comment>> {
         return try {
             val json = networkService.fetchComments(videoId)
@@ -206,10 +202,6 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    /**
-     * 拉取评论的回复列表。
-     * 不捕获异常，让上层 ViewModel 处理错误。
-     */
     suspend fun getReplies(commentId: String): AppResult<List<Reply>> {
         return try {
             val json = networkService.fetchReplies(commentId)
@@ -224,11 +216,9 @@ class HanimeRepository @Inject constructor(
     /**
      * 发表视频评论。
      *
-     * @param videoId 视频 ID
-     * @param commentText 评论内容
-     * @param commentCount 当前评论数（从 VideoDetail.commentCount 获取）
-     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
-     * @return Pair(新评论对象, 新评论总数)，失败抛异常
+     * @param commentCount 当前评论数（取自 VideoDetail.commentCount）
+     * @param csrfToken CSRF Token（取自 VideoDetail.csrfToken）
+     * @return Pair(新评论对象, 新评论总数)
      */
     suspend fun postComment(
         videoId: String,
@@ -302,8 +292,7 @@ class HanimeRepository @Inject constructor(
      *
      * @param commentId 被回复的评论 ID（reply-comment-id）
      * @param replyText 回复内容（回复其他回复时已带 "@用户名 " 前缀）
-     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
-     * @return 解析出的新回复对象，失败抛异常
+     * @param csrfToken CSRF Token（取自 VideoDetail.csrfToken）
      */
     suspend fun replyComment(
         commentId: String,
@@ -336,10 +325,10 @@ class HanimeRepository @Inject constructor(
      * 订阅 / 取消订阅作者。
      * 官网接口：POST /subscribe，凭 subscribe-status 区分订阅与取消（""=订阅，"1"=取消）。
      *
-     * @param artistId 被订阅作者的数字 ID（从 VideoDetail.subscribeArtistId 获取）
+     * @param artistId 被订阅作者的数字 ID（取自 VideoDetail.subscribeArtistId）
      * @param willSubscribe true=订阅，false=取消订阅
-     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
-     * @return 订阅结果（新状态 + 回传 CSRF Token），失败抛异常
+     * @param csrfToken CSRF Token（取自 VideoDetail.csrfToken）
+     * @return 订阅结果（新状态 + 回传 CSRF Token）
      */
     suspend fun toggleSubscribe(
         userId: String,
@@ -402,8 +391,6 @@ class HanimeRepository @Inject constructor(
      * 更新账户个人档案（用户名称 + 电邮）。
      * 官网接口：POST /user/{id}，凭 type=profile 区分「更改密码」分支。
      *
-     * @param name 新的用户名称
-     * @param email 新的登录电邮
      * @param csrfToken 账户资料页解析出的 CSRF Token
      */
     suspend fun updateAccountProfile(
