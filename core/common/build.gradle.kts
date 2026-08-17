@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "app.amisles.hanime.core.common"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 30

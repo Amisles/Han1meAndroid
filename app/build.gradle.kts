@@ -18,12 +18,12 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "app.amisles.hanime"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.amisles.hanime"
         minSdk = 30
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 8
         versionName = "1.2.0"
 

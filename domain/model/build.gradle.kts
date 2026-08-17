@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "app.amisles.hanime.domain.model"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 30

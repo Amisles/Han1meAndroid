@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <b>当前版本：v1.2.0</b>（versionCode 8）· 最低支持 Android 11（API 30）· 目标 Android 16（API 37）
+  <b>当前版本：v1.2.0</b>（versionCode 8）· 最低支持 Android 11（API 30）· 目标 Android 16（API 36）
 </p>
 
 ## 功能
@@ -52,7 +52,7 @@
 | Activity | Activity Compose | 1.12.3 |
 | Core KTX | AndroidX Core KTX | 1.13.1 |
 | 最低 SDK | Android 11 (API 30) | - |
-| 目标 SDK | Android 16 (API 37) | - |
+| 目标 SDK | Android 16 (API 36) | - |
 
 ## 项目结构
 
