@@ -95,6 +95,7 @@
     <string name="detail_no_download">暂无下载资源</string>
     <string name="detail_download_added">已添加下载任务</string>
     <string name="detail_download_button">下载此视频</string>
+    <string name="detail_auto_play_next">连播</string>
 
     <!-- Comments -->
     <string name="detail_tab_related">相关影片</string>

@@ -12,6 +12,9 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
     fun getAllWatchHistory(): Flow<List<WatchHistory>>
 
+    @Query("SELECT * FROM watch_history WHERE id = :videoId")
+    suspend fun getWatchHistoryById(videoId: String): WatchHistory?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addWatchHistory(history: WatchHistory)
 

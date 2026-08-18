@@ -33,6 +33,10 @@ class DetailViewModel @Inject constructor(
     private val _videoDetail = MutableStateFlow<VideoDetail?>(null)
     val videoDetail: StateFlow<VideoDetail?> = _videoDetail.asStateFlow()
 
+    // 进入播放器时用于续播的已保存进度（毫秒）；由 loadVideoDetail 内写入
+    private val _savedPosition = MutableStateFlow(0L)
+    val savedPosition: StateFlow<Long> = _savedPosition.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -122,6 +126,9 @@ class DetailViewModel @Inject constructor(
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
 
+    // 供 UI 层（如进度记忆 seek）获取当前视频 ID
+    val videoId: String get() = currentVideoId
+
     // 进行中的详情加载任务；快速重进页面时取消旧请求，避免重复/竞态（§7 并发请求控制）
     private var detailLoadJob: Job? = null
 
@@ -181,6 +188,10 @@ class DetailViewModel @Inject constructor(
                         Preferences.saveUserId(resolvedUserId)
                     }
                     if (currentVideoId.isNotEmpty()) {
+                        // 先读取已有历史，保留播放进度，避免每次进入覆盖为 0
+                        val existing = withContext(Dispatchers.IO) {
+                            repository.getWatchHistory(currentVideoId)
+                        }
                         val history = WatchHistory(
                             id = currentVideoId,
                             title = detail.title,
@@ -188,11 +199,14 @@ class DetailViewModel @Inject constructor(
                             videoUrl = currentVideoUrl,
                             author = detail.author,
                             duration = detail.releaseDate,
-                            watchedAt = System.currentTimeMillis()
+                            watchedAt = System.currentTimeMillis(),
+                            playbackPosition = existing?.playbackPosition ?: 0L,
+                            playbackDuration = existing?.playbackDuration ?: 0L
                         )
                         withContext(Dispatchers.IO) {
                             repository.addWatchHistory(history)
                         }
+                        _savedPosition.value = existing?.playbackPosition ?: 0L
                     }
 
                     val isFav = withContext(Dispatchers.IO) {
@@ -613,6 +627,47 @@ class DetailViewModel @Inject constructor(
         val match = regex.find(url)
         return match?.groupValues?.get(1) ?: ""
     }
+
+    /**
+     * 持久化当前播放进度（毫秒）。
+     * 保留标题/封面等元数据；watchedAt 沿用旧值避免每 5 秒刷新导致历史顺序频繁跳动。
+     * 仅更新位置/时长，新视频首次进入时再写入完整记录。
+     */
+    fun savePlaybackProgress(position: Long, duration: Long) {
+        val id = currentVideoId
+        if (id.isEmpty()) return
+        val detail = _videoDetail.value ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = repository.getWatchHistory(id)
+            val base = existing ?: WatchHistory(
+                id = id,
+                title = detail.title,
+                thumbnailUrl = detail.posterUrl,
+                videoUrl = currentVideoUrl,
+                author = detail.author,
+                duration = detail.releaseDate,
+                watchedAt = System.currentTimeMillis()
+            )
+            repository.addWatchHistory(
+                base.copy(
+                    title = detail.title,
+                    thumbnailUrl = detail.posterUrl,
+                    videoUrl = currentVideoUrl,
+                    author = detail.author,
+                    duration = detail.releaseDate,
+                    playbackPosition = position,
+                    playbackDuration = duration,
+                    watchedAt = existing?.watchedAt ?: System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    /**
+     * 读取某视频的已保存播放进度（毫秒），用于进入时续播。
+     */
+    suspend fun getSavedPlaybackPosition(videoId: String): Long =
+        withContext(Dispatchers.IO) { repository.getWatchHistory(videoId)?.playbackPosition ?: 0L }
 
     /**
      * 订阅 / 取消订阅作者。

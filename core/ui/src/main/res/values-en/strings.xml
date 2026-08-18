@@ -84,6 +84,7 @@
     <string name="detail_no_download">No download available</string>
     <string name="detail_download_added">Download task added</string>
     <string name="detail_download_button">Download Video</string>
+    <string name="detail_auto_play_next">Auto-play</string>
 
     <!-- Comments -->
     <string name="detail_tab_related">Related</string>

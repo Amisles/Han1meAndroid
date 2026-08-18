@@ -66,6 +66,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -84,6 +85,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.amisles.hanime.domain.model.VideoSource
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.feature.detail.ExoPlayerFactory
 import java.util.Locale
@@ -227,10 +229,16 @@ fun VideoPlayer(
     posterUrl: String = "",
     videoSources: List<VideoSource> = emptyList(),
     initialSourceUrl: String = "",
+    initialPositionMs: Long = 0L,
     preloadUrl: String = "",
     isFullscreen: Boolean = false,
     modifier: Modifier = Modifier,
-    onFullscreenToggle: (Boolean) -> Unit = {}
+    onFullscreenToggle: (Boolean) -> Unit = {},
+    onPlaybackSpeedChanged: (Float) -> Unit = {},
+    onQualityChanged: (String) -> Unit = {},
+    onPlaybackEnded: () -> Unit = {},
+    autoPlayNext: Boolean = true,
+    onAutoPlayNextChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -295,6 +303,14 @@ fun VideoPlayer(
     // 让 remember 的 Player.Listener 始终读到最新的画质列表，避免 videoSources 变化时闭包陈旧
     val sourcesRef = remember { mutableStateOf(sortedSources) }
     sourcesRef.value = sortedSources
+    // 用 ref 持有最新的 onPlaybackEnded，避免 remember 的 Player.Listener 闭包捕获到陈旧 lambda
+    val onPlaybackEndedRef = remember { mutableStateOf(onPlaybackEnded) }
+    onPlaybackEndedRef.value = onPlaybackEnded
+    // 续播（§播放进度记忆）：持有最新续播点，并用 initialSourceUrl 作为「新视频加载」标记，
+    // 每次切换视频源时复位 seek 标记，确保续播点始终对应当前视频
+    val initialPositionMsRef = remember { mutableStateOf(initialPositionMs) }
+    initialPositionMsRef.value = initialPositionMs
+    val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
 
     // 切换清晰度（§2 码率自适应）：保留播放进度与播放状态，换源后无缝续播。
     // 声明在 listener 之前，以便 Player.Listener 的匿名对象方法能前向解析到本函数。
@@ -315,6 +331,7 @@ fun VideoPlayer(
         if (wasPlaying) exoPlayer.play()
         // isSwitchingQuality 在播放器回调 STATE_READY / onPlayerError 时才复位，
         // 以真正拦截 prepare 期间的重复切源点击（见 Player.Listener）
+        onQualityChanged(source.resolution)
     }
 
     val listener = remember {
@@ -342,6 +359,14 @@ fun VideoPlayer(
                     isReady = true
                     isSwitchingQuality = false
                     rebufferCount = 0
+                    // 续播（§播放进度记忆）：首帧就绪且存在有效续播点（>5s 且未接近结尾），跳转到上次位置
+                    if (!initialSeekAppliedRef.value && initialPositionMsRef.value > 5000) {
+                        val dur = exoPlayer.duration
+                        if (dur <= 0 || initialPositionMsRef.value < dur - 5000) {
+                            exoPlayer.seekTo(initialPositionMsRef.value)
+                        }
+                        initialSeekAppliedRef.value = true
+                    }
                     // 解码优化（§4）：长视频保持解码器热身，降低切回前台的解码延迟
                     exoPlayer.setForegroundMode(exoPlayer.duration > LONG_VIDEO_MS)
                     // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
@@ -357,6 +382,10 @@ fun VideoPlayer(
                     } else {
                         stableTicks = 0
                     }
+                }
+                Player.STATE_ENDED -> {
+                    // 播放结束：通知外层（如触发下一集自动播放）
+                    onPlaybackEndedRef.value.invoke()
                 }
             }
         }
@@ -482,6 +511,7 @@ fun VideoPlayer(
         playbackSpeed = speed
         exoPlayer.setPlaybackSpeed(speed)
         showSpeedMenu = false
+        onPlaybackSpeedChanged(speed)
     }
 
     fun toggleFullscreen() {
@@ -941,6 +971,18 @@ fun VideoPlayer(
                         contentDescription = if (isFullscreen) "退出全屏" else "全屏",
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
+                    )
+                }
+
+                // 连播（下一集自动播放）开关：高亮表示已开启
+                IconButton(
+                    onClick = { onAutoPlayNextChanged(!autoPlayNext) },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.detail_auto_play_next),
+                        color = if (autoPlayNext) HanimePrimary else Color.White,
+                        fontSize = 12.sp
                     )
                 }
             }

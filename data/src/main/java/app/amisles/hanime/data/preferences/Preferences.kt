@@ -36,6 +36,9 @@ object Preferences {
     private const val SP_BASE_URL = "base_url"
     private const val SP_APP_LANGUAGE = "app_language"
     private const val SP_THEME_MODE = "theme_mode"
+    private const val SP_PLAYBACK_SPEED = "playback_speed"
+    private const val SP_PREFERRED_QUALITY = "preferred_quality"
+    private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
@@ -74,6 +77,15 @@ object Preferences {
     private val _themeModeFlow = MutableStateFlow(ThemeMode.SYSTEM)
     val themeModeFlow: StateFlow<ThemeMode> = _themeModeFlow.asStateFlow()
 
+    private val _playbackSpeedFlow = MutableStateFlow(1f)
+    val playbackSpeedFlow: StateFlow<Float> = _playbackSpeedFlow.asStateFlow()
+
+    private val _preferredQualityFlow = MutableStateFlow("")
+    val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
+
+    private val _autoPlayNextFlow = MutableStateFlow(true)
+    val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
+
     fun init(context: Context) {
         // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
         sp = provideSecurePreferences(context)
@@ -91,6 +103,9 @@ object Preferences {
         _baseUrlFlow.value = safeBaseUrl
         _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
         _themeModeFlow.value = ThemeMode.fromName(sp.getString(SP_THEME_MODE, null))
+        _playbackSpeedFlow.value = sp.getFloat(SP_PLAYBACK_SPEED, 1f)
+        _preferredQualityFlow.value = sp.getString(SP_PREFERRED_QUALITY, "").orEmpty()
+        _autoPlayNextFlow.value = sp.getBoolean(SP_AUTO_PLAY_NEXT, true)
     }
 
     /**
@@ -203,6 +218,10 @@ object Preferences {
 
     val themeMode: ThemeMode get() = _themeModeFlow.value
 
+    val playbackSpeed: Float get() = _playbackSpeedFlow.value
+    val preferredQuality: String get() = _preferredQualityFlow.value
+    val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
+
     fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
         _appLanguageFlow.value = lang
@@ -264,6 +283,32 @@ object Preferences {
         val safeMax = max.coerceIn(1, 5)
         sp.edit { putInt(SP_MAX_DOWNLOAD_CONCURRENT, safeMax) }
         _maxDownloadConcurrentFlow.value = safeMax
+    }
+
+    /**
+     * 播放倍速偏好（0.25x–2x）。进入播放器时自动应用，切换时写回。
+     */
+    fun setPlaybackSpeed(speed: Float) {
+        val safe = speed.coerceIn(0.25f, 2f)
+        sp.edit { putFloat(SP_PLAYBACK_SPEED, safe) }
+        _playbackSpeedFlow.value = safe
+    }
+
+    /**
+     * 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。
+     * 进入播放器时优先选用该画质对应的视频源。
+     */
+    fun setPreferredQuality(resolution: String) {
+        sp.edit { putString(SP_PREFERRED_QUALITY, resolution) }
+        _preferredQualityFlow.value = resolution
+    }
+
+    /**
+     * 连播（下一集自动播放）开关。
+     */
+    fun setAutoPlayNext(enabled: Boolean) {
+        sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
+        _autoPlayNextFlow.value = enabled
     }
 
     fun logout() {

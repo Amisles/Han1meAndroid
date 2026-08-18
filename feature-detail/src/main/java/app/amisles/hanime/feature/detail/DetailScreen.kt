@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
@@ -86,6 +87,7 @@ import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.domain.model.VideoDetail
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -127,6 +129,7 @@ fun DetailScreen(
     val expandedReplies by viewModel.expandedReplies.collectAsStateWithLifecycle()
     val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
+    val autoPlayNext by app.amisles.hanime.data.preferences.Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
@@ -147,20 +150,62 @@ fun DetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // 续播点（毫秒）：进入时由历史记录计算，传递给 VideoPlayer 在首帧就绪后跳转
+    var initialSeekMs by remember { mutableStateOf(0L) }
+
     val exoPlayer = remember {
-        ExoPlayerFactory.buildVideoPlayer(context)
+        ExoPlayerFactory.buildVideoPlayer(context).apply {
+            // 进入即应用已持久化的倍速偏好
+            setPlaybackSpeed(app.amisles.hanime.data.preferences.Preferences.playbackSpeed)
+        }
     }
 
+    // 进入即加载：优先使用持久化画质偏好的源（画质偏好持久化），并读取已保存进度用于续播
     LaunchedEffect(videoDetail?.defaultSourceUrl) {
-        val url = videoDetail?.defaultSourceUrl
+        val detail = videoDetail
+        val url = detail?.defaultSourceUrl
         if (!url.isNullOrEmpty()) {
-            exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(url)))
+            val preferredUrl = pickInitialSourceUrl(
+                detail,
+                app.amisles.hanime.data.preferences.Preferences.preferredQuality
+            )
+            // 续播：读取已保存进度（有效续播点 >5s），进入即跳转由 VideoPlayer 在首帧就绪后执行
+            initialSeekMs = viewModel.getSavedPlaybackPosition(viewModel.videoId)
+            exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(preferredUrl)))
             exoPlayer.prepare()
         }
     }
 
-    DisposableEffect(Unit) {
+    // 播放结束处理：保存进度；若开启连播则自动播放下一集（相关影片首条有效直链）
+    fun handlePlaybackEnded() {
+        val pos = exoPlayer.currentPosition
+        if (pos > 0) {
+            viewModel.savePlaybackProgress(pos, exoPlayer.duration)
+        }
+        if (app.amisles.hanime.data.preferences.Preferences.autoPlayNext) {
+            val next = videoDetail?.relatedVideos?.firstOrNull { it.videoUrl.isNotBlank() }
+            if (next != null) {
+                onVideoClick(next.videoUrl)
+            }
+        }
+    }
+
+    // 进度记忆（§播放进度记忆）：每 5 秒保存一次当前播放位置/时长，离场时保存最终进度并释放
+    DisposableEffect(exoPlayer) {
+        val job = scope.launch {
+            while (true) {
+                delay(5000)
+                val state = exoPlayer.playbackState
+                if (state != Player.STATE_IDLE && exoPlayer.currentPosition > 0) {
+                    viewModel.savePlaybackProgress(exoPlayer.currentPosition, exoPlayer.duration)
+                }
+            }
+        }
         onDispose {
+            job.cancel()
+            if (exoPlayer.currentPosition > 0) {
+                viewModel.savePlaybackProgress(exoPlayer.currentPosition, exoPlayer.duration)
+            }
             exoPlayer.release()
         }
     }
@@ -663,10 +708,16 @@ fun DetailScreen(
                                 exoPlayer = exoPlayer,
                                 posterUrl = detail.posterUrl,
                                 videoSources = detail.videoSources,
-                                initialSourceUrl = detail.defaultSourceUrl,
+                                initialSourceUrl = pickInitialSourceUrl(detail, app.amisles.hanime.data.preferences.Preferences.preferredQuality),
+                                initialPositionMs = initialSeekMs,
                                 preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
                                 isFullscreen = false,
                                 onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                                onPlaybackSpeedChanged = { app.amisles.hanime.data.preferences.Preferences.setPlaybackSpeed(it) },
+                                onQualityChanged = { app.amisles.hanime.data.preferences.Preferences.setPreferredQuality(it) },
+                                onPlaybackEnded = { handlePlaybackEnded() },
+                                autoPlayNext = autoPlayNext,
+                                onAutoPlayNextChanged = { app.amisles.hanime.data.preferences.Preferences.setAutoPlayNext(it) },
                                 modifier = Modifier
                             )
                         } else {
@@ -761,10 +812,16 @@ fun DetailScreen(
                     exoPlayer = exoPlayer,
                     posterUrl = detail.posterUrl,
                     videoSources = detail.videoSources,
-                    initialSourceUrl = detail.defaultSourceUrl,
+                    initialSourceUrl = pickInitialSourceUrl(detail, app.amisles.hanime.data.preferences.Preferences.preferredQuality),
+                    initialPositionMs = initialSeekMs,
                     preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
                     isFullscreen = isPlayerFullscreen,
                     onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                    onPlaybackSpeedChanged = { app.amisles.hanime.data.preferences.Preferences.setPlaybackSpeed(it) },
+                    onQualityChanged = { app.amisles.hanime.data.preferences.Preferences.setPreferredQuality(it) },
+                    onPlaybackEnded = { handlePlaybackEnded() },
+                    autoPlayNext = autoPlayNext,
+                    onAutoPlayNextChanged = { app.amisles.hanime.data.preferences.Preferences.setAutoPlayNext(it) },
                     modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
                 )
             } else {
@@ -1023,6 +1080,17 @@ private fun shareVideo(context: Context, title: String, url: String) {
 /**
  * 评论/相关影片 Tab 按钮
  */
+/**
+ * 根据持久化画质偏好挑选初始播放源：偏好非空且存在对应分辨率时使用，否则回退默认源。
+ */
+private fun pickInitialSourceUrl(detail: VideoDetail, preferredQuality: String): String {
+    if (preferredQuality.isNotBlank()) {
+        val matched = detail.videoSources.firstOrNull { it.resolution == preferredQuality }
+        if (matched != null) return matched.url
+    }
+    return detail.defaultSourceUrl
+}
+
 @Composable
 private fun CommentTabButton(
     text: String,

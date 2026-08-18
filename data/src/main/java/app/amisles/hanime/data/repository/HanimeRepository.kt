@@ -104,6 +104,15 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+    suspend fun getWatchHistory(videoId: String): WatchHistory? {
+        return try {
+            watchHistoryDao.getWatchHistoryById(videoId)
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error getting watch history: ${e.message}", e)
+            null
+        }
+    }
+
     fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>> {
         return watchHistoryDao.getAllWatchHistory()
     }

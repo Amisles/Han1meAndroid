@@ -84,6 +84,7 @@
     <string name="detail_no_download">暫無下載資源</string>
     <string name="detail_download_added">已新增下載任務</string>
     <string name="detail_download_button">下載此影片</string>
+    <string name="detail_auto_play_next">連播</string>
 
     <!-- Comments -->
     <string name="detail_tab_related">相關影片</string>

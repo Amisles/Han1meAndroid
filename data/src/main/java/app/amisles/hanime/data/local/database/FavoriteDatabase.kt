@@ -11,7 +11,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 
 @Database(
     entities = [FavoriteVideo::class, WatchHistory::class, DownloadEntity::class, SearchHistoryEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class FavoriteDatabase : RoomDatabase() {
@@ -76,6 +76,18 @@ abstract class FavoriteDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN errorMessage TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        // 观看历史（watch_history）新增播放进度字段：上次播放位置与总时长
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE watch_history ADD COLUMN playback_position INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE watch_history ADD COLUMN playback_duration INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
