@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
@@ -30,6 +31,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Layers
+import java.io.File
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
@@ -196,6 +199,29 @@ fun SettingsScreen(
     var showBaseUrlDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
 
+    var showStoragePathDialog by remember { mutableStateOf(false) }
+    val externalBase = remember(context) {
+        context.getExternalFilesDir(null)?.let { File(it, "Downloads") } ?: File(context.filesDir, "Downloads")
+    }
+    val internalBase = remember(context) { File(context.filesDir, "Downloads") }
+    var storageLocation by remember(uiState.downloadStoragePath) {
+        mutableStateOf(
+            if (uiState.downloadStoragePath.isBlank() ||
+                uiState.downloadStoragePath.startsWith(externalBase.absolutePath)
+            ) "external" else "internal"
+        )
+    }
+    var storageSubfolder by remember(uiState.downloadStoragePath) {
+        mutableStateOf(
+            if (uiState.downloadStoragePath.isBlank()) ""
+            else uiState.downloadStoragePath
+                .removePrefix(externalBase.absolutePath)
+                .removePrefix(internalBase.absolutePath)
+                .removePrefix(File.separator)
+                .removePrefix("/")
+        )
+    }
+
     val languageOptions = appLanguageOptions()
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
     val themeModeOptions = listOf(
@@ -282,6 +308,55 @@ fun SettingsScreen(
                 ).show()
             }
         )
+
+        // 下载存储路径
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 6.dp)
+                .clickable { showStoragePathDialog = true },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Folder,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_download_storage),
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = if (uiState.downloadStoragePath.isBlank()) {
+                            stringResource(R.string.settings_download_storage_external)
+                        } else {
+                            uiState.downloadStoragePath
+                        },
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         Card(
             modifier = Modifier
@@ -479,6 +554,117 @@ fun SettingsScreen(
                     Toast.makeText(context, context.getString(R.string.settings_base_url_restored), Toast.LENGTH_SHORT).show()
                 }) {
                     Text(stringResource(R.string.common_restore_default), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    if (showStoragePathDialog) {
+        AlertDialog(
+            onDismissRequest = { showStoragePathDialog = false },
+            title = {
+                Text(
+                    stringResource(R.string.settings_download_storage_dialog_title),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_download_storage_current) + "：" +
+                            if (uiState.downloadStoragePath.isBlank()) {
+                                stringResource(R.string.settings_download_storage_external)
+                            } else {
+                                uiState.downloadStoragePath
+                            },
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    // 外部存储（默认）
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { storageLocation = "external" },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = storageLocation == "external",
+                            onClick = { storageLocation = "external" }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.settings_download_storage_external),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    // 内部存储（更私密）
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { storageLocation = "internal" },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = storageLocation == "internal",
+                            onClick = { storageLocation = "internal" }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.settings_download_storage_internal),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = storageSubfolder,
+                        onValueChange = { storageSubfolder = it },
+                        label = { Text(stringResource(R.string.settings_download_storage_subfolder)) },
+                        placeholder = {
+                            Text(
+                                stringResource(R.string.settings_download_storage_subfolder_hint),
+                                fontSize = 12.sp
+                            )
+                        },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // 恢复默认路径
+                    Text(
+                        text = stringResource(R.string.settings_download_storage_restored),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable {
+                                viewModel.setDownloadStoragePath("")
+                                showStoragePathDialog = false
+                            }
+                            .padding(vertical = 4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val base = if (storageLocation == "external") externalBase else internalBase
+                    val folder = storageSubfolder.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    val finalPath = if (folder.isBlank()) base.absolutePath else File(base, folder).absolutePath
+                    viewModel.setDownloadStoragePath(finalPath)
+                    showStoragePathDialog = false
+                }) {
+                    Text(stringResource(R.string.common_save), color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStoragePathDialog = false }) {
+                    Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface

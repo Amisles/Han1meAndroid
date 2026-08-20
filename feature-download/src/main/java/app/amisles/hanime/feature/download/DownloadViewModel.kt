@@ -16,4 +16,5 @@ class DownloadViewModel @Inject constructor(
     fun pauseDownload(taskId: Int) = downloadManager.pauseDownload(taskId)
     fun resumeDownload(taskId: Int) = downloadManager.resumeDownload(taskId)
     fun cancelDownload(taskId: Int) = downloadManager.cancelDownload(taskId)
+    fun retryAllFailed() = downloadManager.retryAllFailed()
 }

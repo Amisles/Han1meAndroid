@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,12 +57,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Sort
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Header
 import coil3.compose.AsyncImage
 import java.io.File
+
+enum class DownloadFilter {
+    ALL, DOWNLOADING, COMPLETED, FAILED, PAUSED
+}
+
+enum class DownloadSort {
+    ADDED, NAME, SIZE, PROGRESS
+}
 
 @Composable
 fun DownloadScreen(
@@ -65,11 +80,36 @@ fun DownloadScreen(
     val context = LocalContext.current
     val viewModel: DownloadViewModel = hiltViewModel()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+    var downloadFilter by remember { mutableStateOf(DownloadFilter.ALL) }
+    var downloadSort by remember { mutableStateOf(DownloadSort.ADDED) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
 
     val downloadingTasks = tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
     val completedTasks = tasks.filter { it.status == DownloadStatus.COMPLETED }
     val pausedTasks = tasks.filter { it.status == DownloadStatus.PAUSED }
     val failedTasks = tasks.filter { it.status == DownloadStatus.FAILED }
+
+    // 筛选 + 排序后的可见列表
+    val visibleTasks = remember(tasks, downloadFilter, downloadSort) {
+        val base = when (downloadFilter) {
+            DownloadFilter.ALL -> tasks
+            DownloadFilter.DOWNLOADING -> tasks.filter {
+                it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+            }
+            DownloadFilter.COMPLETED -> tasks.filter { it.status == DownloadStatus.COMPLETED }
+            DownloadFilter.FAILED -> tasks.filter { it.status == DownloadStatus.FAILED }
+            DownloadFilter.PAUSED -> tasks.filter { it.status == DownloadStatus.PAUSED }
+        }
+        when (downloadSort) {
+            DownloadSort.ADDED -> base.sortedByDescending { it.id }
+            DownloadSort.NAME -> base.sortedBy { it.title.lowercase() }
+            DownloadSort.SIZE -> base.sortedByDescending { it.totalBytes }
+            DownloadSort.PROGRESS -> base.sortedByDescending {
+                if (it.totalBytes > 0) it.downloadedBytes.toFloat() / it.totalBytes else 0f
+            }
+        }
+    }
+    val useGroupedView = downloadFilter == DownloadFilter.ALL && downloadSort == DownloadSort.ADDED
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
@@ -133,6 +173,71 @@ fun DownloadScreen(
             }
         }
 
+        // 筛选 + 排序控制栏（非选择模式且有任务时展示）
+        if (!isSelectionMode && tasks.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DownloadFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = downloadFilter == filter,
+                        onClick = { downloadFilter = filter },
+                        label = { Text(stringResource(downloadFilterLabel(filter))) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clickable { sortMenuExpanded = true }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Sort,
+                            contentDescription = stringResource(R.string.download_sort_title),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(downloadSortLabel(downloadSort)),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = sortMenuExpanded,
+                        onDismissRequest = { sortMenuExpanded = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        DownloadSort.entries.forEach { sort ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(downloadSortLabel(sort))) },
+                                onClick = {
+                                    downloadSort = sort
+                                    sortMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         if (tasks.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -161,7 +266,7 @@ fun DownloadScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (downloadingTasks.isNotEmpty()) {
+                if (useGroupedView && downloadingTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
                             title = stringResource(R.string.download_downloading),
@@ -195,7 +300,7 @@ fun DownloadScreen(
                     }
                 }
 
-                if (pausedTasks.isNotEmpty()) {
+                if (useGroupedView && pausedTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
                             title = stringResource(R.string.download_paused),
@@ -229,7 +334,7 @@ fun DownloadScreen(
                     }
                 }
 
-                if (failedTasks.isNotEmpty()) {
+                if (useGroupedView && failedTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
                             title = stringResource(R.string.download_failed),
@@ -263,7 +368,7 @@ fun DownloadScreen(
                     }
                 }
 
-                if (completedTasks.isNotEmpty()) {
+                if (useGroupedView && completedTasks.isNotEmpty()) {
                     item {
                         SectionHeader(
                             title = stringResource(R.string.download_completed),
@@ -294,6 +399,41 @@ fun DownloadScreen(
                             onPlayClick = { playVideoFile(context, task.filePath) },
                             onDeleteClick = { viewModel.cancelDownload(task.id) }
                         )
+                    }
+                }
+
+                // 非分组视图（已筛选 / 已排序）：扁平渲染可见列表，状态图标由 DownloadTaskItem 内部按状态处理
+                if (!useGroupedView) {
+                    if (visibleTasks.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 48.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.download_filter_empty),
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        items(visibleTasks) { task ->
+                            DownloadTaskItem(
+                                task = task,
+                                isSelectionMode = false,
+                                isSelected = false,
+                                onToggleSelection = {},
+                                onPauseClick = { viewModel.pauseDownload(task.id) },
+                                onResumeClick = { viewModel.resumeDownload(task.id) },
+                                onCancelClick = { viewModel.cancelDownload(task.id) },
+                                onRetryClick = { viewModel.resumeDownload(task.id) },
+                                onPlayClick = { playVideoFile(context, task.filePath) },
+                                onDeleteClick = { viewModel.cancelDownload(task.id) }
+                            )
+                        }
                     }
                 }
 
@@ -367,6 +507,24 @@ fun DownloadScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
+                if (failedTasks.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.download_retry_all),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .clickable {
+                                viewModel.retryAllFailed()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.download_retry_all_toast, failedTasks.size),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
                 Text(
                     text = stringResource(R.string.common_manage),
                     fontSize = 14.sp,
@@ -731,6 +889,21 @@ fun DownloadTaskItem(
             }
         }
     }
+}
+
+private fun downloadFilterLabel(filter: DownloadFilter): Int = when (filter) {
+    DownloadFilter.ALL -> R.string.download_filter_all
+    DownloadFilter.DOWNLOADING -> R.string.download_filter_downloading
+    DownloadFilter.COMPLETED -> R.string.download_filter_completed
+    DownloadFilter.FAILED -> R.string.download_filter_failed
+    DownloadFilter.PAUSED -> R.string.download_filter_paused
+}
+
+private fun downloadSortLabel(sort: DownloadSort): Int = when (sort) {
+    DownloadSort.ADDED -> R.string.download_sort_added
+    DownloadSort.NAME -> R.string.download_sort_name
+    DownloadSort.SIZE -> R.string.download_sort_size
+    DownloadSort.PROGRESS -> R.string.download_sort_progress
 }
 
 fun formatFileSize(bytes: Long): String {

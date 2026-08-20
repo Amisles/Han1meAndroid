@@ -39,6 +39,7 @@ object Preferences {
     private const val SP_PLAYBACK_SPEED = "playback_speed"
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
+    private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
@@ -86,6 +87,10 @@ object Preferences {
     private val _autoPlayNextFlow = MutableStateFlow(true)
     val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
+    // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
+    private val _downloadStoragePathFlow = MutableStateFlow("")
+    val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
+
     fun init(context: Context) {
         // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
         sp = provideSecurePreferences(context)
@@ -106,6 +111,7 @@ object Preferences {
         _playbackSpeedFlow.value = sp.getFloat(SP_PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = sp.getString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = sp.getBoolean(SP_AUTO_PLAY_NEXT, true)
+        _downloadStoragePathFlow.value = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
     }
 
     /**
@@ -310,6 +316,18 @@ object Preferences {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled
     }
+
+    /**
+     * 下载存储路径。空串表示「默认目录」（由 DownloadManager 解析为应用外部存储 /Downloads，
+     * 不可用时回退内部存储）；非空时为用户指定的目录绝对路径。
+     */
+    var downloadStoragePath: String
+        get() = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
+        set(value) {
+            val safe = value.trim()
+            sp.edit { putString(SP_DOWNLOAD_STORAGE_PATH, safe) }
+            _downloadStoragePathFlow.value = safe
+        }
 
     fun logout() {
         HCookieJar.clearAll()

@@ -127,47 +127,47 @@ class DownloadManager @Inject constructor(
     var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
 
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
-    // P0-2：任务级在途 OkHttp 请求，暂停/取消时调用 Call.cancel() 立即中断底层阻塞读
     private val taskCalls = ConcurrentHashMap<Int, MutableList<Call>>()
-    // P2-2：任务级取消标记。cancelTaskCalls 置位后，竞态窗口内才刚建立的 Call
-    // 也会在 trackCall 中被立即取消，彻底消除「新建 Call 逃过取消 → 阻塞到 readTimeout(120s)」的窗口。
     private val taskCancelFlags = ConcurrentHashMap<Int, AtomicBoolean>()
     private val taskIdCounter = AtomicInteger(0)
-    // P3-2：用 SupervisorJob 作为 scope 根，使单个下载任务的异常不会株连取消其它在途任务
-    // （普通 Job 下任一子协程未捕获异常会取消整个 scope，导致「一个任务失败、全部下载中断」）。
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val tasksLock = ReentrantLock()
-    // 并发下载的绝对硬上限：信号量固定容量、创建后不再重建，
-    // 避免 updateConcurrencyLimit 重建对象导致在途任务持有的旧许可成为孤儿。
     private val downloadSemaphore: Semaphore = Semaphore(MAX_CONCURRENT)
-    // 用户可配置的有效并发上限（1..MAX_CONCURRENT），作为调度软门限（由状态计数控制）
     @Volatile
     private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
-    // 进度落盘节流：进度类更新仅按此间隔写 DB，状态切换始终立即落盘，减少写放大
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
-    // 已分配的下载槽位计数（同步计数器）：在“决定启动”那一刻 +1，
-    // 任务进入终态/暂停/取消时 -1。作为并发门控统一依据，修复 B1/B3/B4
-    // （原 currentDownloadingCount 基于异步状态，突发/批量场景下恒为 0）。
     private val activeSlots = AtomicInteger(0)
-    // D5：跟踪前台服务是否已通过 startForegroundService 启动，
-    // 后续进度更新改用 startService，避免 Android 12+ 反复 startForegroundService 的时序风险。
-    // P2-6：用 AtomicBoolean.compareAndSet 保证首启判定与复位的原子性，
-    // 避免 @Volatile 仅保证可见性、read-modify-write 非原子导致的并发首包重复 startForegroundService。
     private val downloadServiceStarted = AtomicBoolean(false)
+    private val defaultDownloadDir: File by lazy {
 
-    // P2-4 修复：原为 getter，每次访问都做 exists()/mkdirs() 磁盘 I/O，且在 tasksLock 内被调用，
-    // 慢存储会连带阻塞 pause/cancel/resume/updateConcurrencyLimit 等全部取锁操作。
-    // 改为 by lazy（默认 SYNCHRONIZED，线程安全）仅首次计算一次。
-    // 目录若在运行期被清理，由写入侧的 parentFile.mkdirs() 兜底重建。
-    private val downloadDir: File by lazy {
-        // D1：外部存储不可用时（部分设备/限存储场景 getExternalFilesDir 返回 null）
-        // 降级到应用私有内部存储，避免 NPE。
         val base = context.getExternalFilesDir(null)
             ?.let { File(it, "Downloads") }
             ?: File(context.filesDir, "Downloads")
         if (!base.exists()) base.mkdirs()
         base
+    }
+
+    /**
+     * 解析实际下载目录：空自定义路径 → 默认目录；非空自定义路径需可写，否则回退默认。
+     * 每次新建下载时实时读取 Preferences，使「设置页变更存储路径」对后续新下载立即生效；
+     * 既有任务（filePath 已固化）不受影响。
+     */
+    private fun resolveDownloadDir(): File {
+        val custom = Preferences.downloadStoragePath
+        if (custom.isNotBlank()) {
+            val dir = File(custom)
+            if (ensureDirWritable(dir)) return dir
+            AppLogger.log("DownloadManager", "自定义存储路径不可写，回退默认目录: $custom")
+        }
+        return defaultDownloadDir
+    }
+
+    private fun ensureDirWritable(dir: File): Boolean {
+        return runCatching {
+            if (!dir.exists()) dir.mkdirs()
+            dir.exists() && dir.isDirectory && dir.canWrite()
+        }.getOrDefault(false)
     }
 
     init {
@@ -240,7 +240,7 @@ class DownloadManager @Inject constructor(
         // 因此提前计算不改变任何语义。
         // P2-1（安全项）：文件名加入 videoId（或 URL 短 hash）保证唯一，避免同名同画质互相覆盖；
         // videoId 一并清洗非法字符。最后用 canonicalPath 校验不逃出 downloadDir，防止路径穿越。
-        val dir = downloadDir
+        val dir = resolveDownloadDir()
         val uniqueSuffix = if (videoId.isNotBlank()) {
             videoId.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         } else {
@@ -1064,6 +1064,20 @@ class DownloadManager @Inject constructor(
         tasksLock.withLock {
             resumeDownloadInternal(taskId)
         }
+    }
+
+    /**
+     * P1：一键重试全部失败任务。仅对 FAILED 状态任务触发续传，
+     * 复用 resumeDownloadInternal（含续传起点推导与并发槽位门控），受并发上限约束依次进入调度。
+     * 调用方需持有 tasksLock（此处已加锁），resumeDownloadInternal 不再重复取锁。
+     */
+    fun retryAllFailed() {
+        tasksLock.withLock {
+            taskMap.values.filter { it.status == DownloadStatus.FAILED }.forEach {
+                resumeDownloadInternal(it.id)
+            }
+        }
+        AppLogger.log("DownloadManager", "retryAllFailed: 已触发全部失败任务重试")
     }
 
     /**

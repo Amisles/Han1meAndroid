@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 
@@ -25,7 +27,8 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val maxDownloadConcurrent: Int = 3,
     val baseUrl: String = Preferences.DEFAULT_BASE_URL,
-    val isLoginSupported: Boolean = true
+    val isLoginSupported: Boolean = true,
+    val downloadStoragePath: String = Preferences.downloadStoragePath
 ) {
     val isDefaultBaseUrl: Boolean get() = baseUrl == Preferences.DEFAULT_BASE_URL
 }
@@ -70,8 +73,11 @@ class SettingsViewModel @Inject constructor(
             themeMode = theme,
             maxDownloadConcurrent = concurrent,
             baseUrl = url,
-            isLoginSupported = loginSupported
+            isLoginSupported = loginSupported,
+            downloadStoragePath = Preferences.downloadStoragePath
         )
+    }.combine(Preferences.downloadStoragePathFlow) { state, storagePath ->
+        state.copy(downloadStoragePath = storagePath)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -80,7 +86,8 @@ class SettingsViewModel @Inject constructor(
             themeMode = Preferences.themeMode,
             maxDownloadConcurrent = Preferences.maxDownloadConcurrent,
             baseUrl = Preferences.baseUrl,
-            isLoginSupported = Preferences.isLoginSupported
+            isLoginSupported = Preferences.isLoginSupported,
+            downloadStoragePath = Preferences.downloadStoragePath
         )
     )
 
@@ -103,6 +110,30 @@ class SettingsViewModel @Inject constructor(
 
     fun restoreDefaultBaseUrl() {
         Preferences.setBaseUrl(Preferences.DEFAULT_BASE_URL)
+    }
+
+    /**
+     * 设置下载存储路径。空串表示「默认目录」（由 DownloadManager 解析）。
+     * 非空路径会做可写校验：不可写则保留原设置并提示，避免写入失败。
+     */
+    fun setDownloadStoragePath(rawPath: String) {
+        val path = rawPath.trim()
+        if (path.isBlank()) {
+            Preferences.downloadStoragePath = ""
+            viewModelScope.launch { _events.emit(SettingsUiEvent.Toast(R.string.settings_download_storage_restored)) }
+            return
+        }
+        val dir = File(path)
+        val writable = runCatching {
+            if (!dir.exists()) dir.mkdirs()
+            dir.exists() && dir.isDirectory && dir.canWrite()
+        }.getOrDefault(false)
+        if (writable) {
+            Preferences.downloadStoragePath = path
+            viewModelScope.launch { _events.emit(SettingsUiEvent.Toast(R.string.settings_download_storage_updated)) }
+        } else {
+            viewModelScope.launch { _events.emit(SettingsUiEvent.Toast(R.string.settings_download_storage_unwritable)) }
+        }
     }
 
     /**
