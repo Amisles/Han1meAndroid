@@ -1,10 +1,14 @@
 package app.amisles.hanime.feature.detail
 
+import android.Manifest
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import androidx.annotation.OptIn
+import androidx.annotation.RequiresPermission
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSpec
@@ -34,6 +38,7 @@ import kotlinx.coroutines.launch
  *
  * SimpleCache 必须是进程级单例（同一缓存目录不能被实例化两次），故用 AtomicReference 缓存。
  */
+@OptIn(UnstableApi::class)
 object ExoPlayerFactory {
 
     // 伪装成 Chrome Mobile，避免 CDN 对 ExoPlayer 默认 UA 做单连接限速。

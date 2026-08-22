@@ -160,7 +160,7 @@ fun DetailScreen(
         }
     }
 
-    // 进入即加载：优先使用持久化画质偏好的源（画质偏好持久化），并读取已保存进度用于续播
+    // 进入即加载：优先用持久化画质偏好的源，并读取已保存进度用于续播
     LaunchedEffect(videoDetail?.defaultSourceUrl) {
         val detail = videoDetail
         val url = detail?.defaultSourceUrl
@@ -190,7 +190,7 @@ fun DetailScreen(
         }
     }
 
-    // 进度记忆（§播放进度记忆）：每 5 秒保存一次当前播放位置/时长，离场时保存最终进度并释放
+    // 进度记忆：每 5 秒保存一次当前播放位置/时长，离场时保存最终进度并释放
     DisposableEffect(exoPlayer) {
         val job = scope.launch {
             while (true) {
@@ -229,7 +229,7 @@ fun DetailScreen(
         }
     }
 
-    // 订阅作者出错时弹出提示（错误文案在合成作用域内本地化，再传入 LaunchedEffect）
+    // 订阅出错时弹出本地化提示
     val subscribeErrorText = when (subscribeError) {
         SubscribeError.NOT_LOGGED_IN -> stringResource(R.string.detail_subscribe_login_required)
         SubscribeError.CSRF_MISSING -> stringResource(R.string.detail_csrf_missing)
@@ -244,12 +244,9 @@ fun DetailScreen(
         }
     }
 
-    // 平板分栏以根层级全宽渲染，去除 ResponsiveContent 限宽产生的左右空隙；手机/加载/错误态仍由下方 ResponsiveContent 包裹
+        // 平板且非全屏、已加载内容时采用左右分栏（左播放器 / 右其余组件）；手机与加载/错误态由下方 ResponsiveContent 包裹
         val sizeInfo = currentWindowSizeInfo()
-        // 平板且非全屏、已加载内容（非加载中/非错误空态）时采用左右分栏：
-        // 左侧仅视频播放器，右侧为标题/作者/简介/操作/评论/相关视频等其余组件。
-        // 必须保证 videoDetail 已加载且非错误态（下方各处均已改用 ?.let/?.takeIf 安全调用，不再使用 !!，避免首次组合或数据为空时的 NPE）
-        // 平板 UI（含加载期骨架）：非全屏 + 非致命错误态（error!=null && videoDetail==null 回落到手机错误页）即启用
+        // 启用条件：平板 + 非全屏 + 非「错误且未加载」致命态（回落到手机错误页）
         val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
             && !(error != null && videoDetail == null)
 
@@ -1077,9 +1074,6 @@ private fun shareVideo(context: Context, title: String, url: String) {
     context.startActivity(chooser)
 }
 
-/**
- * 评论/相关影片 Tab 按钮
- */
 /**
  * 根据持久化画质偏好挑选初始播放源：偏好非空且存在对应分辨率时使用，否则回退默认源。
  */

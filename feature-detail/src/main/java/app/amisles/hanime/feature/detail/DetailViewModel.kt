@@ -106,7 +106,6 @@ class DetailViewModel @Inject constructor(
     private val _repliesError = MutableStateFlow<Map<String, String?>>(emptyMap())
     val repliesError: StateFlow<Map<String, String?>> = _repliesError.asStateFlow()
 
-    // 回复相关状态
     // 当前正在回复的目标：commentId 为父评论 ID；replyToUsername 非空表示回复某条回复
     private val _activeReplyTarget = MutableStateFlow<ReplyTarget?>(null)
     val activeReplyTarget: StateFlow<ReplyTarget?> = _activeReplyTarget.asStateFlow()
@@ -129,7 +128,7 @@ class DetailViewModel @Inject constructor(
     // 供 UI 层（如进度记忆 seek）获取当前视频 ID
     val videoId: String get() = currentVideoId
 
-    // 进行中的详情加载任务；快速重进页面时取消旧请求，避免重复/竞态（§7 并发请求控制）
+    // 进行中的详情加载任务；快速重进页面时取消旧请求，避免重复/竞态
     private var detailLoadJob: Job? = null
 
     fun loadVideoDetail(videoUrl: String) {
@@ -171,7 +170,7 @@ class DetailViewModel @Inject constructor(
         _replyError.value = null
         _expandedReplies.value = emptySet()
 
-        detailLoadJob?.cancel() // 取消上一次未完成的详情请求（快速重进页面去重，§7）
+        detailLoadJob?.cancel() // 取消上一次未完成的详情请求（快速重进页面去重）
         detailLoadJob = viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.getVideoDetail(videoUrl)

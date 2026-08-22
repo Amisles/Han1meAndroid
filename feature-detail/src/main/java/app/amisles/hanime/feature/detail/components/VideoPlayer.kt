@@ -117,7 +117,7 @@ private const val LONG_VIDEO_MS = 15L * 60 * 1000
 // ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
 
-// 视频缩放模式，常量值为 1
+// 视频缩放模式：SCALE_TO_FIT
 private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
 
 private fun formatTime(ms: Long): String {
@@ -133,8 +133,8 @@ private fun formatTime(ms: Long): String {
 }
 
 /**
- * 进度条（时间文本 + 滑块）。进度状态与轮询下沉到本组合内部，
- * 播放位置每 0.5s（播放中）/ 1s（暂停中）刷新，只重排自身，不再触发外层 VideoPlayer 重排。
+ * 进度条（时间文本 + 滑块）。进度状态与刷新轮询下沉到本组合内部，
+ * 仅重排自身、不触发外层 VideoPlayer 重排。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -369,7 +369,7 @@ fun VideoPlayer(
                     isReady = true
                     isSwitchingQuality = false
                     rebufferCount = 0
-                    // 续播（§播放进度记忆）：首帧就绪且存在有效续播点（>5s 且未接近结尾），跳转到上次位置
+                    // 续播：首帧就绪且有有效续播点（>5s 且未接近结尾）时跳转到上次位置
                     if (!initialSeekAppliedRef.value && initialPositionMsRef.value > 5000) {
                         val dur = exoPlayer.duration
                         if (dur <= 0 || initialPositionMsRef.value < dur - 5000) {
@@ -377,7 +377,7 @@ fun VideoPlayer(
                         }
                         initialSeekAppliedRef.value = true
                     }
-                    // 解码优化（§4）：长视频保持解码器热身，降低切回前台的解码延迟
+                    // 解码优化：长视频保持解码器热身，降低切回前台解码延迟
                     exoPlayer.setForegroundMode(exoPlayer.duration > LONG_VIDEO_MS)
                     // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
                     if (autoSwitched) {
@@ -445,13 +445,12 @@ fun VideoPlayer(
         }
     }
 
-    // 解码优化（§4）：统一缩放模式为 SCALE_TO_FIT，避免画面变形
+    // 解码优化：统一缩放模式为 SCALE_TO_FIT，避免画面变形
     LaunchedEffect(Unit) {
         exoPlayer.videoScalingMode = VIDEO_SCALING_MODE_SCALE_TO_FIT
     }
 
-    // 控件自动隐藏：播放中且未打开菜单/画中画时，空闲 3.5s 后自动隐藏所有控件；
-    // 手势开始（controlsActivityRef 自增）、暂停、打开菜单或画中画时均不隐藏，计时随之重置。
+    // 控件自动隐藏：播放中且未开菜单/画中画时，空闲 3.5s 后隐藏；手势/暂停/开菜单时重置计时。
     LaunchedEffect(
         isControlsVisible,
         isPlaying,
@@ -469,15 +468,12 @@ fun VideoPlayer(
         }
     }
 
-    // 网络感知缓冲（§5）已在 ExoPlayerFactory.buildVideoPlayer 构建期按当前网络类型选定 LoadControl；
-    // Media3 的 ExoPlayer 不提供运行时切换 LoadControl 的公开 API，故此处不再做运行时切换。
-
     // 切换视频时重置海报占位显示状态（posterUrl 变化即新视频）
     LaunchedEffect(posterUrl) {
         showPoster = posterUrl.isNotEmpty()
     }
 
-    // 下一集预加载（§1）：把相关视频直链首段预热进 SimpleCache，进入即命中本地
+    // 下一集预加载：将相关视频直链首段预热进 SimpleCache，进入即命中本地
     LaunchedEffect(preloadUrl) {
         if (preloadUrl.isNotBlank()) {
             ExoPlayerFactory.warmCacheFor(preloadUrl, context)
@@ -502,8 +498,6 @@ fun VideoPlayer(
             }
         }
     }
-
-    // 进度轮询已下沉到 PlaybackProgressBar（进度状态私有化，避免父组合高频重排）
 
     fun togglePlayPause() {
         if (exoPlayer.isPlaying) {
@@ -641,8 +635,8 @@ fun VideoPlayer(
                 val pos = coords.positionInRoot()
                 if (playerPos != pos) playerPos = pos
             }
-            // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击。
-            // 以「当前按下指针数」为唯一真相源，彻底消除多个独立检测器之间的竞争与状态卡死。
+            // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击；
+            // 以指针数为唯一真相源，避免多检测器竞争与状态卡死。
             .pointerInput(Unit) {
                 while (true) {
                     awaitPointerEventScope {
@@ -663,8 +657,7 @@ fun VideoPlayer(
                     // 长按 2x 加速：是否已触发、被覆盖前的原始倍速
                     var longPressFired = false
                     var preBoostSpeed = 1f
-                    // 长按加速定时器句柄：按下时启动 1s 延时协程，松手/移动/缩放即取消，
-                    // 与事件轮询解耦，彻底避免「点一下即触发 2x」的误判。
+                    // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发 2x
                     var longPressJob: Job? = null
 
                         while (true) {
@@ -750,8 +743,7 @@ fun VideoPlayer(
                             preBoostSpeed = playbackSpeedRef.value
                             // 手势开始即重置自动隐藏倒计时
                             controlsActivityRef.value = controlsActivityRef.value + 1
-                            // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，
-                            // 松手/移动/缩放会取消本任务，因此快速点击绝不会误触发。
+                            // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，松手/移动/缩放即取消
                             longPressJob = gestureScope.launch {
                                 delay(1000L)
                                 if (!longPressFired && !moved && !isZoom && dragMode == null) {
@@ -840,7 +832,7 @@ fun VideoPlayer(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 首帧海报占位（§6 首帧渲染加速）：首帧渲染前显示 poster，渲染后淡出，消除黑屏等待感
+        // 首帧海报占位：渲染前显示 poster，渲染后淡出，消除黑屏等待
         if (posterUrl.isNotEmpty()) {
             val posterAlpha by animateFloatAsState(
                 targetValue = if (showPoster) 1f else 0f,
@@ -1123,7 +1115,7 @@ fun VideoPlayer(
                 val menuWidthPx = with(density) { 48.dp.toPx() }
                 val menuHeightPx = with(density) { 120.dp.toPx() }
                 val gapPx = with(density) { 4.dp.toPx() }
-                // 把按钮的根坐标减去播放器根坐标，得到播放器局部坐标，弹框才能准确落在控件正上方
+                // 按钮根坐标减播放器根坐标，换算为弹框局部坐标
                 val localX = speedBtnBounds.center.x - playerPos.x
                 val localY = speedBtnBounds.top - playerPos.y
                 Column(
@@ -1138,7 +1130,7 @@ fun VideoPlayer(
                         .height(120.dp)
                         .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
-                        .clickable { /* 拦截弹框内的点击，避免穿透到遮罩关闭 */ }
+                        .clickable { /* 拦截点击，避免穿透到遮罩关闭 */ }
                         .padding(2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -1165,7 +1157,7 @@ fun VideoPlayer(
                 val menuWidthPx = with(density) { 56.dp.toPx() }
                 val menuHeightPx = with(density) { 120.dp.toPx() }
                 val gapPx = with(density) { 4.dp.toPx() }
-                // 把按钮的根坐标减去播放器根坐标，得到播放器局部坐标，弹框才能准确落在控件正上方
+                // 按钮根坐标减播放器根坐标，换算为弹框局部坐标
                 val localX = qualityBtnBounds.center.x - playerPos.x
                 val localY = qualityBtnBounds.top - playerPos.y
                 Column(
@@ -1180,7 +1172,7 @@ fun VideoPlayer(
                         .height(120.dp)
                         .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
-                        .clickable { /* 拦截弹框内的点击，避免穿透到遮罩关闭 */ }
+                        .clickable { /* 拦截点击，避免穿透到遮罩关闭 */ }
                         .padding(2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
