@@ -38,11 +38,15 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -267,6 +272,7 @@ fun VideoPlayer(
     playbackSpeedRef.value = playbackSpeed
     var showSpeedMenu by remember { mutableStateOf(false) }
     var showQualityMenu by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
     var isSwitchingQuality by remember { mutableStateOf(false) }
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
@@ -452,11 +458,12 @@ fun VideoPlayer(
         isInPip,
         showSpeedMenu,
         showQualityMenu,
+        showMoreMenu,
         controlsActivityRef.value
     ) {
-        if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu) {
+        if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu && !showMoreMenu) {
             delay(3500L)
-            if (isPlaying && !showSpeedMenu && !showQualityMenu) {
+            if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu) {
                 isControlsVisible = false
             }
         }
@@ -696,6 +703,7 @@ fun VideoPlayer(
                             isControlsVisible = !isControlsVisible
                             showSpeedMenu = false
                             showQualityMenu = false
+                            showMoreMenu = false
                         }
                     }
                                 }
@@ -975,6 +983,7 @@ fun VideoPlayer(
                         isControlTap = true
                         showSpeedMenu = !showSpeedMenu
                         showQualityMenu = false
+                        showMoreMenu = false
                     },
                     modifier = Modifier
                         .size(24.dp)
@@ -1001,6 +1010,7 @@ fun VideoPlayer(
                         isControlTap = true
                         showQualityMenu = !showQualityMenu
                         showSpeedMenu = false
+                        showMoreMenu = false
                     },
                         modifier = Modifier
                             .size(36.dp)
@@ -1047,16 +1057,51 @@ fun VideoPlayer(
                     )
                 }
 
-                // 连播（下一集自动播放）开关：高亮表示已开启
-                IconButton(
-                    onClick = { onAutoPlayNextChanged(!autoPlayNext) },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.detail_auto_play_next),
-                        color = if (autoPlayNext) HanimePrimary else Color.White,
-                        fontSize = 12.sp
-                    )
+                // 更多：点击弹出下拉框，内含连播开关
+                Box {
+                    IconButton(
+                        onClick = {
+                            isControlTap = true
+                            showMoreMenu = !showMoreMenu
+                            showSpeedMenu = false
+                            showQualityMenu = false
+                        },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.detail_more),
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                        modifier = Modifier.width(136.dp),
+                        containerColor = Color.Black.copy(alpha = 0.7f)
+                    ) {
+                        // 连播（下一集自动播放）开关
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.detail_auto_play_next),
+                                    color = Color.White,
+                                    fontSize = 13.sp
+                                )
+                            },
+                            trailingIcon = {
+                                Switch(
+                                    checked = autoPlayNext,
+                                    onCheckedChange = { onAutoPlayNextChanged(it) },
+                                    modifier = Modifier.scale(0.78f)
+                                )
+                            },
+                            onClick = { onAutoPlayNextChanged(!autoPlayNext) },
+                            modifier = Modifier.height(40.dp)
+                        )
+                    }
                 }
             }
 
