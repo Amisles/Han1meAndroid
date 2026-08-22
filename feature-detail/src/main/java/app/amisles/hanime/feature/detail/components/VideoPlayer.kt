@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +91,9 @@ import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.feature.detail.ExoPlayerFactory
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
@@ -103,14 +106,13 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-// 长视频阈值：超过则开启解码器常驻（foreground mode），降低切回前台的解码延迟（§4 解码优化）
+// 长视频阈值
 private const val LONG_VIDEO_MS = 15L * 60 * 1000
 
-// ABR 升档前需连续稳定的 STATE_READY 次数，避免卡顿网络下的画质来回抖动（§2 码率自适应）
+// ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
 
-// 视频缩放模式：Media3 对应 androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT，常量值为 1。
-// 直接取字面值定义，避免不同 Media3 版本对常量导出位置（C / Player / VideoScalingMode 注解）的差异导致编译失败。
+// 视频缩放模式，常量值为 1
 private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
 
 private fun formatTime(ms: Long): String {
@@ -255,9 +257,14 @@ fun VideoPlayer(
     var isBuffering by remember { mutableStateOf(false) }
     var isReady by remember { mutableStateOf(false) }
     var isControlsVisible by remember { mutableStateOf(true) }
+    var isLongPressBoost by remember { mutableStateOf(false) }
+    val controlsActivityRef = remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(1f) }
     var isMuted by remember { mutableStateOf(false) }
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
+    val gestureScope = rememberCoroutineScope()
+    val playbackSpeedRef = remember { mutableFloatStateOf(playbackSpeed) }
+    playbackSpeedRef.value = playbackSpeed
     var showSpeedMenu by remember { mutableStateOf(false) }
     var showQualityMenu by remember { mutableStateOf(false) }
     var isSwitchingQuality by remember { mutableStateOf(false) }
@@ -270,7 +277,7 @@ fun VideoPlayer(
 
     // 手势状态
     var gestureHint by remember { mutableStateOf<String?>(null) }
-    // 双击判定：上次单击时间戳（跨手势保留），用于区分单/双击
+    // 双击判定
     var lastTapTime by remember { mutableLongStateOf(0L) }
     var seekPreview by remember { mutableLongStateOf(0L) }
     var brightness by remember {
@@ -294,9 +301,9 @@ fun VideoPlayer(
         sortedSources.firstOrNull { it.url == currentSourceUrl }?.resolution ?: ""
     }
 
-    // 首帧海报占位（§6 首帧渲染加速）：进入即显示 poster，渲染出首帧后淡出，消除黑屏等待感
+    // 首帧海报占位
     var showPoster by remember { mutableStateOf(posterUrl.isNotEmpty()) }
-    // ABR 自适应（§2）：连续 rebuffer 计数与播放稳定计数
+    // ABR 自适应
     var rebufferCount by remember { mutableStateOf(0) }
     var autoSwitched by remember { mutableStateOf(false) }
     var stableTicks by remember { mutableStateOf(0) }
@@ -306,14 +313,12 @@ fun VideoPlayer(
     // 用 ref 持有最新的 onPlaybackEnded，避免 remember 的 Player.Listener 闭包捕获到陈旧 lambda
     val onPlaybackEndedRef = remember { mutableStateOf(onPlaybackEnded) }
     onPlaybackEndedRef.value = onPlaybackEnded
-    // 续播（§播放进度记忆）：持有最新续播点，并用 initialSourceUrl 作为「新视频加载」标记，
     // 每次切换视频源时复位 seek 标记，确保续播点始终对应当前视频
     val initialPositionMsRef = remember { mutableStateOf(initialPositionMs) }
     initialPositionMsRef.value = initialPositionMs
     val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
 
-    // 切换清晰度（§2 码率自适应）：保留播放进度与播放状态，换源后无缝续播。
-    // 声明在 listener 之前，以便 Player.Listener 的匿名对象方法能前向解析到本函数。
+    // 切换清晰度
     fun switchQuality(source: VideoSource) {
         if (source.url == currentSourceUrl || isSwitchingQuality) {
             showQualityMenu = false
@@ -329,8 +334,7 @@ fun VideoPlayer(
         exoPlayer.prepare()
         exoPlayer.seekTo(position)
         if (wasPlaying) exoPlayer.play()
-        // isSwitchingQuality 在播放器回调 STATE_READY / onPlayerError 时才复位，
-        // 以真正拦截 prepare 期间的重复切源点击（见 Player.Listener）
+
         onQualityChanged(source.resolution)
     }
 
@@ -340,7 +344,7 @@ fun VideoPlayer(
             isBuffering = playbackState == Player.STATE_BUFFERING
             when (playbackState) {
                 Player.STATE_BUFFERING -> {
-                    // 仅"播放中"的缓冲视为 rebuffer（首帧前的初始缓冲不算），累计触发码率降级
+                    // 仅"播放中"的缓冲视为 rebuffer
                     if (isPlaying && !autoSwitched) {
                         rebufferCount++
                         if (rebufferCount >= 2) {
@@ -390,7 +394,7 @@ fun VideoPlayer(
             }
         }
 
-        // 首帧渲染完成：淡出海报占位（§6）
+        //淡出海报占位
         override fun onRenderedFirstFrame() {
             showPoster = false
         }
@@ -438,6 +442,24 @@ fun VideoPlayer(
     // 解码优化（§4）：统一缩放模式为 SCALE_TO_FIT，避免画面变形
     LaunchedEffect(Unit) {
         exoPlayer.videoScalingMode = VIDEO_SCALING_MODE_SCALE_TO_FIT
+    }
+
+    // 控件自动隐藏：播放中且未打开菜单/画中画时，空闲 3.5s 后自动隐藏所有控件；
+    // 手势开始（controlsActivityRef 自增）、暂停、打开菜单或画中画时均不隐藏，计时随之重置。
+    LaunchedEffect(
+        isControlsVisible,
+        isPlaying,
+        isInPip,
+        showSpeedMenu,
+        showQualityMenu,
+        controlsActivityRef.value
+    ) {
+        if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu) {
+            delay(3500L)
+            if (isPlaying && !showSpeedMenu && !showQualityMenu) {
+                isControlsVisible = false
+            }
+        }
     }
 
     // 网络感知缓冲（§5）已在 ExoPlayerFactory.buildVideoPlayer 构建期按当前网络类型选定 LoadControl；
@@ -512,6 +534,23 @@ fun VideoPlayer(
         exoPlayer.setPlaybackSpeed(speed)
         showSpeedMenu = false
         onPlaybackSpeedChanged(speed)
+    }
+
+    // 长按 2x 加速：仅临时修改播放器与界面倍速，不持久化到 Preferences（松手恢复原始倍速）
+    fun setLongPressBoost(active: Boolean, restoreSpeed: Float) {
+        if (active) {
+            if (!isLongPressBoost) {
+                isLongPressBoost = true
+                playbackSpeed = 2f
+                exoPlayer.setPlaybackSpeed(2f)
+            }
+        } else {
+            if (isLongPressBoost) {
+                isLongPressBoost = false
+                playbackSpeed = restoreSpeed
+                exoPlayer.setPlaybackSpeed(restoreSpeed)
+            }
+        }
     }
 
     fun toggleFullscreen() {
@@ -611,17 +650,33 @@ fun VideoPlayer(
                         var seekStartPos = 0L
                         var lastPinch = 0f
                         var downX = 0f
-                        var downY = 0f
-                        var moved = false
-                        var initialized = false
+                    var downY = 0f
+                    var moved = false
+                    var initialized = false
+                    // 长按 2x 加速：是否已触发、被覆盖前的原始倍速
+                    var longPressFired = false
+                    var preBoostSpeed = 1f
+                    // 长按加速定时器句柄：按下时启动 1s 延时协程，松手/移动/缩放即取消，
+                    // 与事件轮询解耦，彻底避免「点一下即触发 2x」的误判。
+                    var longPressJob: Job? = null
 
                         while (true) {
                             val event = awaitPointerEvent()
                             val presses = event.changes.filter { it.pressed }
                             pointerCount = presses.size
-                            if (pointerCount == 0) {
-                                // 所有手指抬起：结束本次手势
-                                if (!moved && !isZoom) {
+                        if (pointerCount == 0) {
+                            // 所有手指抬起：结束本次手势
+                            if (longPressFired) {
+                                // 长按加速结束：恢复原始倍速，不触发点击切换/快进退
+                                longPressJob?.cancel()
+                                setLongPressBoost(false, preBoostSpeed)
+                                longPressFired = false
+                                gestureHint = null
+                                break
+                            }
+                            // 普通抬起（未触发长按）：取消尚未到期的定时器，确保快速点击绝不误加速
+                            longPressJob?.cancel()
+                            if (!moved && !isZoom) {
                                     // 视为一次点击
                                     val now = System.currentTimeMillis()
                                     if (now - lastTapTime < 300L) {
@@ -661,6 +716,7 @@ fun VideoPlayer(
                                 if (!isZoom) {
                                     isZoom = true
                                     dragMode = null
+                                    longPressJob?.cancel()
                                     lastPinch = dist
                                     showSpeedMenu = false
                                     showQualityMenu = false
@@ -676,21 +732,38 @@ fun VideoPlayer(
                                 val c = presses[0]
                                 val x = c.position.x
                                 val y = c.position.y
-                                if (!initialized) {
-                                    downX = x
-                                    downY = y
-                                    lastX = x
-                                    lastY = y
-                                    initialized = true
-                                    event.changes.forEach { it.consume() }
-                                    continue
+                        if (!initialized) {
+                            downX = x
+                            downY = y
+                            lastX = x
+                            lastY = y
+                            initialized = true
+                            longPressFired = false
+                            preBoostSpeed = playbackSpeedRef.value
+                            // 手势开始即重置自动隐藏倒计时
+                            controlsActivityRef.value = controlsActivityRef.value + 1
+                            // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，
+                            // 松手/移动/缩放会取消本任务，因此快速点击绝不会误触发。
+                            longPressJob = gestureScope.launch {
+                                delay(1000L)
+                                if (!longPressFired && !moved && !isZoom && dragMode == null) {
+                                    longPressFired = true
+                                    setLongPressBoost(true, preBoostSpeed)
+                                    showSpeedMenu = false
+                                    showQualityMenu = false
+                                    gestureHint = "长按加速 2x"
                                 }
+                            }
+                            event.changes.forEach { it.consume() }
+                            continue
+                        }
                                 if (dragMode == null) {
                                     accDx += x - lastX
                                     accDy += y - lastY
                                     val slop = 8f
                                     if (abs(accDx) > slop || abs(accDy) > slop) {
                                         moved = true
+                                        longPressJob?.cancel()
                                         startX = x
                                         showSpeedMenu = false
                                         showQualityMenu = false
