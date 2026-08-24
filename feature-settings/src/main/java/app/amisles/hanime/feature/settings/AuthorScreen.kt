@@ -185,7 +185,11 @@ private fun AuthorContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(authorData.videos) { video ->
-                        VideoCard(video = video, onClick = { onVideoClick(video.videoUrl) })
+                        VideoCard(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            modifier = Modifier.width(200.dp)
+                        )
                     }
                 }
             }

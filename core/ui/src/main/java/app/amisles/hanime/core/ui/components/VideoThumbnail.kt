@@ -46,7 +46,7 @@ fun VideoThumbnail(
             .wrapContentHeight()
     } else {
         modifier.fillMaxSize()
-    }
+    }.background(MaterialTheme.colorScheme.surfaceVariant)
 
     val contentScale = if (crop) ContentScale.Crop else ContentScale.FillWidth
 
