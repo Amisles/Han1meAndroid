@@ -23,7 +23,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.amisles.hanime.core.ui.theme.HanimeGold
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 
@@ -87,7 +86,7 @@ fun VideoThumbnail(
                 text = duration,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = Color.White,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(3.dp)
@@ -108,7 +107,7 @@ fun VideoThumbnail(
                         text = "👍 $likeRate",
                         fontSize = 8.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = HanimeGold,
+                        color = Color.White,
                         modifier = Modifier
                             .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
                             .padding(horizontal = 3.dp, vertical = 1.dp)
@@ -119,7 +118,7 @@ fun VideoThumbnail(
                         text = " $viewCount",
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = Color.White,
                         modifier = Modifier
                             .padding(start = 2.dp)
                             .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
