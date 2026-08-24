@@ -287,6 +287,9 @@
     <string name="about_feature_6">作者ページ閲覧</string>
     <string name="author_load_failed">読み込み失敗</string>
     <string name="author_parse_failed">作者ページの解析に失敗しました</string>
+    <string name="author_subscribers">購読者</string>
+    <string name="author_videos">動画</string>
+    <string name="author_playlists">プレイリスト</string>
     <string name="video_list_load_failed">読み込み失敗</string>
     <string name="playlist_title">プレイリスト</string>
     <string name="playlist_video_count">%1$d 本の動画</string>

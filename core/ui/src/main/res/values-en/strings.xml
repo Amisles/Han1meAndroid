@@ -287,6 +287,9 @@
     <string name="about_feature_6">Author profile browsing</string>
     <string name="author_load_failed">Load failed</string>
     <string name="author_parse_failed">Failed to parse author page</string>
+    <string name="author_subscribers">Subscribers</string>
+    <string name="author_videos">Videos</string>
+    <string name="author_playlists">Playlists</string>
     <string name="video_list_load_failed">Load failed</string>
     <string name="playlist_title">Playlist</string>
     <string name="playlist_video_count">%1$d videos</string>

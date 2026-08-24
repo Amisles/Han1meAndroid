@@ -317,7 +317,10 @@
     <!-- Author -->
     <string name="author_load_failed">加载失败</string>
     <string name="author_parse_failed">无法解析作者主页</string>
-    
+    <string name="author_subscribers">订阅者</string>
+    <string name="author_videos">视频</string>
+    <string name="author_playlists">播放清单</string>
+
     <!-- Video List / Playlist -->
     <string name="video_list_load_failed">加载失败</string>
     <string name="playlist_title">播放列表</string>

@@ -287,6 +287,9 @@
     <string name="about_feature_6">作者主頁瀏覽</string>
     <string name="author_load_failed">載入失敗</string>
     <string name="author_parse_failed">無法解析作者主頁</string>
+    <string name="author_subscribers">訂閱者</string>
+    <string name="author_videos">影片</string>
+    <string name="author_playlists">播放清單</string>
     <string name="video_list_load_failed">載入失敗</string>
     <string name="playlist_title">播放清單</string>
     <string name="playlist_video_count">%1$d 個影片</string>

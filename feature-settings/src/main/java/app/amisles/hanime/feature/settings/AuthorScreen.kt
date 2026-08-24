@@ -89,7 +89,7 @@ fun AuthorScreen(
             IconButton(onClick = { onBackClick() }, modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
@@ -134,7 +134,7 @@ private fun AuthorContent(
             ) {
                 AsyncImage(
                     model = authorData.authorAvatarUrl,
-                    contentDescription = "作者头像",
+                    contentDescription = stringResource(R.string.common_author_avatar),
                     modifier = Modifier.size(80.dp).clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
@@ -151,11 +151,11 @@ private fun AuthorContent(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = authorData.subscriberCount, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                        Text(text = "订阅者", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.author_subscribers), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = authorData.videoCount, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                        Text(text = "视频", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.author_videos), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -168,10 +168,10 @@ private fun AuthorContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "影片", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                    Text(text = stringResource(R.string.common_videos), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                     if (authorData.uploadedPageUrl.isNotEmpty()) {
                         Text(
-                            text = "查看更多 →",
+                            text = stringResource(R.string.common_view_more) + " →",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable { onViewAllVideos(authorData.uploadedPageUrl) }
@@ -202,10 +202,10 @@ private fun AuthorContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "播放清单", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                    Text(text = stringResource(R.string.author_playlists), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                     if (authorData.playlistsPageUrl.isNotEmpty()) {
                         Text(
-                            text = "查看更多 →",
+                            text = stringResource(R.string.common_view_more) + " →",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable { onViewAllPlaylists(authorData.playlistsPageUrl) }
