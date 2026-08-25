@@ -12,12 +12,18 @@ import app.amisles.hanime.data.preferences.Preferences
 import javax.inject.Inject
 import javax.inject.Singleton
 import app.amisles.hanime.domain.model.AuthorPageData
+import app.amisles.hanime.domain.model.AuthorPageDataEvent
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.domain.model.PlaylistDetail
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import okhttp3.Cache
 import okhttp3.FormBody
@@ -227,6 +233,20 @@ class NetworkService @Inject constructor(
             authorPageParser.parse(html, authorPageUrl)
                 ?: throw IllegalStateException("无法解析作者主页")
         }
+    }
+
+    /**
+     * 流式拉取作者主页
+     */
+    fun fetchAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent> {
+        AppLogger.log("NetworkService", "fetchAuthorPageStream called, url: $authorPageUrl")
+        return flow {
+            val html = executeRequest(buildRequest(authorPageUrl))
+            emitAll(authorPageParser.parseStreaming(html, authorPageUrl))
+        }.flowOn(Dispatchers.IO)
+            .catch { e ->
+                emit(AuthorPageDataEvent.Error(e.message ?: "无法解析作者主页"))
+            }
     }
 
     /**
