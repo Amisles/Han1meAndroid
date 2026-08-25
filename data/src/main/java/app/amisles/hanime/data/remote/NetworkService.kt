@@ -2,7 +2,9 @@ package app.amisles.hanime.data.remote
 
 import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
+import android.content.Context
 import app.amisles.hanime.data.parser.AccountProfileParser
+import dagger.hilt.android.qualifiers.ApplicationContext
 import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
 import app.amisles.hanime.data.parser.SubscriptionsParser
@@ -17,9 +19,12 @@ import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Cache
 import okhttp3.FormBody
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -27,6 +32,7 @@ import java.util.concurrent.TimeUnit
 
 @Singleton
 class NetworkService @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val authorPageParser: AuthorPageParser,
     private val playlistParser: PlaylistParser,
     private val subscriptionsParser: SubscriptionsParser,
@@ -35,15 +41,25 @@ class NetworkService @Inject constructor(
     // 入口拦截器：非官方域名根路径请求重写为 /enter
     private val entryInterceptor = EntryInterceptor()
 
+    private val httpCache = Cache(context.cacheDir.resolve("http_cache"), HTTP_CACHE_SIZE)
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
-        .writeTimeout(120, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
+        .cache(httpCache)
+        .retryOnConnectionFailure(false)
         .cookieJar(HCookieJar)
         .addInterceptor(entryInterceptor)
+        .addInterceptor(IdempotentGetRetryInterceptor(MAX_GET_RETRIES))
         .build()
+
+    companion object {
+        private const val HTTP_CACHE_SIZE = 50L * 1024 * 1024 // 50 MB
+        private const val MAX_GET_RETRIES = 1
+    }
 
     private val noRedirectClient by lazy {
         client.newBuilder()
@@ -659,6 +675,25 @@ class NetworkService @Inject constructor(
                 body ?: throw IOException("订阅作者返回空响应")
             }
         }
+    }
+}
+
+private class IdempotentGetRetryInterceptor(private val maxRetries: Int) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        if (request.method != "GET") return chain.proceed(request)
+
+        var attempt = 0
+        var lastException: IOException? = null
+        while (attempt <= maxRetries) {
+            try {
+                return chain.proceed(request)
+            } catch (e: IOException) {
+                lastException = e
+                attempt++
+            }
+        }
+        throw lastException ?: IOException("Idempotent GET retry exhausted")
     }
 }
 
