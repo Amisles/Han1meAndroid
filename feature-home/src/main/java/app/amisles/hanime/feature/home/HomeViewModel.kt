@@ -5,15 +5,15 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
+import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.core.common.result.AppResult
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -37,40 +37,42 @@ class HomeViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         AppLogger.d("HomeViewModel", "HomeViewModel created, calling loadHomeData")
         loadHomeData()
     }
 
     fun loadHomeData() {
-        AppLogger.d("HomeViewModel", "loadHomeData called, setting isLoading=true")
         _isLoading.value = true
         _error.value = null
+        _sections.value = emptyList()
+        _banner.value = null
+        _videos.value = emptyList()
 
-        viewModelScope.launch {
-            AppLogger.d("HomeViewModel", "Coroutine started, switching to IO dispatcher")
-            val result = withContext(Dispatchers.IO) {
-                repository.getHomeData()
-            }
-            when (result) {
-                is AppResult.Success -> {
-                    AppLogger.d("HomeViewModel", "Repository returned ${result.data.sections.size} sections, banner: ${result.data.banner != null}")
-                    _sections.value = result.data.sections
-                    _banner.value = result.data.banner
-                    _videos.value = result.data.sections.flatMap { it.videos }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            var firstEventArrived = false
+            repository.getHomeDataStream()
+                .catch { e ->
+                    if (!firstEventArrived) _isLoading.value = false
+                    _error.value = e.message ?: "加载首页失败"
                 }
-                is AppResult.Error -> {
-                    AppLogger.e("HomeViewModel", "Error loading home data: ${result.message}", result.exception)
-                    _sections.value = emptyList()
-                    _videos.value = emptyList()
-                    _banner.value = null
-                    _error.value = result.message
+                .collect { event ->
+                    if (!firstEventArrived) {
+                        firstEventArrived = true
+                        _isLoading.value = false
+                    }
+                    when (event) {
+                        is HomeDataEvent.Banner -> _banner.value = event.banner
+                        is HomeDataEvent.Section -> {
+                            _sections.value = _sections.value + event.section
+                            _videos.value = _videos.value + event.section.videos
+                        }
+                        is HomeDataEvent.Error -> _error.value = event.message
+                    }
                 }
-                is AppResult.Loading -> {
-                    // 首页加载中状态由 _isLoading 控制
-                }
-            }
-            _isLoading.value = false
         }
     }
 }

@@ -20,6 +20,7 @@ import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.domain.model.HomePageData
 import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.model.SearchResult
@@ -28,7 +29,11 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.result.AppResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -153,6 +158,20 @@ class HanimeRepository @Inject constructor(
             AppResult.error(e.message ?: "加载首页失败", e)
         }
     }
+
+    /**
+     * 流式加载首页
+     */
+    fun getHomeDataStream(): Flow<HomeDataEvent> = flow {
+        try {
+            val result = networkService.fetchHomePageWithBaseUrl()
+            AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            emitAll(homePageParser.parseStreaming(result.html, result.baseUrl))
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getHomeDataStream: ${e.message}", e)
+            emit(HomeDataEvent.Error(e.message ?: "加载首页失败"))
+        }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun searchVideos(query: String, genre: String? = null, sort: String? = null, page: Int = 1): AppResult<List<HanimeVideo>> {
         return try {
