@@ -9,6 +9,7 @@ import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.VideoDetail
+import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
@@ -17,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -172,57 +174,72 @@ class DetailViewModel @Inject constructor(
 
         detailLoadJob?.cancel() // 取消上一次未完成的详情请求（快速重进页面去重）
         detailLoadJob = viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                repository.getVideoDetail(videoUrl)
-            }
-            when (result) {
-                is AppResult.Success -> {
-                    val detail = result.data
-                    AppLogger.d("DetailViewModel", "Got video detail: ${detail.title}, sources: ${detail.videoSources.size}")
-                    _videoDetail.value = detail
-                    // 当前登录用户 ID：订阅表单中的 subscribe-user-id 最权威（与官网一致），
-                    // 缺失时回退到 currentUserId（评论/点赞表单解析），持久化供评论/点赞等接口使用
-                    val resolvedUserId = detail.subscribeUserId.ifBlank { detail.currentUserId }
-                    if (resolvedUserId.isNotBlank()) {
-                        Preferences.saveUserId(resolvedUserId)
-                    }
-                    if (currentVideoId.isNotEmpty()) {
-                        // 先读取已有历史，保留播放进度，避免每次进入覆盖为 0
-                        val existing = withContext(Dispatchers.IO) {
-                            repository.getWatchHistory(currentVideoId)
-                        }
-                        val history = WatchHistory(
-                            id = currentVideoId,
-                            title = detail.title,
-                            thumbnailUrl = detail.posterUrl,
-                            videoUrl = currentVideoUrl,
-                            author = detail.author,
-                            duration = detail.releaseDate,
-                            watchedAt = System.currentTimeMillis(),
-                            playbackPosition = existing?.playbackPosition ?: 0L,
-                            playbackDuration = existing?.playbackDuration ?: 0L
-                        )
-                        withContext(Dispatchers.IO) {
-                            repository.addWatchHistory(history)
-                        }
-                        _savedPosition.value = existing?.playbackPosition ?: 0L
-                    }
-
-                    val isFav = withContext(Dispatchers.IO) {
-                        repository.isFavorite(currentVideoId)
-                    }
-                    _isFavorite.value = isFav
-
-                    // 详情页已解析出订阅状态（subscribeStatus == "1" 表示已订阅），还原高亮
-                    _isSubscribed.value = detail.subscribeStatus == "1"
+            var mainArrived = false
+            repository.getVideoDetailStream(videoUrl)
+                .catch { e ->
+                    // 仅当主信息尚未到达时才关闭骨架屏，避免尾部异常把已渲染内容误判为失败
+                    if (!mainArrived) _isLoading.value = false
+                    _error.value = e.message ?: "加载详情失败"
                 }
-                is AppResult.Error -> {
-                    AppLogger.e("DetailViewModel", "Error loading video detail: ${result.message}", result.exception)
-                    _error.value = result.message
+                .collect { event ->
+                    when (event) {
+                        is VideoDetailEvent.MainInfo -> {
+                            val detail = event.detail
+                            AppLogger.d("DetailViewModel", "Got video detail main info: ${detail.title}, sources: ${detail.videoSources.size}")
+                            _videoDetail.value = detail
+                            // 主信息到齐即可关闭骨架屏，播放器区先渲染；相关视频/播放列表随后渐进补全
+                            _isLoading.value = false
+                            mainArrived = true
+
+                            // 当前登录用户 ID：订阅表单中的 subscribe-user-id 最权威（与官网一致），
+                            // 缺失时回退到 currentUserId（评论/点赞表单解析），持久化供评论/点赞等接口使用
+                            val resolvedUserId = detail.subscribeUserId.ifBlank { detail.currentUserId }
+                            if (resolvedUserId.isNotBlank()) {
+                                Preferences.saveUserId(resolvedUserId)
+                            }
+                            if (currentVideoId.isNotEmpty()) {
+                                // 先读取已有历史，保留播放进度，避免每次进入覆盖为 0
+                                val existing = withContext(Dispatchers.IO) {
+                                    repository.getWatchHistory(currentVideoId)
+                                }
+                                val history = WatchHistory(
+                                    id = currentVideoId,
+                                    title = detail.title,
+                                    thumbnailUrl = detail.posterUrl,
+                                    videoUrl = currentVideoUrl,
+                                    author = detail.author,
+                                    duration = detail.releaseDate,
+                                    watchedAt = System.currentTimeMillis(),
+                                    playbackPosition = existing?.playbackPosition ?: 0L,
+                                    playbackDuration = existing?.playbackDuration ?: 0L
+                                )
+                                withContext(Dispatchers.IO) {
+                                    repository.addWatchHistory(history)
+                                }
+                                _savedPosition.value = existing?.playbackPosition ?: 0L
+                            }
+
+                            val isFav = withContext(Dispatchers.IO) {
+                                repository.isFavorite(currentVideoId)
+                            }
+                            _isFavorite.value = isFav
+
+                            // 详情页已解析出订阅状态（subscribeStatus == "1" 表示已订阅），还原高亮
+                            _isSubscribed.value = detail.subscribeStatus == "1"
+                        }
+                        is VideoDetailEvent.RelatedVideos -> {
+                            _videoDetail.value = _videoDetail.value?.copy(relatedVideos = event.videos)
+                        }
+                        is VideoDetailEvent.Playlist -> {
+                            _videoDetail.value = _videoDetail.value?.copy(playlist = event.playlist)
+                        }
+                        is VideoDetailEvent.Error -> {
+                            AppLogger.e("DetailViewModel", "Error loading video detail stream: ${event.message}")
+                            _error.value = event.message
+                            _isLoading.value = false
+                        }
+                    }
                 }
-                is AppResult.Loading -> {}
-            }
-            _isLoading.value = false
         }
     }
 

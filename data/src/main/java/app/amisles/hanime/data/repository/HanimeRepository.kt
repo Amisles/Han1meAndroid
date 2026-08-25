@@ -22,6 +22,7 @@ import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.domain.model.HomePageData
+import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.AccountProfile
@@ -207,6 +208,22 @@ class HanimeRepository @Inject constructor(
             AppResult.error(e.message ?: "加载视频详情失败", e)
         }
     }
+
+    /**
+     * 流式加载视频详情：在 IO 调度器上取回整页 HTML 后，将其交给解析器的流式解析，
+     * 按「主信息 → 播放列表 → 相关视频」顺序 emit [VideoDetailEvent]，供 ViewModel 增量刷新 UI。
+     * 网络或解析失败统一转换为 [VideoDetailEvent.Error] 事件。
+     */
+    fun getVideoDetailStream(videoUrl: String): Flow<VideoDetailEvent> = flow {
+        try {
+            val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
+            AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            emitAll(watchPageParser.parseStreaming(result.html, result.baseUrl))
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getVideoDetailStream: ${e.message}", e)
+            emit(VideoDetailEvent.Error(e.message ?: "加载视频详情失败"))
+        }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
         return try {
