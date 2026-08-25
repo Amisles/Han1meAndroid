@@ -52,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -279,6 +281,13 @@ private fun VideoItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
+            .shadow(
+                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
+                shape = RoundedCornerShape(12.dp),
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.18f),
+                spotColor = Color.Black.copy(alpha = 0.18f)
+            )
             .then(
                 if (isDisabled) {
                     Modifier
@@ -286,6 +295,7 @@ private fun VideoItem(
                     Modifier.clickable(onClick = onClick)
                 }
             ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 isDisabled -> MaterialTheme.colorScheme.surface

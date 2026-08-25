@@ -2,6 +2,7 @@ package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -116,12 +119,23 @@ fun VideoListItem(
 ) {
     val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
     val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+    val isDark = isSystemInDarkTheme()
+    val cardShape = RoundedCornerShape(8.dp)
+    val thumbShape = RoundedCornerShape(6.dp)
+    val shadowColor = Color.Black.copy(alpha = 0.18f)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-            .clip(RoundedCornerShape(8.dp))
+            .shadow(
+                elevation = if (isDark) 0.dp else 2.dp,
+                shape = cardShape,
+                clip = false,
+                ambientColor = shadowColor,
+                spotColor = shadowColor
+            )
+            .background(MaterialTheme.colorScheme.surface, cardShape)
+            .clip(cardShape)
             .clickable { onClick() }
             .padding(6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -138,7 +152,14 @@ fun VideoListItem(
             modifier = Modifier
                 .width(120.dp)
                 .height(90.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .shadow(
+                    elevation = if (isDark) 0.dp else 1.5.dp,
+                    shape = thumbShape,
+                    clip = false,
+                    ambientColor = shadowColor,
+                    spotColor = shadowColor
+                )
+                .clip(thumbShape)
         )
 
         Column(

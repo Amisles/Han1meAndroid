@@ -55,6 +55,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -576,6 +578,13 @@ fun DetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .shadow(
+                                    elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
+                                    shape = RoundedCornerShape(8.dp),
+                                    clip = false,
+                                    ambientColor = Color.Black.copy(alpha = 0.18f),
+                                    spotColor = Color.Black.copy(alpha = 0.18f)
+                                )
                                 .background(MaterialTheme.colorScheme.surface)
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onVideoClick(video.videoUrl) },

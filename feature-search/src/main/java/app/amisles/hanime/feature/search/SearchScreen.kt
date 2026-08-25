@@ -1,6 +1,9 @@
 package app.amisles.hanime.feature.search
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -489,6 +492,13 @@ fun SearchScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .shadow(
+                                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
+                                shape = RoundedCornerShape(8.dp),
+                                clip = false,
+                                ambientColor = Color.Black.copy(alpha = 0.18f),
+                                spotColor = Color.Black.copy(alpha = 0.18f)
+                            )
                             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                             .padding(vertical = 4.dp, horizontal = 6.dp)
                             .clickable { onVideoClick(video.videoUrl) },
@@ -598,7 +608,15 @@ fun SearchScreen(
                                         video = video,
                                         onClick = { onVideoClick(video.videoUrl) },
                                         onAuthorClick = onAuthorClick,
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier
+                                            .shadow(
+                                                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
+                                                shape = RoundedCornerShape(8.dp),
+                                                clip = false,
+                                                ambientColor = Color.Black.copy(alpha = 0.18f),
+                                                spotColor = Color.Black.copy(alpha = 0.18f)
+                                            )
+                                            .weight(1f)
                                     )
                                 }
                                 repeat(columns - rowVideos.size) {
