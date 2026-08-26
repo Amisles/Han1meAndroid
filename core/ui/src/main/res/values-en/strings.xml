@@ -86,6 +86,7 @@
     <string name="detail_download_button">Download Video</string>
     <string name="detail_auto_play_next">Auto-play</string>
     <string name="detail_more">More</string>
+    <string name="detail_pip">Picture-in-Picture</string>
 
     <!-- Comments -->
     <string name="detail_tab_related">Related</string>

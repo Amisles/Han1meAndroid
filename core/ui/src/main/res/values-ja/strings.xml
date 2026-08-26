@@ -86,6 +86,7 @@
     <string name="detail_download_button">動画をダウンロード</string>
     <string name="detail_auto_play_next">自動再生</string>
     <string name="detail_more">その他</string>
+    <string name="detail_pip">ピクチャー・イン・ピクチャー</string>
 
     <!-- Comments -->
     <string name="detail_tab_related">関連動画</string>

@@ -97,6 +97,7 @@
     <string name="detail_download_button">下载此视频</string>
     <string name="detail_auto_play_next">连播</string>
     <string name="detail_more">更多</string>
+    <string name="detail_pip">画中画</string>
 
     <!-- Comments -->
     <string name="detail_tab_related">相关影片</string>

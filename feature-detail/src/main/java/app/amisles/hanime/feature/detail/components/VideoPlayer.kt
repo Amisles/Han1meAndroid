@@ -1024,19 +1024,6 @@ fun VideoPlayer(
                     }
                 }
 
-                if (isFullscreen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    IconButton(
-                        onClick = { activity?.enterPictureInPictureMode(buildPipParams()); isInPip = true },
-                        modifier = Modifier.size(30.dp)
-                    ) {
-                        Text(
-                            text = "画中画",
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
                 IconButton(
                     onClick = { toggleFullscreen() },
                     modifier = Modifier.size(30.dp)
@@ -1093,6 +1080,24 @@ fun VideoPlayer(
                             onClick = { onAutoPlayNextChanged(!autoPlayNext) },
                             modifier = Modifier.height(40.dp)
                         )
+
+                        if (isFullscreen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            DropdownMenuItem(
+                                text = {
+                                Text(
+                                    text = stringResource(R.string.detail_pip),
+                                    color = Color.White,
+                                        fontSize = 13.sp
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    activity?.enterPictureInPictureMode(buildPipParams())
+                                    isInPip = true
+                                },
+                                modifier = Modifier.height(40.dp)
+                            )
+                        }
                     }
                 }
             }
