@@ -77,6 +77,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -101,6 +102,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -1058,7 +1060,7 @@ fun VideoPlayer(
                     DropdownMenu(
                         expanded = showMoreMenu,
                         onDismissRequest = { showMoreMenu = false },
-                        modifier = Modifier.width(136.dp),
+                        modifier = Modifier.widthIn(min = 160.dp, max = 280.dp),
                         containerColor = Color.Black.copy(alpha = 0.7f)
                     ) {
                         // 连播（下一集自动播放）开关
@@ -1067,7 +1069,9 @@ fun VideoPlayer(
                                 Text(
                                     text = stringResource(R.string.detail_auto_play_next),
                                     color = Color.White,
-                                    fontSize = 13.sp
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             },
                             trailingIcon = {
@@ -1084,10 +1088,12 @@ fun VideoPlayer(
                         if (isFullscreen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             DropdownMenuItem(
                                 text = {
-                                Text(
-                                    text = stringResource(R.string.detail_pip),
-                                    color = Color.White,
-                                        fontSize = 13.sp
+                                    Text(
+                                        text = stringResource(R.string.detail_pip),
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 },
                                 onClick = {
