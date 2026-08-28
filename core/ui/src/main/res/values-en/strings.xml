@@ -89,6 +89,7 @@
     <string name="detail_pip">Picture-in-Picture</string>
 
     <!-- Comments -->
+    <string name="detail_tab_intro">Info</string>
     <string name="detail_tab_related">Related</string>
     <string name="detail_tab_comments">Comments</string>
     <string name="comment_empty">No comments yet</string>

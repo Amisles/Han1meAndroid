@@ -89,6 +89,7 @@
     <string name="detail_pip">畫中畫</string>
 
     <!-- Comments -->
+    <string name="detail_tab_intro">簡介</string>
     <string name="detail_tab_related">相關影片</string>
     <string name="detail_tab_comments">評論</string>
     <string name="comment_empty">暫無評論</string>

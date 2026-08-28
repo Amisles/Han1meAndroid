@@ -89,6 +89,7 @@
     <string name="detail_pip">ピクチャー・イン・ピクチャー</string>
 
     <!-- Comments -->
+    <string name="detail_tab_intro">概要</string>
     <string name="detail_tab_related">関連動画</string>
     <string name="detail_tab_comments">コメント</string>
     <string name="comment_empty">コメントがありません</string>
