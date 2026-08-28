@@ -5,11 +5,11 @@
 <h1 align="center">HanimeAndroid</h1>
 
 <p align="center">
-  开源的第三方 Hanime Android 客户端，基于 Jetpack Compose 构建原生界面，采用 MVVM + Repository 架构与多模块化设计。
+  第三方 Han1me Android 客户端，基于 Jetpack Compose 构建原生界面，采用 MVVM + Repository 架构与多模块化设计。
 </p>
 
 <p align="center">
-  <b>当前版本：v1.2.0</b>（versionCode 8）· 最低支持 Android 11（API 30）· 目标 Android 16（API 36）
+  <b>当前版本：v1.3.0</b>（versionCode 9）· 最低支持 Android 11（API 30）· 目标 Android 16（API 36）
 </p>
 
 ## 功能
