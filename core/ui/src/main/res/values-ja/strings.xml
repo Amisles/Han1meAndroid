@@ -106,6 +106,7 @@
     <string name="comment_post_failed">コメントの投稿に失敗しました</string>
     <string name="comment_login_required">コメントを投稿するにはログインしてください</string>
     <string name="comment_empty_content">コメントを入力してください</string>
+    <string name="comment_like">いいね</string>
     <string name="comment_reply">返信</string>
     <string name="comment_reply_hint">返信を書く…</string>
 
@@ -137,6 +138,8 @@
     <string name="download_notification_downloading">ダウンロード中</string>
     <string name="download_notification_completed">ダウンロード完了</string>
     <string name="download_notification_failed">ダウンロード失敗</string>
+    <string name="download_notification_progress">ダウンロード中 %1$d%%</string>
+    <string name="download_notification_paused">一時停止中 %1$d%%</string>
     <string name="download_title">ダウンロード管理</string>
     <string name="download_pause">一時停止</string>
     <string name="download_resume">再開</string>

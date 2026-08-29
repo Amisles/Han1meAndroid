@@ -106,6 +106,7 @@
     <string name="comment_post_failed">Failed to post comment</string>
     <string name="comment_login_required">Please log in to post a comment</string>
     <string name="comment_empty_content">Comment cannot be empty</string>
+    <string name="comment_like">Like</string>
     <string name="comment_reply">Reply</string>
     <string name="comment_reply_hint">Write a reply…</string>
 
@@ -137,6 +138,8 @@
     <string name="download_notification_downloading">Downloading</string>
     <string name="download_notification_completed">Download completed</string>
     <string name="download_notification_failed">Download failed</string>
+    <string name="download_notification_progress">Downloading %1$d%%</string>
+    <string name="download_notification_paused">Paused %1$d%%</string>
     <string name="download_title">Download Manager</string>
     <string name="download_pause">Pause</string>
     <string name="download_resume">Resume</string>
