@@ -23,7 +23,6 @@ rootProject.name = "hanime"
 include(":app")
 include(":core:common")
 include(":core:ui")
-include(":core:network")
 include(":data")
 include(":domain:model")
 include(":feature-home")

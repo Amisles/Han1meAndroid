@@ -72,8 +72,7 @@ dependencies {
     // Core modules
     implementation(project(":core:common"))
     implementation(project(":core:ui"))
-    implementation(project(":core:network"))
-    
+
     // Data module
     implementation(project(":data"))
     implementation(project(":domain:model"))

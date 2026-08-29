@@ -110,16 +110,13 @@ View (Compose) --> ViewModel (StateFlow) --> Repository --> NetworkService / Dat
 
 ### 模块化
 
-项目拆分为 12 个 Gradle 模块，依赖方向单向流动：
+项目拆分为 11 个 Gradle 模块，依赖方向单向流动：
 
 ```
 feature-* --> core:ui --> core:common
     |             |
     v             v
   data ------> domain:model
-    |
-    v
-core:network
 ```
 
 ## 构建与运行
