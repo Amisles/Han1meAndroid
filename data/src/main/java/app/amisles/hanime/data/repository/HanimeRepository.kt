@@ -409,7 +409,7 @@ class HanimeRepository @Inject constructor(
         } catch (e: IOException) {
             Log.i("SubscribeDebug", "!!! toggleSubscribe IOException: ${e.message}")
             AppLogger.logError("HanimeRepository", "Error in toggleSubscribe: ${e.message}", e)
-                AppResult.error(e.message ?: "订阅操作失败", e)
+            AppResult.error(e.message ?: "订阅操作失败", e)
         }
     }
 
@@ -470,57 +470,57 @@ class HanimeRepository @Inject constructor(
 
     suspend fun login(email: String, password: String): AppResult<String> {
         return runCatching {
-        val page = try {
-            networkService.fetchLoginPageWithBaseUrl()
-        } catch (t: IOException) {
-            val msg = t.message.orEmpty()
-            when {
-                "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
-                    throw IllegalStateException("无法访问 Hanime1 官网（DNS 解析失败），请检查网络、开启代理/VPN，或改用 WebView 登录方式")
-                t is java.net.SocketTimeoutException || "timeout" in msg ->
-                    throw IllegalStateException("连接 Hanime1 官网超时，请检查网络或改用 WebView 登录")
-                "SSL" in msg || "certificate" in msg ->
-                    throw IllegalStateException("SSL 证书校验失败，请检查网络代理或改用 WebView 登录")
-                else ->
-                    throw IllegalStateException("访问登录页失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
+            val page = try {
+                networkService.fetchLoginPageWithBaseUrl()
+            } catch (t: IOException) {
+                val msg = t.message.orEmpty()
+                when {
+                    "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
+                        throw IllegalStateException("无法访问 Hanime1 官网（DNS 解析失败），请检查网络、开启代理/VPN，或改用 WebView 登录方式")
+                    t is java.net.SocketTimeoutException || "timeout" in msg ->
+                        throw IllegalStateException("连接 Hanime1 官网超时，请检查网络或改用 WebView 登录")
+                    "SSL" in msg || "certificate" in msg ->
+                        throw IllegalStateException("SSL 证书校验失败，请检查网络代理或改用 WebView 登录")
+                    else ->
+                        throw IllegalStateException("访问登录页失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
+                }
             }
-        }
-        val csrf = LoginParser.parseCsrfToken(page.html)
-            ?: throw IllegalStateException("无法获取 CSRF Token，请切换到 WebView 或手动 Cookie 登录")
-        val result = try {
-            networkService.postLoginForm(csrf, email, password)
-        } catch (t: IOException) {
-            val msg = t.message.orEmpty()
-            when {
-                "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
-                    throw IllegalStateException("无法访问 Hanime1 官网（DNS 解析失败），请检查网络、开启代理/VPN，或改用 WebView 登录方式")
-                t is java.net.SocketTimeoutException || "timeout" in msg ->
-                    throw IllegalStateException("提交登录超时，请检查网络或改用 WebView 登录")
-                else ->
-                    throw IllegalStateException("提交登录失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
+            val csrf = LoginParser.parseCsrfToken(page.html)
+                ?: throw IllegalStateException("无法获取 CSRF Token，请切换到 WebView 或手动 Cookie 登录")
+            val result = try {
+                networkService.postLoginForm(csrf, email, password)
+            } catch (t: IOException) {
+                val msg = t.message.orEmpty()
+                when {
+                    "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
+                        throw IllegalStateException("无法访问 Hanime1 官网（DNS 解析失败），请检查网络、开启代理/VPN，或改用 WebView 登录方式")
+                    t is java.net.SocketTimeoutException || "timeout" in msg ->
+                        throw IllegalStateException("提交登录超时，请检查网络或改用 WebView 登录")
+                    else ->
+                        throw IllegalStateException("提交登录失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
+                }
             }
-        }
-        val mergedCookie = result.setCookies
-            .map { it.substringBefore(';').trim() }
-            .filter { it.contains('=') }
-            .joinToString("; ")
-        val isRedirect = result.code in 300..399
-        val hasSession = mergedCookie.contains("laravel_session", ignoreCase = true) ||
-                mergedCookie.contains("remember_web", ignoreCase = true) ||
-                mergedCookie.contains("session", ignoreCase = true)
-        if (result.code == 503) {
-            throw IllegalStateException("触发了 Cloudflare 校验，请切换到 WebView 登录")
-        }
-        if (result.code in 200..299 && result.body != null) {
-            val errorMsg = LoginParser.parseLoginFailed(result.body)
-            if (errorMsg != null) throw IllegalStateException(errorMsg)
-        }
-        if (!isRedirect && !hasSession) {
-            throw IllegalStateException("登录失败：请检查邮箱或密码，或切换到 WebView 登录")
-        }
-        val userId = LoginParser.parseUserIdFromSetCookies(result.setCookies)
-        Preferences.saveLogin(mergedCookie, userId)
-        mergedCookie
+            val mergedCookie = result.setCookies
+                .map { it.substringBefore(';').trim() }
+                .filter { it.contains('=') }
+                .joinToString("; ")
+            val isRedirect = result.code in 300..399
+            val hasSession = mergedCookie.contains("laravel_session", ignoreCase = true) ||
+                    mergedCookie.contains("remember_web", ignoreCase = true) ||
+                    mergedCookie.contains("session", ignoreCase = true)
+            if (result.code == 503) {
+                throw IllegalStateException("触发了 Cloudflare 校验，请切换到 WebView 登录")
+            }
+            if (result.code in 200..299 && result.body != null) {
+                val errorMsg = LoginParser.parseLoginFailed(result.body)
+                if (errorMsg != null) throw IllegalStateException(errorMsg)
+            }
+            if (!isRedirect && !hasSession) {
+                throw IllegalStateException("登录失败：请检查邮箱或密码，或切换到 WebView 登录")
+            }
+            val userId = LoginParser.parseUserIdFromSetCookies(result.setCookies)
+            Preferences.saveLogin(mergedCookie, userId)
+            mergedCookie
         }.fold(
             onSuccess = { AppResult.success(it) },
             onFailure = { e ->

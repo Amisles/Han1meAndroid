@@ -53,6 +53,13 @@ class NetworkDiagnostics {
     private val uaString =
         "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
 
+    // 三个检测项共用一个 OkHttpClient 实例，复用同一连接池与线程池，避免每次检测都新建并泄漏
+    private val sharedClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .build()
+
     /**
      * 运行全部诊断项，返回按检测顺序排列的结果列表。
      */
@@ -146,11 +153,7 @@ class NetworkDiagnostics {
      * 但内容已被拦截或服务不可用，必须判定为 FAIL，否则诊断页会给出「一切正常」的误导结论。
      */
     private fun checkConnectivity(baseUrl: String): DiagnosticResult {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .followRedirects(false)
-            .build()
+        val client = sharedClient
         val start = System.currentTimeMillis()
         return try {
             val request = Request.Builder()
@@ -329,11 +332,7 @@ class NetworkDiagnostics {
      */
     private fun checkMirrorStatus(baseUrl: String): DiagnosticResult {
         val enterUrl = baseUrl.trimEnd('/') + "/enter"
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .followRedirects(true)
-            .build()
+        val client = sharedClient.newBuilder().followRedirects(true).build()
         val start = System.currentTimeMillis()
         return try {
             val request = Request.Builder()
@@ -407,11 +406,7 @@ class NetworkDiagnostics {
         val baseUrl = Preferences.baseUrl
         val loginUrl = baseUrl.trimEnd('/') + "/login"
         // 使用不跟随重定向的 client，以便判断是否被重定向
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .followRedirects(false)
-            .build()
+        val client = sharedClient
         val start = System.currentTimeMillis()
         return try {
             val request = Request.Builder()

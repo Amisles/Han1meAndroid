@@ -53,7 +53,7 @@ import android.database.sqlite.SQLiteException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CancellationException
 
 // 避免持锁做跨进程 IPC
 private data class ProgressUpdate(
@@ -418,7 +418,7 @@ class DownloadManager @Inject constructor(
                     }
                     AppLogger.log("DownloadManager", "下载完成: ${task.title}")
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: IOException) {
                 // P0-2 修复：Call.cancel() 在暂停/取消时会令阻塞读抛出 IOException，
@@ -870,7 +870,7 @@ class DownloadManager @Inject constructor(
             monitor.cancel()
             reporter.cancel()
             }
-        } catch (ce: kotlinx.coroutines.CancellationException) {
+        } catch (ce: CancellationException) {
             if (!rangeUnsupported.get()) throw ce
         }
 
@@ -1318,22 +1318,20 @@ class DownloadManager @Inject constructor(
             base = minOf(maxOf(base, 4), MAX_CHUNKS)
         }
         val budgeted = effectiveChunkCap()
-            val maxBySize = maxOf((totalBytes / CHUNK_SIZE).toInt(), 1)
-            return minOf(base, budgeted, MAX_CHUNKS, maxBySize)
+        val maxBySize = maxOf((totalBytes / CHUNK_SIZE).toInt(), 1)
+        return minOf(base, budgeted, MAX_CHUNKS, maxBySize)
         }
 
-        /**
-         * O8：根据分块大小选择读取/写入缓冲（256KB–1MB）。
-         * 大分块代表吞吐受限场景，放大缓冲可显著减少 read/write 系统调用次数，
-         * 降低 CPU 与磁盘 I/O 占比（对齐报告 O8 建议）。
-         */
-        private fun chooseBufferSize(chunkBytes: Long): Int {
-            return when {
-                chunkBytes >= 16 * 1024 * 1024L -> BUFFER_SIZE_LARGE   // ≥16MB 块用 1MB 缓冲
-                chunkBytes >= 8 * 1024 * 1024L -> BUFFER_SIZE_MEDIUM  // ≥8MB 块用 512KB 缓冲
-                else -> CHUNK_BUFFER_SIZE                            // 默认 256KB
-            }
+    /**
+     * 根据分块大小选择读取/写入缓冲（256KB–1MB）。
+     */
+    private fun chooseBufferSize(chunkBytes: Long): Int {
+        return when {
+            chunkBytes >= 16 * 1024 * 1024L -> BUFFER_SIZE_LARGE   // ≥16MB 块用 1MB 缓冲
+            chunkBytes >= 8 * 1024 * 1024L -> BUFFER_SIZE_MEDIUM  // ≥8MB 块用 512KB 缓冲
+            else -> CHUNK_BUFFER_SIZE                            // 默认 256KB
         }
+    }
 
         // O4：分块完成位图表（sidecar 文件）的读写，格式：首行 chunkCount，次行 0/1 位图
     private fun writePartmap(file: File, chunkCount: Int, done: BooleanArray) {
@@ -1381,7 +1379,6 @@ class DownloadManager @Inject constructor(
         const val CHUNK_SIZE = 4_000_000L              // O2：最小分块 4MB，对齐 CDN 4MB/8MB 缓存分片
         const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L // O2：文件 <12MB 不分块，直接单连接
         const val CHUNK_BUFFER_SIZE = 256 * 1024       // O2/O8：分块读取缓冲 256KB
-        const val SINGLE_BUFFER_SIZE = 256 * 1024      // O2/O8：单连接读取缓冲 256KB
         const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
         const val DOWNLOAD_REFERER = "https://hanimeone.me/"
     }

@@ -67,6 +67,7 @@ class NetworkService @Inject constructor(
     companion object {
         private const val HTTP_CACHE_SIZE = 50L * 1024 * 1024 // 50 MB
         private const val MAX_GET_RETRIES = 1
+        private val HOST_REGEX = Regex("https?://([^/]+)")
     }
 
     private val noRedirectClient by lazy {
@@ -216,7 +217,7 @@ class NetworkService @Inject constructor(
         val url = if (videoUrl.startsWith("http")) videoUrl else "${getCurrentBaseUrl()}$videoUrl"
         AppLogger.log("NetworkService", "Full URL: $url")
         val html = executeRequest(buildRequest(url))
-        val baseUrl = "https://${Regex("https?://([^/]+)").find(url)?.groupValues?.get(1) ?: Preferences.DEFAULT_BASE_URL.removePrefix("https://")}"
+        val baseUrl = "https://${HOST_REGEX.find(url)?.groupValues?.get(1) ?: Preferences.DEFAULT_BASE_URL.removePrefix("https://")}"
         return FetchResult(html, baseUrl)
     }
 

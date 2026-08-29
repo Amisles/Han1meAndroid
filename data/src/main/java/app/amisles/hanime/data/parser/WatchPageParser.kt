@@ -20,6 +20,13 @@ class WatchPageParser @Inject constructor(
     private val playlistParser: PlaylistParser
 ) {
 
+    private companion object {
+        private val RELEASE_DATE_REGEX = Regex("(20\\d{2}/\\d{2}/\\d{2})")
+        private val FILE_SIZE_REGEX = Regex("([\\d.]+\\s*(?:GB|MB|KB))", RegexOption.IGNORE_CASE)
+        private val COMMENT_COUNT_REGEX = Regex("comment-count\"\\s+value=\"(\\d+)\"")
+        private val USER_ID_REGEX = Regex("/user/(\\d+)")
+    }
+
     /**
      * 同步解析：一次性产出完整 [VideoDetail]，供测试与同步兜底使用。
      * 内部复用 [parseMain] / [parsePlaylist] / [parseRelatedVideos]，与流式解析共享同一套抽取逻辑。
@@ -123,9 +130,9 @@ class WatchPageParser @Inject constructor(
             }
         }
 
-        val releaseDate = Regex("(20\\d{2}/\\d{2}/\\d{2})").find(html)?.value ?: ""
+        val releaseDate = RELEASE_DATE_REGEX.find(html)?.value ?: ""
 
-        val fileSizeMatch = Regex("([\\d.]+\\s*(?:GB|MB|KB))", RegexOption.IGNORE_CASE).find(html)
+        val fileSizeMatch = FILE_SIZE_REGEX.find(html)
         val fileSize = fileSizeMatch?.value ?: ""
 
         val author = doc.selectFirst("a#video-artist-name")?.text()?.trim() ?: ""
@@ -151,7 +158,7 @@ class WatchPageParser @Inject constructor(
         // 解析当前评论数：优先从 createComment 表单的 comment-count 隐藏 input 获取
         val commentCount = doc.selectFirst("input[name=\"comment-count\"]")
             ?.attr("value")?.trim()?.toIntOrNull()
-            ?: Regex("comment-count\"\\s+value=\"(\\d+)\"").find(html)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: COMMENT_COUNT_REGEX.find(html)?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: 0
 
         val resolvedDefaultSourceUrl = if (defaultSourceUrl.isEmpty() && sources.isNotEmpty()) {
@@ -270,7 +277,7 @@ class WatchPageParser @Inject constructor(
 
         val artistId = scope?.selectFirst("input[name=\"subscribe-artist-id\"]")?.attr("value")?.trim()
             ?.takeIf { it.isNotEmpty() }
-            ?: Regex("/user/(\\d+)").find(authorPageUrl)?.groupValues?.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            ?: USER_ID_REGEX.find(authorPageUrl)?.groupValues?.getOrNull(1)?.takeIf { it.isNotEmpty() }
             ?: ""
 
         val userId = scope?.selectFirst("input[name=\"subscribe-user-id\"]")?.attr("value")?.trim()
