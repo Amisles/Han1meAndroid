@@ -46,7 +46,9 @@ object LocaleHelper {
             LANGUAGE_ZH_TW -> "繁體中文"
             LANGUAGE_EN -> "English"
             LANGUAGE_JA -> "日本語"
-            else -> "简体中文"
+            else -> runCatching {
+                Locale.forLanguageTag(lang.replace('_', '-')).getDisplayName(Locale.SIMPLIFIED_CHINESE)
+            }.getOrDefault(lang)
         }
     }
 

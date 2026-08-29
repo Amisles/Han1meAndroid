@@ -199,14 +199,14 @@ fun VideoListItem(
                 if (video.viewCount.isNotEmpty()) {
                     Text(
                         text = video.viewCount,
-                        fontSize = 9.sp,
+                        fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (video.likeRate.isNotEmpty()) {
                     Text(
                         text = "👍 ${video.likeRate}",
-                        fontSize = 9.sp,
+                        fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

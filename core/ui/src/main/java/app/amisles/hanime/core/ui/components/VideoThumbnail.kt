@@ -11,10 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -24,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
 
 @Composable
 fun VideoThumbnail(
@@ -38,8 +33,6 @@ fun VideoThumbnail(
     adaptHeight: Boolean = false,
     crop: Boolean = false
 ) {
-    var imageState by remember(thumbnailUrl) { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-
     val boxModifier = if (adaptHeight) {
         modifier
             .fillMaxWidth()
@@ -58,10 +51,7 @@ fun VideoThumbnail(
                 model = thumbnailUrl,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = contentScale,
-                onState = { state ->
-                    imageState = state
-                }
+                contentScale = contentScale
             )
         } else {
             Box(
@@ -84,7 +74,7 @@ fun VideoThumbnail(
         if (duration.isNotEmpty()) {
             Text(
                 text = duration,
-                fontSize = 8.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White,
                 modifier = Modifier
@@ -105,7 +95,7 @@ fun VideoThumbnail(
                 if (likeRate.isNotEmpty()) {
                     Text(
                         text = "👍 $likeRate",
-                        fontSize = 8.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                         modifier = Modifier
@@ -116,7 +106,7 @@ fun VideoThumbnail(
                 if (viewCount.isNotEmpty()) {
                     Text(
                         text = " $viewCount",
-                        fontSize = 8.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Normal,
                         color = Color.White,
                         modifier = Modifier

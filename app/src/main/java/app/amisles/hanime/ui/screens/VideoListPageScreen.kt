@@ -35,10 +35,10 @@ import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.ui.theme.HanimeBackground
-import app.amisles.hanime.ui.theme.HanimePrimary
-import app.amisles.hanime.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.ui.theme.HanimeTextSecondary
+import app.amisles.hanime.core.ui.theme.HanimeBackground
+import app.amisles.hanime.core.ui.theme.HanimePrimary
+import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
+import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import app.amisles.hanime.ui.viewmodel.VideoListPageViewModel
 
 @Composable

@@ -13,6 +13,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import app.amisles.hanime.core.ui.theme.ProvideWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.core.ui.theme.HanimePrimary
+import app.amisles.hanime.core.ui.theme.HanimePrimaryLight
+import app.amisles.hanime.core.ui.theme.HanimeBackground
+import app.amisles.hanime.core.ui.theme.HanimeCard
+import app.amisles.hanime.core.ui.theme.HanimeBorder
+import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
+import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
+import app.amisles.hanime.core.ui.theme.HanimeCardLight
+import app.amisles.hanime.core.ui.theme.HanimeBorderLight
+import app.amisles.hanime.core.ui.theme.HanimeTextPrimaryLight
+import app.amisles.hanime.core.ui.theme.HanimeTextSecondaryLight
 import app.amisles.hanime.data.preferences.ThemeMode
 
 private val HanimeDarkColorScheme = darkColorScheme(

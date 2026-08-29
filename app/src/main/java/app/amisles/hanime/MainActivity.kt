@@ -70,8 +70,8 @@ import app.amisles.hanime.feature.settings.SettingsScreen
 import app.amisles.hanime.feature.settings.DiagnosticsScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
-import app.amisles.hanime.ui.theme.HanimeBackground
-import app.amisles.hanime.ui.theme.HanimeBackgroundLight
+import app.amisles.hanime.core.ui.theme.HanimeBackground
+import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.ui.theme.HanimeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
