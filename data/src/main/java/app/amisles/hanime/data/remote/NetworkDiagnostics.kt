@@ -140,7 +140,10 @@ class NetworkDiagnostics {
     }
 
     /**
-     * 连接可达性检测：发送 HTTP HEAD 请求，测量响应时间与状态码。
+     * 连接可达性检测：发送 HTTP HEAD 请求，测量响应时间并**按状态码判定成败**。
+     *
+     * 注意：仅建连成功不等于可达。服务端返回 403/429/5xx 时 TCP 连接是通的，
+     * 但内容已被拦截或服务不可用，必须判定为 FAIL，否则诊断页会给出「一切正常」的误导结论。
      */
     private fun checkConnectivity(baseUrl: String): DiagnosticResult {
         val client = OkHttpClient.Builder()
@@ -157,52 +160,99 @@ class NetworkDiagnostics {
                 .build()
             client.newCall(request).execute().use { response ->
                 val latency = System.currentTimeMillis() - start
-                DiagnosticResult(
-                    type = DiagnosticType.CONNECTIVITY,
-                    status = DiagnosticStatus.OK,
-                    title = "连接可达性",
-                    detail = "HTTP ${response.code}，耗时 ${latency}ms",
-                    latencyMs = latency
-                )
+                val code = response.code
+                // 3xx：服务端可达并给出了跳转（镜像站的 / → /enter 即属此类），
+                // 记录跳转目标便于用户判断，但不算失败。
+                val location = response.header("Location")
+                when (code) {
+                    in 200..299 -> connectivityResult(
+                        status = DiagnosticStatus.OK,
+                        detail = "HTTP $code，耗时 ${latency}ms",
+                        latencyMs = latency
+                    )
+                    in 300..399 -> connectivityResult(
+                        status = DiagnosticStatus.OK,
+                        detail = "HTTP $code，服务端可达" +
+                            (if (!location.isNullOrBlank()) "，跳转至 $location" else ""),
+                        latencyMs = latency
+                    )
+                    401, 403 -> connectivityResult(
+                        status = DiagnosticStatus.FAIL,
+                        detail = "HTTP $code，访问被拒绝",
+                        latencyMs = latency,
+                        suggestion = "请求被服务端拒绝，可能是 Cloudflare 校验或地区限制，请切换网络环境或更换镜像站"
+                    )
+                    404 -> connectivityResult(
+                        status = DiagnosticStatus.FAIL,
+                        detail = "HTTP $code，路径不存在",
+                        latencyMs = latency,
+                        suggestion = "官网地址可能已变更，请在设置中检查并更新"
+                    )
+                    429 -> connectivityResult(
+                        status = DiagnosticStatus.FAIL,
+                        detail = "HTTP $code，请求过于频繁",
+                        latencyMs = latency,
+                        suggestion = "当前 IP 被限流，请稍后重试或切换网络"
+                    )
+                    in 500..599 -> connectivityResult(
+                        status = DiagnosticStatus.FAIL,
+                        detail = "HTTP $code，服务端错误",
+                        latencyMs = latency,
+                        suggestion = "服务端异常或站点维护中（镜像站根路径返回 500 属正常，请以镜像站状态检测为准），可尝试更换镜像站"
+                    )
+                    else -> connectivityResult(
+                        status = DiagnosticStatus.FAIL,
+                        detail = "HTTP $code，响应异常",
+                        latencyMs = latency,
+                        suggestion = "服务端返回异常状态码，请尝试更换镜像站"
+                    )
+                }
             }
         } catch (e: java.net.SocketTimeoutException) {
-            DiagnosticResult(
-                type = DiagnosticType.CONNECTIVITY,
+            connectivityResult(
                 status = DiagnosticStatus.FAIL,
-                title = "连接可达性",
                 detail = "连接超时：${e.message}",
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "服务器响应过慢或网络不通，请检查网络后重试"
             )
         } catch (e: java.net.ConnectException) {
-            DiagnosticResult(
-                type = DiagnosticType.CONNECTIVITY,
+            connectivityResult(
                 status = DiagnosticStatus.FAIL,
-                title = "连接可达性",
                 detail = "连接被拒绝：${e.message}",
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "服务器可能离线，请尝试切换镜像站"
             )
         } catch (e: IOException) {
-            DiagnosticResult(
-                type = DiagnosticType.CONNECTIVITY,
+            connectivityResult(
                 status = DiagnosticStatus.FAIL,
-                title = "连接可达性",
                 detail = "连接异常：${e.javaClass.simpleName} - ${e.message}",
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "请检查网络连接"
             )
         } catch (e: IllegalArgumentException) {
-            DiagnosticResult(
-                type = DiagnosticType.CONNECTIVITY,
+            connectivityResult(
                 status = DiagnosticStatus.FAIL,
-                title = "连接可达性",
                 detail = "连接异常：${e.javaClass.simpleName} - ${e.message}",
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "请检查网络连接"
             )
         }
     }
+
+    /** 连接可达性结果工厂，统一 type/title，避免各分支重复书写。 */
+    private fun connectivityResult(
+        status: DiagnosticStatus,
+        detail: String,
+        latencyMs: Long? = null,
+        suggestion: String? = null
+    ) = DiagnosticResult(
+        type = DiagnosticType.CONNECTIVITY,
+        status = status,
+        title = "连接可达性",
+        detail = detail,
+        latencyMs = latencyMs,
+        suggestion = suggestion
+    )
 
     /**
      * SSL 证书检测：仅 HTTPS 地址才检测，验证证书链是否有效。
