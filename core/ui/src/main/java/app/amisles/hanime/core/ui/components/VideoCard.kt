@@ -29,6 +29,12 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 
+
+private fun stableIndex(key: String, size: Int): Int {
+    if (size <= 0) return 0
+    return Math.floorMod(key.hashCode(), size)
+}
+
 @Composable
 fun VideoCard(
     video: HanimeVideo,
@@ -36,8 +42,8 @@ fun VideoCard(
     onAuthorClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-    val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+    val gradient = gradients[stableIndex(video.id, gradients.size)]
+    val emoji = emojis[stableIndex(video.id, emojis.size)]
 
     Column(
         modifier = modifier
@@ -117,11 +123,8 @@ fun VideoListItem(
     onAuthorClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-    val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
-    // 由实际生效的 colorScheme 反推明暗，而非 isSystemInDarkTheme()。
-    // 应用主题由 Preferences.themeMode 驱动（浅/深/跟随系统三态），系统值与之可能不一致；
-    // 而 core:ui 不依赖 data 模块，无法直接读取 Preferences，故从背景色亮度判断。
+    val gradient = gradients[stableIndex(video.id, gradients.size)]
+    val emoji = emojis[stableIndex(video.id, emojis.size)]
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardShape = RoundedCornerShape(8.dp)
     val thumbShape = RoundedCornerShape(6.dp)

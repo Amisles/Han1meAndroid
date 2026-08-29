@@ -117,9 +117,9 @@ fun Banner(
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color.White.copy(alpha = 0.2f))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
-                            .clip(RoundedCornerShape(10.dp))
                     )
                 }
             }
