@@ -2,7 +2,6 @@ package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -119,7 +119,10 @@ fun VideoListItem(
 ) {
     val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
     val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
-    val isDark = isSystemInDarkTheme()
+    // 由实际生效的 colorScheme 反推明暗，而非 isSystemInDarkTheme()。
+    // 应用主题由 Preferences.themeMode 驱动（浅/深/跟随系统三态），系统值与之可能不一致；
+    // 而 core:ui 不依赖 data 模块，无法直接读取 Preferences，故从背景色亮度判断。
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardShape = RoundedCornerShape(8.dp)
     val thumbShape = RoundedCornerShape(6.dp)
     val shadowColor = Color.Black.copy(alpha = 0.18f)
