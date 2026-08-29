@@ -33,9 +33,7 @@ object DatabaseModule {
                 FavoriteDatabase.MIGRATION_4_5,
                 FavoriteDatabase.MIGRATION_5_6
             )
-            // 安全兜底：未来若新增 schema 变更但漏写对应 Migration，
-            // 旧版本升级时采用破坏性重建而非直接崩溃（同时修复 H3 隐患）
-            .fallbackToDestructiveMigration()
+            // 不再使用 fallbackToDestructiveMigration
             .build()
     }
 

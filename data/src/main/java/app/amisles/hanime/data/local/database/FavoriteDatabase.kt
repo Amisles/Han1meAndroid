@@ -12,7 +12,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 @Database(
     entities = [FavoriteVideo::class, WatchHistory::class, DownloadEntity::class, SearchHistoryEntity::class],
     version = 6,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class FavoriteDatabase : RoomDatabase() {
     abstract fun favoriteDao(): FavoriteDao
