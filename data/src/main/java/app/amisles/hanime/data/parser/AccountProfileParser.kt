@@ -1,6 +1,8 @@
 package app.amisles.hanime.data.parser
 
 import android.util.Log
+import app.amisles.hanime.core.common.extension.maskEmail
+import app.amisles.hanime.core.common.extension.maskSecret
 import app.amisles.hanime.domain.model.AccountProfile
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -24,7 +26,10 @@ class AccountProfileParser @Inject constructor() {
         val csrfToken = doc.selectFirst("meta[name=\"csrf-token\"]")?.attr("content")?.trim().orEmpty()
         val name = doc.selectFirst("input[name=name]")?.attr("value")?.trim().orEmpty()
         val email = doc.selectFirst("input[name=email]")?.attr("value")?.trim().orEmpty()
-        Log.i("AccountDebug", "<<< Parsed account profile: name=$name, email=$email, csrf=${csrfToken.take(6)}…")
+        Log.i(
+            "AccountDebug",
+            "<<< Parsed account profile: name=$name, email=${email.maskEmail()}, csrf=${csrfToken.maskSecret()}"
+        )
         if (csrfToken.isBlank() || name.isBlank()) return null
         return AccountProfile(name = name, email = email, csrfToken = csrfToken)
     }

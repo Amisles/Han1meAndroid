@@ -40,13 +40,11 @@ class SubscribeParser @Inject constructor() {
             AppLogger.d("SubscribeParser", "subscribeStatus=$subscribeStatus")
             SubscribeResult(subscribeStatus = subscribeStatus, csrfToken = csrfToken)
         } catch (e: JSONException) {
-            Log.i("SubscribeDebug", "!!! SubscribeParser JSONException: ${e.message}")
-            Log.i("SubscribeDebug", "!!! Raw response (first 1000 chars): ${json.take(1000)}")
+            Log.i("SubscribeDebug", "!!! SubscribeParser JSONException: ${e.message} (response ${json.length} chars)")
             AppLogger.logError("SubscribeParser", "Failed to parse subscribe response: ${e.message}", e)
             null
         } catch (e: NullPointerException) {
-            Log.i("SubscribeDebug", "!!! SubscribeParser NullPointerException: ${e.message}")
-            Log.i("SubscribeDebug", "!!! Raw response (first 1000 chars): ${json.take(1000)}")
+            Log.i("SubscribeDebug", "!!! SubscribeParser NullPointerException: ${e.message} (response ${json.length} chars)")
             AppLogger.logError("SubscribeParser", "Failed to parse subscribe response: ${e.message}", e)
             null
         }

@@ -17,6 +17,8 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.domain.model.PlaylistDetail
 import app.amisles.hanime.domain.model.PlaylistSummary
+import app.amisles.hanime.core.common.extension.maskEmail
+import app.amisles.hanime.core.common.extension.maskSecret
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -120,10 +122,11 @@ class NetworkService @Inject constructor(
             .get()
             .build()
         val (code, html) = withContext(Dispatchers.IO) {
-            val resp = client.newCall(req).execute()
-            val c = resp.code
-            val h = if (c in 200..399) resp.body.string() else ""
-            c to h
+            client.newCall(req).execute().use { resp ->
+                val c = resp.code
+                val h = if (c in 200..399) resp.body.string() else ""
+                c to h
+            }
         }
         AppLogger.log("NetworkService", "fetchLoginPage code=$code url=$base")
         if (code in 200..399) {
@@ -267,8 +270,8 @@ class NetworkService @Inject constructor(
             }
             Log.i("SubscriptionsDebug", ">>> GET $url")
             val html = executeRequest(buildRequest(url))
+            // 仅记录长度：完整响应体包含用户订阅的作者与影片，不得落日志
             Log.i("SubscriptionsDebug", "<<< Response length: ${html.length} chars")
-            logBodyChunks("SubscriptionsDebug", "<<< Response body", html)
             subscriptionsParser.parse(html, url)
         }
     }
@@ -330,30 +333,13 @@ class NetworkService @Inject constructor(
                 .build()
             Log.i(
                 "AccountDebug",
-                ">>> POST $baseUrl/user/$userId (type=profile) name=$name email=$email"
+                ">>> POST $baseUrl/user/$userId (type=profile) name=$name email=${email.maskEmail()}"
             )
             noRedirectClient.newCall(req).execute().use { resp ->
                 val code = resp.code
                 Log.i("AccountDebug", "<<< Response code: $code")
                 code
             }
-        }
-    }
-
-    /**
-     * 将较长的响应体按 logcat 单行上限（~4000 字符）分片打印，避免被截断。
-     */
-    private fun logBodyChunks(tag: String, prefix: String, body: String, chunkSize: Int = 3800) {
-        if (body.isEmpty()) {
-            Log.i(tag, "$prefix: (empty)")
-            return
-        }
-        var index = 0
-        var part = 0
-        while (index < body.length) {
-            val end = minOf(index + chunkSize, body.length)
-            Log.i(tag, "$prefix (part ${++part}): ${body.substring(index, end)}")
-            index = end
         }
     }
 
@@ -663,7 +649,7 @@ class NetworkService @Inject constructor(
             Log.i("SubscribeDebug", ">>> POST $baseUrl/subscribe")
             Log.i(
                 "SubscribeDebug",
-                ">>> Request body: _token=$csrfToken&subscribe-user-id=$userId&subscribe-artist-id=$artistId&subscribe-status=$subscribeStatusValue"
+                ">>> Request: artistId=$artistId status=$subscribeStatusValue token=${csrfToken.maskSecret()}"
             )
             val req = Request.Builder()
                 .url("$baseUrl/subscribe")
@@ -682,13 +668,7 @@ class NetworkService @Inject constructor(
                 val code = response.code
                 AppLogger.log("NetworkService", "toggleSubscribe response code: $code")
                 val body = response.body.string()
-                // 无论成功失败都打印响应码与响应体，方便定位（如 419/CSRF 失效/HTML 错误页/重定向登录页）
-                Log.i("SubscribeDebug", "<<< Response code: $code")
-                if (body.isNotEmpty()) {
-                    Log.i("SubscribeDebug", "<<< Response body: $body")
-                } else {
-                    Log.i("SubscribeDebug", "<<< Response body: <empty>")
-                }
+                Log.i("SubscribeDebug", "<<< Response code: $code, body length: ${body.length}")
                 if (!response.isSuccessful) {
                     throw IOException("订阅作者失败 (HTTP $code)")
                 }
