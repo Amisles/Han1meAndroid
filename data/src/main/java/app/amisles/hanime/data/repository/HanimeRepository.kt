@@ -30,6 +30,7 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.result.AppResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.Flow
@@ -523,6 +524,7 @@ class HanimeRepository @Inject constructor(
         }.fold(
             onSuccess = { AppResult.success(it) },
             onFailure = { e ->
+                if (e is CancellationException) throw e
                 AppLogger.logError("HanimeRepository", "Login failed: ${e.message}", e)
                 AppResult.error(e.message ?: "登录失败", e)
             }
