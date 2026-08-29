@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.channels.Channel
 import okhttp3.OkHttpClient
 import okhttp3.Dispatcher
 import okhttp3.ConnectionPool
@@ -139,6 +140,25 @@ class DownloadManager @Inject constructor(
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
     private val activeSlots = AtomicInteger(0)
     private val downloadServiceStarted = AtomicBoolean(false)
+
+    /**
+     * 落盘串行化队列（修复 S10）。
+     *
+     * 原实现用 `scope.launch { dao.upsert(...) }` 即发即忘，多个写任务在 Dispatchers.IO 上
+     * 并发执行且**不保证完成顺序**。短时间内连续状态切换时（下载中→失败→立即重试→下载中），
+     * 先发起的 UPSERT 可能后落库，把更新的状态覆盖回旧值；`cancelDownload` 的 DELETE
+     * 与残留的 UPSERT 竞争时，已删除的任务会「复活」。
+     *
+     * 改为「单消费者 Channel」：Channel 严格 FIFO，提交顺序即写库顺序；
+     * 而所有提交点都在 tasksLock 内（见 updateTask），提交顺序与逻辑更新顺序一致。
+     * UNLIMITED 容量下 trySend 不会挂起或丢弃。
+     */
+    private sealed interface PersistCmd {
+        data class Upsert(val task: DownloadTask) : PersistCmd
+        data class Delete(val taskId: Int) : PersistCmd
+    }
+
+    private val persistChannel = Channel<PersistCmd>(Channel.UNLIMITED)
     private val defaultDownloadDir: File by lazy {
 
         val base = context.getExternalFilesDir(null)
@@ -173,6 +193,19 @@ class DownloadManager @Inject constructor(
     init {
         onProgressUpdate = { taskId, title, progress, status ->
             forwardToService(context, title, progress, status, taskId)
+        }
+
+        scope.launch {
+            for (cmd in persistChannel) {
+                runCatching {
+                    when (cmd) {
+                        is PersistCmd.Upsert -> downloadDao.upsertDownload(cmd.task.toEntity())
+                        is PersistCmd.Delete -> downloadDao.deleteDownload(cmd.taskId)
+                    }
+                }.onFailure { e ->
+                    AppLogger.logError("DownloadManager", "Failed to persist $cmd: ${e.message}", e)
+                }
+            }
         }
 
         scope.launch {
@@ -1021,29 +1054,29 @@ class DownloadManager @Inject constructor(
         return now - last >= PROGRESS_PERSIST_INTERVAL_MS
     }
 
+    /** 提交一次落盘。只入队不直接写库，实际写入由 init 中的单消费者协程串行执行。 */
     private fun persistTask(task: DownloadTask) {
-        scope.launch {
-            try {
-                downloadDao.upsertDownload(
-                    DownloadEntity(
-                        id = task.id,
-                        title = task.title,
-                        quality = task.quality,
-                        url = task.url,
-                        totalBytes = task.totalBytes,
-                        downloadedBytes = task.downloadedBytes,
-                        status = task.status.name,
-                        filePath = task.filePath,
-                        thumbnailUrl = task.thumbnailUrl,
-                        videoId = task.videoId,
-                        errorMessage = task.errorMessage
-                    )
-                )
-            } catch (e: SQLiteException) {
-                AppLogger.logError("DownloadManager", "Failed to persist task ${task.id}: ${e.message}", e)
-            }
-        }
+        persistChannel.trySend(PersistCmd.Upsert(task))
     }
+
+    /** 提交一次删除。与 [persistTask] 共用同一队列，避免删除与在途更新竞争。 */
+    private fun persistDelete(taskId: Int) {
+        persistChannel.trySend(PersistCmd.Delete(taskId))
+    }
+
+    private fun DownloadTask.toEntity() = DownloadEntity(
+        id = id,
+        title = title,
+        quality = quality,
+        url = url,
+        totalBytes = totalBytes,
+        downloadedBytes = downloadedBytes,
+        status = status.name,
+        filePath = filePath,
+        thumbnailUrl = thumbnailUrl,
+        videoId = videoId,
+        errorMessage = errorMessage
+    )
 
     fun pauseDownload(taskId: Int) {
         // P2-2 修复：顺序必须是「先中断在途请求、再取消协程」。
@@ -1121,13 +1154,8 @@ class DownloadManager @Inject constructor(
             taskMap.remove(taskId)
             emitTasks()
         }
-        scope.launch {
-            try {
-                downloadDao.deleteDownload(taskId)
-            } catch (e: SQLiteException) {
-                AppLogger.logError("DownloadManager", "Failed to delete task $taskId from DB: ${e.message}", e)
-            }
-        }
+        // 走与 persistTask 相同的串行队列，避免 DELETE 与在途 UPSERT 竞争导致任务复活
+        persistDelete(taskId)
         AppLogger.log("DownloadManager", "Download cancelled: $taskId")
     }
 
@@ -1214,33 +1242,37 @@ class DownloadManager @Inject constructor(
         status: DownloadStatus,
         taskId: Int
     ) {
+        val intent = Intent().apply {
+            setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
+            putExtra(EXTRA_TASK_ID, taskId)
+            putExtra(EXTRA_TITLE, title)
+            putExtra(EXTRA_PROGRESS, progress)
+            putExtra(EXTRA_STATUS, status.name)
+        }
+        val firstTime = downloadServiceStarted.compareAndSet(false, true)
         try {
-            val intent = Intent().apply {
-                setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
-                putExtra(EXTRA_TASK_ID, taskId)
-                putExtra(EXTRA_TITLE, title)
-                putExtra(EXTRA_PROGRESS, progress)
-                putExtra(EXTRA_STATUS, status.name)
-            }
-            // D5：首次（服务尚未进入前台）用 startForegroundService 确保进入前台；
-            // 后续进度更新改用 startService，避免 Android 12+ 反复 startForegroundService 的时序竞争。
-            // P2-6：compareAndSet 保证「首次」判定与置位的原子性，并发首包不会重复 startForegroundService。
-            val firstTime = downloadServiceStarted.compareAndSet(false, true)
             if (firstTime) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
             }
-            // 收到终态且已无活动任务时复位标记，允许下次新下载重新走 startForegroundService
-            // （服务可能已停止，需重新拉起前台）。
-            if (status == DownloadStatus.COMPLETED || status == DownloadStatus.FAILED) {
-                val stillActive = taskMap.values.any {
-                    it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+        } catch (e: IllegalStateException) {
+            if (firstTime) {
+                downloadServiceStarted.set(false)
+                runCatching { context.startService(intent) }.onFailure { se ->
+                    AppLogger.log("DownloadManager", "startService 同样被系统拒绝，跳过本次通知转发: ${se.message}")
                 }
-                if (!stillActive) downloadServiceStarted.set(false)
             }
+            AppLogger.log("DownloadManager", "转发进度到 DownloadService 被系统拒绝: ${e.message}")
         } catch (e: SecurityException) {
             // 忽略转发异常，避免影响下载主流程
+        }
+        // 收到终态且已无活动任务时复位标记，允许下次新下载重新走 startForegroundService
+        if (status == DownloadStatus.COMPLETED || status == DownloadStatus.FAILED) {
+            val stillActive = taskMap.values.any {
+                it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+            }
+            if (!stillActive) downloadServiceStarted.set(false)
         }
     }
 
