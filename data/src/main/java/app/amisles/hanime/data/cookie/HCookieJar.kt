@@ -66,11 +66,9 @@ object HCookieJar : CookieJar {
         }
 
         synchronized(list) {
-            list.clear()
-            list.addAll(cookies)
-            // 仅对 baseUrl 域名追加持久化登录 Cookie，避免存储到跨域主机下
-            if (isBaseUrlHost(host)) {
-                list.addAll(Preferences.loginCookie.toLoginCookieList(host))
+            for (cookie in cookies) {
+                list.removeAll { it.name == cookie.name && it.path == cookie.path }
+                list.add(cookie)
             }
         }
         AppLogger.d("HCookieJar", "saveFromResponse host=$host setCookies=${cookies.size}")
