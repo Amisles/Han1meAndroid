@@ -41,9 +41,9 @@ fun Header(
                 contentDescription = stringResource(R.string.profile_open),
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(38.dp)
                     .clickable { onProfileClick() }
-                    .padding(10.dp)
+                    .padding(end = 10.dp)
             )
         }
         if (title != null) {
@@ -83,9 +83,8 @@ fun Header(
             contentDescription = stringResource(R.string.common_search),
             tint = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
-                .size(48.dp)
+                .size(30.dp)
                 .clickable { onSearchNavigate() }
-                .padding(13.dp)
         )
     }
 }
