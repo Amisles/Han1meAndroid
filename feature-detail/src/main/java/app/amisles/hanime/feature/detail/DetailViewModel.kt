@@ -610,7 +610,6 @@ class DetailViewModel @Inject constructor(
                     withContext(Dispatchers.IO) {
                         repository.removeFavorite(currentVideoId)
                     }
-                    _isFavorite.value = false
                     AppLogger.d("DetailViewModel", "Removed from favorites")
                 } else {
                     if (detail != null) {
@@ -628,10 +627,14 @@ class DetailViewModel @Inject constructor(
                         withContext(Dispatchers.IO) {
                             repository.addFavorite(favoriteVideo)
                         }
-                        _isFavorite.value = true
                         AppLogger.d("DetailViewModel", "Added to favorites")
                     }
                 }
+                // B4：写入后回查数据库再定状态。原先无条件乐观置位，一旦写入失败
+                // （如旧的 ABORT 冲突策略抛 SQLiteConstraintException 并被仓库层吞掉），
+                // 界面就会与数据库长期不一致，退出重进后收藏态丢失且用户全程无提示。
+                val verified = withContext(Dispatchers.IO) { repository.isFavorite(currentVideoId) }
+                _isFavorite.value = verified
             } catch (e: IOException) {
                 AppLogger.e("DetailViewModel", "Error toggling favorite: ${e.message}", e)
             }

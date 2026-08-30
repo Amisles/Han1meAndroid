@@ -351,8 +351,11 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 authorPageParser.parseVideoListPage(html, url)
             } catch (e: IOException) {
+                // B2：原先在此吞掉异常并返回 emptyList()，导致调用方 ViewModel 的
+                // catch (IOException) 成为永不触发的死代码——网络失败表现为「空白列表」，
+                // 既无错误提示也无重试入口。现记录后原样抛出，交由 ViewModel 转成 _error。
                 AppLogger.logError("NetworkService", "Failed to fetch video list page: ${e.message}", e)
-                emptyList()
+                throw e
             }
         }
     }
@@ -364,8 +367,9 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 playlistParser.parseListPage(html, url)
             } catch (e: IOException) {
+                // B2：同上，吞异常会让调用方的错误处理失效，此处改为记录后抛出
                 AppLogger.logError("NetworkService", "Failed to fetch playlist list page: ${e.message}", e)
-                emptyList()
+                throw e
             }
         }
     }
@@ -377,8 +381,9 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 playlistParser.parseDetailPage(html, url)
             } catch (e: IOException) {
+                // B2：同上，返回 null 会让「请求失败」与「该列表无内容」无法区分
                 AppLogger.logError("NetworkService", "Failed to fetch playlist detail page: ${e.message}", e)
-                null
+                throw e
             }
         }
     }
