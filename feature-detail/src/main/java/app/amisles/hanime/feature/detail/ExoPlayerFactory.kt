@@ -111,17 +111,21 @@ object ExoPlayerFactory {
                     .setUpstreamDataSourceFactory(upstreamFactory)
                     .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
                     .createDataSource()
-                val spec = DataSpec.Builder()
-                    .setUri(url)
-                    .setPosition(0L)
-                    .setLength(PREWARM_BYTES)
-                    .build()
-                dataSource.open(spec)
-                val buf = ByteArray(16 * 1024)
-                while (dataSource.read(buf, 0, buf.size) != C.RESULT_END_OF_INPUT) {
-                    // 仅消耗并写入缓存，不持有数据
+                try {
+                    val spec = DataSpec.Builder()
+                        .setUri(url)
+                        .setPosition(0L)
+                        .setLength(PREWARM_BYTES)
+                        .build()
+                    dataSource.open(spec)
+                    val buf = ByteArray(16 * 1024)
+                    while (dataSource.read(buf, 0, buf.size) != C.RESULT_END_OF_INPUT) {
+                        // 仅消耗并写入缓存，不持有数据
+                    }
+                } finally {
+                    // 关闭失败仅吞掉，避免掩盖 try 块里真正的异常；预热本身失败也不影响播放
+                    runCatching { dataSource.close() }
                 }
-                dataSource.close()
             } catch (_: Exception) {
                 // 预热失败不影响播放
             }

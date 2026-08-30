@@ -14,6 +14,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.common.result.AppResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -208,7 +208,7 @@ class DetailViewModel @Inject constructor(
                                     thumbnailUrl = detail.posterUrl,
                                     videoUrl = currentVideoUrl,
                                     author = detail.author,
-                                    duration = detail.releaseDate,
+                                    duration = "",
                                     watchedAt = System.currentTimeMillis(),
                                     playbackPosition = existing?.playbackPosition ?: 0L,
                                     playbackDuration = existing?.playbackDuration ?: 0L
@@ -516,8 +516,7 @@ class DetailViewModel @Inject constructor(
                     _comments.value = listOf(newComment) + _comments.value
                     _lastPostedComment.value = newComment
 
-                    // 更新 VideoDetail 中的 commentCount
-                    _videoDetail.value = detail.copy(commentCount = newCount)
+                    _videoDetail.value = _videoDetail.value?.copy(commentCount = newCount)
 
                     AppLogger.d("DetailViewModel", "Comment posted: id=${newComment.id}, newCount=$newCount")
                 }
@@ -630,12 +629,11 @@ class DetailViewModel @Inject constructor(
                         AppLogger.d("DetailViewModel", "Added to favorites")
                     }
                 }
-                // B4：写入后回查数据库再定状态。原先无条件乐观置位，一旦写入失败
-                // （如旧的 ABORT 冲突策略抛 SQLiteConstraintException 并被仓库层吞掉），
-                // 界面就会与数据库长期不一致，退出重进后收藏态丢失且用户全程无提示。
                 val verified = withContext(Dispatchers.IO) { repository.isFavorite(currentVideoId) }
                 _isFavorite.value = verified
-            } catch (e: IOException) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 AppLogger.e("DetailViewModel", "Error toggling favorite: ${e.message}", e)
             }
         }
@@ -664,7 +662,7 @@ class DetailViewModel @Inject constructor(
                 thumbnailUrl = detail.posterUrl,
                 videoUrl = currentVideoUrl,
                 author = detail.author,
-                duration = detail.releaseDate,
+                duration = "",
                 watchedAt = System.currentTimeMillis()
             )
             repository.addWatchHistory(
@@ -673,7 +671,6 @@ class DetailViewModel @Inject constructor(
                     thumbnailUrl = detail.posterUrl,
                     videoUrl = currentVideoUrl,
                     author = detail.author,
-                    duration = detail.releaseDate,
                     playbackPosition = position,
                     playbackDuration = duration,
                     watchedAt = existing?.watchedAt ?: System.currentTimeMillis()

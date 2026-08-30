@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -107,17 +109,17 @@ class MainActivity : ComponentActivity() {
             }
             // 根据主题模式动态调整系统栏图标颜色
             SideEffect {
-                val bgArgb = if (darkTheme) HanimeBackground else HanimeBackgroundLight
+                val bgArgb = (if (darkTheme) HanimeBackground else HanimeBackgroundLight).toArgb()
                 enableEdgeToEdge(
                     statusBarStyle = if (darkTheme) {
-                        SystemBarStyle.dark(bgArgb.hashCode())
+                        SystemBarStyle.dark(bgArgb)
                     } else {
-                        SystemBarStyle.light(bgArgb.hashCode(), bgArgb.hashCode())
+                        SystemBarStyle.light(bgArgb, bgArgb)
                     },
                     navigationBarStyle = if (darkTheme) {
-                        SystemBarStyle.dark(bgArgb.hashCode())
+                        SystemBarStyle.dark(bgArgb)
                     } else {
-                        SystemBarStyle.light(bgArgb.hashCode(), bgArgb.hashCode())
+                        SystemBarStyle.light(bgArgb, bgArgb)
                     }
                 )
             }
@@ -498,6 +500,12 @@ fun HanimeApp() {
     }
 
     // ---- 我的页面抽屉：左侧滑出，覆盖整个 Scaffold（含底部导航）----
+    // C6：抽屉展开时拦截返回键，先收起抽屉而不是直接退出 Activity。
+    // 命中条件与遮罩层一致（progress > 0 表示仍在关闭动画中），避免动画期间把返回键漏给系统。
+    BackHandler(enabled = profileOpen || progress > 0.001f) {
+        profileOpen = false
+    }
+
     val showOverlay = profileOpen || progress > 0.001f
     if (showOverlay) {
         Box(
