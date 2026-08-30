@@ -197,307 +197,289 @@ fun HanimeApp() {
                     }
                 }
             ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = "home",
-            modifier = Modifier
-                .navigationBarsPadding()
-                .padding(bottom = innerPadding.calculateBottomPadding()),
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None }
-        ) {
-            composable("home") {
-                HomeScreen(
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                    },
-                    onSearchClick = { keyword ->
-                        navController.navigate("search?keyword=${Uri.encode(keyword)}") {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                NavHost(
+                    navController = navController,
+                    startDestination = "home",
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(bottom = innerPadding.calculateBottomPadding()),
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None },
+                    popEnterTransition = { EnterTransition.None },
+                    popExitTransition = { ExitTransition.None }
+                ) {
+                    composable("home") {
+                        HomeScreen(
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                            onSearchClick = { keyword ->
+                                navController.navigate("search?keyword=${Uri.encode(keyword)}") {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                } },
+                            onGenreSearch = { genre ->
+                                navController.navigate("search?genre=${Uri.encode(genre)}") {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                } },
+                            onNavigateToSearch = {
+                                navController.navigate("search") {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                } },
+                            onAuthorClick = { author ->
+                                navController.navigate("search?keyword=${Uri.encode(author)}") },
+                            onViewMore = { sectionTitle ->
+                                val sortMatch = sortOptions.firstOrNull { it.label == sectionTitle }
+                                val categoryMatch = categories.firstOrNull { it.label == sectionTitle }
+                                when {
+                                    sortMatch != null -> {
+                                        navController.navigate("search?sort=${Uri.encode(sortMatch.apiValue)}")
+                                    }
+                                    categoryMatch != null -> {
+                                        navController.navigate("search?genre=${Uri.encode(categoryMatch.apiValue)}")
+                                    }
+                                    else -> {
+                                        navController.navigate("search?keyword=${Uri.encode(sectionTitle)}")
+                                    }
+                                } },
+                            onProfileClick = { profileOpen = true }
+                        )
+                    }
+                    composable(
+                        route = "search?keyword={keyword}&genre={genre}&sort={sort}",
+                        arguments = listOf(
+                            navArgument("keyword") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null },
+                            navArgument("genre") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null },
+                            navArgument("sort") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onGenreSearch = { genre ->
-                        navController.navigate("search?genre=${Uri.encode(genre)}") {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                        )
+                    ) { backStackEntry ->
+                        val keyword = backStackEntry.arguments?.getString("keyword")
+                        val genre = backStackEntry.arguments?.getString("genre")
+                        val sort = backStackEntry.arguments?.getString("sort")
+                        SearchScreen(
+                            initialKeyword = keyword,
+                            initialGenre = genre,
+                            initialSort = sort,
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                            onAuthorClick = { author ->
+                                navController.navigate("search?keyword=${Uri.encode(author)}")
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onNavigateToSearch = {
-                        navController.navigate("search") {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                        )
+                    }
+                    composable("download") {
+                        DownloadScreen(
+                            onNavigate = { route ->
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onAuthorClick = { author ->
-                        navController.navigate("search?keyword=${Uri.encode(author)}")
-                    },
-                    onViewMore = { sectionTitle ->
-                        val sortMatch = sortOptions.firstOrNull { it.label == sectionTitle }
-                        val categoryMatch = categories.firstOrNull { it.label == sectionTitle }
-                        when {
-                            sortMatch != null -> {
-                                navController.navigate("search?sort=${Uri.encode(sortMatch.apiValue)}")
+                        )
+                    }
+                    composable(
+                        route = "subscriptions?query={query}",
+                        arguments = listOf(navArgument("query") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val query = backStackEntry.arguments?.getString("query") ?: ""
+                        SubscriptionsScreen(
+                            initialQuery = query,
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                            onNavigateToLogin = {
+                                navController.navigate("login")
                             }
-                            categoryMatch != null -> {
-                                navController.navigate("search?genre=${Uri.encode(categoryMatch.apiValue)}")
+                        )
+                    }
+                    composable("accountEdit") {
+                        AccountProfileScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onNavigateToLogin = {
+                                navController.navigate("login")
                             }
-                            else -> {
-                                navController.navigate("search?keyword=${Uri.encode(sectionTitle)}")
+                        )
+                    }
+                    composable("favorite") {
+                        FavoriteScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
                             }
-                        }
-                    },
-                    onProfileClick = { profileOpen = true }
-                )
-            }
-            composable(
-                route = "search?keyword={keyword}&genre={genre}&sort={sort}",
-                arguments = listOf(
-                    navArgument("keyword") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    },
-                    navArgument("genre") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    },
-                    navArgument("sort") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
+                        )
                     }
-                )
-            ) { backStackEntry ->
-                val keyword = backStackEntry.arguments?.getString("keyword")
-                val genre = backStackEntry.arguments?.getString("genre")
-                val sort = backStackEntry.arguments?.getString("sort")
-                SearchScreen(
-                    initialKeyword = keyword,
-                    initialGenre = genre,
-                    initialSort = sort,
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                    },
-                    onAuthorClick = { author ->
-                        navController.navigate("search?keyword=${Uri.encode(author)}")
-                    }
-                )
-            }
-            composable("download") {
-                DownloadScreen(
-                    onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                    composable("history") {
+                        HistoryScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        )
                     }
-                )
-            }
-            composable(
-                route = "subscriptions?query={query}",
-                arguments = listOf(navArgument("query") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val query = backStackEntry.arguments?.getString("query") ?: ""
-                SubscriptionsScreen(
-                    initialQuery = query,
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                    },
-                    onNavigateToLogin = {
-                        navController.navigate("login")
+                    composable("about") {
+                        AboutScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
                     }
-                )
-            }
-            composable("accountEdit") {
-                AccountProfileScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onNavigateToLogin = {
-                        navController.navigate("login")
+                    composable("settings") {
+                        SettingsScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onNavigate = { route ->
+                                when (route) {
+                                    "about" -> navController.navigate("about")
+                                    "diagnostics" -> navController.navigate("diagnostics")
+                                }
+                            }
+                        )
                     }
-                )
-            }
-            composable("favorite") {
-                FavoriteScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    composable("diagnostics") {
+                        DiagnosticsScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
                     }
-                )
-            }
-            composable("history") {
-                HistoryScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    composable("batchDownload") {
+                        BatchDownloadScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
                     }
-                )
-            }
-            composable("about") {
-                AboutScreen(
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
-            composable("settings") {
-                SettingsScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onNavigate = { route ->
-                        when (route) {
-                            "about" -> navController.navigate("about")
-                            "diagnostics" -> navController.navigate("diagnostics")
-                        }
+                    composable("login") {
+                        LoginScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onLoginSuccess = { navController.popBackStack() },
+                            onNavigateToSettings = { navController.navigate("settings") }
+                        )
                     }
-                )
-            }
-            composable("diagnostics") {
-                DiagnosticsScreen(
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
-            composable("batchDownload") {
-                BatchDownloadScreen(
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
-            composable("login") {
-                LoginScreen(
-                    onBackClick = { navController.popBackStack() },
-                    onLoginSuccess = { navController.popBackStack() },
-                    onNavigateToSettings = { navController.navigate("settings") }
-                )
-            }
-            composable(
-                route = "author?authorPageUrl={authorPageUrl}",
-                arguments = listOf(navArgument("authorPageUrl") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val authorPageUrl = backStackEntry.arguments?.getString("authorPageUrl")
-                AuthorScreen(
-                    authorPageUrl = authorPageUrl ?: "",
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                    },
-                    onViewAllVideos = { url ->
-                        navController.navigate("videoListPage?url=${Uri.encode(url)}")
-                    },
-                    onViewAllPlaylists = { url ->
-                        navController.navigate("playlistListPage?url=${Uri.encode(url)}")
-                    },
-                    onPlaylistClick = { url ->
-                        navController.navigate("playlistDetail?url=${Uri.encode(url)}")
+                    composable(
+                        route = "author?authorPageUrl={authorPageUrl}",
+                        arguments = listOf(navArgument("authorPageUrl") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val authorPageUrl = backStackEntry.arguments?.getString("authorPageUrl")
+                        AuthorScreen(
+                            authorPageUrl = authorPageUrl ?: "",
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                            onViewAllVideos = { url ->
+                                navController.navigate("videoListPage?url=${Uri.encode(url)}") },
+                            onViewAllPlaylists = { url ->
+                                navController.navigate("playlistListPage?url=${Uri.encode(url)}") },
+                            onPlaylistClick = { url ->
+                                navController.navigate("playlistDetail?url=${Uri.encode(url)}")
+                            }
+                        )
                     }
-                )
-            }
-            composable(
-                route = "videoListPage?url={url}",
-                arguments = listOf(navArgument("url") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val url = backStackEntry.arguments?.getString("url")
-                VideoListPageScreen(
-                    url = url ?: "",
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    composable(
+                        route = "videoListPage?url={url}",
+                        arguments = listOf(navArgument("url") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val url = backStackEntry.arguments?.getString("url")
+                        VideoListPageScreen(
+                            url = url ?: "",
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                            }
+                        )
                     }
-                )
-            }
-            composable(
-                route = "playlistListPage?url={url}",
-                arguments = listOf(navArgument("url") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val url = backStackEntry.arguments?.getString("url")
-                PlaylistListPageScreen(
-                    url = url ?: "",
-                    onBackClick = { navController.popBackStack() },
-                    onPlaylistClick = { playlistUrl ->
-                        navController.navigate("playlistDetail?url=${Uri.encode(playlistUrl)}")
+                    composable(
+                        route = "playlistListPage?url={url}",
+                        arguments = listOf(navArgument("url") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val url = backStackEntry.arguments?.getString("url")
+                        PlaylistListPageScreen(
+                            url = url ?: "",
+                            onBackClick = { navController.popBackStack() },
+                            onPlaylistClick = { playlistUrl ->
+                                navController.navigate("playlistDetail?url=${Uri.encode(playlistUrl)}")
+                            }
+                        )
                     }
-                )
-            }
-            composable(
-                route = "playlistDetail?url={url}",
-                arguments = listOf(navArgument("url") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val url = backStackEntry.arguments?.getString("url")
-                PlaylistDetailScreen(
-                    url = url ?: "",
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    composable(
+                        route = "playlistDetail?url={url}",
+                        arguments = listOf(navArgument("url") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val url = backStackEntry.arguments?.getString("url")
+                        PlaylistDetailScreen(
+                            url = url ?: "",
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { videoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                            }
+                        )
                     }
-                )
-            }
-            composable(
-                route = "detail?videoUrl={videoUrl}",
-                arguments = listOf(navArgument("videoUrl") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val videoUrl = backStackEntry.arguments?.getString("videoUrl")
-                DetailScreen(
-                    videoUrl = videoUrl,
-                    onBackClick = { navController.popBackStack() },
-                    onVideoClick = { newVideoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}")
-                    },
-                    onTagClick = { tag ->
-                        navController.navigate("search?keyword=${Uri.encode(tag)}")
-                    },
-                    onAuthorClick = { author ->
-                        navController.navigate("search?keyword=${Uri.encode(author)}")
-                    },
-                    onAuthorPageClick = { authorPageUrl ->
-                        navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}")
-                    },
-                    onNavigateToLogin = {
-                        navController.navigate("login")
-                    },
-                    onNavigateToSettings = {
-                        navController.navigate("settings")
+                    composable(
+                        route = "detail?videoUrl={videoUrl}",
+                        arguments = listOf(navArgument("videoUrl") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val videoUrl = backStackEntry.arguments?.getString("videoUrl")
+                        DetailScreen(
+                            videoUrl = videoUrl,
+                            onBackClick = { navController.popBackStack() },
+                            onVideoClick = { newVideoUrl ->
+                                navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
+                            onTagClick = { tag ->
+                                navController.navigate("search?keyword=${Uri.encode(tag)}") },
+                            onAuthorClick = { author ->
+                                navController.navigate("search?keyword=${Uri.encode(author)}") },
+                            onAuthorPageClick = { authorPageUrl ->
+                                navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}") },
+                            onNavigateToLogin = {
+                                navController.navigate("login") },
+                            onNavigateToSettings = {
+                                navController.navigate("settings")
+                            }
+                        )
                     }
-                )
+                }
             }
         }
-        }
-    }
 
     // ---- 我的页面抽屉：左侧滑出，覆盖整个 Scaffold（含底部导航）----
     // C6：抽屉展开时拦截返回键，先收起抽屉而不是直接退出 Activity。
@@ -552,5 +534,5 @@ fun HanimeApp() {
             )
         }
     }
-}
+    }
 }

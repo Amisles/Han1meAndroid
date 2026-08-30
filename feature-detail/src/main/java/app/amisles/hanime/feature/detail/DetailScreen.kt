@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
@@ -134,9 +135,9 @@ fun DetailScreen(
     val isPostingReply by viewModel.isPostingReply.collectAsStateWithLifecycle()
     val replyError by viewModel.replyError.collectAsStateWithLifecycle()
     val expandedReplies by viewModel.expandedReplies.collectAsStateWithLifecycle()
-    val isLogin by app.amisles.hanime.data.preferences.Preferences.loginStateFlow.collectAsStateWithLifecycle()
-    val isLoginSupported by app.amisles.hanime.data.preferences.Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
-    val autoPlayNext by app.amisles.hanime.data.preferences.Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
+    val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
+    val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
+    val autoPlayNext by Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
@@ -153,7 +154,7 @@ fun DetailScreen(
             showLoginUnsupportedDialog = true
         }
     }
-    
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -163,7 +164,7 @@ fun DetailScreen(
     val exoPlayer = remember {
         ExoPlayerFactory.buildVideoPlayer(context).apply {
             // 进入即应用已持久化的倍速偏好
-            setPlaybackSpeed(app.amisles.hanime.data.preferences.Preferences.playbackSpeed)
+            setPlaybackSpeed(Preferences.playbackSpeed)
         }
     }
 
@@ -174,7 +175,7 @@ fun DetailScreen(
         if (!url.isNullOrEmpty()) {
             val preferredUrl = pickInitialSourceUrl(
                 detail,
-                app.amisles.hanime.data.preferences.Preferences.preferredQuality
+                Preferences.preferredQuality
             )
             // 续播：读取已保存进度（有效续播点 >5s），进入即跳转由 VideoPlayer 在首帧就绪后执行
             initialSeekMs = viewModel.getSavedPlaybackPosition(viewModel.videoId)
@@ -189,7 +190,7 @@ fun DetailScreen(
         if (pos > 0) {
             viewModel.savePlaybackProgress(pos, exoPlayer.duration)
         }
-        if (app.amisles.hanime.data.preferences.Preferences.autoPlayNext) {
+        if (Preferences.autoPlayNext) {
             val next = videoDetail?.relatedVideos?.firstOrNull { it.videoUrl.isNotBlank() }
             if (next != null) {
                 onVideoClick(next.videoUrl)
@@ -251,739 +252,748 @@ fun DetailScreen(
         }
     }
 
-        // 平板且非全屏、已加载内容时采用左右分栏（左播放器 / 右其余组件）；手机与加载/错误态由下方 ResponsiveContent 包裹
-        val sizeInfo = currentWindowSizeInfo()
-        // 启用条件：平板 + 非全屏 + 非「错误且未加载」致命态（回落到手机错误页）
-        val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
-            && !(error != null && videoDetail == null)
+    // 平板且非全屏、已加载内容时采用左右分栏（左播放器 / 右其余组件）；手机与加载/错误态由下方 ResponsiveContent 包裹
+    val sizeInfo = currentWindowSizeInfo()
+    // 启用条件：平板 + 非全屏 + 非「错误且未加载」致命态（回落到手机错误页）
+    val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
+        && !(error != null && videoDetail == null)
 
-        // 其余组件抽成 LazyListScope 扩展，手机单列与平板右栏复用。
-        val detailRestItems: LazyListScope.(VideoDetail) -> Unit = { detail ->
+    // 其余组件抽成 LazyListScope 扩展，手机单列与平板右栏复用。
+    val detailRestItems: LazyListScope.(VideoDetail) -> Unit = { detail ->
 
-            // 「简介 / 评论」分段选择条
-            item(key = "detail_tab_bar") {
-                val primary = MaterialTheme.colorScheme.primary
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 2.dp)
-                ) {
-                    val half = maxWidth / 2
-                    val indicatorCenter = if (selectedTab == 0) half / 2 else half + half / 2
-                    val indicatorX by animateDpAsState(
-                        targetValue = indicatorCenter - 10.dp,
-                        animationSpec = tween(durationMillis = 250),
-                        label = "tab_indicator_x"
-                    )
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(0.dp)
-                        ) {
-                            DetailTabButton(
-                                text = stringResource(R.string.detail_tab_intro),
-                                isSelected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                modifier = Modifier.weight(1f)
-                            )
-                            DetailTabButton(
-                                text = stringResource(R.string.detail_tab_comments),
-                                isSelected = selectedTab == 1,
-                                onClick = {
-                                    selectedTab = 1
-                                    if (!commentsLoaded && !isLoadingComments) {
-                                        viewModel.loadComments()
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+        // 「简介 / 评论」分段选择条
+        item(key = "detail_tab_bar") {
+            val primary = MaterialTheme.colorScheme.primary
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 2.dp)
+            ) {
+                val half = maxWidth / 2
+                val indicatorCenter = if (selectedTab == 0) half / 2 else half + half / 2
+                val indicatorX by animateDpAsState(
+                    targetValue = indicatorCenter - 10.dp,
+                    animationSpec = tween(durationMillis = 250),
+                    label = "tab_indicator_x"
+                )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        DetailTabButton(
+                            text = stringResource(R.string.detail_tab_intro),
+                            isSelected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        DetailTabButton(
+                            text = stringResource(R.string.detail_tab_comments),
+                            isSelected = selectedTab == 1,
+                            onClick = {
+                                selectedTab = 1
+                                if (!commentsLoaded && !isLoadingComments) {
+                                    viewModel.loadComments()
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .width(20.dp)
                                 .height(3.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(3.dp)
-                                    .offset(x = indicatorX)
-                                    .clip(RoundedCornerShape(1.5.dp))
-                                    .background(primary)
-                            )
-                        }
+                                .offset(x = indicatorX)
+                                .clip(RoundedCornerShape(1.5.dp))
+                                .background(primary)
+                        )
                     }
                 }
             }
+        }
 
-            if (selectedTab == 0) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                    Text(
-                        text = detail.title,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+        if (selectedTab == 0) {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
+                Text(
+                    text = detail.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-                    if (detail.author.isNotEmpty()) {
+                if (detail.author.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        // 左侧：头像 + 作者名（点击进入作者页）
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                        ) {
-                            // 左侧：头像 + 作者名（点击进入作者页）
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        if (detail.authorPageUrl.isNotEmpty()) {
-                                            onAuthorPageClick(detail.authorPageUrl)
-                                        } else {
-                                            onAuthorClick(detail.author)
-                                        }
+                                .weight(1f)
+                                .clickable {
+                                    if (detail.authorPageUrl.isNotEmpty()) {
+                                        onAuthorPageClick(detail.authorPageUrl)
+                                    } else {
+                                        onAuthorClick(detail.author)
                                     }
-                            ) {
-                                if (detail.authorAvatarUrl.isNotEmpty()) {
-                                    coil3.compose.AsyncImage(
-                                        model = detail.authorAvatarUrl,
-                                        contentDescription = stringResource(R.string.cd_author_avatar),
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(androidx.compose.foundation.shape.CircleShape),
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                    )
                                 }
-                                Text(
-                                    text = detail.author,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-
-                            // 右侧：订阅按钮（作者 ID 可解析时展示）
-                            if (detail.subscribeArtistId.isNotEmpty()) {
-                                SubscribeButton(
-                                    isSubscribed = isSubscribed,
-                                    isSubscribing = isSubscribing,
-                                    onClick = { viewModel.toggleSubscribe() }
-                                )
-                            }
-                        }
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    ) {
-                        if (detail.releaseDate.isNotEmpty()) {
-                            Text(
-                                text = "${stringResource(R.string.detail_release_date)}: ${detail.releaseDate}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        if (detail.fileSize.isNotEmpty()) {
-                            Text(
-                                text = "${stringResource(R.string.detail_file_size)}: ${detail.fileSize}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    if (detail.description.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 6.dp)
-                                .clickable { showDescription = !showDescription },
-                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            if (detail.authorAvatarUrl.isNotEmpty()) {
+                                coil3.compose.AsyncImage(
+                                    model = detail.authorAvatarUrl,
+                                    contentDescription = stringResource(R.string.cd_author_avatar),
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            }
                             Text(
-                                text = if (showDescription) stringResource(R.string.detail_collapse) else stringResource(R.string.detail_expand),
+                                text = detail.author,
                                 fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (showDescription) "▲" else "▼",
-                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
 
-                        if (showDescription) {
-                            Text(
-                                text = detail.description,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 22.sp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                                    .padding(12.dp)
-                                    .padding(bottom = 15.dp)
+                        // 右侧：订阅按钮（作者 ID 可解析时展示）
+                        if (detail.subscribeArtistId.isNotEmpty()) {
+                            SubscribeButton(
+                                isSubscribed = isSubscribed,
+                                isSubscribing = isSubscribing,
+                                onClick = { viewModel.toggleSubscribe() }
                             )
                         }
                     }
+                }
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    ) {
-                        val favoriteTint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
-                        DetailActionButton(
-                            icon = Icons.Default.Download,
-                            text = stringResource(R.string.detail_download),
-                            onClick = {
-                                showDownloadDialog = true
-                                viewModel.loadDownloadQualities()
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                        DetailActionButton(
-                            icon = Icons.Default.Favorite,
-                            text = stringResource(if (isFavorite) R.string.detail_unfavorite else R.string.detail_favorite),
-                            onClick = { viewModel.toggleFavorite() },
-                            modifier = Modifier.weight(1f),
-                            tint = favoriteTint
-                        )
-                        DetailActionButton(
-                            icon = Icons.Default.Share,
-                            text = stringResource(R.string.detail_share),
-                            onClick = { shareVideo(context, detail.title, videoUrl.orEmpty()) },
-                            modifier = Modifier.weight(1f)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                ) {
+                    if (detail.releaseDate.isNotEmpty()) {
+                        Text(
+                            text = "${stringResource(R.string.detail_release_date)}: ${detail.releaseDate}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
-                    if (detail.tags.isNotEmpty()) {
+                    if (detail.fileSize.isNotEmpty()) {
                         Text(
-                            text = stringResource(R.string.detail_tags),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        )
-                        ExpandableTags(
-                            tags = detail.tags,
-                            onTagClick = onTagClick,
-                            modifier = Modifier.padding(bottom = 6.dp)
+                            text = "${stringResource(R.string.detail_file_size)}: ${detail.fileSize}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
 
-            val playlist = detail.playlist
-            if (playlist != null && playlist.videos.isNotEmpty()) {
-                item {
-                    Column(
+                if (detail.description.isNotEmpty()) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 6.dp)
+                            .padding(bottom = 6.dp)
+                            .clickable { showDescription = !showDescription },
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
+                        Text(
+                            text = if (showDescription)
+                                stringResource(R.string.detail_collapse)
+                            else
+                                stringResource(R.string.detail_expand),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (showDescription) "▲" else "▼",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    if (showDescription) {
+                        Text(
+                            text = detail.description,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 22.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                                .padding(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = stringResource(R.string.detail_playlist),
-                                        fontSize = 11.sp,
-                                        color = Color.Black,
-                                        modifier = Modifier
-                                            .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(4.dp))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = playlist.title,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.padding(top = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = playlist.author,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { onAuthorClick(playlist.author) }
-                                    )
-                                    Text(
-                                        text = " · " + stringResource(R.string.detail_playlist_count, playlist.videoCount),
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                                .padding(12.dp)
+                                .padding(bottom = 15.dp)
+                        )
                     }
                 }
 
-                item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(playlist.videos) { video ->
-                            val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-                            val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
-                            
-                            Column(
-                                modifier = Modifier
-                                    .width(140.dp)
-                                    .clickable { onVideoClick(video.videoUrl) }
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(16f / 9f)
-                                        .clip(RoundedCornerShape(6.dp))
-                                ) {
-                                    app.amisles.hanime.core.ui.components.VideoThumbnail(
-                                        thumbnailUrl = video.thumbnailUrl,
-                                        emoji = emoji,
-                                        gradient = gradient,
-                                        duration = video.duration,
-                                        likeRate = video.likeRate,
-                                        viewCount = video.viewCount,
-                                        crop = true
-                                    )
-                                }
-                                Text(
-                                    text = video.title,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(top = 6.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            items(detail.relatedVideos) { video ->
-                        val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-                        val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                .shadow(
-                                    elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                                    shape = RoundedCornerShape(8.dp),
-                                    clip = false,
-                                    ambientColor = Color.Black.copy(alpha = 0.18f),
-                                    spotColor = Color.Black.copy(alpha = 0.18f)
-                                )
-                                .background(MaterialTheme.colorScheme.surface)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onVideoClick(video.videoUrl) },
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            app.amisles.hanime.core.ui.components.VideoThumbnail(
-                                thumbnailUrl = video.thumbnailUrl,
-                                emoji = emoji,
-                                gradient = gradient,
-                                duration = "",
-                                likeRate = "",
-                                viewCount = "",
-                                crop = true,
-                                modifier = Modifier
-                                    .width(120.dp)
-                                    .height(90.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                            )
-
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = video.title,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                if (video.author.isNotEmpty()) {
-                                    Text(
-                                        text = video.author,
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .padding(top = 2.dp)
-                                            .clickable { onAuthorClick(video.author) }
-                                    )
-                                }
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.padding(top = 2.dp)
-                                ) {
-                                    Text(
-                                        text = video.duration,
-                                        fontSize = 9.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = video.likeRate,
-                                        fontSize = 9.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = video.viewCount,
-                                        fontSize = 9.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-            } else {
-                item(key = "comments_section") {
-                    CommentSection(
-                        comments = comments,
-                        isLoading = isLoadingComments,
-                        error = commentsError,
-                        onRetry = { viewModel.loadComments(force = true) },
-                        repliesCache = repliesCache,
-                        loadingReplies = loadingReplies,
-                        repliesError = repliesError,
-                        onLoadReplies = { commentId -> viewModel.loadReplies(commentId) },
-                        expandedReplies = expandedReplies,
-                        onToggleExpand = { commentId -> viewModel.toggleReplies(commentId) },
-                        isLogin = isLogin,
-                        isPostingComment = isPostingComment,
-                        postCommentError = postCommentError,
-                        onPostComment = { text ->
-                            viewModel.postComment(text)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(bottom = 6.dp)
+                ) {
+                    val favoriteTint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                    DetailActionButton(
+                        icon = Icons.Default.Download,
+                        text = stringResource(R.string.detail_download),
+                        onClick = {
+                            showDownloadDialog = true
+                            viewModel.loadDownloadQualities()
                         },
-                        onClearPostError = { viewModel.clearPostCommentError() },
-                        onToggleLike = { viewModel.toggleCommentLike(it) },
-                        likingComments = likingComments,
-                        activeReplyCommentId = activeReplyTarget?.commentId,
-                        replyPrefill = activeReplyTarget?.replyToUsername?.let { "@$it " } ?: "",
-                        isPostingReply = isPostingReply,
-                        replyError = replyError,
-                        onStartReply = { commentId, replyToUsername -> viewModel.startReply(commentId, replyToUsername) },
-                        onSendReply = { text -> viewModel.submitReply(text) },
-                        onCancelReply = { viewModel.cancelReply() },
-                        onClearReplyError = { viewModel.clearReplyError() },
-                        onNavigateToLogin = tryNavigateToLogin
+                        modifier = Modifier.weight(1f)
+                    )
+                    DetailActionButton(
+                        icon = Icons.Default.Favorite,
+                        text = stringResource(if (isFavorite) R.string.detail_unfavorite else R.string.detail_favorite),
+                        onClick = { viewModel.toggleFavorite() },
+                        modifier = Modifier.weight(1f),
+                        tint = favoriteTint
+                    )
+                    DetailActionButton(
+                        icon = Icons.Default.Share,
+                        text = stringResource(R.string.detail_share),
+                        onClick = { shareVideo(context, detail.title, videoUrl.orEmpty()) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                if (detail.tags.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.detail_tags),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                    ExpandableTags(
+                        tags = detail.tags,
+                        onTagClick = onTagClick,
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
             }
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
-            }
         }
-        if (useTabletUI) {
-            if (isLoading) {
-                // 平板加载骨架：左 3/4 视频区占位、右 1/4 详情占位
-                TabletDetailSkeleton()
-            } else {
-                Row(
+
+        val playlist = detail.playlist
+        if (playlist != null && playlist.videos.isNotEmpty()) {
+            item {
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .background(MaterialTheme.colorScheme.background)
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp)
                 ) {
-                    // 左侧：视频播放器（垂直居中）
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .weight(3f)
-                            .fillMaxHeight()
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                            .padding(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val detail = videoDetail
-                        if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
-                            VideoPlayer(
-                                exoPlayer = exoPlayer,
-                                posterUrl = detail.posterUrl,
-                                videoSources = detail.videoSources,
-                                initialSourceUrl = pickInitialSourceUrl(detail, app.amisles.hanime.data.preferences.Preferences.preferredQuality),
-                                initialPositionMs = initialSeekMs,
-                                preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
-                                isFullscreen = false,
-                                onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                                onPlaybackSpeedChanged = { app.amisles.hanime.data.preferences.Preferences.setPlaybackSpeed(it) },
-                                onQualityChanged = { app.amisles.hanime.data.preferences.Preferences.setPreferredQuality(it) },
-                                onPlaybackEnded = { handlePlaybackEnded() },
-                                autoPlayNext = autoPlayNext,
-                                onAutoPlayNextChanged = { app.amisles.hanime.data.preferences.Preferences.setAutoPlayNext(it) },
-                                modifier = Modifier
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = stringResource(R.string.detail_playlist),
+                                    fontSize = 11.sp,
+                                    color = Color.Black,
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = playlist.title,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.padding(top = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (error != null) stringResource(R.string.detail_load_failed) else stringResource(R.string.common_no_videos),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 14.sp
+                                    text = playlist.author,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { onAuthorClick(playlist.author) }
+                                )
+                                Text(
+                                    text = " · " + stringResource(R.string.detail_playlist_count, playlist.videoCount),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                        // 返回按钮覆盖在播放器左上角
-                        IconButton(
-                            onClick = { onBackClick() },
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .size(48.dp)
-                                .padding(start = 4.dp, top = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.cd_back),
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // 右侧：其余组件（可滚动）
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        videoDetail?.let { detailRestItems(it) }
                     }
                 }
             }
-        } else {
-        ResponsiveContent {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
-                .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
-        ) {
-        if (!isPlayerFullscreen) {
+
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(horizontal = 15.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    items(playlist.videos) { video ->
+                        val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
+                        val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+
+                        Column(
+                            modifier = Modifier
+                                .width(140.dp)
+                                .clickable { onVideoClick(video.videoUrl) }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(6.dp))
+                            ) {
+                                app.amisles.hanime.core.ui.components.VideoThumbnail(
+                                    thumbnailUrl = video.thumbnailUrl,
+                                    emoji = emoji,
+                                    gradient = gradient,
+                                    duration = video.duration,
+                                    likeRate = video.likeRate,
+                                    viewCount = video.viewCount,
+                                    crop = true
+                                )
+                            }
+                            Text(
+                                text = video.title,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        items(detail.relatedVideos) { video ->
+            val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
+            val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .shadow(
+                        elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
+                        shape = RoundedCornerShape(8.dp),
+                        clip = false,
+                        ambientColor = Color.Black.copy(alpha = 0.18f),
+                        spotColor = Color.Black.copy(alpha = 0.18f)
+                    )
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onVideoClick(video.videoUrl) },
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                app.amisles.hanime.core.ui.components.VideoThumbnail(
+                    thumbnailUrl = video.thumbnailUrl,
+                    emoji = emoji,
+                    gradient = gradient,
+                    duration = "",
+                    likeRate = "",
+                    viewCount = "",
+                    crop = true,
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(90.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = video.title,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (video.author.isNotEmpty()) {
+                        Text(
+                            text = video.author,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(top = 2.dp)
+                                .clickable { onAuthorClick(video.author) }
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = video.duration,
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = video.likeRate,
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = video.viewCount,
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        } else {
+            item(key = "comments_section") {
+                CommentSection(
+                    comments = comments,
+                    isLoading = isLoadingComments,
+                    error = commentsError,
+                    onRetry = { viewModel.loadComments(force = true) },
+                    repliesCache = repliesCache,
+                    loadingReplies = loadingReplies,
+                    repliesError = repliesError,
+                    onLoadReplies = { commentId -> viewModel.loadReplies(commentId) },
+                    expandedReplies = expandedReplies,
+                    onToggleExpand = { commentId -> viewModel.toggleReplies(commentId) },
+                    isLogin = isLogin,
+                    isPostingComment = isPostingComment,
+                    postCommentError = postCommentError,
+                    onPostComment = { text ->
+                        viewModel.postComment(text)
+                    },
+                    onClearPostError = { viewModel.clearPostCommentError() },
+                    onToggleLike = { viewModel.toggleCommentLike(it) },
+                    likingComments = likingComments,
+                    activeReplyCommentId = activeReplyTarget?.commentId,
+                    replyPrefill = activeReplyTarget?.replyToUsername?.let { "@$it " } ?: "",
+                    isPostingReply = isPostingReply,
+                    replyError = replyError,
+                    onStartReply = { commentId, replyToUsername -> viewModel.startReply(commentId, replyToUsername) },
+                    onSendReply = { text -> viewModel.submitReply(text) },
+                    onCancelReply = { viewModel.cancelReply() },
+                    onClearReplyError = { viewModel.clearReplyError() },
+                    onNavigateToLogin = tryNavigateToLogin
+                )
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+    if (useTabletUI) {
+        if (isLoading) {
+            // 平板加载骨架：左 3/4 视频区占位、右 1/4 详情占位
+            TabletDetailSkeleton()
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                // 左侧：视频播放器（垂直居中）
+                Box(
+                    modifier = Modifier
+                        .weight(3f)
+                        .fillMaxHeight()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val detail = videoDetail
+                    if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
+                        VideoPlayer(
+                            exoPlayer = exoPlayer,
+                            posterUrl = detail.posterUrl,
+                            videoSources = detail.videoSources,
+                            initialSourceUrl = pickInitialSourceUrl(detail, Preferences.preferredQuality),
+                            initialPositionMs = initialSeekMs,
+                            preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
+                            isFullscreen = false,
+                            onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                            onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },
+                            onQualityChanged = { Preferences.setPreferredQuality(it) },
+                            onPlaybackEnded = { handlePlaybackEnded() },
+                            autoPlayNext = autoPlayNext,
+                            onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                            modifier = Modifier
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (error != null)
+                                    stringResource(R.string.detail_load_failed)
+                                else
+                                    stringResource(R.string.common_no_videos),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                    // 返回按钮覆盖在播放器左上角
                     IconButton(
                         onClick = { onBackClick() },
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .size(48.dp)
+                            .padding(start = 4.dp, top = 4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back),
-                            tint = MaterialTheme.colorScheme.onBackground,
+                            tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 }
+
+                // 右侧：其余组件（可滚动）
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    videoDetail?.let { detailRestItems(it) }
+                }
             }
         }
-
-        if (isLoading) {
-            item(key = "detail_skeleton") {
-                DetailSkeletonScreen()
-            }
-        } else if (error != null && videoDetail == null) {
-            item(key = "detail_error") {
-                KaomojiErrorView(
-                    message = error,
-                    onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
-                )
-            }
-        } else {
-
-        item(key = "video_player") {
-            val detail = videoDetail
-            if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
-                VideoPlayer(
-                    exoPlayer = exoPlayer,
-                    posterUrl = detail.posterUrl,
-                    videoSources = detail.videoSources,
-                    initialSourceUrl = pickInitialSourceUrl(detail, app.amisles.hanime.data.preferences.Preferences.preferredQuality),
-                    initialPositionMs = initialSeekMs,
-                    preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
-                    isFullscreen = isPlayerFullscreen,
-                    onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                    onPlaybackSpeedChanged = { app.amisles.hanime.data.preferences.Preferences.setPlaybackSpeed(it) },
-                    onQualityChanged = { app.amisles.hanime.data.preferences.Preferences.setPreferredQuality(it) },
-                    onPlaybackEnded = { handlePlaybackEnded() },
-                    autoPlayNext = autoPlayNext,
-                    onAutoPlayNextChanged = { app.amisles.hanime.data.preferences.Preferences.setAutoPlayNext(it) },
-                    modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(225.dp)
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center
+    } else {
+    ResponsiveContent {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
+            .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
+    ) {
+    if (!isPlayerFullscreen) {
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 15.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { onBackClick() },
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Text(
-                        text = if (error != null) stringResource(R.string.detail_load_failed) else stringResource(R.string.common_no_videos),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.cd_back),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
         }
+    }
 
-        videoDetail?.takeIf { !isPlayerFullscreen }?.let { detailRestItems(it) }
+    if (isLoading) {
+        item(key = "detail_skeleton") {
+            DetailSkeletonScreen()
+        }
+    } else if (error != null && videoDetail == null) {
+        item(key = "detail_error") {
+            KaomojiErrorView(
+                message = error,
+                onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
+            )
+        }
+    } else {
 
-        }
-        }
-        }
-        }
-
-    if (showDownloadDialog) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { showDownloadDialog = false },
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
+    item(key = "video_player") {
+        val detail = videoDetail
+        if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
+            VideoPlayer(
+                exoPlayer = exoPlayer,
+                posterUrl = detail.posterUrl,
+                videoSources = detail.videoSources,
+                initialSourceUrl = pickInitialSourceUrl(detail, Preferences.preferredQuality),
+                initialPositionMs = initialSeekMs,
+                preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
+                isFullscreen = isPlayerFullscreen,
+                onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },
+                onQualityChanged = { Preferences.setPreferredQuality(it) },
+                onPlaybackEnded = { handlePlaybackEnded() },
+                autoPlayNext = autoPlayNext,
+                onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
+            )
+        } else {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    .padding(16.dp)
-                    .clickable(enabled = false) {},
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth()
+                    .height(225.dp)
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = stringResource(R.string.detail_select_quality),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    text = if (error != null)
+                        stringResource(R.string.detail_load_failed)
+                    else
+                        stringResource(R.string.common_no_videos),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp
                 )
+            }
+        }
+    }
 
-                if (isLoadingQualities) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(20.dp)
-                    )
-                } else if (downloadQualities.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.detail_no_download),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(20.dp)
-                    )
-                } else {
-                    downloadQualities.forEach { quality ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp)
-                                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    viewModel.startDownload(quality)
-                                    showDownloadDialog = false
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            message = context.getString(R.string.detail_download_added),
-                                            duration = SnackbarDuration.Short
-                                        )
-                                    }
-                                }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = quality.quality,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                if (quality.fileSize.isNotEmpty() && quality.fileSize != "N/A") {
-                                    Text(
-                                        text = quality.fileSize,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 2.dp)
+    videoDetail?.takeIf { !isPlayerFullscreen }?.let { detailRestItems(it) }
+
+    }
+    }
+    }
+    }
+
+if (showDownloadDialog) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable { showDownloadDialog = false },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                .padding(16.dp)
+                .clickable(enabled = false) {},
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.detail_select_quality),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            if (isLoadingQualities) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(20.dp)
+                )
+            } else if (downloadQualities.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.detail_no_download),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(20.dp)
+                )
+            } else {
+                downloadQualities.forEach { quality ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+                            .clickable {
+                                viewModel.startDownload(quality)
+                                showDownloadDialog = false
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = context.getString(R.string.detail_download_added),
+                                        duration = SnackbarDuration.Short
                                     )
                                 }
                             }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
                             Text(
-                                text = stringResource(R.string.detail_download),
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.primary,
+                                text = quality.quality,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium
                             )
+                            if (quality.fileSize.isNotEmpty() && quality.fileSize != "N/A") {
+                                Text(
+                                    text = quality.fileSize,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
                         }
+                        Text(
+                            text = stringResource(R.string.detail_download),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
-
-                Text(
-                    text = stringResource(R.string.common_cancel),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .clickable { showDownloadDialog = false }
-                        .padding(8.dp)
-                )
             }
+
+            Text(
+                text = stringResource(R.string.common_cancel),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .clickable { showDownloadDialog = false }
+                    .padding(8.dp)
+            )
         }
     }
+}
 
-    SnackbarHost(
-        hostState = snackbarHostState,
-        modifier = Modifier.padding(bottom = 16.dp)
-    ) { data ->
-        Snackbar(
-            snackbarData = data,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            shape = RoundedCornerShape(8.dp)
-        )
-    }
+SnackbarHost(
+    hostState = snackbarHostState,
+    modifier = Modifier.padding(bottom = 16.dp)
+) { data ->
+    Snackbar(
+        snackbarData = data,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        shape = RoundedCornerShape(8.dp)
+    )
+}
 
-    if (showLoginUnsupportedDialog) {
-        LoginUnsupportedDialog(
-            onGoToSettings = {
-                showLoginUnsupportedDialog = false
-                onNavigateToSettings()
-            },
-            onDismiss = { showLoginUnsupportedDialog = false }
-        )
-    }
+if (showLoginUnsupportedDialog) {
+    LoginUnsupportedDialog(
+        onGoToSettings = {
+            showLoginUnsupportedDialog = false
+            onNavigateToSettings()
+        },
+        onDismiss = { showLoginUnsupportedDialog = false }
+    )
+}
 }
 
 /**

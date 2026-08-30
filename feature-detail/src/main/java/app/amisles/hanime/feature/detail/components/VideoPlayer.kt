@@ -58,6 +58,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -270,8 +272,7 @@ fun VideoPlayer(
     var isMuted by remember { mutableStateOf(false) }
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
     val gestureScope = rememberCoroutineScope()
-    val playbackSpeedRef = remember { mutableFloatStateOf(playbackSpeed) }
-    playbackSpeedRef.value = playbackSpeed
+    val playbackSpeedRef = rememberUpdatedState(playbackSpeed)
     var showSpeedMenu by remember { mutableStateOf(false) }
     var showQualityMenu by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -316,14 +317,11 @@ fun VideoPlayer(
     var autoSwitched by remember { mutableStateOf(false) }
     var stableTicks by remember { mutableStateOf(0) }
     // 让 remember 的 Player.Listener 始终读到最新的画质列表，避免 videoSources 变化时闭包陈旧
-    val sourcesRef = remember { mutableStateOf(sortedSources) }
-    sourcesRef.value = sortedSources
+    val sourcesRef = rememberUpdatedState(sortedSources)
     // 用 ref 持有最新的 onPlaybackEnded，避免 remember 的 Player.Listener 闭包捕获到陈旧 lambda
-    val onPlaybackEndedRef = remember { mutableStateOf(onPlaybackEnded) }
-    onPlaybackEndedRef.value = onPlaybackEnded
+    val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
     // 每次切换视频源时复位 seek 标记，确保续播点始终对应当前视频
-    val initialPositionMsRef = remember { mutableStateOf(initialPositionMs) }
-    initialPositionMsRef.value = initialPositionMs
+    val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
 
     // 切换清晰度
@@ -686,7 +684,10 @@ fun VideoPlayer(
                                         if (!isInPip) {
                                             val rewind = downX < playerWidth / 2f
                                             if (rewind) seekBackward() else seekForward()
-                                            gestureHint = if (rewind) context.getString(R.string.player_rewind_15s) else context.getString(R.string.player_forward_15s)
+                                            gestureHint = if (rewind)
+                                                context.getString(R.string.player_rewind_15s)
+                                            else
+                                                context.getString(R.string.player_forward_15s)
                                         }
                     } else {
                         lastTapTime = now
@@ -727,7 +728,10 @@ fun VideoPlayer(
                                 if (lastPinch > 0f && dist > 0f) {
                                     val factor = dist / lastPinch
                                     videoZoom = (videoZoom * factor).coerceIn(0.5f, 2.0f)
-                                    gestureHint = context.getString(R.string.player_zoom, String.format(Locale.getDefault(), "%.1f", videoZoom))
+                                    gestureHint = context.getString(
+                                        R.string.player_zoom,
+                                        String.format(Locale.getDefault(), "%.1f", videoZoom)
+                                    )
                                 }
                                 lastPinch = dist
                             } else if (pointerCount == 1 && !isZoom) {
@@ -1032,7 +1036,10 @@ fun VideoPlayer(
                 ) {
                     Icon(
                         imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                        contentDescription = if (isFullscreen) stringResource(R.string.cd_exit_fullscreen) else stringResource(R.string.cd_fullscreen),
+                        contentDescription = if (isFullscreen)
+                            stringResource(R.string.cd_exit_fullscreen)
+                        else
+                            stringResource(R.string.cd_fullscreen),
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
@@ -1193,7 +1200,7 @@ fun VideoPlayer(
                             text = source.resolution,
                             color = if (isSelected) HanimePrimary else Color.White,
                             fontSize = 11.sp,
-                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Medium else androidx.compose.ui.text.font.FontWeight.Normal,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)

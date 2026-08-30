@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.download.DownloadManager
+import app.amisles.hanime.data.parser.ParserUtils
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
@@ -142,7 +143,7 @@ class DetailViewModel @Inject constructor(
         _isLoading.value = true
         _error.value = null
 
-        currentVideoId = extractVideoId(videoUrl)
+        currentVideoId = ParserUtils.extractVideoId(videoUrl)
         currentVideoUrl = videoUrl
 
         // 切换视频时重置评论状态，使新视频的评论可被重新加载
@@ -189,7 +190,10 @@ class DetailViewModel @Inject constructor(
                     when (event) {
                         is VideoDetailEvent.MainInfo -> {
                             val detail = event.detail
-                            AppLogger.d("DetailViewModel", "Got video detail main info: ${detail.title}, sources: ${detail.videoSources.size}")
+                            AppLogger.d(
+                                "DetailViewModel",
+                                "Got video detail main info: ${detail.title}, sources: ${detail.videoSources.size}"
+                            )
                             _videoDetail.value = detail
                             // 主信息到齐即可关闭骨架屏，播放器区先渲染；相关视频/播放列表随后渐进补全
                             _isLoading.value = false
@@ -641,12 +645,6 @@ class DetailViewModel @Inject constructor(
                 AppLogger.e("DetailViewModel", "Error toggling favorite: ${e.message}", e)
             }
         }
-    }
-
-    private fun extractVideoId(url: String): String {
-        val regex = Regex("v=(\\d+)")
-        val match = regex.find(url)
-        return match?.groupValues?.get(1) ?: ""
     }
 
     /**

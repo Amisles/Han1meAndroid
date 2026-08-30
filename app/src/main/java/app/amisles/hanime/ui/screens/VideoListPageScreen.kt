@@ -64,53 +64,53 @@ fun VideoListPageScreen(
         Column(
             modifier = Modifier.fillMaxSize().background(HanimeBackground).statusBarsPadding()
         ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { onBackClick() }, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(CoreR.string.common_back),
-                    tint = HanimeTextPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = displayTitle,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = HanimePrimary)
-            }
-        } else if (error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = error ?: stringResource(CoreR.string.common_load_failed),
-                    color = HanimeTextSecondary
-                )
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(currentWindowSizeInfo().gridColumns),
-                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items(
-                    items = videos,
-                    key = { it.id }
-                ) { video ->
-                    VideoCard(video = video, onClick = { onVideoClick(video.videoUrl) })
+                IconButton(onClick = { onBackClick() }, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(CoreR.string.common_back),
+                        tint = HanimeTextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Text(
+                    text = displayTitle,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = HanimeTextPrimary,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = HanimePrimary)
+                }
+            } else if (error != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = error ?: stringResource(CoreR.string.common_load_failed),
+                        color = HanimeTextSecondary
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(currentWindowSizeInfo().gridColumns),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = videos,
+                        key = { it.id }
+                    ) { video ->
+                        VideoCard(video = video, onClick = { onVideoClick(video.videoUrl) })
+                    }
                 }
             }
         }
-    }
     }
 }
