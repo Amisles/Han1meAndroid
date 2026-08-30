@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -197,7 +198,9 @@ fun HanimeApp() {
         NavHost(
             navController = navController,
             startDestination = "home",
-            modifier = Modifier.navigationBarsPadding(),
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(bottom = innerPadding.calculateBottomPadding()),
             enterTransition = { EnterTransition.None },
             exitTransition = { ExitTransition.None },
             popEnterTransition = { EnterTransition.None },

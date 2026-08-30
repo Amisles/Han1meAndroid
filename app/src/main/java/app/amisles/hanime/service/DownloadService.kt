@@ -45,7 +45,11 @@ class DownloadService : Service() {
 
         const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
 
-        private const val PREFS_NAME = "hanime_app_prefs"
+        // B1：必须与 Preferences.NAME（"hanime_app_prefs"）区分开。
+        // Preferences 以 EncryptedSharedPreferences 托管该文件，而 Android 的 ContextImpl 按
+        // 「文件名 + 进程」缓存 SharedPreferencesImpl——同包同进程同 MODE 会拿到**同一个实例**，
+        // 因此这里的明文写入会把明文键塞进加密存储，污染 Preferences 的读写与迁移判断。
+        private const val PREFS_NAME = "download_service_state"
         private const val PREF_LAST_DL_TITLE = "last_download_title"
         private const val PREF_LAST_DL_PROGRESS = "last_download_progress"
 
