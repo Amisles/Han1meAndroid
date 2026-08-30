@@ -75,8 +75,8 @@ class WatchPageParser @Inject constructor(
      */
     private fun parseMain(doc: Document, html: String, baseUrl: String): VideoDetail {
         val videoTag: Element? = doc.selectFirst("video#player")
-        val defaultSourceUrl = videoTag?.attr("abs:src") ?: videoTag?.attr("src") ?: ""
-        val posterUrl = videoTag?.attr("abs:poster") ?: videoTag?.attr("poster") ?: ""
+        val defaultSourceUrl = videoTag?.let { it.attr("abs:src").ifEmpty { it.attr("src") } } ?: ""
+        val posterUrl = videoTag?.let { it.attr("abs:poster").ifEmpty { it.attr("poster") } } ?: ""
 
         val sources = mutableListOf<VideoSource>()
         val sourceTags = doc.select("video#player source")

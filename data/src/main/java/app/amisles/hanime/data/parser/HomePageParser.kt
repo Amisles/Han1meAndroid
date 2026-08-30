@@ -148,12 +148,13 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
             }
 
             val playButton: Element? = bannerWrapper.selectFirst("a.home-banner-play-btn")
-            val videoUrl = playButton?.attr("abs:href") ?: playButton?.attr("href") ?: ""
+            val videoUrl = playButton?.let { it.attr("abs:href").ifEmpty { it.attr("href") } } ?: ""
 
-            val imageUrl = doc.selectFirst("div[style*=aspect-ratio] img")?.attr("abs:src")
-                ?: doc.selectFirst("div[style*=aspect-ratio] img")?.attr("src")
-                ?: doc.selectFirst("img[src*=thumbnail]")?.attr("abs:src")
-                ?: doc.selectFirst("img[src*=thumbnail]")?.attr("src")
+            val imageUrl = doc.selectFirst("div[style*=aspect-ratio] img")
+                ?.let { it.attr("abs:src").ifEmpty { it.attr("src") } }
+                ?.takeIf { it.isNotEmpty() }
+                ?: doc.selectFirst("img[src*=thumbnail]")
+                    ?.let { it.attr("abs:src").ifEmpty { it.attr("src") } }
                 ?: ""
 
             return HanimeBanner(

@@ -33,8 +33,10 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -55,6 +57,7 @@ import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import kotlinx.coroutines.launch
 
@@ -114,6 +117,7 @@ fun HomeScreenContent(
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
     val sizeInfo = currentWindowSizeInfo()
+    var selectedCategory by remember { mutableStateOf(categories[0].label) }
 
     val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading) {
         val map = mutableMapOf<String, Int>()
@@ -161,7 +165,9 @@ fun HomeScreenContent(
 
         item(key = "home-category") {
             CategoryScroll(
+                selectedCategory = selectedCategory,
                 onCategorySelected = { category ->
+                    selectedCategory = category
                     val targetIndex = sectionTitleToIndex[category]
                     if (targetIndex != null) {
                         scope.launch {

@@ -35,7 +35,9 @@ class VideoListParser @Inject constructor() {
         return try {
             val videoLink: Element? = container.selectFirst(".video-link")
                 ?: container.selectFirst(".thumb-container a")
-            val videoUrl = videoLink?.attr("abs:href") ?: videoLink?.attr("href") ?: return null
+            val rawVideoUrl = videoLink?.let { it.attr("abs:href").ifEmpty { it.attr("href") } } ?: ""
+            if (rawVideoUrl.isEmpty()) return null
+            val videoUrl = rawVideoUrl
 
             val videoId = ParserUtils.extractVideoId(videoUrl)
             if (videoId.isEmpty()) return null
@@ -45,7 +47,8 @@ class VideoListParser @Inject constructor() {
             val titleText = title?.text()?.trim() ?: return null
 
             val thumbnail: Element? = container.selectFirst(".main-thumb")
-            val thumbnailUrl = thumbnail?.attr("abs:src") ?: thumbnail?.attr("src") ?: ParserUtils.generatePlaceholderThumbnail(videoId)
+            val rawThumbnailUrl = thumbnail?.let { it.attr("abs:src").ifEmpty { it.attr("src") } } ?: ""
+            val thumbnailUrl = rawThumbnailUrl.ifEmpty { ParserUtils.generatePlaceholderThumbnail(videoId) }
 
             val duration: Element? = container.selectFirst(".duration")
             val durationText = duration?.text()?.trim() ?: ""
