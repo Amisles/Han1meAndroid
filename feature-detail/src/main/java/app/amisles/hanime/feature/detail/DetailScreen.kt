@@ -352,7 +352,7 @@ fun DetailScreen(
                                 if (detail.authorAvatarUrl.isNotEmpty()) {
                                     coil3.compose.AsyncImage(
                                         model = detail.authorAvatarUrl,
-                                        contentDescription = "作者头像",
+                                        contentDescription = stringResource(R.string.cd_author_avatar),
                                         modifier = Modifier
                                             .size(32.dp)
                                             .clip(androidx.compose.foundation.shape.CircleShape),
@@ -745,7 +745,7 @@ fun DetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
+                                    text = if (error != null) stringResource(R.string.detail_load_failed) else stringResource(R.string.common_no_videos),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 14.sp
                                 )
@@ -761,7 +761,7 @@ fun DetailScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(R.string.cd_back),
                                 tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -802,7 +802,7 @@ fun DetailScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.cd_back),
                             tint = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.size(24.dp)
                         )
@@ -852,7 +852,7 @@ fun DetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (error != null) stringResource(R.string.detail_load_failed) else "暂无视频",
+                        text = if (error != null) stringResource(R.string.detail_load_failed) else stringResource(R.string.common_no_videos),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp
                     )
@@ -1091,7 +1091,7 @@ private fun shareVideo(context: Context, title: String, url: String) {
         putExtra(Intent.EXTRA_TEXT, shareText)
         putExtra(Intent.EXTRA_TITLE, title)
     }
-    val chooser = Intent.createChooser(intent, "分享视频")
+    val chooser = Intent.createChooser(intent, context.getString(R.string.cd_share_video))
     chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(chooser)
 }

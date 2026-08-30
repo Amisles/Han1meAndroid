@@ -114,8 +114,8 @@ class DownloadService : Service() {
         if (!title.isNullOrEmpty()) {
             runCatching { prefs.edit { putString(PREF_LAST_DL_TITLE, title) } }
         }
-        val progressExtra = intent?.getIntExtra(EXTRA_PROGRESS, -1)
-        val progress = if (progressExtra != null && progressExtra >= 0) progressExtra else 0
+        val progressExtra = intent?.getIntExtra(EXTRA_PROGRESS, -1) ?: -1
+        val progress = if (progressExtra >= 0) progressExtra else 0
         val statusStr = intent?.getStringExtra(EXTRA_STATUS)
         val status = statusStr?.let { runCatching { DownloadStatus.valueOf(it) }.getOrNull() }
         val action = intent?.action
@@ -225,7 +225,7 @@ class DownloadService : Service() {
             getString(R.string.download_notification_channel),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "显示视频下载进度"
+            description = getString(R.string.notify_download_progress)
             setShowBadge(false)
         }
         notificationManager.createNotificationChannel(channel)

@@ -331,4 +331,33 @@
     <string name="about_oss_activity_desc">Compose and Activity integration providing ComponentActivity and setContent</string>
     <string name="about_oss_ksp_desc">Kotlin Symbol Processor (KSP2 architecture; generates code at Room compile time)</string>
     <string name="about_oss_corektx_desc">Kotlin extensions for the Android Framework API</string>
+
+    <!-- C5: 抽取硬编码中文到资源（2026-08-30） -->
+    <string name="error_load_detail_failed">Failed to load details</string>
+    <string name="error_login_required_reply">Please sign in before replying</string>
+    <string name="error_reply_empty">Reply cannot be empty</string>
+    <string name="error_csrf_missing">CSRF token missing, please refresh and retry</string>
+    <string name="error_comment_empty">Comment cannot be empty</string>
+    <string name="error_video_info_missing">Video info missing, cannot comment</string>
+    <string name="error_login_required_like">Please sign in before liking</string>
+    <string name="error_load_home_failed">Failed to load home</string>
+    <string name="notify_download_progress">Showing video download progress</string>
+    <string name="common_no_videos">No videos</string>
+    <string name="cd_author_avatar">Author avatar</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_share_video">Share video</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_rewind_15s">Rewind 15s</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_forward_15s">Forward 15s</string>
+    <string name="cd_volume">Volume</string>
+    <string name="cd_quality">Quality</string>
+    <string name="cd_exit_fullscreen">Exit fullscreen</string>
+    <string name="cd_fullscreen">Fullscreen</string>
+    <string name="player_rewind_15s">« Rewind 15s</string>
+    <string name="player_forward_15s">Forward 15s »</string>
+    <string name="player_zoom">Zoom: %sx</string>
+    <string name="player_long_press_boost">Long-press to boost 2x</string>
+    <string name="player_brightness">Brightness: %d%%</string>
+    <string name="player_volume">Volume: %d%%</string>
 </resources>

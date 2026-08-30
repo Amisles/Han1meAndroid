@@ -14,6 +14,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,13 +24,16 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     private val repository: HanimeRepository,
-    private val downloadManager: DownloadManager
+    private val downloadManager: DownloadManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _videoDetail = MutableStateFlow<VideoDetail?>(null)
@@ -179,7 +183,7 @@ class DetailViewModel @Inject constructor(
                 .catch { e ->
                     // 仅当主信息尚未到达时才关闭骨架屏，避免尾部异常把已渲染内容误判为失败
                     if (!mainArrived) _isLoading.value = false
-                    _error.value = e.message ?: "加载详情失败"
+                    _error.value = e.message ?: context.getString(R.string.error_load_detail_failed)
                 }
                 .collect { event ->
                     when (event) {
@@ -345,7 +349,7 @@ class DetailViewModel @Inject constructor(
      */
     fun startReply(commentId: String, replyToUsername: String? = null) {
         if (Preferences.savedUserId.isBlank()) {
-            _replyError.value = "请先登录后再回复评论"
+            _replyError.value = context.getString(R.string.error_login_required_reply)
             return
         }
         _activeReplyTarget.value = ReplyTarget(commentId, replyToUsername)
@@ -388,12 +392,12 @@ class DetailViewModel @Inject constructor(
         val target = _activeReplyTarget.value ?: return
         val trimmed = text.trim()
         if (trimmed.isEmpty()) {
-            _replyError.value = "回复内容不能为空"
+            _replyError.value = context.getString(R.string.error_reply_empty)
             return
         }
         val detail = _videoDetail.value
         if (detail == null || detail.csrfToken.isBlank()) {
-            _replyError.value = "CSRF Token 缺失，请刷新页面后重试"
+            _replyError.value = context.getString(R.string.error_csrf_missing)
             return
         }
 
@@ -484,16 +488,16 @@ class DetailViewModel @Inject constructor(
     fun postComment(text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) {
-            _postCommentError.value = "评论内容不能为空"
+            _postCommentError.value = context.getString(R.string.error_comment_empty)
             return
         }
         if (currentVideoId.isEmpty()) {
-            _postCommentError.value = "视频信息缺失，无法发表评论"
+            _postCommentError.value = context.getString(R.string.error_video_info_missing)
             return
         }
         val detail = _videoDetail.value
         if (detail == null || detail.csrfToken.isBlank()) {
-            _postCommentError.value = "CSRF Token 缺失，请刷新页面后重试"
+            _postCommentError.value = context.getString(R.string.error_csrf_missing)
             return
         }
 
@@ -545,11 +549,11 @@ class DetailViewModel @Inject constructor(
     fun toggleCommentLike(comment: Comment) {
         val detail = _videoDetail.value
         if (detail == null || detail.csrfToken.isBlank()) {
-            _commentLikeError.value = "CSRF Token 缺失，请刷新页面后重试"
+            _commentLikeError.value = context.getString(R.string.error_csrf_missing)
             return
         }
         if (Preferences.savedUserId.isBlank()) {
-            _commentLikeError.value = "请先登录后再点赞评论"
+            _commentLikeError.value = context.getString(R.string.error_login_required_like)
             return
         }
         // 防止同一评论在请求未完成前被重复点击

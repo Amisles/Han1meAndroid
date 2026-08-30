@@ -27,7 +27,7 @@ fun CategoryScroll(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 15.dp, vertical = 12.dp)
+            .padding(horizontal = 15.dp, vertical = 2.dp)
             .horizontalScroll(rememberScrollState())
     ) {
         categories.forEach { category ->

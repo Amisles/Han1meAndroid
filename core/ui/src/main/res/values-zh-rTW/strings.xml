@@ -331,4 +331,33 @@
     <string name="about_oss_activity_desc">Compose 與 Activity 整合，提供 ComponentActivity 與 setContent</string>
     <string name="about_oss_ksp_desc">Kotlin 符號處理器（KSP2 架構，Room 編譯時產生程式碼）</string>
     <string name="about_oss_corektx_desc">Android Framework API 的 Kotlin 擴充</string>
+
+    <!-- C5: 抽取硬编码中文到资源（2026-08-30） -->
+    <string name="error_load_detail_failed">加载详情失败</string>
+    <string name="error_login_required_reply">请先登录后再回复评论</string>
+    <string name="error_reply_empty">回复内容不能为空</string>
+    <string name="error_csrf_missing">CSRF Token 缺失，请刷新页面后重试</string>
+    <string name="error_comment_empty">评论内容不能为空</string>
+    <string name="error_video_info_missing">视频信息缺失，无法发表评论</string>
+    <string name="error_login_required_like">请先登录后再点赞评论</string>
+    <string name="error_load_home_failed">加载首页失败</string>
+    <string name="notify_download_progress">显示视频下载进度</string>
+    <string name="common_no_videos">暂无视频</string>
+    <string name="cd_author_avatar">作者头像</string>
+    <string name="cd_back">返回</string>
+    <string name="cd_share_video">分享视频</string>
+    <string name="cd_play">播放</string>
+    <string name="cd_rewind_15s">快退15秒</string>
+    <string name="cd_pause">暂停</string>
+    <string name="cd_forward_15s">快进15秒</string>
+    <string name="cd_volume">音量</string>
+    <string name="cd_quality">画质</string>
+    <string name="cd_exit_fullscreen">退出全屏</string>
+    <string name="cd_fullscreen">全屏</string>
+    <string name="player_rewind_15s">« 快退 15 秒</string>
+    <string name="player_forward_15s">快进 15 秒 »</string>
+    <string name="player_zoom">缩放: %sx</string>
+    <string name="player_long_press_boost">长按加速 2x</string>
+    <string name="player_brightness">亮度: %d%%</string>
+    <string name="player_volume">音量: %d%%</string>
 </resources>

@@ -686,7 +686,7 @@ fun VideoPlayer(
                                         if (!isInPip) {
                                             val rewind = downX < playerWidth / 2f
                                             if (rewind) seekBackward() else seekForward()
-                                            gestureHint = if (rewind) "« 快退 15 秒" else "快进 15 秒 »"
+                                            gestureHint = if (rewind) context.getString(R.string.player_rewind_15s) else context.getString(R.string.player_forward_15s)
                                         }
                     } else {
                         lastTapTime = now
@@ -727,7 +727,7 @@ fun VideoPlayer(
                                 if (lastPinch > 0f && dist > 0f) {
                                     val factor = dist / lastPinch
                                     videoZoom = (videoZoom * factor).coerceIn(0.5f, 2.0f)
-                                    gestureHint = "缩放: ${String.format(Locale.getDefault(), "%.1f", videoZoom)}x"
+                                    gestureHint = context.getString(R.string.player_zoom, String.format(Locale.getDefault(), "%.1f", videoZoom))
                                 }
                                 lastPinch = dist
                             } else if (pointerCount == 1 && !isZoom) {
@@ -753,7 +753,7 @@ fun VideoPlayer(
                                     setLongPressBoost(true, preBoostSpeed)
                                     showSpeedMenu = false
                                     showQualityMenu = false
-                                    gestureHint = "长按加速 2x"
+                                    gestureHint = context.getString(R.string.player_long_press_boost)
                                 }
                             }
                             event.changes.forEach { it.consume() }
@@ -795,7 +795,7 @@ fun VideoPlayer(
                                                 val delta = -(y - lastY) / playerHeight
                                                 brightness = (brightness + delta).coerceIn(0f, 1f)
                                                 setBrightness(brightness)
-                                                gestureHint = "亮度: ${(brightness * 100).toInt()}%"
+                                                gestureHint = context.getString(R.string.player_brightness, (brightness * 100).toInt())
                                             }
                                         }
                                         "volume" -> {
@@ -804,7 +804,7 @@ fun VideoPlayer(
                                                 volume = (volume + delta).coerceIn(0f, 1f)
                                                 exoPlayer.volume = volume
                                                 isMuted = volume == 0f
-                                                gestureHint = "音量: ${(volume * 100).toInt()}%"
+                                                gestureHint = context.getString(R.string.player_volume, (volume * 100).toInt())
                                             }
                                         }
                                     }
@@ -903,7 +903,7 @@ fun VideoPlayer(
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "播放",
+                        contentDescription = stringResource(R.string.cd_play),
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
@@ -923,7 +923,7 @@ fun VideoPlayer(
                 ) {
                     Icon(
                         imageVector = Icons.Default.FastRewind,
-                        contentDescription = "快退15秒",
+                        contentDescription = stringResource(R.string.cd_rewind_15s),
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
@@ -935,7 +935,7 @@ fun VideoPlayer(
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "暂停" else "播放",
+                        contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
@@ -947,7 +947,7 @@ fun VideoPlayer(
                 ) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
-                        contentDescription = "快进15秒",
+                        contentDescription = stringResource(R.string.cd_forward_15s),
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
@@ -966,7 +966,7 @@ fun VideoPlayer(
                         imageVector = if (isMuted || volume == 0f) Icons.AutoMirrored.Filled.VolumeMute
                         else if (volume < 0.5f) Icons.AutoMirrored.Filled.VolumeDown
                         else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "音量",
+                        contentDescription = stringResource(R.string.cd_volume),
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
@@ -1019,7 +1019,7 @@ fun VideoPlayer(
                             }
                     ) {
                         Text(
-                            text = currentResolution.ifEmpty { "画质" },
+                            text = currentResolution.ifEmpty { stringResource(R.string.cd_quality) },
                             color = Color.White,
                             fontSize = 11.sp
                         )
@@ -1032,7 +1032,7 @@ fun VideoPlayer(
                 ) {
                     Icon(
                         imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                        contentDescription = if (isFullscreen) "退出全屏" else "全屏",
+                        contentDescription = if (isFullscreen) stringResource(R.string.cd_exit_fullscreen) else stringResource(R.string.cd_fullscreen),
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
