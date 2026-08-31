@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscribedArtist
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -34,8 +36,11 @@ class SubscriptionsViewModel @Inject constructor(
     private val _selectedQuery = MutableStateFlow("")
     val selectedQuery: StateFlow<String> = _selectedQuery.asStateFlow()
 
+    private var loadJob: Job? = null
+
     fun load(query: String = _selectedQuery.value) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             _selectedQuery.value = query
@@ -48,7 +53,10 @@ class SubscriptionsViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _error.value = e.message ?: "加载失败"
             } finally {
-                _isLoading.value = false
+                // 被取消（loadJob?.cancel）时跳过，避免把新一轮加载的 isLoading 误置回 false
+                if (coroutineContext.isActive) {
+                    _isLoading.value = false
+                }
             }
         }
     }

@@ -6,6 +6,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.result.AppResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +55,9 @@ class SearchViewModel @Inject constructor(
 
     private var currentPageNum = 1
 
+    private var searchJob: Job? = null
+    private var loadMoreJob: Job? = null
+
     init {
         viewModelScope.launch {
             repository.getSearchHistory().collect { entities ->
@@ -98,13 +102,16 @@ class SearchViewModel @Inject constructor(
     fun executeSearch() {
         if (_query.value.isEmpty() && _sort.value == null && _genre.value == null) return
 
+        searchJob?.cancel()
+        loadMoreJob?.cancel()
+        _isLoadingMore.value = false
         _isLoading.value = true
         _error.value = null
         currentPageNum = 1
         _currentPage.value = 1
         _hasMore.value = true
 
-        viewModelScope.launch {
+        searchJob = viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.searchVideosWithPagination(
                     query = _query.value,
@@ -140,10 +147,11 @@ class SearchViewModel @Inject constructor(
         if (_isLoadingMore.value || !_hasMore.value) return
         if (_query.value.isEmpty() && _sort.value == null && _genre.value == null) return
 
+        loadMoreJob?.cancel()
         _isLoadingMore.value = true
         currentPageNum++
 
-        viewModelScope.launch {
+        loadMoreJob = viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.searchVideosWithPagination(
                     query = _query.value,
