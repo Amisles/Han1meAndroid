@@ -490,9 +490,9 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    // G6：成功/失败 Toast 由 SettingsViewModel 经 events 通道在删除完成后发送
                     viewModel.clearAppCache()
                     showClearCacheDialog = false
-                    Toast.makeText(context, context.getString(R.string.settings_cache_cleared), Toast.LENGTH_SHORT).show()
                 }) {
                     Text(stringResource(R.string.common_confirm), color = MaterialTheme.colorScheme.primary)
                 }

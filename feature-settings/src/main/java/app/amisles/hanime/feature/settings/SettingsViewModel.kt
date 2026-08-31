@@ -7,6 +7,7 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,9 +16,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.IOException
 import javax.inject.Inject
+import app.amisles.hanime.core.common.util.AppLogger
 
 /**
  * 设置页 UI 状态：聚合所有设置项当前值。
@@ -124,33 +126,46 @@ class SettingsViewModel @Inject constructor(
             return
         }
         val dir = File(path)
-        val writable = runCatching {
-            if (!dir.exists()) dir.mkdirs()
-            dir.exists() && dir.isDirectory && dir.canWrite()
-        }.getOrDefault(false)
-        if (writable) {
-            Preferences.downloadStoragePath = path
-            viewModelScope.launch { _events.emit(SettingsUiEvent.Toast(R.string.settings_download_storage_updated)) }
-        } else {
-            viewModelScope.launch { _events.emit(SettingsUiEvent.Toast(R.string.settings_download_storage_unwritable)) }
+        // G7：可写性校验（含 mkdirs）与偏好写入都切到 IO 调度器，避免主线程卡顿
+        viewModelScope.launch {
+            val writable = withContext(Dispatchers.IO) {
+                val ok = runCatching {
+                    if (!dir.exists()) dir.mkdirs()
+                    dir.exists() && dir.isDirectory && dir.canWrite()
+                }.getOrDefault(false)
+                if (ok) Preferences.downloadStoragePath = path
+                ok
+            }
+            _events.emit(
+                SettingsUiEvent.Toast(
+                    if (writable) R.string.settings_download_storage_updated
+                    else R.string.settings_download_storage_unwritable
+                )
+            )
         }
     }
 
     /**
-     * 清除应用缓存。返回缓存目录路径用于 UI 显示，实际删除在 VM 中完成。
+     * 清除应用缓存。删除在 IO 调度器上执行，完成后通过 [events] 发送成功/失败 Toast
+     * （G6：此前在主线程递归删除，且 UI 在点击瞬间无条件提示「已清除」，与实际结果脱节）。
      */
     fun clearAppCache() {
         viewModelScope.launch {
-            try {
-                val cacheDir = app.cacheDir
-                if (cacheDir.exists()) {
-                    cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val cacheDir = app.cacheDir
+                    if (cacheDir.exists()) {
+                        cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+                    }
                 }
-            } catch (e: SecurityException) {
-                e.printStackTrace()
-            } catch (e: IOException) {
-                e.printStackTrace()
             }
+            result.fold(
+                onSuccess = { _events.emit(SettingsUiEvent.Toast(R.string.settings_cache_cleared)) },
+                onFailure = { e ->
+                    AppLogger.e("SettingsViewModel", "清除缓存失败: ${e.message}", e)
+                    _events.emit(SettingsUiEvent.Toast(R.string.settings_cache_clear_failed))
+                }
+            )
         }
     }
 }
