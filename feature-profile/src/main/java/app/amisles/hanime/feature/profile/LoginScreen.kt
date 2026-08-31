@@ -90,6 +90,7 @@ fun LoginScreen(
 
     LaunchedEffect(uiState) {
         if (uiState is LoginViewModel.UiState.Success) {
+            vm.reset()
             onLoginSuccess()
         }
     }
@@ -111,7 +112,7 @@ fun LoginScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
@@ -138,7 +139,11 @@ fun LoginScreen(
                 contentColor = MaterialTheme.colorScheme.onBackground,
                 divider = { }
             ) {
-                listOf("账号密码", "WebView 登录", "手动 Cookie").forEachIndexed { idx, title ->
+                listOf(
+                    R.string.login_tab_password,
+                    R.string.login_tab_webview,
+                    R.string.login_tab_cookie
+                ).forEachIndexed { idx, titleRes ->
                     Tab(
                         selected = tabIndex == idx,
                         onClick = { tabIndex = idx; vm.reset() },
@@ -146,7 +151,7 @@ fun LoginScreen(
                         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ) {
                         Text(
-                            title,
+                            stringResource(titleRes),
                             fontSize = 13.sp,
                             modifier = Modifier.padding(vertical = 12.dp)
                         )
@@ -197,7 +202,7 @@ private fun EmailPasswordTab(
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            "如遇到 Cloudflare 验证或登录失败，请切换到 WebView 登录。",
+            stringResource(R.string.login_cloudflare_hint),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             lineHeight = 18.sp
@@ -260,7 +265,11 @@ private fun EmailPasswordTab(
                             disabledContentColor = Color(0xFFff6b6b).copy(alpha = .5f)
                         )
                     ) {
-                        Text("一键切换到 WebView 登录", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            stringResource(R.string.login_switch_to_webview),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -296,7 +305,9 @@ private fun EmailPasswordTab(
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(
-                    text = if (isLoading) "登录中..." else stringResource(R.string.login_button),
+                    text = stringResource(
+                        if (isLoading) R.string.login_logging_in else R.string.login_button
+                    ),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp
                 )
@@ -370,18 +381,7 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                     }
                 }.also { webViewRef.value = it }
             },
-            modifier = Modifier.fillMaxSize(),
-            update = { wv ->
-                val u = wv.url.orEmpty()
-                if (u.isNotBlank() && u != LOGIN_URLS.first()) {
-                    val cookies = CookieManager.getInstance().getCookie(u) ?: return@AndroidView
-                    if (isLoggedInRedirect(u) &&
-                        (cookies.contains("laravel_session", true) ||
-                            cookies.contains("session", true))) {
-                        vm.saveWebViewCookie(cookies)
-                    }
-                }
-            }
+            modifier = Modifier.fillMaxSize()
         )
 
         if (loading) {
@@ -394,7 +394,11 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 2.5.dp)
                     Spacer(Modifier.height(10.dp))
-                    Text("正在加载登录页...", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(
+                        stringResource(R.string.login_page_loading),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
                 }
             }
         }
@@ -429,13 +433,13 @@ private fun ManualCookieTab(vm: LoginViewModel) {
     ) {
         Spacer(Modifier.height(6.dp))
         Text(
-            "手动粘贴 Cookie",
+            stringResource(R.string.login_manual_cookie_title),
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            "从浏览器登录官网后，打开开发者工具复制 Cookie 粘贴到这里。\n格式：laravel_session=xxx; XSRF-TOKEN=yyy",
+            stringResource(R.string.login_manual_cookie_desc),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             lineHeight = 18.sp
@@ -444,7 +448,7 @@ private fun ManualCookieTab(vm: LoginViewModel) {
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
-            label = { Text("Cookie 字符串", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text(stringResource(R.string.login_cookie_label), color = MaterialTheme.colorScheme.onSurfaceVariant) },
             enabled = !isLoading,
             minLines = 6,
             maxLines = 12,
@@ -484,7 +488,9 @@ private fun ManualCookieTab(vm: LoginViewModel) {
                 Spacer(Modifier.width(8.dp))
             }
             Text(
-                text = if (isLoading) "保存中..." else "保存并登录",
+                text = stringResource(
+                    if (isLoading) R.string.login_saving else R.string.login_save_and_login
+                ),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold
             )

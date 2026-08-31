@@ -1,19 +1,23 @@
 package app.amisles.hanime.feature.profile
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val repository: HanimeRepository
+    private val repository: HanimeRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     sealed interface UiState {
@@ -29,11 +33,11 @@ class LoginViewModel @Inject constructor(
     fun loginWithEmailPassword(email: String, password: String) {
         val cleanEmail = email.trim()
         if (cleanEmail.isEmpty() || password.isEmpty()) {
-            _uiState.value = UiState.Error("请输入邮箱和密码")
+            _uiState.value = UiState.Error(context.getString(R.string.login_enter_email_password))
             return
         }
         if (!cleanEmail.contains('@')) {
-            _uiState.value = UiState.Error("请输入正确的邮箱地址")
+            _uiState.value = UiState.Error(context.getString(R.string.login_invalid_email))
             return
         }
         viewModelScope.launch {
@@ -50,7 +54,11 @@ class LoginViewModel @Inject constructor(
     fun saveManualCookie(cookieString: String) {
         val clean = cookieString.trim()
         if (clean.isEmpty()) {
-            _uiState.value = UiState.Error("Cookie 不能为空")
+            _uiState.value = UiState.Error(context.getString(R.string.login_cookie_empty))
+            return
+        }
+        if (!containsSessionKey(clean)) {
+            _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
             return
         }
         viewModelScope.launch {
@@ -59,10 +67,14 @@ class LoginViewModel @Inject constructor(
             if (ok) {
                 _uiState.value = UiState.Success(clean.length)
             } else {
-                _uiState.value = UiState.Error("保存失败，请检查 Cookie 格式")
+                _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
             }
         }
     }
+
+    private fun containsSessionKey(cookie: String): Boolean =
+        cookie.contains("laravel_session", ignoreCase = true) ||
+            cookie.contains("session", ignoreCase = true)
 
     fun saveWebViewCookie(cookieFromManager: String) {
         saveManualCookie(cookieFromManager)
