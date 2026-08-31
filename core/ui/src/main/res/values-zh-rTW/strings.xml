@@ -133,6 +133,7 @@
     <string name="download_filter_empty">目前篩選條件下沒有任務</string>
     <string name="download_delete_title">確認刪除</string>
     <string name="download_delete_message">確定要刪除這個下載任務嗎？</string>
+    <string name="download_delete_message_multiple">確定刪除選取的 %1$d 個下載任務嗎？</string>
     <string name="download_file_not_exist">檔案不存在</string>
     <string name="download_notification_channel">下載服務</string>
     <string name="download_notification_downloading">正在下載</string>
@@ -166,6 +167,8 @@
     <string name="batch_no_author_videos">該作者沒有影片</string>
     <string name="batch_search_failed_detail">搜尋失敗: %1$s</string>
     <string name="batch_qualities_not_loaded">選中影片尚未載入畫質資訊，請稍候再試</string>
+    <string name="batch_load_more_failed">載入更多失敗，請重試</string>
+    <string name="batch_skipped_no_quality">%1$d 個影片因畫質未載入已跳過，其餘已加入下載佇列</string>
     <string name="profile_watch_history">觀看歷史</string>
     <string name="profile_favorites">我的收藏</string>
     <string name="subscriptions">訂閱內容</string>
@@ -235,6 +238,7 @@
     <string name="settings_clear_cache_title">清除快取</string>
     <string name="settings_clear_cache_message">確定要清除快取嗎？</string>
     <string name="settings_cache_cleared">快取已清除</string>
+    <string name="settings_cache_clear_failed">快取清除失敗，請重試</string>
     <string name="settings_base_url_title">官網網址</string>
     <string name="settings_base_url_hint">請輸入官網地址，留空則恢復預設</string>
     <string name="settings_base_url_updated">官網網址已更新</string>
@@ -307,6 +311,7 @@
     <string name="history_manage">管理</string>
     <string name="history_delete_title">確認刪除</string>
     <string name="history_delete_message">確定刪除選取的 %1$d 筆記錄嗎？</string>
+    <string name="history_delete_message_single">確定刪除這筆記錄嗎？</string>
     <string name="history_time_just_now">剛剛觀看</string>
     <string name="history_time_minutes_ago">%1$d 分鐘前</string>
     <string name="history_time_hours_ago">%1$d 小時前</string>

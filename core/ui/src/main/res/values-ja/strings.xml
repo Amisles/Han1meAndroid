@@ -133,6 +133,7 @@
     <string name="download_filter_empty">現在のフィルターに一致するタスクはありません</string>
     <string name="download_delete_title">削除の確認</string>
     <string name="download_delete_message">このダウンロードタスクを削除しますか？</string>
+    <string name="download_delete_message_multiple">選択した %1$d 件のダウンロードタスクを削除しますか？</string>
     <string name="download_file_not_exist">ファイルが存在しません</string>
     <string name="download_notification_channel">ダウンロードサービス</string>
     <string name="download_notification_downloading">ダウンロード中</string>
@@ -166,6 +167,8 @@
     <string name="batch_no_author_videos">この作者には動画がありません</string>
     <string name="batch_search_failed_detail">検索失敗: %1$s</string>
     <string name="batch_qualities_not_loaded">選択した動画の画質情報がまだ読み込まれていません。しばらくしてから再度お試しください</string>
+    <string name="batch_load_more_failed">追加の読み込みに失敗しました。再試行してください</string>
+    <string name="batch_skipped_no_quality">%1$d 件の動画は画質情報が未読み込みのためスキップしました。残りをダウンロードに追加しました</string>
     <string name="profile_watch_history">視聴履歴</string>
     <string name="profile_favorites">お気に入り</string>
     <string name="subscriptions">購読コンテンツ</string>
@@ -235,6 +238,7 @@
     <string name="settings_clear_cache_title">キャッシュクリア</string>
     <string name="settings_clear_cache_message">キャッシュをクリアしますか？</string>
     <string name="settings_cache_cleared">キャッシュをクリアしました</string>
+    <string name="settings_cache_clear_failed">キャッシュの削除に失敗しました</string>
     <string name="settings_base_url_title">サイトURL</string>
     <string name="settings_base_url_hint">サイトURLを入力、空欄でデフォルト</string>
     <string name="settings_base_url_updated">サイトURLを更新しました</string>
@@ -307,6 +311,7 @@
     <string name="history_manage">管理</string>
     <string name="history_delete_title">削除の確認</string>
     <string name="history_delete_message">選択した %1$d 件を削除しますか？</string>
+    <string name="history_delete_message_single">この履歴を削除しますか？</string>
     <string name="history_time_just_now">今視聴しました</string>
     <string name="history_time_minutes_ago">%1$d 分前</string>
     <string name="history_time_hours_ago">%1$d 時間前</string>

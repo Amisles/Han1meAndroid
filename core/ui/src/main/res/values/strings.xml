@@ -145,6 +145,7 @@
     <string name="download_filter_empty">当前筛选条件下没有任务</string>
     <string name="download_delete_title">确认删除</string>
     <string name="download_delete_message">确定要删除这个下载任务吗？</string>
+    <string name="download_delete_message_multiple">确定删除选中的 %1$d 个下载任务吗？</string>
     <string name="download_file_not_exist">文件不存在</string>
     <string name="download_notification_channel">下载服务</string>
     <string name="download_notification_downloading">正在下载</string>
@@ -180,6 +181,8 @@
     <string name="batch_no_author_videos">该作者没有视频</string>
     <string name="batch_search_failed_detail">搜索失败: %1$s</string>
     <string name="batch_qualities_not_loaded">选中视频尚未加载画质信息，请稍候再试</string>
+    <string name="batch_load_more_failed">加载更多失败，请重试</string>
+    <string name="batch_skipped_no_quality">%1$d 个视频因画质未加载已跳过，其余已加入下载队列</string>
 
     <!-- Profile -->
     <string name="profile_watch_history">观看历史</string>
@@ -259,6 +262,7 @@
     <string name="settings_clear_cache_title">清除缓存</string>
     <string name="settings_clear_cache_message">确定要清除缓存吗？</string>
     <string name="settings_cache_cleared">缓存已清除</string>
+    <string name="settings_cache_clear_failed">缓存清除失败，请重试</string>
     <string name="settings_base_url_title">官网网址</string>
     <string name="settings_base_url_hint">请输入官网地址，留空则恢复默认</string>
     <string name="settings_base_url_updated">官网网址已更新</string>
@@ -338,6 +342,7 @@
     <string name="history_manage">管理</string>
     <string name="history_delete_title">确认删除</string>
     <string name="history_delete_message">确定删除选中的 %1$d 条记录吗？</string>
+    <string name="history_delete_message_single">确定删除这条记录吗？</string>
     <string name="history_time_just_now">刚刚观看</string>
     <string name="history_time_minutes_ago">%1$d 分钟前</string>
     <string name="history_time_hours_ago">%1$d 小时前</string>
