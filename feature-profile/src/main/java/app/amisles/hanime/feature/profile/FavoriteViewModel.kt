@@ -36,7 +36,7 @@ class FavoriteViewModel @Inject constructor(
                     repository.getAllFavorites()
                 }
                 _favorites.value = favorites
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 AppLogger.e("FavoriteViewModel", "Error loading favorites: ${e.message}", e)
                 _favorites.value = emptyList()
             } finally {
@@ -54,7 +54,7 @@ class FavoriteViewModel @Inject constructor(
                     repository.removeFavorite(videoId)
                 }
                 loadFavorites()
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }
         }
@@ -71,7 +71,7 @@ class FavoriteViewModel @Inject constructor(
                     }
                 }
                 loadFavorites()
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }
         }
