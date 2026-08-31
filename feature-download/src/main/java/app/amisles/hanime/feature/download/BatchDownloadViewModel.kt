@@ -117,7 +117,15 @@ class BatchDownloadViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            _state.update { it.copy(isSearching = true, error = null, videos = emptyList()) }
+            _state.update {
+                it.copy(
+                    isSearching = true,
+                    error = null,
+                    videos = emptyList(),
+                    authorName = "",
+                    authorId = ""
+                )
+            }
 
             try {
                 val result = withContext(Dispatchers.IO) {
@@ -224,10 +232,21 @@ class BatchDownloadViewModel @Inject constructor(
                         totalPages = result.totalPages,
                         hasNextPage = result.hasNextPage
                     )}
+                } else {
+                    // G12：此前 result == null 时只走空分支，isLoadMore 永远不复位，
+                    // 加载按钮停在 loading 态，且 loadMore() 开头的 isLoadMore 守卫会让分页彻底失效
+                    AppLogger.e("BatchDownloadViewModel", "加载更多失败: 第 $nextPage 页返回空结果")
+                    _state.update { it.copy(
+                        isLoadMore = false,
+                        error = context.getString(R.string.batch_load_more_failed)
+                    )}
                 }
             } catch (e: IOException) {
                 AppLogger.e("BatchDownloadViewModel", "加载更多失败: ${e.message}", e)
-                _state.update { it.copy(isLoadMore = false) }
+                _state.update { it.copy(
+                    isLoadMore = false,
+                    error = context.getString(R.string.batch_load_more_failed)
+                )}
             }
         }
     }
@@ -375,7 +394,19 @@ class BatchDownloadViewModel @Inject constructor(
             return
         }
 
-        _state.update { it.copy(isDownloading = true, downloadingVideoIds = downloadingIds) }
+        // G12：被跳过的视频需要 UI 反馈，否则「已选 N 个」与实际入队数不一致且用户无从得知
+        val skippedCount = selectedVideos.size - downloadableVideos.size
+        _state.update {
+            it.copy(
+                isDownloading = true,
+                downloadingVideoIds = downloadingIds,
+                error = if (skippedCount > 0) {
+                    context.getString(R.string.batch_skipped_no_quality, skippedCount)
+                } else {
+                    it.error
+                }
+            )
+        }
 
         viewModelScope.launch {
             selectedVideos.forEach { video ->
