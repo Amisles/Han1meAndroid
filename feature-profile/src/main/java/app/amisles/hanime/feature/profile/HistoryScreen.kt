@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,6 +87,7 @@ fun HistoryScreen(
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
+    var deleteTargetId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadHistory()
@@ -234,7 +236,8 @@ fun HistoryScreen(
                                 },
                                 onLongClick = {
                                     if (!isSelectionMode) {
-                                        viewModel.removeHistory(video.id)
+                                        deleteTargetId = video.id
+                                        showDeleteConfirm = true
                                     }
                                 }
                             ),
@@ -310,7 +313,10 @@ fun HistoryScreen(
 
                         if (!isSelectionMode) {
                             IconButton(
-                                onClick = { viewModel.removeHistory(video.id) },
+                                onClick = {
+                                    deleteTargetId = video.id
+                                    showDeleteConfirm = true
+                                },
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
@@ -402,7 +408,10 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { showDeleteConfirm = false },
+                .clickable {
+                    deleteTargetId = null
+                    showDeleteConfirm = false
+                },
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -410,7 +419,10 @@ fun HistoryScreen(
                     .fillMaxWidth(0.8f)
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
-                    .clickable(enabled = false) {},
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {},
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -421,7 +433,11 @@ fun HistoryScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = stringResource(R.string.history_delete_message, selectedIds.size),
+                    text = if (deleteTargetId != null) {
+                        stringResource(R.string.history_delete_message_single)
+                    } else {
+                        stringResource(R.string.history_delete_message, selectedIds.size)
+                    },
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -436,7 +452,10 @@ fun HistoryScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { showDeleteConfirm = false }
+                            .clickable {
+                                deleteTargetId = null
+                                showDeleteConfirm = false
+                            }
                             .padding(vertical = 10.dp),
                         textAlign = TextAlign.Center
                     )
@@ -448,10 +467,14 @@ fun HistoryScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable {
-                                selectedIds.forEach { videoId ->
-                                    viewModel.removeHistory(videoId)
+                                if (deleteTargetId != null) {
+                                    // 单条删除
+                                    viewModel.removeHistory(deleteTargetId!!)
+                                } else {
+                                    viewModel.removeHistories(selectedIds.toList())
+                                    isSelectionMode = false
                                 }
-                                isSelectionMode = false
+                                deleteTargetId = null
                                 showDeleteConfirm = false
                             }
                             .padding(vertical = 10.dp),
@@ -475,7 +498,10 @@ fun HistoryScreen(
                     .fillMaxWidth(0.8f)
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
-                    .clickable(enabled = false) {},
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {},
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(

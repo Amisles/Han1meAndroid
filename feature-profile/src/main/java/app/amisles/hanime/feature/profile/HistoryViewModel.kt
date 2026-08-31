@@ -66,6 +66,24 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    fun removeHistories(videoIds: List<String>) {
+        if (videoIds.isEmpty()) return
+        AppLogger.d("HistoryViewModel", "removeHistories called, count: ${videoIds.size}")
+
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    videoIds.forEach { videoId ->
+                        repository.removeWatchHistory(videoId)
+                    }
+                }
+                loadHistory()
+            } catch (e: IOException) {
+                AppLogger.e("HistoryViewModel", "Error removing histories: ${e.message}", e)
+            }
+        }
+    }
+
     fun clearHistory() {
         AppLogger.d("HistoryViewModel", "clearHistory called")
 

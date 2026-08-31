@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -116,6 +117,7 @@ fun DownloadScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var deleteTargetId by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(isSelectionMode) {
         if (!isSelectionMode) {
@@ -399,7 +401,11 @@ fun DownloadScreen(
                                 }
                             },
                             onPlayClick = { playVideoFile(context, task.filePath) },
-                            onDeleteClick = { viewModel.cancelDownload(task.id) }
+                            onDeleteClick = {
+                                // 删除已完成任务会连带删除本地文件，先确认
+                                deleteTargetId = task.id
+                                showDeleteConfirm = true
+                            }
                         )
                     }
                 }
@@ -433,7 +439,11 @@ fun DownloadScreen(
                                 onCancelClick = { viewModel.cancelDownload(task.id) },
                                 onRetryClick = { viewModel.resumeDownload(task.id) },
                                 onPlayClick = { playVideoFile(context, task.filePath) },
-                                onDeleteClick = { viewModel.cancelDownload(task.id) }
+                                onDeleteClick = {
+                                    // 删除已完成任务会连带删除本地文件，先确认
+                                    deleteTargetId = task.id
+                                    showDeleteConfirm = true
+                                }
                             )
                         }
                     }
@@ -482,7 +492,10 @@ fun DownloadScreen(
                     color = Color(0xFFFF6B6B),
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
-                        .clickable { showDeleteConfirm = true }
+                        .clickable {
+                            deleteTargetId = null // 批量删除标记
+                            showDeleteConfirm = true
+                        }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
@@ -545,7 +558,10 @@ fun DownloadScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { showDeleteConfirm = false },
+                .clickable {
+                    deleteTargetId = null
+                    showDeleteConfirm = false
+                },
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -553,7 +569,10 @@ fun DownloadScreen(
                     .fillMaxWidth(0.8f)
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                     .padding(20.dp)
-                    .clickable(enabled = false) {},
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {},
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -564,7 +583,11 @@ fun DownloadScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = stringResource(R.string.download_delete_message),
+                    text = if (deleteTargetId != null) {
+                        stringResource(R.string.download_delete_message)
+                    } else {
+                        stringResource(R.string.download_delete_message_multiple, selectedIds.size)
+                    },
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -580,7 +603,10 @@ fun DownloadScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { showDeleteConfirm = false }
+                            .clickable {
+                                deleteTargetId = null
+                                showDeleteConfirm = false
+                            }
                             .padding(vertical = 10.dp),
                         textAlign = TextAlign.Center
                     )
@@ -592,10 +618,16 @@ fun DownloadScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable {
-                                selectedIds.forEach { taskId ->
-                                    viewModel.cancelDownload(taskId)
+                                if (deleteTargetId != null) {
+                                    // 单条删除：已完成任务会连带删除本地文件
+                                    viewModel.cancelDownload(deleteTargetId!!)
+                                } else {
+                                    selectedIds.forEach { taskId ->
+                                        viewModel.cancelDownload(taskId)
+                                    }
+                                    isSelectionMode = false
                                 }
-                                isSelectionMode = false
+                                deleteTargetId = null
                                 showDeleteConfirm = false
                             }
                             .padding(vertical = 10.dp),
