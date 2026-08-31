@@ -310,6 +310,7 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     val context = LocalContext.current
     var loading by remember { mutableStateOf(true) }
     val configured = remember { mutableStateOf(false) }
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
 
     Box(Modifier.fillMaxSize()) {
         AndroidView(
@@ -367,7 +368,7 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                             "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
                         loadUrl(LOGIN_URLS.first())
                     }
-                }
+                }.also { webViewRef.value = it }
             },
             modifier = Modifier.fillMaxSize(),
             update = { wv ->
@@ -402,6 +403,11 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     DisposableEffect(Unit) {
         onDispose {
             CookieManager.getInstance().flush()
+            webViewRef.value?.apply {
+                stopLoading()
+                onPause()
+                destroy()
+            }
         }
     }
 }
