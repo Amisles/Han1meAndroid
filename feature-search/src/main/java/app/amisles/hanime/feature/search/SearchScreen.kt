@@ -476,6 +476,19 @@ fun SearchScreen(
                     )
                 }
             }
+        } else if (videos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.search_no_results),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
             val sizeInfo = currentWindowSizeInfo()
             if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,7 +172,8 @@ class SearchViewModel @Inject constructor(
                     _hasMore.value = data.hasNextPage
                 }
                 is AppResult.Error -> {
-                    _hasMore.value = false
+                    currentPageNum--
+                    _hasMore.value = true
                 }
                 is AppResult.Loading -> {}
             }
@@ -181,16 +183,24 @@ class SearchViewModel @Inject constructor(
 
     fun clearSearchHistory() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                repository.clearSearchHistory()
+            try {
+                withContext(Dispatchers.IO) {
+                    repository.clearSearchHistory()
+                }
+            } catch (e: Exception) {
+                AppLogger.e("SearchViewModel", "Error clearing search history: ${e.message}", e)
             }
         }
     }
 
     fun removeSearchHistory(query: String) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                repository.removeSearchHistory(query)
+            try {
+                withContext(Dispatchers.IO) {
+                    repository.removeSearchHistory(query)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("SearchViewModel", "Error removing search history: ${e.message}", e)
             }
         }
     }
