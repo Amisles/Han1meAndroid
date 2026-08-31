@@ -206,6 +206,10 @@ class DownloadManager @Inject constructor(
         }
 
         scope.launch {
+            Preferences.maxDownloadConcurrentFlow.collect { updateConcurrencyLimit(it) }
+        }
+
+        scope.launch {
             try {
                 val entities = downloadDao.getAllDownloadsOnce()
                 val restoredTasks = entities.map { entity ->

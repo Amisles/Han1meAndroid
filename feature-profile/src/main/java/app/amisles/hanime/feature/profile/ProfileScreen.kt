@@ -93,7 +93,7 @@ fun ProfileScreen(
     val profileViewModel: ProfileViewModel = hiltViewModel()
     val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
-    val displayName by Preferences.savedUserIdFlow.collectAsStateWithLifecycle()
+    val displayLetter by profileViewModel.displayLetter.collectAsStateWithLifecycle()
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
     val favoriteCount by profileViewModel.favoriteCount.collectAsStateWithLifecycle()
     val downloadCount by profileViewModel.downloadCount.collectAsStateWithLifecycle()
@@ -126,15 +126,10 @@ fun ProfileScreen(
         add(ProfileMenuItem(Icons.Default.Info, stringResource(R.string.profile_about)) { onNavigate("about") })
         if (isLogin) {
             add(ProfileMenuItem(Icons.AutoMirrored.Filled.Logout, stringResource(R.string.profile_logout)) {
-                Preferences.logout()
+                profileViewModel.logout()
                 Toast.makeText(context, context.getString(R.string.profile_logout_success), Toast.LENGTH_SHORT).show()
             })
         }
-    }
-
-    val letter = run {
-        val raw = Preferences.extractDisplayEmail().ifBlank { displayName }
-        if (raw.isBlank()) "H" else raw.take(1).uppercase()
     }
 
     ResponsiveContent {
@@ -162,7 +157,7 @@ fun ProfileScreen(
                 }
             ) {
                 Text(
-                    text = if (isLogin) letter else "👤",
+                    text = if (isLogin) displayLetter else "👤",
                     fontSize = 22.sp,
                     textAlign = TextAlign.Center,
                     color = if (isLogin) MaterialTheme.colorScheme.onBackground else Color.Unspecified,
