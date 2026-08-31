@@ -365,4 +365,25 @@
     <string name="player_long_press_boost">Long-press to boost 2x</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
+    <!-- G2：四个 feature 模块硬编码中文抽取 -->
+    <string name="favorite_delete_confirm_message">Delete \"%1$s\"?</string>
+    <string name="favorite_batch_count">%1$d favorites</string>
+    <string name="login_tab_password">Email</string>
+    <string name="login_tab_webview">WebView login</string>
+    <string name="login_tab_cookie">Manual Cookie</string>
+    <string name="login_cloudflare_hint">If you hit Cloudflare verification or login fails, switch to WebView login.</string>
+    <string name="login_switch_to_webview">Switch to WebView login</string>
+    <string name="login_logging_in">Signing in...</string>
+    <string name="login_page_loading">Loading login page...</string>
+    <string name="login_manual_cookie_title">Paste Cookie</string>
+    <string name="login_manual_cookie_desc">Sign in on the official site in your browser, then open dev tools and copy the Cookie here.\nFormat: laravel_session=xxx; XSRF-TOKEN=yyy</string>
+    <string name="login_cookie_label">Cookie string</string>
+    <string name="login_saving">Saving...</string>
+    <string name="login_save_and_login">Save and sign in</string>
+    <string name="login_cookie_invalid">Save failed, please check the Cookie format</string>
+    <string name="account_error_not_logged_in">Not signed in, cannot view account profile</string>
+    <string name="account_error_name_empty">Name cannot be empty</string>
+    <string name="diagnostics_error_title">Diagnostics error</string>
+    <string name="diagnostics_error_detail">An error occurred while running diagnostics: %1$s</string>
+    <string name="diagnostics_error_suggestion">Please try again later</string>
 </resources>

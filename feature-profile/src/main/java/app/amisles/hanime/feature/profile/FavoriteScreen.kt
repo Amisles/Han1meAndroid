@@ -70,6 +70,7 @@ fun FavoriteScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<String?>(null) }
     var deleteTargetTitle by remember { mutableStateOf("") }
+    val batchDeleteTitle = stringResource(R.string.favorite_batch_count, selectedIds.size)
 
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
@@ -106,14 +107,20 @@ fun FavoriteScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = if (isSelectionMode) "取消" else "返回",
+                    contentDescription = stringResource(
+                        if (isSelectionMode) R.string.common_cancel else R.string.common_back
+                    ),
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = if (isSelectionMode) "已选 ${selectedIds.size} 项" else stringResource(R.string.profile_favorites),
+                text = if (isSelectionMode) {
+                    stringResource(R.string.history_selected_count, selectedIds.size)
+                } else {
+                    stringResource(R.string.profile_favorites)
+                },
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -121,7 +128,7 @@ fun FavoriteScreen(
             )
             if (!isSelectionMode && favorites.isNotEmpty()) {
                 Text(
-                    text = "管理",
+                    text = stringResource(R.string.common_manage),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -130,7 +137,7 @@ fun FavoriteScreen(
                 )
             } else if (isSelectionMode) {
                 Text(
-                    text = "全选",
+                    text = stringResource(R.string.common_select_all),
                     fontSize = 14.sp,
                     color = if (selectedIds.size == favorites.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -246,7 +253,7 @@ fun FavoriteScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "已选择 ${selectedIds.size} 项",
+                    text = stringResource(R.string.search_selected_count, selectedIds.size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
@@ -259,7 +266,8 @@ fun FavoriteScreen(
                     modifier = Modifier
                         .clickable {
                             deleteTargetId = null // 批量删除标记
-                            deleteTargetTitle = "${selectedIds.size} 个收藏"
+                            // 文案在组合期取值：clickable 的 lambda 不是组合型作用域，不能直接调 stringResource
+                            deleteTargetTitle = batchDeleteTitle
                             showDeleteConfirm = true
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -295,7 +303,7 @@ fun FavoriteScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = "确定删除 \"$deleteTargetTitle\" 吗？",
+                    text = stringResource(R.string.favorite_delete_confirm_message, deleteTargetTitle),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)

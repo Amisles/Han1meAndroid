@@ -396,4 +396,25 @@
     <string name="player_long_press_boost">长按加速 2x</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
+    <!-- G2：四个 feature 模块硬编码中文抽取 -->
+    <string name="favorite_delete_confirm_message">确定删除 \"%1$s\" 吗？</string>
+    <string name="favorite_batch_count">%1$d 个收藏</string>
+    <string name="login_tab_password">账号密码</string>
+    <string name="login_tab_webview">WebView 登录</string>
+    <string name="login_tab_cookie">手动 Cookie</string>
+    <string name="login_cloudflare_hint">如遇到 Cloudflare 验证或登录失败，请切换到 WebView 登录。</string>
+    <string name="login_switch_to_webview">一键切换到 WebView 登录</string>
+    <string name="login_logging_in">登录中...</string>
+    <string name="login_page_loading">正在加载登录页...</string>
+    <string name="login_manual_cookie_title">手动粘贴 Cookie</string>
+    <string name="login_manual_cookie_desc">从浏览器登录官网后，打开开发者工具复制 Cookie 粘贴到这里。\n格式：laravel_session=xxx; XSRF-TOKEN=yyy</string>
+    <string name="login_cookie_label">Cookie 字符串</string>
+    <string name="login_saving">保存中...</string>
+    <string name="login_save_and_login">保存并登录</string>
+    <string name="login_cookie_invalid">保存失败，请检查 Cookie 格式</string>
+    <string name="account_error_not_logged_in">未登录，无法查看账户资料</string>
+    <string name="account_error_name_empty">用户名称不能为空</string>
+    <string name="diagnostics_error_title">诊断异常</string>
+    <string name="diagnostics_error_detail">运行诊断时发生错误：%1$s</string>
+    <string name="diagnostics_error_suggestion">请稍后重试</string>
 </resources>

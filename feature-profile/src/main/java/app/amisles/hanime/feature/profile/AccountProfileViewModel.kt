@@ -1,11 +1,14 @@
 package app.amisles.hanime.feature.profile
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.result.AppResult
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +31,8 @@ sealed interface AccountUpdateState {
 
 @HiltViewModel
 class AccountProfileViewModel @Inject constructor(
-    private val repository: HanimeRepository
+    private val repository: HanimeRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _name = MutableStateFlow("")
@@ -50,7 +54,7 @@ class AccountProfileViewModel @Inject constructor(
 
     fun load() {
         if (Preferences.savedUserId.isBlank()) {
-            _error.value = "未登录，无法查看账户资料"
+            _error.value = context.getString(R.string.account_error_not_logged_in)
             return
         }
         viewModelScope.launch {
@@ -83,7 +87,7 @@ class AccountProfileViewModel @Inject constructor(
 
     fun update() {
         if (_name.value.isBlank()) {
-            _updateState.value = AccountUpdateState.Error("用户名称不能为空")
+            _updateState.value = AccountUpdateState.Error(context.getString(R.string.account_error_name_empty))
             return
         }
         viewModelScope.launch {

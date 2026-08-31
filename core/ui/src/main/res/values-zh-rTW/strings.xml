@@ -365,4 +365,25 @@
     <string name="player_long_press_boost">长按加速 2x</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
+    <!-- G2：四个 feature 模块硬编码中文抽取 -->
+    <string name="favorite_delete_confirm_message">確定刪除 \"%1$s\" 嗎？</string>
+    <string name="favorite_batch_count">%1$d 個收藏</string>
+    <string name="login_tab_password">帳號密碼</string>
+    <string name="login_tab_webview">WebView 登入</string>
+    <string name="login_tab_cookie">手動 Cookie</string>
+    <string name="login_cloudflare_hint">若遇到 Cloudflare 驗證或登入失敗，請切換到 WebView 登入。</string>
+    <string name="login_switch_to_webview">一鍵切換到 WebView 登入</string>
+    <string name="login_logging_in">登入中...</string>
+    <string name="login_page_loading">正在載入登入頁...</string>
+    <string name="login_manual_cookie_title">手動貼上 Cookie</string>
+    <string name="login_manual_cookie_desc">在瀏覽器登入官網後，開啟開發者工具複製 Cookie 貼到這裡。\n格式：laravel_session=xxx; XSRF-TOKEN=yyy</string>
+    <string name="login_cookie_label">Cookie 字串</string>
+    <string name="login_saving">儲存中...</string>
+    <string name="login_save_and_login">儲存並登入</string>
+    <string name="login_cookie_invalid">儲存失敗，請檢查 Cookie 格式</string>
+    <string name="account_error_not_logged_in">尚未登入，無法檢視帳戶資料</string>
+    <string name="account_error_name_empty">使用者名稱不能為空</string>
+    <string name="diagnostics_error_title">診斷異常</string>
+    <string name="diagnostics_error_detail">執行診斷時發生錯誤：%1$s</string>
+    <string name="diagnostics_error_suggestion">請稍後再試</string>
 </resources>

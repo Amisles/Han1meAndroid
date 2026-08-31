@@ -365,4 +365,25 @@
     <string name="player_long_press_boost">长按加速 2x</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
+    <!-- G2：四个 feature 模块硬编码中文抽取 -->
+    <string name="favorite_delete_confirm_message">「%1$s」を削除しますか？</string>
+    <string name="favorite_batch_count">%1$d 件のお気に入り</string>
+    <string name="login_tab_password">メールアドレス</string>
+    <string name="login_tab_webview">WebView ログイン</string>
+    <string name="login_tab_cookie">手動 Cookie</string>
+    <string name="login_cloudflare_hint">Cloudflare 認証やログインに失敗する場合は、WebView ログインに切り替えてください。</string>
+    <string name="login_switch_to_webview">WebView ログインに切り替える</string>
+    <string name="login_logging_in">ログイン中...</string>
+    <string name="login_page_loading">ログインページを読み込み中...</string>
+    <string name="login_manual_cookie_title">Cookie を貼り付け</string>
+    <string name="login_manual_cookie_desc">ブラウザで公式サイトにログイン後、開発者ツールを開いて Cookie をコピーし、ここに貼り付けてください。\n形式：laravel_session=xxx; XSRF-TOKEN=yyy</string>
+    <string name="login_cookie_label">Cookie 文字列</string>
+    <string name="login_saving">保存中...</string>
+    <string name="login_save_and_login">保存してログイン</string>
+    <string name="login_cookie_invalid">保存に失敗しました。Cookie の形式を確認してください</string>
+    <string name="account_error_not_logged_in">未ログインのため、アカウント情報を表示できません</string>
+    <string name="account_error_name_empty">ユーザー名を空にすることはできません</string>
+    <string name="diagnostics_error_title">診断エラー</string>
+    <string name="diagnostics_error_detail">診断の実行中にエラーが発生しました：%1$s</string>
+    <string name="diagnostics_error_suggestion">しばらくしてからもう一度お試しください</string>
 </resources>
