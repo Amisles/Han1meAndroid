@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -145,6 +146,9 @@ private val Int.isLandscapeOrientation: Boolean
 // 长视频阈值
 private const val LONG_VIDEO_MS = 15L * 60 * 1000
 
+// 控件隐藏时贴在播放器底部的简易进度条高度
+private val MINI_PROGRESS_HEIGHT = 3.dp
+
 // ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
 
@@ -171,7 +175,9 @@ private fun formatTime(ms: Long): String {
 @Composable
 private fun PlaybackProgressBar(
     exoPlayer: ExoPlayer,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // 用户点击 / 拖动进度条时回调：外层手势据此判定本次触摸落在控件上，不做「切换控件显隐」
+    onSeekInteract: () -> Unit = {}
 ) {
     var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var duration by remember { mutableLongStateOf(exoPlayer.duration) }
@@ -215,6 +221,7 @@ private fun PlaybackProgressBar(
             onValueChange = { value ->
                 isDragging = true
                 currentPosition = (value * duration).toLong()
+                onSeekInteract()
             },
             onValueChangeFinished = {
                 isDragging = false
@@ -255,6 +262,43 @@ private fun PlaybackProgressBar(
                     )
                 }
             }
+        )
+    }
+}
+
+/**
+ * 控件隐藏时贴在播放器最底部的简易进度条。
+ *
+ * 只展示当前播放进度、不接受任何交互：不加 clickable，点击会穿透到外层手势，
+ * 等同于点击空白区域唤回控件，因此不需要可拖动 / 缓冲进度等能力。
+ * 轮询仅在自身显示在组合中时才运行，控件显示时无额外开销。
+ */
+@Composable
+private fun MiniPlaybackProgress(
+    exoPlayer: ExoPlayer,
+    modifier: Modifier = Modifier
+) {
+    var progress by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val d = exoPlayer.duration
+            progress = if (d > 0) (exoPlayer.currentPosition.toFloat() / d).coerceIn(0f, 1f) else 0f
+            delay(if (exoPlayer.isPlaying) 500 else 1000)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(MINI_PROGRESS_HEIGHT)
+            .background(Color.White.copy(alpha = 0.25f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(progress)
+                .background(Color.White)
         )
     }
 }
@@ -594,6 +638,16 @@ fun VideoPlayer(
         onFullscreenToggle(!isFullscreen)
     }
 
+    /**
+     * 标记「本次触摸落在播放器控件上」。
+     *
+     * 外层手势在抬起时读取该标记：为真则跳过「切换控件显隐」，使点击控件只执行控件自身逻辑。
+     * 隐藏途径由此收敛为两种——点击空白区域，或空闲超时。
+     */
+    fun markControlTap() {
+        isControlTap = true
+    }
+
     fun buildPipParams(): PictureInPictureParams {
         val ratio = if (playerWidth > 0f && playerHeight > 0f) {
             Rational(playerWidth.toInt().coerceAtLeast(1), playerHeight.toInt().coerceAtLeast(1))
@@ -813,6 +867,9 @@ fun VideoPlayer(
                             initialized = true
                             longPressFired = false
                             preBoostSpeed = playbackSpeedRef.value
+                            // 每次手势开始都清空「落在控件上」标记：控件的 onClick 要到抬起时才置位，
+                            // 若上一次手势因轻微移动没走到判定分支，残留的标记会吞掉下一次空白点击
+                            isControlTap = false
                             // 手势开始即重置自动隐藏倒计时
                             controlsActivityRef.value = controlsActivityRef.value + 1
                             // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，松手/移动/缩放即取消
@@ -948,6 +1005,16 @@ fun VideoPlayer(
             )
         }
 
+        // 控件隐藏时，底部显示一条仅用于展示进度的简易进度条
+        if (!isControlsVisible && !isInPip) {
+            MiniPlaybackProgress(
+                exoPlayer = exoPlayer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+            )
+        }
+
         if (isControlsVisible && !isInPip) {
             Box(
                 modifier = Modifier
@@ -966,7 +1033,10 @@ fun VideoPlayer(
 
             if (!isPlaying && !isBuffering && isReady) {
                 IconButton(
-                    onClick = { togglePlayPause() },
+                    onClick = {
+                        markControlTap()
+                        togglePlayPause()
+                    },
                     modifier = Modifier
                         .size(48.dp)
                         .align(Alignment.Center)
@@ -988,7 +1058,10 @@ fun VideoPlayer(
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 IconButton(
-                    onClick = { seekBackward() },
+                    onClick = {
+                        markControlTap()
+                        seekBackward()
+                    },
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -1000,7 +1073,10 @@ fun VideoPlayer(
                 }
 
                 IconButton(
-                    onClick = { togglePlayPause() },
+                    onClick = {
+                        markControlTap()
+                        togglePlayPause()
+                    },
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -1012,7 +1088,10 @@ fun VideoPlayer(
                 }
 
                 IconButton(
-                    onClick = { seekForward() },
+                    onClick = {
+                        markControlTap()
+                        seekForward()
+                    },
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -1025,11 +1104,15 @@ fun VideoPlayer(
 
                 PlaybackProgressBar(
                     exoPlayer = exoPlayer,
+                    onSeekInteract = { markControlTap() },
                     modifier = Modifier.weight(1f)
                 )
 
                 IconButton(
-                    onClick = { toggleMute() },
+                    onClick = {
+                        markControlTap()
+                        toggleMute()
+                    },
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -1044,7 +1127,7 @@ fun VideoPlayer(
 
                 IconButton(
                     onClick = {
-                        isControlTap = true
+                        markControlTap()
                         showSpeedMenu = !showSpeedMenu
                         showQualityMenu = false
                         showMoreMenu = false
@@ -1071,7 +1154,7 @@ fun VideoPlayer(
                 if (sortedSources.isNotEmpty()) {
                     IconButton(
                     onClick = {
-                        isControlTap = true
+                        markControlTap()
                         showQualityMenu = !showQualityMenu
                         showSpeedMenu = false
                         showMoreMenu = false
@@ -1097,7 +1180,10 @@ fun VideoPlayer(
                 }
 
                 IconButton(
-                    onClick = { toggleFullscreen() },
+                    onClick = {
+                        markControlTap()
+                        toggleFullscreen()
+                    },
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
@@ -1115,7 +1201,7 @@ fun VideoPlayer(
                 Box {
                     IconButton(
                         onClick = {
-                            isControlTap = true
+                            markControlTap()
                             showMoreMenu = !showMoreMenu
                             showSpeedMenu = false
                             showQualityMenu = false
@@ -1209,7 +1295,7 @@ fun VideoPlayer(
                     modifier = Modifier
                         .fillMaxSize()
                     .clickable {
-                        isControlTap = true
+                        markControlTap()
                         showSpeedMenu = false
                         showQualityMenu = false
                     }
@@ -1249,7 +1335,7 @@ fun VideoPlayer(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                             .clickable {
-                                isControlTap = true
+                                markControlTap()
                                 setPlaybackSpeed(speed)
                             },
                             textAlign = TextAlign.Center
@@ -1293,7 +1379,7 @@ fun VideoPlayer(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                             .clickable {
-                                isControlTap = true
+                                markControlTap()
                                 switchQuality(source)
                             },
                             textAlign = TextAlign.Center
