@@ -39,6 +39,7 @@ object Preferences {
     private const val SP_PLAYBACK_SPEED = "playback_speed"
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
+    private const val SP_AUTO_FULLSCREEN_LANDSCAPE = "auto_fullscreen_landscape"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
@@ -87,6 +88,10 @@ object Preferences {
     private val _autoPlayNextFlow = MutableStateFlow(true)
     val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
+    // 横屏自动全屏：设备转到横屏时播放器自动进入全屏，转回竖屏自动退出
+    private val _autoFullscreenLandscapeFlow = MutableStateFlow(true)
+    val autoFullscreenLandscapeFlow: StateFlow<Boolean> = _autoFullscreenLandscapeFlow.asStateFlow()
+
     // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
     private val _downloadStoragePathFlow = MutableStateFlow("")
     val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
@@ -111,6 +116,7 @@ object Preferences {
         _playbackSpeedFlow.value = sp.getFloat(SP_PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = sp.getString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = sp.getBoolean(SP_AUTO_PLAY_NEXT, true)
+        _autoFullscreenLandscapeFlow.value = sp.getBoolean(SP_AUTO_FULLSCREEN_LANDSCAPE, true)
         _downloadStoragePathFlow.value = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
     }
 
@@ -227,6 +233,7 @@ object Preferences {
     val playbackSpeed: Float get() = _playbackSpeedFlow.value
     val preferredQuality: String get() = _preferredQualityFlow.value
     val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
+    val autoFullscreenLandscape: Boolean get() = _autoFullscreenLandscapeFlow.value
 
     fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
@@ -315,6 +322,14 @@ object Preferences {
     fun setAutoPlayNext(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled
+    }
+
+    /**
+     * 横屏自动全屏开关。开启后设备转向横屏时播放器自动进入全屏，转回竖屏自动退出。
+     */
+    fun setAutoFullscreenLandscape(enabled: Boolean) {
+        sp.edit { putBoolean(SP_AUTO_FULLSCREEN_LANDSCAPE, enabled) }
+        _autoFullscreenLandscapeFlow.value = enabled
     }
 
     /**

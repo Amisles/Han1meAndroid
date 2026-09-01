@@ -85,6 +85,7 @@
     <string name="detail_download_added">已新增下載任務</string>
     <string name="detail_download_button">下載此影片</string>
     <string name="detail_auto_play_next">連播</string>
+    <string name="detail_auto_fullscreen">橫屏全屏</string>
     <string name="detail_more">更多</string>
     <string name="detail_pip">畫中畫</string>
 

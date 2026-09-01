@@ -138,6 +138,7 @@ fun DetailScreen(
     val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
     val autoPlayNext by Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
+    val autoFullscreen by Preferences.autoFullscreenLandscapeFlow.collectAsStateWithLifecycle()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
@@ -741,6 +742,9 @@ fun DetailScreen(
                             onPlaybackEnded = { handlePlaybackEnded() },
                             autoPlayNext = autoPlayNext,
                             onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                            autoFullscreen = autoFullscreen,
+                            onAutoFullscreenChanged = { Preferences.setAutoFullscreenLandscape(it) },
+                            autoFullscreenEnabled = false,
                             modifier = Modifier
                         )
                     } else {
@@ -848,6 +852,8 @@ fun DetailScreen(
                 onPlaybackEnded = { handlePlaybackEnded() },
                 autoPlayNext = autoPlayNext,
                 onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                autoFullscreen = autoFullscreen,
+                onAutoFullscreenChanged = { Preferences.setAutoFullscreenLandscape(it) },
                 modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
             )
         } else {
