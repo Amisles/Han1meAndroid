@@ -33,8 +33,9 @@ import kotlinx.coroutines.launch
  * 1. SimpleCache 磁盘缓存 —— 再次进入同一视频秒开；卡顿后播放器可从本地缓存补数据，避免无限转圈。
  * 2. 浏览器 User-Agent 的 HTTP 数据源 —— 部分 CDN 会对默认 UA（ExoPlayer/...）做单连接限速，
  *    伪装成 Chrome Mobile 可绕过，拉到与 Edge 同档的带宽。
- * 3. 网络感知的 LoadControl —— 按 Wi-Fi / 移动数据 / 弱网动态切换缓冲区间（见 §5）。
- * 4. 下一集预缓存预热 —— [warmCacheFor] 在 IO 线程把相关视频首段写入 SimpleCache，进入即命中本地（见 §1）。
+     * 3. 网络感知的 LoadControl —— 按 Wi-Fi / 移动数据 / 弱网动态切换缓冲区间（见 §5）。
+     * 4. 下一集预缓存预热 —— [warmCacheFor] 在 IO 线程把相关视频首段写入 SimpleCache，进入即命中本地（见 §1）。
+     * 5. 视频反防盗链 Referer —— 直链请求经 [VideoAntiHotlink] 注入官网 Referer，绕过视频 CDN 的 Referer 防盗链（仅接受官网域名 Referer，否则 403）。
  *
  * SimpleCache 必须是进程级单例（同一缓存目录不能被实例化两次），故用 AtomicReference 缓存。
  */
@@ -101,11 +102,7 @@ object ExoPlayerFactory {
         warmupScope.launch {
             try {
                 val cache = getCache(context)
-                val upstreamFactory = DefaultHttpDataSource.Factory()
-                    .setUserAgent(BROWSER_UA)
-                    .setConnectTimeoutMs(10_000)
-                    .setReadTimeoutMs(10_000)
-                    .setAllowCrossProtocolRedirects(true)
+                val upstreamFactory = buildUpstreamFactory(10_000, 10_000)
                 val dataSource = CacheDataSource.Factory()
                     .setCache(cache)
                     .setUpstreamDataSourceFactory(upstreamFactory)
@@ -169,15 +166,27 @@ object ExoPlayerFactory {
         }
     }
 
+    /**
+     * 构建视频直链的上游 HTTP 数据源工厂，统一注入反 CDN 限速/防盗链策略：
+     * - 浏览器 UA（[BROWSER_UA]）：绕过部分 CDN 对 ExoPlayer 默认 UA 的单连接限速。
+     * - Referer = 设置页「官网网址」（[VideoAntiHotlink.referer]）：绕过视频 CDN 的 Referer 防盗链，
+     *   直链仅接受来自官网域名的 Referer，否则返回 403 导致播放失败。
+     * [connectTimeoutMs]/[readTimeoutMs] 由调用方按场景（预缓存/正片）传入，沿用既有超时策略。
+     */
+    private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int): DefaultHttpDataSource.Factory {
+        return DefaultHttpDataSource.Factory()
+            .setUserAgent(BROWSER_UA)
+            .setConnectTimeoutMs(connectTimeoutMs)
+            .setReadTimeoutMs(readTimeoutMs)
+            .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(mapOf(VideoAntiHotlink.REFERER_HEADER to VideoAntiHotlink.referer))
+    }
+
     fun buildVideoPlayer(context: Context): ExoPlayer {
         val cache = getCache(context)
 
-        // 上游直连数据源：浏览器 UA + 跨协议重定向（部分直链会 http→https 跳转）+ 适度超时。
-        val upstreamFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(BROWSER_UA)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(15_000)
-            .setAllowCrossProtocolRedirects(true)
+        // 上游直连数据源：浏览器 UA + 跨协议重定向（部分直链会 http→https 跳转）+ 适度超时 + 官网 Referer 防盗链。
+        val upstreamFactory = buildUpstreamFactory(15_000, 15_000)
 
         // 缓存数据源包住直连：先读缓存，未命中再走网络并回写；缓存写入异常时回退直连，不中断播放。
         val cacheDataSourceFactory = CacheDataSource.Factory()
