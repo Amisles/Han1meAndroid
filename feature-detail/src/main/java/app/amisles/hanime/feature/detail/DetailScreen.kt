@@ -214,7 +214,7 @@ fun DetailScreen(
     val sizeInfo = currentWindowSizeInfo()
     // 启用条件：平板 + 非全屏 + 非「错误且未加载」致命态（回落到手机错误页）
     val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
-        && !(error != null && videoDetail == null)
+            && !(error != null && videoDetail == null)
 
     // 评论 tab 的懒加载判断：原 Tab onClick 内的判断逻辑随 detailRestItems 抽取上移至此
     val selectTab: (Int) -> Unit = { tab ->
@@ -336,74 +336,74 @@ fun DetailScreen(
             }
         }
     } else {
-    ResponsiveContent {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
-            .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
-    ) {
-    if (!isPlayerFullscreen) {
-        item {
-            Row(
+        ResponsiveContent {
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(horizontal = 15.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
+                    .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
             ) {
-                DetailBackButton(
-                    onBackClick = onBackClick,
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(48.dp)
-                )
+                if (!isPlayerFullscreen) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background)
+                                .padding(horizontal = 15.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            DetailBackButton(
+                                onBackClick = onBackClick,
+                                tint = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (isLoading) {
+                    item(key = "detail_skeleton") {
+                        DetailSkeletonScreen()
+                    }
+                } else if (error != null && videoDetail == null) {
+                    item(key = "detail_error") {
+                        KaomojiErrorView(
+                            message = error,
+                            onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
+                        )
+                    }
+                } else {
+
+                    item(key = "video_player") {
+                        val detail = videoDetail
+                        if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
+                            DetailVideoPlayer(
+                                exoPlayer = exoPlayer,
+                                detail = detail,
+                                initialPositionMs = initialSeekMs,
+                                isFullscreen = isPlayerFullscreen,
+                                onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                                onPlaybackEnded = { handlePlaybackEnded() },
+                                autoPlayNext = autoPlayNext,
+                                autoFullscreen = autoFullscreen,
+                                modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
+                            )
+                        } else {
+                            VideoUnavailableHint(
+                                hasError = error != null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(225.dp)
+                                    .background(Color.Black)
+                            )
+                        }
+                    }
+
+                    videoDetail?.takeIf { !isPlayerFullscreen }?.let { detailRestItems(it, restState, restActions) }
+
+                }
             }
         }
-    }
-
-    if (isLoading) {
-        item(key = "detail_skeleton") {
-            DetailSkeletonScreen()
-        }
-    } else if (error != null && videoDetail == null) {
-        item(key = "detail_error") {
-            KaomojiErrorView(
-                message = error,
-                onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
-            )
-        }
-    } else {
-
-    item(key = "video_player") {
-        val detail = videoDetail
-        if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
-            DetailVideoPlayer(
-                exoPlayer = exoPlayer,
-                detail = detail,
-                initialPositionMs = initialSeekMs,
-                isFullscreen = isPlayerFullscreen,
-                onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                onPlaybackEnded = { handlePlaybackEnded() },
-                autoPlayNext = autoPlayNext,
-                autoFullscreen = autoFullscreen,
-                modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
-            )
-        } else {
-            VideoUnavailableHint(
-                hasError = error != null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(225.dp)
-                    .background(Color.Black)
-            )
-        }
-    }
-
-    videoDetail?.takeIf { !isPlayerFullscreen }?.let { detailRestItems(it, restState, restActions) }
-
-    }
-    }
-    }
     }
 
     if (showDownloadDialog) {
@@ -425,25 +425,25 @@ fun DetailScreen(
     }
 
 
-SnackbarHost(
-    hostState = snackbarHostState,
-    modifier = Modifier.padding(bottom = 16.dp)
-) { data ->
-    Snackbar(
-        snackbarData = data,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        shape = RoundedCornerShape(8.dp)
-    )
-}
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.padding(bottom = 16.dp)
+    ) { data ->
+        Snackbar(
+            snackbarData = data,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            shape = RoundedCornerShape(8.dp)
+        )
+    }
 
-if (showLoginUnsupportedDialog) {
-    LoginUnsupportedDialog(
-        onGoToSettings = {
-            showLoginUnsupportedDialog = false
-            onNavigateToSettings()
-        },
-        onDismiss = { showLoginUnsupportedDialog = false }
-    )
-}
+    if (showLoginUnsupportedDialog) {
+        LoginUnsupportedDialog(
+            onGoToSettings = {
+                showLoginUnsupportedDialog = false
+                onNavigateToSettings()
+            },
+            onDismiss = { showLoginUnsupportedDialog = false }
+        )
+    }
 }

@@ -139,9 +139,9 @@ private fun classifyOrientationLandscape(orientation: Int): Boolean? = when {
  */
 private val Int.isLandscapeOrientation: Boolean
     get() = this == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+            || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+            || this == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            || this == ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
 
 // 长视频阈值
 private const val LONG_VIDEO_MS = 15L * 60 * 1000
@@ -426,76 +426,76 @@ fun VideoPlayer(
 
     val listener = remember {
         object : Player.Listener {
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            isBuffering = playbackState == Player.STATE_BUFFERING
-            when (playbackState) {
-                Player.STATE_BUFFERING -> {
-                    // 仅"播放中"的缓冲视为 rebuffer
-                    if (isPlaying && !autoSwitched) {
-                        rebufferCount++
-                        if (rebufferCount >= 2) {
-                            val sources = sourcesRef.value
-                            val idx = sources.indexOfFirst { it.url == currentSourceUrl }
-                            if (idx > 0 && !isSwitchingQuality) {
-                                switchQuality(sources[idx - 1]) // 切到更低画质
-                                rebufferCount = 0
-                                autoSwitched = true
-                                stableTicks = 0
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering = playbackState == Player.STATE_BUFFERING
+                when (playbackState) {
+                    Player.STATE_BUFFERING -> {
+                        // 仅"播放中"的缓冲视为 rebuffer
+                        if (isPlaying && !autoSwitched) {
+                            rebufferCount++
+                            if (rebufferCount >= 2) {
+                                val sources = sourcesRef.value
+                                val idx = sources.indexOfFirst { it.url == currentSourceUrl }
+                                if (idx > 0 && !isSwitchingQuality) {
+                                    switchQuality(sources[idx - 1]) // 切到更低画质
+                                    rebufferCount = 0
+                                    autoSwitched = true
+                                    stableTicks = 0
+                                }
                             }
                         }
                     }
-                }
-                Player.STATE_READY -> {
-                    isReady = true
-                    isSwitchingQuality = false
-                    rebufferCount = 0
-                    // 续播：首帧就绪且有有效续播点（>5s 且未接近结尾）时跳转到上次位置
-                    if (!initialSeekAppliedRef.value && initialPositionMsRef.value > 5000) {
-                        val dur = exoPlayer.duration
-                        if (dur <= 0 || initialPositionMsRef.value < dur - 5000) {
-                            exoPlayer.seekTo(initialPositionMsRef.value)
+                    Player.STATE_READY -> {
+                        isReady = true
+                        isSwitchingQuality = false
+                        rebufferCount = 0
+                        // 续播：首帧就绪且有有效续播点（>5s 且未接近结尾）时跳转到上次位置
+                        if (!initialSeekAppliedRef.value && initialPositionMsRef.value > 5000) {
+                            val dur = exoPlayer.duration
+                            if (dur <= 0 || initialPositionMsRef.value < dur - 5000) {
+                                exoPlayer.seekTo(initialPositionMsRef.value)
+                            }
+                            initialSeekAppliedRef.value = true
                         }
-                        initialSeekAppliedRef.value = true
-                    }
-                    // 解码优化：长视频保持解码器热身，降低切回前台解码延迟
-                    exoPlayer.setForegroundMode(exoPlayer.duration > LONG_VIDEO_MS)
-                    // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
-                    if (autoSwitched) {
-                        stableTicks++
-                        val sources = sourcesRef.value
-                        val idx = sources.indexOfFirst { it.url == currentSourceUrl }
-                        if (stableTicks >= STABLE_TICKS_FOR_UPGRADE && idx in 0 until sources.lastIndex) {
-                            switchQuality(sources[idx + 1])
-                            autoSwitched = false
+                        // 解码优化：长视频保持解码器热身，降低切回前台解码延迟
+                        exoPlayer.setForegroundMode(exoPlayer.duration > LONG_VIDEO_MS)
+                        // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
+                        if (autoSwitched) {
+                            stableTicks++
+                            val sources = sourcesRef.value
+                            val idx = sources.indexOfFirst { it.url == currentSourceUrl }
+                            if (stableTicks >= STABLE_TICKS_FOR_UPGRADE && idx in 0 until sources.lastIndex) {
+                                switchQuality(sources[idx + 1])
+                                autoSwitched = false
+                                stableTicks = 0
+                            }
+                        } else {
                             stableTicks = 0
                         }
-                    } else {
-                        stableTicks = 0
+                    }
+                    Player.STATE_ENDED -> {
+                        // 播放结束：通知外层（如触发下一集自动播放）
+                        onPlaybackEndedRef.value.invoke()
                     }
                 }
-                Player.STATE_ENDED -> {
-                    // 播放结束：通知外层（如触发下一集自动播放）
-                    onPlaybackEndedRef.value.invoke()
-                }
+            }
+
+            //淡出海报占位
+            override fun onRenderedFirstFrame() {
+                showPoster = false
+            }
+
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                super.onPlayerError(error)
+                isBuffering = false
+                isReady = true
+                isSwitchingQuality = false
             }
         }
-
-        //淡出海报占位
-        override fun onRenderedFirstFrame() {
-            showPoster = false
-        }
-
-        override fun onIsPlayingChanged(playing: Boolean) {
-            isPlaying = playing
-        }
-
-        override fun onPlayerError(error: PlaybackException) {
-            super.onPlayerError(error)
-            isBuffering = false
-            isReady = true
-            isSwitchingQuality = false
-        }
-    }
     }
 
     DisposableEffect(isPlaying) {
@@ -771,32 +771,32 @@ fun VideoPlayer(
                         var seekStartPos = 0L
                         var lastPinch = 0f
                         var downX = 0f
-                    var downY = 0f
-                    var moved = false
-                    var initialized = false
-                    // 长按 2x 加速：是否已触发、被覆盖前的原始倍速
-                    var longPressFired = false
-                    var preBoostSpeed = 1f
-                    // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发 2x
-                    var longPressJob: Job? = null
+                        var downY = 0f
+                        var moved = false
+                        var initialized = false
+                        // 长按 2x 加速：是否已触发、被覆盖前的原始倍速
+                        var longPressFired = false
+                        var preBoostSpeed = 1f
+                        // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发 2x
+                        var longPressJob: Job? = null
 
                         while (true) {
                             val event = awaitPointerEvent()
                             val presses = event.changes.filter { it.pressed }
                             pointerCount = presses.size
-                        if (pointerCount == 0) {
-                            // 所有手指抬起：结束本次手势
-                            if (longPressFired) {
-                                // 长按加速结束：恢复原始倍速，不触发点击切换/快进退
+                            if (pointerCount == 0) {
+                                // 所有手指抬起：结束本次手势
+                                if (longPressFired) {
+                                    // 长按加速结束：恢复原始倍速，不触发点击切换/快进退
+                                    longPressJob?.cancel()
+                                    setLongPressBoost(false, preBoostSpeed)
+                                    longPressFired = false
+                                    gestureHint = null
+                                    break
+                                }
+                                // 普通抬起（未触发长按）：取消尚未到期的定时器，确保快速点击绝不误加速
                                 longPressJob?.cancel()
-                                setLongPressBoost(false, preBoostSpeed)
-                                longPressFired = false
-                                gestureHint = null
-                                break
-                            }
-                            // 普通抬起（未触发长按）：取消尚未到期的定时器，确保快速点击绝不误加速
-                            longPressJob?.cancel()
-                            if (!moved && !isZoom) {
+                                if (!moved && !isZoom) {
                                     // 视为一次点击
                                     val now = System.currentTimeMillis()
                                     if (now - lastTapTime < 300L) {
@@ -809,19 +809,19 @@ fun VideoPlayer(
                                             else
                                                 context.getString(R.string.player_forward_15s)
                                         }
-                    } else {
-                        lastTapTime = now
-                        if (isControlTap) {
-                            // 单击落在控件上：交由控件自身的 onClick 处理，手势不切换控制栏显隐、也不关闭菜单
-                            isControlTap = false
-                            lastTapTime = 0L
-                        } else {
-                            isControlsVisible = !isControlsVisible
-                            showSpeedMenu = false
-                            showQualityMenu = false
-                            showMoreMenu = false
-                        }
-                    }
+                                    } else {
+                                        lastTapTime = now
+                                        if (isControlTap) {
+                                            // 单击落在控件上：交由控件自身的 onClick 处理，手势不切换控制栏显隐、也不关闭菜单
+                                            isControlTap = false
+                                            lastTapTime = 0L
+                                        } else {
+                                            isControlsVisible = !isControlsVisible
+                                            showSpeedMenu = false
+                                            showQualityMenu = false
+                                            showMoreMenu = false
+                                        }
+                                    }
                                 }
                                 if (dragMode == "seek") {
                                     exoPlayer.seekTo(seekPreview)
@@ -859,33 +859,33 @@ fun VideoPlayer(
                                 val c = presses[0]
                                 val x = c.position.x
                                 val y = c.position.y
-                        if (!initialized) {
-                            downX = x
-                            downY = y
-                            lastX = x
-                            lastY = y
-                            initialized = true
-                            longPressFired = false
-                            preBoostSpeed = playbackSpeedRef.value
-                            // 每次手势开始都清空「落在控件上」标记：控件的 onClick 要到抬起时才置位，
-                            // 若上一次手势因轻微移动没走到判定分支，残留的标记会吞掉下一次空白点击
-                            isControlTap = false
-                            // 手势开始即重置自动隐藏倒计时
-                            controlsActivityRef.value = controlsActivityRef.value + 1
-                            // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，松手/移动/缩放即取消
-                            longPressJob = gestureScope.launch {
-                                delay(1000L)
-                                if (!longPressFired && !moved && !isZoom && dragMode == null) {
-                                    longPressFired = true
-                                    setLongPressBoost(true, preBoostSpeed)
-                                    showSpeedMenu = false
-                                    showQualityMenu = false
-                                    gestureHint = context.getString(R.string.player_long_press_boost)
+                                if (!initialized) {
+                                    downX = x
+                                    downY = y
+                                    lastX = x
+                                    lastY = y
+                                    initialized = true
+                                    longPressFired = false
+                                    preBoostSpeed = playbackSpeedRef.value
+                                    // 每次手势开始都清空「落在控件上」标记：控件的 onClick 要到抬起时才置位，
+                                    // 若上一次手势因轻微移动没走到判定分支，残留的标记会吞掉下一次空白点击
+                                    isControlTap = false
+                                    // 手势开始即重置自动隐藏倒计时
+                                    controlsActivityRef.value = controlsActivityRef.value + 1
+                                    // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，松手/移动/缩放即取消
+                                    longPressJob = gestureScope.launch {
+                                        delay(1000L)
+                                        if (!longPressFired && !moved && !isZoom && dragMode == null) {
+                                            longPressFired = true
+                                            setLongPressBoost(true, preBoostSpeed)
+                                            showSpeedMenu = false
+                                            showQualityMenu = false
+                                            gestureHint = context.getString(R.string.player_long_press_boost)
+                                        }
+                                    }
+                                    event.changes.forEach { it.consume() }
+                                    continue
                                 }
-                            }
-                            event.changes.forEach { it.consume() }
-                            continue
-                        }
                                 if (dragMode == null) {
                                     accDx += x - lastX
                                     accDy += y - lastY
@@ -1153,12 +1153,12 @@ fun VideoPlayer(
 
                 if (sortedSources.isNotEmpty()) {
                     IconButton(
-                    onClick = {
-                        markControlTap()
-                        showQualityMenu = !showQualityMenu
-                        showSpeedMenu = false
-                        showMoreMenu = false
-                    },
+                        onClick = {
+                            markControlTap()
+                            showQualityMenu = !showQualityMenu
+                            showSpeedMenu = false
+                            showMoreMenu = false
+                        },
                         modifier = Modifier
                             .size(36.dp)
                             .onGloballyPositioned { coords ->
@@ -1294,11 +1294,11 @@ fun VideoPlayer(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                    .clickable {
-                        markControlTap()
-                        showSpeedMenu = false
-                        showQualityMenu = false
-                    }
+                        .clickable {
+                            markControlTap()
+                            showSpeedMenu = false
+                            showQualityMenu = false
+                        }
                 )
             }
 
@@ -1334,10 +1334,10 @@ fun VideoPlayer(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                            .clickable {
-                                markControlTap()
-                                setPlaybackSpeed(speed)
-                            },
+                                .clickable {
+                                    markControlTap()
+                                    setPlaybackSpeed(speed)
+                                },
                             textAlign = TextAlign.Center
                         )
                     }
@@ -1378,10 +1378,10 @@ fun VideoPlayer(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                            .clickable {
-                                markControlTap()
-                                switchQuality(source)
-                            },
+                                .clickable {
+                                    markControlTap()
+                                    switchQuality(source)
+                                },
                             textAlign = TextAlign.Center
                         )
                     }
