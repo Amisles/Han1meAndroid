@@ -23,10 +23,7 @@ import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
 
 /**
  * 详情页播放器：把两处（平板左半屏 / 手机单列）重复的 VideoPlayer 调用收拢为一处。
- * 画质、倍速、连播、横屏全屏等偏好统一落盘到 Preferences，行为与拆分前完全一致。
- *
- * [autoFullscreenEnabled] 默认跟随偏好 [autoFullscreen]；平板分栏下由调用方传 false，
- * 避免平板常态横持时误触发自动全屏（菜单开关仍显示用户真实偏好）。
+ * 画质、倍速、连播等偏好统一落盘到 Preferences，行为与拆分前完全一致。
  */
 @Composable
 internal fun DetailVideoPlayer(
@@ -37,8 +34,6 @@ internal fun DetailVideoPlayer(
     onFullscreenToggle: (Boolean) -> Unit,
     onPlaybackEnded: () -> Unit,
     autoPlayNext: Boolean,
-    autoFullscreen: Boolean,
-    autoFullscreenEnabled: Boolean = autoFullscreen,
     modifier: Modifier = Modifier
 ) {
     VideoPlayer(
@@ -55,9 +50,6 @@ internal fun DetailVideoPlayer(
         onPlaybackEnded = { onPlaybackEnded() },
         autoPlayNext = autoPlayNext,
         onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
-        autoFullscreen = autoFullscreen,
-        onAutoFullscreenChanged = { Preferences.setAutoFullscreenLandscape(it) },
-        autoFullscreenEnabled = autoFullscreenEnabled,
         modifier = modifier
     )
 }

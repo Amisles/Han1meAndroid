@@ -8,7 +8,6 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.util.Rational
-import android.view.OrientationEventListener
 import android.view.WindowManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -133,23 +132,6 @@ private fun formatTime(ms: Long): String {
         String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 }
-
-// 把传感器角度归类为横屏 / 竖屏；临界区（设备平放或斜持）返回 null 交由下次回调判定，避免角度抖动引发全屏反复切换
-private fun classifyOrientationLandscape(orientation: Int): Boolean? = when {
-    orientation in 55..125 -> true                       // 设备顶部朝左
-    orientation in 235..305 -> true                      // 设备顶部朝右
-    orientation <= 35 || orientation >= 325 -> false     // 正向竖持
-    orientation in 145..215 -> false                     // 倒置竖持
-    else -> null
-}
-
-// 是否为任一「锁定横屏」方向常量。全屏是本应用唯一会锁屏方向的地方，快照到这些值说明正落在全屏中
-// 不能作为退出全屏时的恢复目标（否则退出后页面会永远停在横屏）
-private val Int.isLandscapeOrientation: Boolean
-    get() = this == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 常量
@@ -318,18 +300,13 @@ fun VideoPlayer(
     onQualityChanged: (String) -> Unit = {},
     onPlaybackEnded: () -> Unit = {},
     autoPlayNext: Boolean = true,
-    onAutoPlayNextChanged: (Boolean) -> Unit = {},
-    autoFullscreen: Boolean = true,
-    onAutoFullscreenChanged: (Boolean) -> Unit = {},
-    // 平板分栏等不适合自动全屏的场景由调用方传 false
-    autoFullscreenEnabled: Boolean = autoFullscreen
+    onAutoPlayNextChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     // 退出全屏时恢复的屏幕方向
     val initialOrientation = remember(activity) {
-        activity?.requestedOrientation?.takeUnless { it.isLandscapeOrientation }
-            ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
     val initialBarsBehavior = remember(activity) {
         activity?.window?.let { w ->
@@ -376,9 +353,6 @@ fun VideoPlayer(
 
     // 画中画状态
     var isInPip by remember { mutableStateOf(false) }
-
-    // 上一次判定出的设备方向（null = 尚未确定）
-    var lastOrientationLandscape by remember { mutableStateOf<Boolean?>(null) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val sortedSources = remember(videoSources) {
@@ -670,35 +644,6 @@ fun VideoPlayer(
                 try { activity.requestedOrientation = initialOrientation } catch (_: Exception) {}
             }
         }
-    }
-
-    // 用 ref 持有最新的方向翻转处理器
-    val orientationFlipRef = rememberUpdatedState { landscape: Boolean ->
-        if (!isInPip) {
-            if (landscape && !isFullscreen) onFullscreenToggle(true)
-            else if (!landscape && isFullscreen) onFullscreenToggle(false)
-        }
-    }
-
-    // 横屏自动全屏：设备由竖转横进入全屏，由横转竖退出全屏
-    DisposableEffect(activity, autoFullscreenEnabled) {
-        if (!autoFullscreenEnabled) return@DisposableEffect onDispose {}
-        val act = activity ?: return@DisposableEffect onDispose {}
-        val listener = object : OrientationEventListener(act) {
-            override fun onOrientationChanged(orientation: Int) {
-                if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) return
-                val landscape = classifyOrientationLandscape(orientation) ?: return
-                val previous = lastOrientationLandscape
-                if (previous == landscape) return
-                lastOrientationLandscape = landscape
-                if (previous == null && !landscape) return
-                orientationFlipRef.value(landscape)
-            }
-        }
-        // 重新启用时清空上次方向，避免开关关闭期间转过的屏被下一次回调误判为翻转
-        lastOrientationLandscape = null
-        listener.enable()
-        onDispose { listener.disable() }
     }
 
     // ── 画中画 ───────────────────────────────────────────────────────────────
@@ -1239,28 +1184,6 @@ fun VideoPlayer(
                                 )
                             },
                             onClick = { onAutoPlayNextChanged(!autoPlayNext) },
-                            modifier = Modifier.height(40.dp)
-                        )
-
-                        // 横屏自动全屏：设备转横屏自动进入全屏，转回竖屏自动退出
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = stringResource(R.string.detail_auto_fullscreen),
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
-                            trailingIcon = {
-                                Switch(
-                                    checked = autoFullscreen,
-                                    onCheckedChange = { onAutoFullscreenChanged(it) },
-                                    modifier = Modifier.scale(0.78f)
-                                )
-                            },
-                            onClick = { onAutoFullscreenChanged(!autoFullscreen) },
                             modifier = Modifier.height(40.dp)
                         )
 

@@ -85,7 +85,6 @@
     <string name="detail_download_added">Download task added</string>
     <string name="detail_download_button">Download Video</string>
     <string name="detail_auto_play_next">Auto-play</string>
-    <string name="detail_auto_fullscreen">Auto-fullscreen</string>
     <string name="detail_more">More</string>
     <string name="detail_pip">Picture-in-Picture</string>
 
