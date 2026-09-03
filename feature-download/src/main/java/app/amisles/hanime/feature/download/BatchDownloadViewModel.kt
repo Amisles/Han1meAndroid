@@ -42,7 +42,8 @@ data class BatchDownloadState(
     val hasNextPage: Boolean = false,
     val selectedCount: Int = 0,
     val isDownloading: Boolean = false,
-    val downloadingVideoIds: Set<String> = emptySet()
+    val downloadingVideoIds: Set<String> = emptySet(),
+    val downloadMessage: String? = null
 )
 
 @HiltViewModel
@@ -379,7 +380,7 @@ class BatchDownloadViewModel @Inject constructor(
         }
 
         if (selectedVideos.isEmpty()) {
-            _state.update { it.copy(error = context.getString(R.string.batch_no_videos)) }
+            _state.update { it.copy(downloadMessage = context.getString(R.string.batch_no_videos)) }
             return
         }
 
@@ -390,21 +391,22 @@ class BatchDownloadViewModel @Inject constructor(
         val downloadingIds = downloadableVideos.map { it.videoId }.toSet()
 
         if (downloadingIds.isEmpty()) {
-            _state.update { it.copy(error = context.getString(R.string.batch_qualities_not_loaded)) }
+            _state.update { it.copy(downloadMessage = context.getString(R.string.batch_qualities_not_loaded)) }
             return
         }
 
-        // G12：被跳过的视频需要 UI 反馈，否则「已选 N 个」与实际入队数不一致且用户无从得知
+        // 被跳过视频UI反馈
         val skippedCount = selectedVideos.size - downloadableVideos.size
+        val message = if (skippedCount > 0) {
+            context.getString(R.string.batch_skipped_no_quality, skippedCount)
+        } else {
+            context.getString(R.string.batch_download_added, downloadableVideos.size)
+        }
         _state.update {
             it.copy(
                 isDownloading = true,
                 downloadingVideoIds = downloadingIds,
-                error = if (skippedCount > 0) {
-                    context.getString(R.string.batch_skipped_no_quality, skippedCount)
-                } else {
-                    it.error
-                }
+                downloadMessage = message
             )
         }
 
@@ -439,5 +441,9 @@ class BatchDownloadViewModel @Inject constructor(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    fun clearDownloadMessage() {
+        _state.update { it.copy(downloadMessage = null) }
     }
 }

@@ -419,17 +419,23 @@ fun DetailScreen(
         )
     }
 
-
-    SnackbarHost(
-        hostState = snackbarHostState,
-        modifier = Modifier.padding(bottom = 16.dp)
-    ) { data ->
-        Snackbar(
-            snackbarData = data,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            shape = RoundedCornerShape(8.dp)
-        )
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onBackground,
+                shape = RoundedCornerShape(8.dp)
+            )
+        }
     }
 
     if (showLoginUnsupportedDialog) {

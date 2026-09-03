@@ -169,6 +169,7 @@
     <string name="batch_qualities_not_loaded">選中影片尚未載入畫質資訊，請稍候再試</string>
     <string name="batch_load_more_failed">載入更多失敗，請重試</string>
     <string name="batch_skipped_no_quality">%1$d 個影片因畫質未載入已跳過，其餘已加入下載佇列</string>
+    <string name="batch_download_added">已新增 %1$d 個下載任務</string>
     <string name="profile_watch_history">觀看歷史</string>
     <string name="profile_favorites">我的收藏</string>
     <string name="subscriptions">訂閱內容</string>

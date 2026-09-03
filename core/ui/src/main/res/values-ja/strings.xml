@@ -169,6 +169,7 @@
     <string name="batch_qualities_not_loaded">選択した動画の画質情報がまだ読み込まれていません。しばらくしてから再度お試しください</string>
     <string name="batch_load_more_failed">追加の読み込みに失敗しました。再試行してください</string>
     <string name="batch_skipped_no_quality">%1$d 件の動画は画質情報が未読み込みのためスキップしました。残りをダウンロードに追加しました</string>
+    <string name="batch_download_added">%1$d 件のダウンロードタスクを追加しました</string>
     <string name="profile_watch_history">視聴履歴</string>
     <string name="profile_favorites">お気に入り</string>
     <string name="subscriptions">購読コンテンツ</string>

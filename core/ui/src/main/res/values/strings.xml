@@ -183,6 +183,7 @@
     <string name="batch_qualities_not_loaded">选中视频尚未加载画质信息，请稍候再试</string>
     <string name="batch_load_more_failed">加载更多失败，请重试</string>
     <string name="batch_skipped_no_quality">%1$d 个视频因画质未加载已跳过，其余已加入下载队列</string>
+    <string name="batch_download_added">已添加 %1$d 个下载任务</string>
 
     <!-- Profile -->
     <string name="profile_watch_history">观看历史</string>

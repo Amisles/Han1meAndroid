@@ -39,11 +39,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +79,15 @@ fun BatchDownloadScreen(
     val viewModel: BatchDownloadViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.downloadMessage) {
+        state.downloadMessage?.let {
+            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
+            viewModel.clearDownloadMessage()
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -86,6 +100,16 @@ fun BatchDownloadScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
         },
         bottomBar = {
             if (state.videos.isNotEmpty()) {
