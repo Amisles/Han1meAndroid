@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.remote.VideoAntiHotlink
 import app.amisles.hanime.domain.model.DownloadEntity
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
@@ -506,7 +507,7 @@ class DownloadManager @Inject constructor(
             val call = client.newCall(
                 Request.Builder().url(url)
                     .header("User-Agent", DOWNLOAD_UA)
-                    .header("Referer", DOWNLOAD_REFERER)
+                    .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
                     .header("Range", "bytes=0-${PROBE_WINDOW - 1}")
                     .get().build()
             )
@@ -539,7 +540,7 @@ class DownloadManager @Inject constructor(
         val requestBuilder = Request.Builder()
             .url(url)
             .header("User-Agent", DOWNLOAD_UA)
-            .header("Referer", DOWNLOAD_REFERER)
+            .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
             .get()
 
         if (resumeBytes > 0) {
@@ -876,7 +877,7 @@ class DownloadManager @Inject constructor(
         val call = client.newCall(
             Request.Builder().url(url)
                 .header("User-Agent", DOWNLOAD_UA)
-                .header("Referer", DOWNLOAD_REFERER)
+                .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
                 .header("Range", "bytes=$start-$end")
                 .get().build()
         )
@@ -1305,6 +1306,5 @@ class DownloadManager @Inject constructor(
         const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L
         const val CHUNK_BUFFER_SIZE = 256 * 1024
         const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
-        const val DOWNLOAD_REFERER = "https://hanimeone.me/"
     }
 }

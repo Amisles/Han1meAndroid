@@ -19,6 +19,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import app.amisles.hanime.data.remote.VideoAntiHotlink
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
