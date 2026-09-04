@@ -260,6 +260,14 @@
     <string name="settings_download_storage_updated">Download storage path updated</string>
     <string name="settings_download_storage_restored">Default storage path restored</string>
     <string name="settings_download_storage_unwritable">Selected path is not writable; previous setting kept</string>
+    <string name="settings_download_storage_picker_title">Choose download folder</string>
+    <string name="settings_download_storage_current_dir">Current folder</string>
+    <string name="settings_download_storage_select_here">Select this folder</string>
+    <string name="settings_download_storage_new_folder">New folder</string>
+    <string name="settings_download_storage_new_folder_hint">Folder name</string>
+    <string name="settings_download_storage_enter_name">Please enter a folder name</string>
+    <string name="settings_download_storage_no_subdirs">No subfolders</string>
+    <string name="settings_download_storage_created">Folder created</string>
     <string name="settings_theme_mode">Theme Mode</string>
     <string name="settings_theme_system">Follow System</string>
     <string name="settings_theme_light">Light</string>

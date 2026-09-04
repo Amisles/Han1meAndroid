@@ -1,8 +1,11 @@
 package app.amisles.hanime.feature.settings
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -23,15 +27,16 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -165,6 +170,176 @@ private fun <T> SettingsDropdownCard(
 }
 
 @Composable
+private fun FolderPickerDialog(
+    initialPath: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    context: Context = LocalContext.current
+) {
+    var currentDir by remember {
+        mutableStateOf(
+            runCatching {
+                val f = File(initialPath)
+                when {
+                    f.exists() && f.isDirectory -> f
+                    f.parentFile?.exists() == true -> f.parentFile!!
+                    else -> null
+                }
+            }.getOrNull()
+                ?: context.getExternalFilesDir(null)?.let { File(it, "Downloads") }
+                ?: File(context.filesDir, "Downloads")
+        )
+    }
+    var showNewFolder by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+    var toastRes by remember { mutableStateOf<Int?>(null) }
+
+    val subDirs = remember(currentDir) {
+        currentDir.listFiles { f -> f.isDirectory }
+            ?.sortedBy { it.name.lowercase() }
+            ?: emptyList()
+    }
+
+    LaunchedEffect(toastRes) {
+        toastRes?.let {
+            Toast.makeText(context, context.getString(it), Toast.LENGTH_SHORT).show()
+            toastRes = null
+        }
+    }
+
+    if (showNewFolder) {
+        AlertDialog(
+            onDismissRequest = { showNewFolder = false },
+            title = { Text(stringResource(R.string.settings_download_storage_new_folder), color = MaterialTheme.colorScheme.onBackground) },
+            text = {
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    label = { Text(stringResource(R.string.settings_download_storage_new_folder_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val raw = newFolderName.trim()
+                    if (raw.isBlank()) {
+                        toastRes = R.string.settings_download_storage_enter_name
+                        return@TextButton
+                    }
+                    val safe = raw.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    val created = runCatching { File(currentDir, safe).mkdirs() }.getOrDefault(false)
+                    if (created) {
+                        currentDir = File(currentDir, safe)
+                        newFolderName = ""
+                        showNewFolder = false
+                    } else {
+                        toastRes = R.string.settings_download_storage_enter_name
+                    }
+                }) {
+                    Text(stringResource(R.string.common_confirm), color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewFolder = false }) {
+                    Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_download_storage_picker_title), color = MaterialTheme.colorScheme.onBackground) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.settings_download_storage_current_dir) + "：" + currentDir.absolutePath,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+                if (currentDir.parentFile != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { currentDir = currentDir.parentFile!! }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ArrowUpward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("..", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                }
+                if (subDirs.isEmpty()) {
+                    Text(
+                        stringResource(R.string.settings_download_storage_no_subdirs),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 240.dp)) {
+                        items(subDirs, key = { it.absolutePath }) { dir ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { currentDir = dir }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Folder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    dir.name, fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onBackground, maxLines = 1
+                                )
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row {
+                TextButton(onClick = { showNewFolder = true }) {
+                    Text(stringResource(R.string.settings_download_storage_new_folder), color = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                TextButton(onClick = {
+                    onConfirm(currentDir.absolutePath)
+                    onDismiss()
+                }) {
+                    Text(stringResource(R.string.settings_download_storage_select_here), color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
 fun SettingsScreen(
     onBackClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
@@ -200,27 +375,6 @@ fun SettingsScreen(
     var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
 
     var showStoragePathDialog by remember { mutableStateOf(false) }
-    val externalBase = remember(context) {
-        context.getExternalFilesDir(null)?.let { File(it, "Downloads") } ?: File(context.filesDir, "Downloads")
-    }
-    val internalBase = remember(context) { File(context.filesDir, "Downloads") }
-    var storageLocation by remember(uiState.downloadStoragePath) {
-        mutableStateOf(
-            if (uiState.downloadStoragePath.isBlank() ||
-                uiState.downloadStoragePath.startsWith(externalBase.absolutePath)
-            ) "external" else "internal"
-        )
-    }
-    var storageSubfolder by remember(uiState.downloadStoragePath) {
-        mutableStateOf(
-            if (uiState.downloadStoragePath.isBlank()) ""
-            else uiState.downloadStoragePath
-                .removePrefix(externalBase.absolutePath)
-                .removePrefix(internalBase.absolutePath)
-                .removePrefix(File.separator)
-                .removePrefix("/")
-        )
-    }
 
     val languageOptions = appLanguageOptions()
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
@@ -561,113 +715,10 @@ fun SettingsScreen(
     }
 
     if (showStoragePathDialog) {
-        AlertDialog(
-            onDismissRequest = { showStoragePathDialog = false },
-            title = {
-                Text(
-                    stringResource(R.string.settings_download_storage_dialog_title),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            },
-            text = {
-                Column {
-                    Text(
-                        text = stringResource(R.string.settings_download_storage_current) + "：" +
-                            if (uiState.downloadStoragePath.isBlank()) {
-                                stringResource(R.string.settings_download_storage_external)
-                            } else {
-                                uiState.downloadStoragePath
-                            },
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    // 外部存储（默认）
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { storageLocation = "external" },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = storageLocation == "external",
-                            onClick = { storageLocation = "external" }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.settings_download_storage_external),
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                    // 内部存储（更私密）
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { storageLocation = "internal" },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = storageLocation == "internal",
-                            onClick = { storageLocation = "internal" }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.settings_download_storage_internal),
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = storageSubfolder,
-                        onValueChange = { storageSubfolder = it },
-                        label = { Text(stringResource(R.string.settings_download_storage_subfolder)) },
-                        placeholder = {
-                            Text(
-                                stringResource(R.string.settings_download_storage_subfolder_hint),
-                                fontSize = 12.sp
-                            )
-                        },
-                        singleLine = true,
-                        textStyle = androidx.compose.ui.text.TextStyle(
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onBackground
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // 恢复默认路径
-                    Text(
-                        text = stringResource(R.string.settings_download_storage_restored),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clickable {
-                                viewModel.setDownloadStoragePath("")
-                                showStoragePathDialog = false
-                            }
-                            .padding(vertical = 4.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val base = if (storageLocation == "external") externalBase else internalBase
-                    val folder = storageSubfolder.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    val finalPath = if (folder.isBlank()) base.absolutePath else File(base, folder).absolutePath
-                    viewModel.setDownloadStoragePath(finalPath)
-                    showStoragePathDialog = false
-                }) {
-                    Text(stringResource(R.string.common_save), color = MaterialTheme.colorScheme.primary)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStoragePathDialog = false }) {
-                    Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
+        FolderPickerDialog(
+            initialPath = uiState.downloadStoragePath,
+            onDismiss = { showStoragePathDialog = false },
+            onConfirm = { viewModel.setDownloadStoragePath(it) }
         )
     }
 }

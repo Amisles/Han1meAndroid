@@ -260,6 +260,14 @@
     <string name="settings_download_storage_updated">ダウンロード保存先を更新しました</string>
     <string name="settings_download_storage_restored">既定の保存先を復元しました</string>
     <string name="settings_download_storage_unwritable">選択したパスは書き込み不可のため元の設定を維持</string>
+    <string name="settings_download_storage_picker_title">ダウンロードフォルダを選択</string>
+    <string name="settings_download_storage_current_dir">現在のフォルダ</string>
+    <string name="settings_download_storage_select_here">このフォルダを選択</string>
+    <string name="settings_download_storage_new_folder">新規フォルダ</string>
+    <string name="settings_download_storage_new_folder_hint">フォルダ名</string>
+    <string name="settings_download_storage_enter_name">フォルダ名を入力してください</string>
+    <string name="settings_download_storage_no_subdirs">サブフォルダなし</string>
+    <string name="settings_download_storage_created">フォルダを作成しました</string>
     <string name="settings_theme_mode">テーマモード</string>
     <string name="settings_theme_system">システムに従う</string>
     <string name="settings_theme_light">ライト</string>

@@ -260,6 +260,14 @@
     <string name="settings_download_storage_updated">下載儲存路徑已更新</string>
     <string name="settings_download_storage_restored">已恢復預設儲存路徑</string>
     <string name="settings_download_storage_unwritable">所選路徑不可寫入，已保留原設定</string>
+    <string name="settings_download_storage_picker_title">選擇下載資料夾</string>
+    <string name="settings_download_storage_current_dir">目前資料夾</string>
+    <string name="settings_download_storage_select_here">選擇此資料夾</string>
+    <string name="settings_download_storage_new_folder">新建資料夾</string>
+    <string name="settings_download_storage_new_folder_hint">資料夾名稱</string>
+    <string name="settings_download_storage_enter_name">請輸入資料夾名稱</string>
+    <string name="settings_download_storage_no_subdirs">無子資料夾</string>
+    <string name="settings_download_storage_created">資料夾已建立</string>
     <string name="settings_theme_mode">主題模式</string>
     <string name="settings_theme_system">跟隨系統</string>
     <string name="settings_theme_light">淺色</string>

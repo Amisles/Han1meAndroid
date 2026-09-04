@@ -284,6 +284,14 @@
     <string name="settings_download_storage_updated">下载存储路径已更新</string>
     <string name="settings_download_storage_restored">已恢复默认存储路径</string>
     <string name="settings_download_storage_unwritable">所选路径不可写，已保留原设置</string>
+    <string name="settings_download_storage_picker_title">选择下载文件夹</string>
+    <string name="settings_download_storage_current_dir">当前目录</string>
+    <string name="settings_download_storage_select_here">选择此文件夹</string>
+    <string name="settings_download_storage_new_folder">新建文件夹</string>
+    <string name="settings_download_storage_new_folder_hint">文件夹名称</string>
+    <string name="settings_download_storage_enter_name">请输入文件夹名称</string>
+    <string name="settings_download_storage_no_subdirs">无子文件夹</string>
+    <string name="settings_download_storage_created">文件夹已创建</string>
     <string name="settings_theme_mode">主题模式</string>
     <string name="settings_theme_system">跟随系统</string>
     <string name="settings_theme_light">浅色</string>
