@@ -94,6 +94,99 @@ class VideoListParserTest {
         assertEquals("3", videos[2].id)
     }
 
+    // 「里番 / 泡面番」搜索结果页使用的简化卡片：无 .video-item-container，
+    // 链接在卡片外层的 <a> 上，标题是 .home-rows-videos-title。
+    private val simpleSearchCardsHtml = """
+        <div class="home-rows-videos-wrapper" style="white-space: normal;">
+            <a style="text-decoration: none;" href="https://www.hanime2.one/watch?v=407947">
+                <div class="home-rows-videos-div search-videos hover-lighter">
+                    <div class="video-card-inner">
+                        <img loading="lazy" src="https://cdn.example.com/image/cover/407947.jpg?secure=aaa"/>
+                        <div class="home-rows-videos-title"> 女友催眠 2 </div>
+                    </div>
+                </div>
+            </a>
+            <a style="text-decoration: none;" href="https://www.hanime2.one/watch?v=407946">
+                <div class="home-rows-videos-div search-videos hover-lighter">
+                    <div class="video-card-inner">
+                        <img loading="lazy" src="https://cdn.example.com/image/cover/407946.jpg?secure=bbb"/>
+                        <div class="home-rows-videos-title"> 女友催眠 1 </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    """.trimIndent()
+
+    @Test
+    fun `parseVideoList parses simplified search cards used by 里番 and 泡面番`() {
+        val doc = Jsoup.parse(simpleSearchCardsHtml, baseUrl)
+        val videos = parser.parseVideoList(doc, baseUrl)
+
+        assertEquals(2, videos.size)
+        assertEquals("407947", videos[0].id)
+        assertEquals("女友催眠 2", videos[0].title)
+        assertEquals("https://www.hanime2.one/watch?v=407947", videos[0].videoUrl)
+        assertEquals("https://cdn.example.com/image/cover/407947.jpg?secure=aaa", videos[0].thumbnailUrl)
+        assertEquals("407946", videos[1].id)
+        assertEquals("女友催眠 1", videos[1].title)
+    }
+
+    @Test
+    fun `parseVideoList with simplified card leaves absent fields empty`() {
+        val doc = Jsoup.parse(simpleSearchCardsHtml, baseUrl)
+        val video = parser.parseVideoList(doc, baseUrl).first()
+
+        // 简化卡片没有 .duration / .stats-container / .subtitle，字段应保持为空而不是报错
+        assertTrue("duration should be empty", video.duration.isEmpty())
+        assertTrue("likeRate should be empty", video.likeRate.isEmpty())
+        assertTrue("viewCount should be empty", video.viewCount.isEmpty())
+        assertTrue("author should be empty", video.author.isEmpty())
+        assertTrue("publishTime should be empty", video.publishTime.isEmpty())
+    }
+
+    @Test
+    fun `parseVideoList dedupes same video present in both card layouts`() {
+        val html = """
+            <div>
+                <div class="video-item-container">
+                    <a class="video-link" href="/watch?v=12345"></a>
+                    <img class="main-thumb" src="https://cdn.example.com/thumb/12345.jpg"/>
+                    <div class="title">Full Card</div>
+                    <div class="duration">10:30</div>
+                </div>
+                <a href="/watch?v=12345">
+                    <div class="home-rows-videos-div search-videos">
+                        <div class="video-card-inner">
+                            <img src="https://cdn.example.com/simple/12345.jpg"/>
+                            <div class="home-rows-videos-title">Simple Card</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        """.trimIndent()
+        val doc = Jsoup.parse(html, baseUrl)
+        val videos = parser.parseVideoList(doc, baseUrl)
+
+        // 同一视频只保留一条，且优先保留信息更完整的常规卡片
+        assertEquals(1, videos.size)
+        assertEquals("Full Card", videos[0].title)
+        assertEquals("10:30", videos[0].duration)
+    }
+
+    @Test
+    fun `parseSimpleVideoCard with non-watch parent link returns null`() {
+        val html = """
+            <a href="/other?v=1">
+                <div class="home-rows-videos-div">
+                    <div class="home-rows-videos-title">Not A Video</div>
+                </div>
+            </a>
+        """.trimIndent()
+        val doc = Jsoup.parse(html, baseUrl)
+        val card = doc.selectFirst(".home-rows-videos-div")!!
+        assertNull(parser.parseSimpleVideoCard(card, baseUrl))
+    }
+
     @Test
     fun `parseVideoList with empty document returns empty list`() {
         val doc = Jsoup.parse("<html><body></body></html>", baseUrl)

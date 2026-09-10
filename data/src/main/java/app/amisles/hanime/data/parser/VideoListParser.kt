@@ -11,24 +11,74 @@ import javax.inject.Singleton
 @Singleton
 class VideoListParser @Inject constructor() {
 
+    /**
+     * 解析页面中的视频列表，兼容两种卡片结构。
+     *
+     * 站点存在两套卡片：
+     * 1. 常规卡片 `.video-item-container`（内含 .video-link / .title / .main-thumb / .stats-container）；
+     * 2. **简化卡片** `.home-rows-videos-div`（里番 / 泡面番 等搜索结果页使用）——
+     *    不含 .video-item-container，若只按常规选择器解析会得到空列表，
+     *    表现为「浏览器打开链接有结果，App 内搜索却为空」。
+     *
+     * 两类都解析并按 videoId 去重（保留首次出现、保持顺序），避免同一视频重复出现。
+     */
     fun parseVideoList(doc: Document, baseUrl: String): List<HanimeVideo> {
-        val videos = mutableListOf<HanimeVideo>()
+        val videos = LinkedHashMap<String, HanimeVideo>()
 
-        val videoContainers: Elements = doc.select(".video-item-container")
+        for (container in doc.select(".video-item-container")) {
+            parseSingleVideoContainer(container, baseUrl)?.let { videos.putIfAbsent(it.id, it) }
+        }
 
-        if (videoContainers.isEmpty()) {
-            val alternativeSelectors = listOf(
-                ".video-card", ".video-item", ".card", ".horizontal-card", "[class*=video]", "[class*=card]"
+        for (card in doc.select(".home-rows-videos-div")) {
+            parseSimpleVideoCard(card, baseUrl)?.let { videos.putIfAbsent(it.id, it) }
+        }
+
+        return videos.values.toList()
+    }
+
+    /**
+     * 解析简化卡片（.home-rows-videos-div），与常规卡片的结构差异：
+     * - 视频链接在卡片**外层**的 `<a>` 上，而非内部的 .video-link；
+     * - 标题是 .home-rows-videos-title，而非 .title / .video-title；
+     * - 没有 .duration / .stats-container / .subtitle，这些字段留空。
+     *
+     * 链接同时兼容「卡片内部有 <a>」与「<a> 是卡片的直接父级」两种形态。
+     */
+    fun parseSimpleVideoCard(card: Element, baseUrl: String): HanimeVideo? {
+        return try {
+            val link = card.selectFirst("a[href*=\"watch?v=\"]")
+                ?: card.parent()?.takeIf { it.tagName() == "a" && it.attr("href").contains("watch?v=") }
+            val rawUrl = link?.attr("abs:href").orEmpty()
+            if (rawUrl.isEmpty()) return null
+
+            val videoId = ParserUtils.extractVideoId(rawUrl)
+            if (videoId.isEmpty()) return null
+
+            val title = card.selectFirst(".home-rows-videos-title")?.text()?.trim()
+                ?: card.selectFirst(".title")?.text()?.trim()
+                ?: return null
+
+            val rawThumbnail = card.selectFirst("img")?.attr("abs:src").orEmpty()
+            val thumbnailUrl = rawThumbnail.ifEmpty { ParserUtils.generatePlaceholderThumbnail(videoId) }
+
+            HanimeVideo(
+                id = videoId,
+                title = title,
+                thumbnailUrl = thumbnailUrl,
+                duration = card.selectFirst(".duration")?.text()?.trim() ?: "",
+                likeRate = "",
+                viewCount = "",
+                author = "",
+                publishTime = "",
+                videoUrl = rawUrl
             )
-            for (selector in alternativeSelectors) {
-                val elements = doc.select(selector)
-            }
+        } catch (e: IndexOutOfBoundsException) {
+            AppLogger.logError("VideoListParser", "Error parsing simple video card: ${e.message}", e)
+            null
+        } catch (e: NullPointerException) {
+            AppLogger.logError("VideoListParser", "Error parsing simple video card: ${e.message}", e)
+            null
         }
-
-        for (container in videoContainers) {
-            parseSingleVideoContainer(container, baseUrl)?.let { videos.add(it) }
-        }
-        return videos
     }
 
     fun parseSingleVideoContainer(container: Element, baseUrl: String): HanimeVideo? {
