@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -62,13 +61,13 @@ class FavoriteViewModel @Inject constructor(
 
     fun removeFavorites(videoIds: List<String>) {
         AppLogger.d("FavoriteViewModel", "removeFavorites called, count: ${videoIds.size}")
+        if (videoIds.isEmpty()) return
 
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    videoIds.forEach { videoId ->
-                        repository.removeFavorite(videoId)
-                    }
+                    // 单条 SQL 批量删除，避免逐条事务（审查 P6）
+                    repository.removeFavorites(videoIds)
                 }
                 loadFavorites()
             } catch (e: Exception) {

@@ -27,6 +27,10 @@ interface FavoriteDao {
     @Query("DELETE FROM favorites WHERE id = :videoId")
     suspend fun removeFavoriteById(videoId: String)
 
+    // 批量删除走单条 SQL：调用方已保证 ids 非空（空集合会生成非法 SQL，见仓储层守卫）
+    @Query("DELETE FROM favorites WHERE id IN (:videoIds)")
+    suspend fun removeFavoritesByIds(videoIds: List<String>)
+
     @Query("SELECT * FROM favorites WHERE id = :videoId")
     suspend fun getFavoriteById(videoId: String): FavoriteVideo?
 

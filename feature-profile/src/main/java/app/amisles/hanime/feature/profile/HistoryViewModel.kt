@@ -68,9 +68,8 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    videoIds.forEach { videoId ->
-                        repository.removeWatchHistory(videoId)
-                    }
+                    // 单条 SQL 批量删除，避免逐条事务（审查 P6）
+                    repository.removeWatchHistories(videoIds)
                 }
                 loadHistory()
             } catch (e: Exception) {

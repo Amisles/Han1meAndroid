@@ -73,6 +73,19 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+    /**
+     * 批量删除收藏。ids 为空时直接返回：Room 的 `IN (:ids)` 在空集合下会生成非法 SQL。
+     */
+    suspend fun removeFavorites(videoIds: List<String>) {
+        if (videoIds.isEmpty()) return
+        try {
+            favoriteDao.removeFavoritesByIds(videoIds)
+            AppLogger.log("HanimeRepository", "Favorites removed: ${videoIds.size}")
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error removing favorites: ${e.message}", e)
+        }
+    }
+
     suspend fun isFavorite(videoId: String): Boolean {
         return try {
             favoriteDao.isFavorite(videoId)
@@ -130,6 +143,19 @@ class HanimeRepository @Inject constructor(
             AppLogger.log("HanimeRepository", "Watch history removed successfully")
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing watch history: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 批量删除观看历史。ids 为空时直接返回：Room 的 `IN (:ids)` 在空集合下会生成非法 SQL。
+     */
+    suspend fun removeWatchHistories(videoIds: List<String>) {
+        if (videoIds.isEmpty()) return
+        try {
+            watchHistoryDao.removeWatchHistoriesByIds(videoIds)
+            AppLogger.log("HanimeRepository", "Watch histories removed: ${videoIds.size}")
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error removing watch histories: ${e.message}", e)
         }
     }
 
