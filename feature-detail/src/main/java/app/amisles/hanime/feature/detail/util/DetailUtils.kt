@@ -2,9 +2,7 @@ package app.amisles.hanime.feature.detail.util
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.ui.graphics.Color
-import androidx.media3.common.MediaItem
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
@@ -33,7 +31,8 @@ internal fun shareVideo(context: Context, title: String, url: String) {
     }
     val chooser = Intent.createChooser(intent, context.getString(R.string.cd_share_video))
     chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(chooser)
+    // 极端裁剪的 ROM 上可能不存在任何可处理 ACTION_SEND 的应用：避免直接抛 ActivityNotFoundException（审查 O1）
+    runCatching { context.startActivity(chooser) }
 }
 
 /**

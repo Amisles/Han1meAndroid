@@ -101,7 +101,8 @@ internal fun LazyListScope.detailRestItems(
     }
 
     if (state.selectedTab == 0) {
-        items(detail.relatedVideos) { video ->
+        // 与搜索结果一致：先按 id 去重再作为 Lazy key，避免站点返回重复条目时 key 冲突崩溃（审查 O3）
+        items(detail.relatedVideos.distinctBy { it.id }, key = { it.id }) { video ->
             DetailRelatedRow(
                 video = video,
                 currentTab = state.selectedTab,
