@@ -52,6 +52,8 @@ import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 
@@ -261,7 +263,7 @@ fun FavoriteScreen(
                 Text(
                     text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
-                    color = Color(0xFFFF6B6B),
+                    color = HanimeDanger,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable {
@@ -277,13 +279,7 @@ fun FavoriteScreen(
     }
 
     if (showDeleteConfirm) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { showDeleteConfirm = false },
-            contentAlignment = Alignment.Center
-        ) {
+        FullScreenOverlayDialog(onDismiss = { showDeleteConfirm = false }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
@@ -325,7 +321,7 @@ fun FavoriteScreen(
                     Text(
                         text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
-                        color = Color(0xFFFF6B6B),
+                        color = HanimeDanger,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)

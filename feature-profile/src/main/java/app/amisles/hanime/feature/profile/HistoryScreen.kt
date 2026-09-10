@@ -50,6 +50,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import app.amisles.hanime.core.ui.components.VideoThumbnail
+import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
@@ -203,7 +205,8 @@ fun HistoryScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(history) { video ->
+                // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位（审查 P7）
+                items(history, key = { it.id }) { video ->
                     val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
                     val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
                     val isSelected = video.id in selectedIds
@@ -322,7 +325,7 @@ fun HistoryScreen(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = stringResource(R.string.common_delete),
-                                    tint = Color(0xFFFF6B6B),
+                                    tint = HanimeDanger,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -360,7 +363,7 @@ fun HistoryScreen(
                 Text(
                     text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
-                    color = Color(0xFFFF6B6B),
+                    color = HanimeDanger,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable { showDeleteConfirm = true }
@@ -393,7 +396,7 @@ fun HistoryScreen(
                 Text(
                     text = stringResource(R.string.common_clear),
                     fontSize = 14.sp,
-                    color = Color(0xFFFF6B6B),
+                    color = HanimeDanger,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable { showClearConfirm = true }
@@ -404,15 +407,11 @@ fun HistoryScreen(
     }
 
     if (showDeleteConfirm) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable {
-                    deleteTargetId = null
-                    showDeleteConfirm = false
-                },
-            contentAlignment = Alignment.Center
+        FullScreenOverlayDialog(
+            onDismiss = {
+                deleteTargetId = null
+                showDeleteConfirm = false
+            }
         ) {
             Column(
                 modifier = Modifier
@@ -462,7 +461,7 @@ fun HistoryScreen(
                     Text(
                         text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
-                        color = Color(0xFFFF6B6B),
+                        color = HanimeDanger,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)
@@ -486,13 +485,7 @@ fun HistoryScreen(
     }
 
     if (showClearConfirm) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { showClearConfirm = false },
-            contentAlignment = Alignment.Center
-        ) {
+        FullScreenOverlayDialog(onDismiss = { showClearConfirm = false }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
