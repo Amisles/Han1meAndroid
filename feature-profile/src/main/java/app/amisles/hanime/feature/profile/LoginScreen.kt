@@ -1,7 +1,11 @@
 package app.amisles.hanime.feature.profile
 
+import android.net.Uri
 import android.webkit.CookieManager
+import android.net.http.SslError
+import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
@@ -67,14 +71,41 @@ import androidx.compose.material3.MaterialTheme
 
 private val LOGIN_URLS = listOf("https://hanime1.me/login", "https://hanimeone.me/login")
 
-private fun isLoginPage(url: String): Boolean =
-    LOGIN_URLS.any { base ->
-        url.startsWith(base.substringBefore("/login")) && url.contains("/login")
-    }
+/** 官方域名（含子域）：登录流程只允许发生在这两个域下。 */
+private val OFFICIAL_HOSTS = listOf("hanime1.me", "hanimeone.me")
 
-private fun isLoggedInRedirect(url: String): Boolean {
-    val host = listOf("hanime1.me", "hanimeone.me")
-    return host.any { url.contains(it) } && !isLoginPage(url) && !url.contains("/logout")
+/**
+ * 是否为官方域名（含子域）。
+ * 用解析出的 host 精确比较，避免旧实现 `url.contains("hanime1.me")` 在查询参数等位置被伪造命中。
+ */
+private fun isOfficialHost(url: String): Boolean {
+    val host = runCatching { Uri.parse(url).host }.getOrNull() ?: return false
+    return OFFICIAL_HOSTS.any { host == it || host.endsWith(".$it") }
+}
+
+private fun isLoginPage(url: String): Boolean =
+    isOfficialHost(url) && Uri.parse(url).path.orEmpty().contains("/login")
+
+private fun hasSessionCookie(cookie: String?): Boolean =
+    cookie != null &&
+        (cookie.contains("laravel_session", ignoreCase = true) ||
+            cookie.contains("session", ignoreCase = true))
+
+/**
+ * 判断一次站内导航是否代表「本次登录成功」。
+ *
+ * 旧实现把官方域下「除登录页/登出页以外的任意页面」都视为登录成功，于是用户在登录页点
+ * 忘记密码 / 注册等同域链接就会被当作登录完成并带离登录页（审查 P4）。
+ * 现在要求同时满足：
+ * 1. 官方域名，且不是登录页 / 登出页；
+ * 2. 已经拿到会话 Cookie；
+ * 3. 本次会话开始前并不持有同一个会话 Cookie（否则说明用户本来就登录着，不算本次登录成功）。
+ */
+private fun isLoginCompleted(url: String, currentCookie: String?, cookieAtStart: String): Boolean {
+    if (!isOfficialHost(url)) return false
+    if (isLoginPage(url) || url.contains("/logout")) return false
+    if (!hasSessionCookie(currentCookie)) return false
+    return !(currentCookie == cookieAtStart && hasSessionCookie(cookieAtStart))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -177,7 +208,11 @@ private fun EmailPasswordTab(
     onSwitchToWebView: () -> Unit = {}
 ) {
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // 密码不落 saved instance state：rememberSaveable 会把值写进 Bundle，系统在进程回收时
+    // 会把它持久化到磁盘，等于把明文密码写盘（审查 P1）。Activity 已声明
+    // orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden 的 configChanges，
+    // 旋转不会重建 Activity，因此无需保存密码。
+    var password by remember { mutableStateOf("") }
     val state by vm.uiState.collectAsStateWithLifecycle()
     val isLoading = state is LoginViewModel.UiState.Loading
     val errorMsg = (state as? LoginViewModel.UiState.Error)?.message
@@ -322,6 +357,18 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     var loading by remember { mutableStateOf(true) }
     val configured = remember { mutableStateOf(false) }
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    // 进入本 Tab 时已存在的 Cookie：用于区分「本次真的登录成功」与「本来就已登录」
+    val cookieAtStart = remember {
+        CookieManager.getInstance().getCookie(LOGIN_URLS.first()).orEmpty()
+    }
+    // 登录结果只上报一次，避免同一会话内重复触发 onLoginSuccess
+    val loginReported = remember { mutableStateOf(false) }
+    val reportLoginIfCompleted: (String, String?) -> Unit = { url, cookies ->
+        if (!loginReported.value && isLoginCompleted(url, cookies, cookieAtStart)) {
+            loginReported.value = true
+            cookies?.let { vm.saveWebViewCookie(it) }
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         AndroidView(
@@ -339,29 +386,30 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                             request: WebResourceRequest
                         ): Boolean {
                             val url = request.url.toString()
-                            if (isLoggedInRedirect(url)) {
-                                val cookies =
-                                    cookieManager.getCookie("https://hanime1.me")
-                                        ?: cookieManager.getCookie("https://hanimeone.me")
-                                        ?: return false
-                                if (cookies.contains("laravel_session", true) ||
-                                    cookies.contains("session", true)) {
-                                    vm.saveWebViewCookie(cookies)
-                                }
-                                return true
-                            }
+                            reportLoginIfCompleted(url, cookieManager.getCookie(url))
+                            // 不再 return true 拦截：旧实现把官方域下任意非登录页都当成登录完成，
+                            // 会把忘记密码 / 注册等同域跳转挡在登录页上（审查 P4）。
+                            // 放行导航本身没有副作用：登录成功时外层会立刻导航走并销毁本 WebView。
                             return super.shouldOverrideUrlLoading(view, request)
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             loading = false
-                            view ?: return
-                            val cookies = CookieManager.getInstance().getCookie(url) ?: return
-                            if (isLoggedInRedirect(url ?: "") &&
-                                (cookies.contains("laravel_session", true) ||
-                                    cookies.contains("session", true))) {
-                                vm.saveWebViewCookie(cookies)
-                            }
+                            val currentUrl = url ?: return
+                            reportLoginIfCompleted(
+                                currentUrl,
+                                CookieManager.getInstance().getCookie(currentUrl)
+                            )
+                        }
+
+                        override fun onReceivedSslError(
+                            view: WebView?,
+                            handler: SslErrorHandler?,
+                            error: SslError?
+                        ) {
+                            // 任何证书错误都直接拒绝：显式 cancel 好过依赖默认实现“既不 proceed 也不 cancel”
+                            // 的模糊语义，也避免将来被误改为 proceed（审查 P2 加固项）
+                            handler?.cancel()
                         }
                     }
 
@@ -373,8 +421,15 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         settings.setSupportZoom(false)
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
+                        // 保留 MIXED_CONTENT_COMPATIBILITY_MODE：登录页需要加载 http 子资源才能完整渲染，
+                        // 改成 NEVER_ALLOW 会让登录页缺图/缺脚本（属历史既有的有意取舍）。
+                        // 残余风险：网络中间人可替换其中的 http 子资源向登录页注入脚本。
+                        // 已做的收敛：本 WebView 只用于官方域名登录页、已关闭文件/内容访问（见上）、
+                        // 证书错误一律拒绝、且不再把官方域下任意跳转当作登录成功（审查 P4）。
+                        // 若安全责任人确认登录页不再依赖 http 子资源，可改为 MIXED_CONTENT_NEVER_ALLOW。
                         settings.mixedContentMode =
-                            android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                            WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                        settings.javaScriptCanOpenWindowsAutomatically = false
                         settings.userAgentString =
                             "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
                         loadUrl(LOGIN_URLS.first())
@@ -418,7 +473,9 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
 
 @Composable
 private fun ManualCookieTab(vm: LoginViewModel) {
-    var text by rememberSaveable { mutableStateOf("") }
+    // 手动 Cookie 同样是凭据：与密码一致，不写进 saved instance state（审查 P1 同类项）。
+    // 该输入框本身不影响旋转（configChanges 已覆盖），切换 Tab 时文本本就会重置。
+    var text by remember { mutableStateOf("") }
     val state by vm.uiState.collectAsStateWithLifecycle()
     val isLoading = state is LoginViewModel.UiState.Loading
     val errorMsg = (state as? LoginViewModel.UiState.Error)?.message
