@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,7 +97,9 @@ internal fun ReplyList(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(0.5.dp)
-                                    .background(Color.White.copy(alpha = 0.06f))
+                                    // 白色半透明分隔线在浅色主题（surface 近似白）下完全不可见，
+                                    // 改用主题的 outlineVariant，深浅色主题都能看到（审查 O5）
+                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                             )
                         }
                     }

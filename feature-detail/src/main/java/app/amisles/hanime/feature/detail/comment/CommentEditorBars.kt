@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,16 @@ internal fun CommentInputBar(
     onNavigateToLogin: () -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
+    // 是否已发出一次提交：只有「提交结束且无错误」才清空输入。
+    // 此前无论成败都立即清空，发布失败（网络 / CSRF / 风控）时用户已输入的长文本无法找回。
+    var awaitingResult by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isPosting, error) {
+        if (awaitingResult && !isPosting) {
+            if (error == null) inputText = ""
+            awaitingResult = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -70,8 +81,8 @@ internal fun CommentInputBar(
                 placeholderRes = R.string.comment_input_hint,
                 isPosting = isPosting,
                 onSend = {
+                    awaitingResult = true
                     onPost(it)
-                    inputText = ""
                 }
             )
         }
@@ -101,6 +112,15 @@ internal fun ReplyInputBar(
     onClearError: () -> Unit
 ) {
     var inputText by remember(prefill) { mutableStateOf(prefill) }
+    // 同评论输入栏：提交失败时保留内容供用户修改后重试
+    var awaitingResult by remember(prefill) { mutableStateOf(false) }
+
+    LaunchedEffect(isPosting, error) {
+        if (awaitingResult && !isPosting) {
+            if (error == null) inputText = ""
+            awaitingResult = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -118,8 +138,8 @@ internal fun ReplyInputBar(
             placeholderRes = R.string.comment_reply_hint,
             isPosting = isPosting,
             onSend = {
+                awaitingResult = true
                 onSend(it)
-                inputText = ""
             }
         )
 
