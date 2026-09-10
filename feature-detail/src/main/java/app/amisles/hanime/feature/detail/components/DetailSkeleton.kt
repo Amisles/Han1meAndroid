@@ -89,7 +89,8 @@ internal fun DetailSkeletonScreen() {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(width = 120.dp, height = 90.dp)
+                        .width(120.dp)
+                        .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(6.dp))
                         .background(MaterialTheme.colorScheme.background)
                         .alpha(alpha)

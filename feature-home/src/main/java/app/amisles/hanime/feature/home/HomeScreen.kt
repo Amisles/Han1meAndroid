@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -365,7 +366,8 @@ private fun SkeletonVideoRow(alpha: Float) {
         // 缩略图占位
         Box(
             modifier = Modifier
-                .size(width = 120.dp, height = 90.dp)
+                .width(120.dp)
+                .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)

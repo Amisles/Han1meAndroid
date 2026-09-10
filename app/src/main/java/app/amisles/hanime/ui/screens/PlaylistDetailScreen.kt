@@ -1,4 +1,5 @@
 package app.amisles.hanime.ui.screens
+import androidx.compose.foundation.layout.aspectRatio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -222,7 +223,7 @@ private fun PlaylistVideoItem(
             likeRate = video.likeRate,
             viewCount = video.viewCount,
             crop = true,
-            modifier = Modifier.width(120.dp).height(68.dp).clip(RoundedCornerShape(6.dp))
+            modifier = Modifier.width(120.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(
             modifier = Modifier.weight(1f),

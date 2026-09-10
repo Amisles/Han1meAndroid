@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.detail.components
 
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,7 +67,7 @@ internal fun DetailRelatedVideoCard(
             crop = true,
             modifier = Modifier
                 .width(120.dp)
-                .height(90.dp)
+                .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )
 

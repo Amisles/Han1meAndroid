@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.profile
 
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -399,7 +400,7 @@ private fun FavoriteVideoItem(
             crop = true,
             modifier = Modifier
                 .width(110.dp)
-                .height(80.dp)
+                .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )
 

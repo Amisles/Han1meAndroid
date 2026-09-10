@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -255,7 +256,7 @@ private fun PlaylistSummaryCard(
             crop = true,
             modifier = Modifier
                 .width(120.dp)
-                .height(68.dp)
+                .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )
         Column(

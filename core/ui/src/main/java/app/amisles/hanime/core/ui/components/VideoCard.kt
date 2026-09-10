@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,7 +53,7 @@ fun VideoCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(3f / 2f)
+                .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(8.dp))
         ) {
             VideoThumbnail(
@@ -158,7 +157,7 @@ fun VideoListItem(
             crop = true,
             modifier = Modifier
                 .width(120.dp)
-                .height(90.dp)
+                .aspectRatio(16f / 9f)
                 .shadow(
                     elevation = if (isDark) 0.dp else 1.5.dp,
                     shape = thumbShape,

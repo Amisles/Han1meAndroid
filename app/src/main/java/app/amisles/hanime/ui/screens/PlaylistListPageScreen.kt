@@ -1,4 +1,5 @@
 package app.amisles.hanime.ui.screens
+import androidx.compose.foundation.layout.aspectRatio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -144,7 +144,7 @@ private fun PlaylistListItem(
             likeRate = "",
             viewCount = playlist.videoCount,
             crop = true,
-            modifier = Modifier.width(130.dp).height(73.dp).clip(RoundedCornerShape(6.dp))
+            modifier = Modifier.width(130.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(
             modifier = Modifier.weight(1f),
