@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.download
 
-import android.util.Log
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,6 +11,7 @@ import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -25,7 +25,6 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.IOException
 import javax.inject.Inject
 
 data class BatchDownloadState(
@@ -56,6 +55,10 @@ class BatchDownloadViewModel @Inject constructor(
     private val _state = MutableStateFlow(BatchDownloadState())
     val state: StateFlow<BatchDownloadState> = _state.asStateFlow()
 
+    // 搜索世代：每次 searchAuthor 递增。进行中的 loadMore 用它识别自己是否已被新一轮搜索取代，
+    // 从而丢弃旧作者的下一页 / 失败信息（审查 W11，与详情页的响应隔离同一类问题）
+    private var searchGeneration = 0
+
     init {
         // 观察下载任务变化，自动更新视频列表中的下载状态
         viewModelScope.launch {
@@ -68,41 +71,57 @@ class BatchDownloadViewModel @Inject constructor(
     /**
      * 根据下载任务状态同步更新视频列表。
      * 当下载完成或失败时，自动更新对应视频项的状态并清理 downloadingVideoIds。
+     *
+     * tasks 的发射频率跟随下载进度（可达每秒数次），因此这里先用 url 建一次索引，
+     * 取代此前「每个视频的每个画质都去 tasks 里 find 一遍」的
+     * O(视频数 × 画质数 × 任务数) 嵌套遍历（审查 W5）。
      */
     private fun syncDownloadStatuses(tasks: List<DownloadTask>) {
+        // 保留「同一 url 取首个任务」的原有语义
+        val taskByUrl = HashMap<String, DownloadTask>(tasks.size)
+        tasks.forEach { task -> taskByUrl.putIfAbsent(task.url, task) }
+
         _state.update { currentState ->
             if (currentState.videos.isEmpty()) return@update currentState
 
+            var changed = false
             val updatedVideos = currentState.videos.map { video ->
                 // 通过下载URL精确匹配任务
-                val task = tasks.find { task ->
-                    video.qualities.any { q -> q.downloadUrl == task.url }
-                }
-                if (task != null) {
-                    video.copy(
-                        isDownloaded = task.status == DownloadStatus.COMPLETED,
-                        isDownloading = task.status == DownloadStatus.DOWNLOADING ||
-                                        task.status == DownloadStatus.PENDING
-                    )
-                } else {
+                val task = video.qualities.firstNotNullOfOrNull { quality -> taskByUrl[quality.downloadUrl] }
+                if (task == null) {
                     video
+                } else {
+                    val isDownloaded = task.status == DownloadStatus.COMPLETED
+                    val isDownloading = task.status == DownloadStatus.DOWNLOADING ||
+                        task.status == DownloadStatus.PENDING
+                    if (video.isDownloaded == isDownloaded && video.isDownloading == isDownloading) {
+                        // 状态未变时复用原对象，避免下游无意义重组
+                        video
+                    } else {
+                        changed = true
+                        video.copy(isDownloaded = isDownloaded, isDownloading = isDownloading)
+                    }
                 }
             }
 
             // 从 downloadingVideoIds 中移除已完成或失败的任务
+            val videoById = updatedVideos.associateBy { it.videoId }
             val newDownloadingIds = currentState.downloadingVideoIds.filterNot { id ->
-                val video = updatedVideos.find { it.videoId == id }
-                val task = video?.let { v ->
-                    tasks.find { task -> v.qualities.any { q -> q.downloadUrl == task.url } }
-                }
+                val video = videoById[id]
+                val task = video?.qualities
+                    ?.firstNotNullOfOrNull { quality -> taskByUrl[quality.downloadUrl] }
                 task != null && (task.status == DownloadStatus.COMPLETED || task.status == DownloadStatus.FAILED)
             }.toSet()
 
-            currentState.copy(
-                videos = updatedVideos,
-                downloadingVideoIds = newDownloadingIds,
-                isDownloading = newDownloadingIds.isNotEmpty()
-            )
+            if (!changed && newDownloadingIds == currentState.downloadingVideoIds) {
+                currentState
+            } else {
+                currentState.copy(
+                    videos = updatedVideos,
+                    downloadingVideoIds = newDownloadingIds,
+                    isDownloading = newDownloadingIds.isNotEmpty()
+                )
+            }
         }
     }
 
@@ -117,10 +136,14 @@ class BatchDownloadViewModel @Inject constructor(
             return
         }
 
+        // 新一轮搜索：递增世代，让进行中的 loadMore 结果失效；同时清掉它的加载态
+        searchGeneration++
+
         viewModelScope.launch {
             _state.update {
                 it.copy(
                     isSearching = true,
+                    isLoadMore = false,
                     error = null,
                     videos = emptyList(),
                     authorName = "",
@@ -149,7 +172,7 @@ class BatchDownloadViewModel @Inject constructor(
                     return@launch
                 }
 
-                val batchVideos = result.videos.map { video ->
+                val batchVideos = result.videos.distinctBy { it.id }.map { video ->
                     val downloaded = downloadManager.isVideoDownloaded(video.id)
                     val downloading = downloadManager.isVideoDownloading(video.id)
                     BatchVideoItem(
@@ -180,7 +203,11 @@ class BatchDownloadViewModel @Inject constructor(
                     selectedCount = 0
                 )}
 
-            } catch (e: IOException) {
+            } catch (e: CancellationException) {
+                // 协程取消必须原样抛出，否则会被当作普通失败并把页面卡在错误态
+                throw e
+            } catch (e: Exception) {
+                // 此前只捕 IOException，站点改版 / 解析等运行期异常会逃逸出 viewModelScope 直接崩溃
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
                 _state.update { it.copy(
                     isSearching = false,
@@ -196,13 +223,20 @@ class BatchDownloadViewModel @Inject constructor(
             return
         }
 
+        // 绑定发起时的搜索世代与作者：加载过程中用户可能重新搜索另一位作者，
+        // 此时旧作者的下一页 / 失败信息必须整批丢弃（审查 W11）
+        val generation = searchGeneration
+        val requestAuthorId = currentState.authorId
+
         viewModelScope.launch {
-            _state.update { it.copy(isLoadMore = true) }
+            _state.update { current ->
+                if (searchGeneration != generation) current else current.copy(isLoadMore = true)
+            }
 
             try {
                 val nextPage = currentState.currentPage + 1
                 val result = withContext(Dispatchers.IO) {
-                    networkService.fetchUserVideoList(currentState.authorId, page = nextPage)
+                    networkService.fetchUserVideoList(requestAuthorId, page = nextPage)
                 }
 
                 if (result != null) {
@@ -226,28 +260,49 @@ class BatchDownloadViewModel @Inject constructor(
                         )
                     }
 
-                    _state.update { it.copy(
-                        isLoadMore = false,
-                        videos = it.videos + newBatchVideos,
-                        currentPage = result.currentPage,
-                        totalPages = result.totalPages,
-                        hasNextPage = result.hasNextPage
-                    )}
+                    _state.update { current ->
+                        if (searchGeneration != generation) {
+                            // 已被新一轮搜索取代：不追加、不改分页信息，isLoadMore 由新一轮搜索重置
+                            current
+                        } else {
+                            current.copy(
+                                isLoadMore = false,
+                                videos = (current.videos + newBatchVideos).distinctBy { v -> v.videoId },
+                                currentPage = result.currentPage,
+                                totalPages = result.totalPages,
+                                hasNextPage = result.hasNextPage
+                            )
+                        }
+                    }
                 } else {
                     // G12：此前 result == null 时只走空分支，isLoadMore 永远不复位，
                     // 加载按钮停在 loading 态，且 loadMore() 开头的 isLoadMore 守卫会让分页彻底失效
                     AppLogger.e("BatchDownloadViewModel", "加载更多失败: 第 $nextPage 页返回空结果")
-                    _state.update { it.copy(
-                        isLoadMore = false,
-                        error = context.getString(R.string.batch_load_more_failed)
-                    )}
+                    _state.update { current ->
+                        if (searchGeneration != generation) {
+                            current
+                        } else {
+                            current.copy(
+                                isLoadMore = false,
+                                error = context.getString(R.string.batch_load_more_failed)
+                            )
+                        }
+                    }
                 }
-            } catch (e: IOException) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 AppLogger.e("BatchDownloadViewModel", "加载更多失败: ${e.message}", e)
-                _state.update { it.copy(
-                    isLoadMore = false,
-                    error = context.getString(R.string.batch_load_more_failed)
-                )}
+                _state.update { current ->
+                    if (searchGeneration != generation) {
+                        current
+                    } else {
+                        current.copy(
+                            isLoadMore = false,
+                            error = context.getString(R.string.batch_load_more_failed)
+                        )
+                    }
+                }
             }
         }
     }
@@ -350,11 +405,12 @@ class BatchDownloadViewModel @Inject constructor(
                                 currentState.copy(videos = updatedVideos)
                             }
 
-                            // 选择视频并拉取画质后，将下载直链打印到 logcat（INFO 级别，仅打印链接本身）
-                            qualities.forEach { quality ->
-                                Log.i("BatchDownload", quality.downloadUrl)
-                            }
-                        } catch (e: IOException) {
+                            // 仅记录条数，不打印直链：downloadUrl 可绕过登录/防盗链，属敏感凭据
+                            AppLogger.d("BatchDownloadViewModel", "已获取画质 ${video.videoId}: ${qualities.size} 项")
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            // 此前只捕 IOException，其余异常会经 awaitAll() 抛回并取消整轮加载
                             AppLogger.e("BatchDownloadViewModel", "获取画质失败: ${video.videoId}", e)
                             // 标记加载失败
                             _state.update { currentState ->
@@ -421,7 +477,7 @@ class BatchDownloadViewModel @Inject constructor(
 
                     // 画质为空时跳过下载（videoUrl是网页URL不是视频直链）
                     if (quality == null) {
-                        Log.w("BatchDownload", "跳过无画质信息的视频: ${video.title}")
+                        AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
                     } else {
                         downloadManager.startDownload(
                             title = video.title,

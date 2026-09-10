@@ -146,7 +146,6 @@ fun BatchDownloadScreen(
                 AuthorInfoSection(
                     authorName = state.authorName,
                     authorId = state.authorId,
-                    totalVideos = state.videos.size,
                     currentPage = state.currentPage,
                     totalPages = state.totalPages
                 )
@@ -222,7 +221,6 @@ private fun SearchSection(
 private fun AuthorInfoSection(
     authorName: String,
     authorId: String,
-    totalVideos: Int,
     currentPage: Int,
     totalPages: Int
 ) {
@@ -656,7 +654,8 @@ private fun ErrorBanner(
         ) {
             Text(
                 text = message,
-                color = MaterialTheme.colorScheme.error,
+                // errorContainer 背景上的前景色应为 onErrorContainer，用 error 对比度不足（审查 O9）
+                color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onDismiss) {
