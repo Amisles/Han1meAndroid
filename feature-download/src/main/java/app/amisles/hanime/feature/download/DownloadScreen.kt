@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.download
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -63,6 +62,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Sort
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Header
 import coil3.compose.AsyncImage
@@ -75,6 +76,21 @@ enum class DownloadFilter {
 enum class DownloadSort {
     ADDED, NAME, SIZE, PROGRESS
 }
+
+/**
+ * 筛选 / 排序用的稳定键。
+ *
+ * 下载进度会让 tasks 每秒产生多个新列表；若直接以 tasks 为 key 排序，等于每秒重排整表。
+ * 这里只把「筛选与排序真正依赖的字段」抽成不可变键，进度以外的字段没变时排序结果即可复用
+ * （审查 W6）。
+ */
+private data class TaskOrderKey(
+    val id: Int,
+    val status: DownloadStatus,
+    val title: String,
+    val totalBytes: Long,
+    val progress: Float
+)
 
 @Composable
 fun DownloadScreen(
@@ -92,32 +108,56 @@ fun DownloadScreen(
     val pausedTasks = tasks.filter { it.status == DownloadStatus.PAUSED }
     val failedTasks = tasks.filter { it.status == DownloadStatus.FAILED }
 
-    // 筛选 + 排序后的可见列表
-    val visibleTasks = remember(tasks, downloadFilter, downloadSort) {
+    // 筛选 + 排序后的可见任务。
+    // 分两步：先取「排序/筛选依据」的稳定键，再按 id 映射回最新的 Task 对象。
+    // 这样进度更新（tasks 每秒变化多次）不会触发整表重排，而界面上的进度仍是实时的（审查 W6）。
+    val taskOrderKeys = remember(tasks, downloadSort) {
+        tasks.map { task ->
+            TaskOrderKey(
+                id = task.id,
+                status = task.status,
+                title = task.title,
+                totalBytes = task.totalBytes,
+                // 仅「按进度排序」时把进度纳入键；否则进度变化不应引起重排
+                progress = if (downloadSort == DownloadSort.PROGRESS && task.totalBytes > 0) {
+                    task.downloadedBytes.toFloat() / task.totalBytes
+                } else {
+                    0f
+                }
+            )
+        }
+    }
+    val orderedTaskIds = remember(taskOrderKeys, downloadFilter, downloadSort) {
         val base = when (downloadFilter) {
-            DownloadFilter.ALL -> tasks
-            DownloadFilter.DOWNLOADING -> tasks.filter {
+            DownloadFilter.ALL -> taskOrderKeys
+            DownloadFilter.DOWNLOADING -> taskOrderKeys.filter {
                 it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
             }
-            DownloadFilter.COMPLETED -> tasks.filter { it.status == DownloadStatus.COMPLETED }
-            DownloadFilter.FAILED -> tasks.filter { it.status == DownloadStatus.FAILED }
-            DownloadFilter.PAUSED -> tasks.filter { it.status == DownloadStatus.PAUSED }
+            DownloadFilter.COMPLETED -> taskOrderKeys.filter { it.status == DownloadStatus.COMPLETED }
+            DownloadFilter.FAILED -> taskOrderKeys.filter { it.status == DownloadStatus.FAILED }
+            DownloadFilter.PAUSED -> taskOrderKeys.filter { it.status == DownloadStatus.PAUSED }
         }
         when (downloadSort) {
             DownloadSort.ADDED -> base.sortedByDescending { it.id }
             DownloadSort.NAME -> base.sortedBy { it.title.lowercase() }
             DownloadSort.SIZE -> base.sortedByDescending { it.totalBytes }
-            DownloadSort.PROGRESS -> base.sortedByDescending {
-                if (it.totalBytes > 0) it.downloadedBytes.toFloat() / it.totalBytes else 0f
-            }
-        }
+            DownloadSort.PROGRESS -> base.sortedByDescending { it.progress }
+        }.map { it.id }
     }
+    val tasksById = tasks.associateBy { it.id }
+    val visibleTasks = orderedTaskIds.mapNotNull { tasksById[it] }
     val useGroupedView = downloadFilter == DownloadFilter.ALL && downloadSort == DownloadSort.ADDED
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<Int?>(null) }
+
+    // 选择模式下「全选 / 取消全选」的作用域必须与当前可见条目一致。
+    // 否则筛选后再进入选择模式，会出现「选中了屏幕上看不见的任务 → 删除时连带删掉不可见项」。
+    val selectableIds = remember(useGroupedView, tasks, visibleTasks) {
+        (if (useGroupedView) tasks else visibleTasks).mapTo(HashSet()) { it.id }
+    }
 
     LaunchedEffect(isSelectionMode) {
         if (!isSelectionMode) {
@@ -161,13 +201,13 @@ fun DownloadScreen(
                 Text(
                     text = stringResource(R.string.common_select_all),
                     fontSize = 14.sp,
-                    color = if (selectedIds.size == tasks.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    color = if (selectedIds.containsAll(selectableIds)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable {
-                            selectedIds = if (selectedIds.size == tasks.size) {
+                            selectedIds = if (selectedIds.containsAll(selectableIds)) {
                                 emptySet()
                             } else {
-                                tasks.map { it.id }.toSet()
+                                selectableIds
                             }
                         }
                         .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -431,9 +471,15 @@ fun DownloadScreen(
                         items(visibleTasks) { task ->
                             DownloadTaskItem(
                                 task = task,
-                                isSelectionMode = false,
-                                isSelected = false,
-                                onToggleSelection = {},
+                                isSelectionMode = isSelectionMode,
+                                isSelected = task.id in selectedIds,
+                                onToggleSelection = {
+                                    selectedIds = if (task.id in selectedIds) {
+                                        selectedIds - task.id
+                                    } else {
+                                        selectedIds + task.id
+                                    }
+                                },
                                 onPauseClick = { viewModel.pauseDownload(task.id) },
                                 onResumeClick = { viewModel.resumeDownload(task.id) },
                                 onCancelClick = { viewModel.cancelDownload(task.id) },
@@ -470,16 +516,6 @@ fun DownloadScreen(
                     .padding(horizontal = 15.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isSelectionMode && tasks.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.common_manage),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clickable { isSelectionMode = true }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
                 Text(
                     text = stringResource(R.string.search_selected_count, selectedIds.size),
                     fontSize = 14.sp,
@@ -489,7 +525,7 @@ fun DownloadScreen(
                 Text(
                     text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
-                    color = Color(0xFFFF6B6B),
+                    color = HanimeDanger,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable {
@@ -554,15 +590,11 @@ fun DownloadScreen(
     }
 
     if (showDeleteConfirm) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable {
-                    deleteTargetId = null
-                    showDeleteConfirm = false
-                },
-            contentAlignment = Alignment.Center
+        FullScreenOverlayDialog(
+            onDismiss = {
+                deleteTargetId = null
+                showDeleteConfirm = false
+            }
         ) {
             Column(
                 modifier = Modifier
@@ -613,7 +645,7 @@ fun DownloadScreen(
                     Text(
                         text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
-                        color = Color(0xFFFF6B6B),
+                        color = HanimeDanger,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)
@@ -648,7 +680,6 @@ private fun SectionHeader(
     onToggleAll: (Boolean) -> Unit
 ) {
     val allSelected = tasks.all { it.id in selectedIds }
-    val someSelected = tasks.any { it.id in selectedIds } && !allSelected
 
     Row(
         modifier = Modifier
@@ -823,7 +854,7 @@ fun DownloadTaskItem(
                 Text(
                     text = stringResource(R.string.download_failed),
                     fontSize = 10.sp,
-                    color = Color(0xFFFF6B6B),
+                    color = HanimeDanger,
                     modifier = Modifier.padding(top = 3.dp)
                 )
                 // C3：展示细分失败原因（如网络超时、HTTP 4xx/5xx）
@@ -923,7 +954,7 @@ fun DownloadTaskItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = stringResource(R.string.common_delete),
-                        tint = Color(0xFFFF6B6B),
+                        tint = HanimeDanger,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -982,9 +1013,9 @@ private fun playVideoFile(context: android.content.Context, filePath: String) {
         }
 
         context.startActivity(chooser)
-    } catch (e: IllegalArgumentException) {
-        Toast.makeText(context, context.getString(R.string.download_open_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
-    } catch (e: ActivityNotFoundException) {
+    } catch (e: Exception) {
+        // 预期会命中的两类异常：FileProvider 找不到匹配根路径（IllegalArgumentException）
+        // 与设备上没有任何可处理 ACTION_VIEW 的应用（ActivityNotFoundException），提示一致故合并（审查 O6）
         Toast.makeText(context, context.getString(R.string.download_open_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
     }
 }
