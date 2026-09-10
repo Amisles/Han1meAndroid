@@ -46,7 +46,6 @@ internal fun DetailVideoPlayer(
         videoSources = detail.videoSources,
         initialSourceUrl = pickInitialSourceUrl(detail, Preferences.preferredQuality),
         initialPositionMs = initialPositionMs,
-        preloadUrl = detail.relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl ?: "",
         isFullscreen = isFullscreen,
         onFullscreenToggle = onFullscreenToggle,
         onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },

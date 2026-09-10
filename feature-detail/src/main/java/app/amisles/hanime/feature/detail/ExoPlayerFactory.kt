@@ -7,11 +7,9 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresPermission
-import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
-import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -35,8 +33,7 @@ import kotlinx.coroutines.launch
  * 2. 浏览器 User-Agent 的 HTTP 数据源 —— 部分 CDN 会对默认 UA（ExoPlayer/...）做单连接限速，
  *    伪装成 Chrome Mobile 可绕过，拉到与 Edge 同档的带宽。
      * 3. 网络感知的 LoadControl —— 按 Wi-Fi / 移动数据 / 弱网动态切换缓冲区间（见 §5）。
-     * 4. 下一集预缓存预热 —— [warmCacheFor] 在 IO 线程把相关视频首段写入 SimpleCache，进入即命中本地（见 §1）。
-     * 5. 视频反防盗链 Referer —— 直链请求经 [VideoAntiHotlink] 注入官网 Referer，绕过视频 CDN 的 Referer 防盗链（仅接受官网域名 Referer，否则 403）。
+     * 4. 视频反防盗链 Referer —— 直链请求经 [VideoAntiHotlink] 注入官网 Referer，绕过视频 CDN 的 Referer 防盗链（仅接受官网域名 Referer，否则 403）。
  *
  * SimpleCache 必须是进程级单例（同一缓存目录不能被实例化两次），故用 AtomicReference 缓存。
  */
@@ -49,9 +46,6 @@ object ExoPlayerFactory {
 
     // 磁盘缓存上限：512MB，按 LRU 自动淘汰最久未用的片段。
     private const val CACHE_MAX_BYTES = 512L * 1024 * 1024
-
-    // 预缓存只取前 2MB，足够首帧 + 起播缓冲命中本地。
-    private const val PREWARM_BYTES = 2L * 1024 * 1024
 
     private val cacheRef = AtomicReference<SimpleCache?>(null)
 
@@ -90,42 +84,6 @@ object ExoPlayerFactory {
                 getCache(context)
             } catch (_: Exception) {
                 // 预热失败不影响后续主线程兜底构建
-            }
-        }
-    }
-
-    /**
-     * 预热下一集：把直链首段（[PREWARM_BYTES]）写入 SimpleCache，使进入下一集时首帧即可命中本地
-     * （播放器审查 §1 预加载）。在 IO 协程执行；失败仅忽略，不影响当前播放。
-     */
-    fun warmCacheFor(url: String, context: Context) {
-        if (url.isBlank()) return
-        warmupScope.launch {
-            try {
-                val cache = getCache(context)
-                val upstreamFactory = buildUpstreamFactory(10_000, 10_000)
-                val dataSource = CacheDataSource.Factory()
-                    .setCache(cache)
-                    .setUpstreamDataSourceFactory(upstreamFactory)
-                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-                    .createDataSource()
-                try {
-                    val spec = DataSpec.Builder()
-                        .setUri(url)
-                        .setPosition(0L)
-                        .setLength(PREWARM_BYTES)
-                        .build()
-                    dataSource.open(spec)
-                    val buf = ByteArray(16 * 1024)
-                    while (dataSource.read(buf, 0, buf.size) != C.RESULT_END_OF_INPUT) {
-                        // 仅消耗并写入缓存，不持有数据
-                    }
-                } finally {
-                    // 关闭失败仅吞掉，避免掩盖 try 块里真正的异常；预热本身失败也不影响播放
-                    runCatching { dataSource.close() }
-                }
-            } catch (_: Exception) {
-                // 预热失败不影响播放
             }
         }
     }
