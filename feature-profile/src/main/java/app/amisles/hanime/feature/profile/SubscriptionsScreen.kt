@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -131,7 +132,10 @@ fun SubscriptionsScreen(
                                 onClick = { viewModel.selectArtist("") }
                             )
                         }
-                        items(artists, key = { it.name }) { artist ->
+                        // key 必须唯一：同名作者会让 LazyRow 抛
+                        // IllegalArgumentException: Key "x" was already used（审查 P5）；
+                        // SubscribedArtist 没有 ID，故用「名字 + 位次」保证唯一
+                        itemsIndexed(artists, key = { index, artist -> "${artist.name}#$index" }) { _, artist ->
                             ArtistChip(
                                 name = artist.name,
                                 avatarUrl = artist.avatarUrl,
