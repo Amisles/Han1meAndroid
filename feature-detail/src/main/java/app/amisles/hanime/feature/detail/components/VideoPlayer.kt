@@ -1055,14 +1055,18 @@ fun VideoPlayer(
                 animationSpec = tween(durationMillis = 250),
                 label = "posterAlpha"
             )
-            AsyncImage(
-                model = posterUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = posterAlpha }
-            )
+            // 淡出完成后不再参与组合：alpha 恒为 0 的整屏位图没有保留必要（审查 O14）。
+            // showPoster 只在 posterUrl 变化时才置回 true，因此不会出现「需要海报却已移除」的情况。
+            if (posterAlpha > 0f) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = posterAlpha }
+                )
+            }
         }
 
         // 手势提示覆盖层

@@ -1,12 +1,9 @@
 package app.amisles.hanime.feature.detail
 
-import android.Manifest
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Build
 import androidx.annotation.OptIn
-import androidx.annotation.RequiresPermission
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -50,6 +47,7 @@ object ExoPlayerFactory {
     private val cacheRef = AtomicReference<SimpleCache?>(null)
 
     // 预热作用域：仅用于 Application 启动期在 IO 线程构建 SimpleCache（见 prewarmCache）。
+    // 对象级作用域，刻意不提供取消点：构建好的 SimpleCache 需在整个进程生命周期内复用（审查 O18）。
     private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Synchronized
@@ -130,6 +128,10 @@ object ExoPlayerFactory {
      * - 浏览器 UA（[BROWSER_UA]）：绕过部分 CDN 对 ExoPlayer 默认 UA 的单连接限速。
      * - Referer = 设置页「官网网址」（[VideoAntiHotlink.referer]）：绕过视频 CDN 的 Referer 防盗链，
      *   直链仅接受来自官网域名的 Referer，否则返回 403 导致播放失败。
+     * - 允许跨协议重定向（[DefaultHttpDataSource.Factory.setAllowCrossProtocolRedirects]）：
+     *   部分直链会做 http→https 跳转，禁止后会直接播放失败（审查 O17）。代价是自定义请求头（Referer）
+     *   会随重定向发往跳转目标主机；该跳转由我方请求的 CDN 下发，且头内只有官网地址、不含凭据，故接受。
+     *   若后续要收紧为同协议重定向，需回归验证直链播放是否仍可用。
      * [connectTimeoutMs]/[readTimeoutMs] 由调用方按场景（预缓存/正片）传入，沿用既有超时策略。
      */
     private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int): DefaultHttpDataSource.Factory {
