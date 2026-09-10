@@ -40,6 +40,7 @@ object Preferences {
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
+    private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
@@ -91,6 +92,10 @@ object Preferences {
     private val _downloadStoragePathFlow = MutableStateFlow("")
     val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
 
+    // 搜索页布局模式：null 表示用户从未显式选择过，由界面按窗口宽度档位取默认值
+    private val _searchLayoutModeFlow = MutableStateFlow<SearchLayoutMode?>(null)
+    val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
+
     fun init(context: Context) {
         // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
         sp = provideSecurePreferences(context)
@@ -112,6 +117,8 @@ object Preferences {
         _preferredQualityFlow.value = sp.getString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = sp.getBoolean(SP_AUTO_PLAY_NEXT, true)
         _downloadStoragePathFlow.value = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
+        // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
+        _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(sp.getString(SP_SEARCH_LAYOUT_MODE, null))
     }
 
     /**
@@ -227,6 +234,7 @@ object Preferences {
     val playbackSpeed: Float get() = _playbackSpeedFlow.value
     val preferredQuality: String get() = _preferredQualityFlow.value
     val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
+    val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
     fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
@@ -315,6 +323,14 @@ object Preferences {
     fun setAutoPlayNext(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled
+    }
+
+    /**
+     * 搜索页布局模式。写入后即视为「用户已显式选择」，此后不再回退到按宽度档位的默认值。
+     */
+    fun setSearchLayoutMode(mode: SearchLayoutMode) {
+        sp.edit { putString(SP_SEARCH_LAYOUT_MODE, mode.name) }
+        _searchLayoutModeFlow.value = mode
     }
 
     /**

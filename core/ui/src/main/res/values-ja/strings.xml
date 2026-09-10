@@ -47,6 +47,8 @@
     <string name="search_sort_longest">尺時間順</string>
     <string name="search_sort_watching">視聴中</string>
     <string name="search_empty_hint">キーワードを入力するか、カテゴリを選択して検索を始めましょう</string>
+    <string name="search_layout_list">リスト表示</string>
+    <string name="search_layout_grid">グリッド表示</string>
     <string name="search_result_count">%1$d 件</string>
     <string name="search_selected_count">%1$d 件選択中</string>
 

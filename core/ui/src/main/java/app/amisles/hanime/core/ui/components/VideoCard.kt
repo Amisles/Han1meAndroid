@@ -30,7 +30,8 @@ import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 
 
-private fun stableIndex(key: String, size: Int): Int {
+/** 由视频 id 稳定地取一个下标，用于给占位图挑选渐变与 emoji；同模块的卡片组件共用。 */
+internal fun stableIndex(key: String, size: Int): Int {
     if (size <= 0) return 0
     return Math.floorMod(key.hashCode(), size)
 }

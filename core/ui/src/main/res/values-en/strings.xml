@@ -47,6 +47,8 @@
     <string name="search_sort_longest">Longest</string>
     <string name="search_sort_watching">What They\'re Watching</string>
     <string name="search_empty_hint">Enter a keyword or select a category to start searching</string>
+    <string name="search_layout_list">List view</string>
+    <string name="search_layout_grid">Grid view</string>
     <string name="search_result_count">%1$d results</string>
     <string name="search_selected_count">%1$d selected</string>
 

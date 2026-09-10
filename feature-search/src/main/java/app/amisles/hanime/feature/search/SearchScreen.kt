@@ -1,12 +1,10 @@
 package app.amisles.hanime.feature.search
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +19,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -57,20 +60,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
-import app.amisles.hanime.core.ui.components.VideoCard
-import app.amisles.hanime.core.ui.components.VideoThumbnail
+import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.VideoGridCard
+import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.preferences.SearchLayoutMode
 
 val allCategory = Category("", R.string.search_all, "")
 val filterTypes = listOf(allCategory) + categories
@@ -116,15 +121,36 @@ fun SearchScreen(
     val selectedSort = remember { mutableStateOf(sortOptions[0]) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
 
-    // 滚动接近底部自动加载下一页
-    androidx.compose.runtime.LaunchedEffect(listState, videos, isLoadingMore, hasMore) {
-        snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            totalItems > 0 && lastVisible >= totalItems - 3
-        }.collect { shouldLoad ->
+    // 布局模式：用户显式选择优先；从未选择过时按宽度档位取默认（Compact 列表 / 平板网格），
+    // 这样手机与平板的既有体验都不变，一旦点过切换就完全以用户选择为准（已落盘）
+    val sizeInfo = currentWindowSizeInfo()
+    val savedLayoutMode by Preferences.searchLayoutModeFlow.collectAsStateWithLifecycle()
+    val isGridMode = (savedLayoutMode ?: if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
+        SearchLayoutMode.LIST
+    } else {
+        SearchLayoutMode.GRID
+    }) == SearchLayoutMode.GRID
+
+    // 滚动接近底部自动加载下一页；网格与列表各有一套滚动状态，跟随当前生效的那一套
+    androidx.compose.runtime.LaunchedEffect(isGridMode, videos, isLoadingMore, hasMore) {
+        val nearEnd = if (isGridMode) {
+            snapshotFlow {
+                val layoutInfo = gridState.layoutInfo
+                val totalItems = layoutInfo.totalItemsCount
+                val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                totalItems > 0 && lastVisible >= totalItems - 3
+            }
+        } else {
+            snapshotFlow {
+                val layoutInfo = listState.layoutInfo
+                val totalItems = layoutInfo.totalItemsCount
+                val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                totalItems > 0 && lastVisible >= totalItems - 3
+            }
+        }
+        nearEnd.collect { shouldLoad ->
             if (shouldLoad && hasMore && !isLoadingMore && videos.isNotEmpty()) {
                 viewModel.loadMore()
             }
@@ -356,6 +382,17 @@ fun SearchScreen(
                         }
                     }
                 }
+
+                // 布局模式切换：右对齐，与排序下拉同一行；写入即视为用户已显式选择，之后不再回退默认值
+                Spacer(modifier = Modifier.weight(1f))
+                LayoutModeToggle(
+                    isGrid = isGridMode,
+                    onToggle = { grid ->
+                        Preferences.setSearchLayoutMode(
+                            if (grid) SearchLayoutMode.GRID else SearchLayoutMode.LIST
+                        )
+                    }
+                )
             }
         }
 
@@ -489,183 +526,107 @@ fun SearchScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        } else if (isGridMode) {
+            // 网格模式：列数按「实测可用宽度」算（BoxWithConstraints 拿到的已含 ResponsiveContent 限宽），
+            // 而不是只看宽度档位 —— 横屏手机（约 800dp）因此得到 4 列而非 3 列，
+            // 分屏 / 折叠屏这种「档位没变但可用宽度变了」的窗口也能正确响应
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val columns = remember(maxWidth) { gridColumnsFor(maxWidth) }
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Fixed(columns),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 15.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
+                ) {
+                    items(items = videos, key = { it.id }) { video ->
+                        VideoGridCard(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            onAuthorClick = onAuthorClick
+                        )
+                    }
+
+                    // 网格的页脚需要横跨整行，故显式指定 span
+                    if (isLoadingMore) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            SearchLoadMoreIndicator()
+                        }
+                    } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            SearchNoMoreHint()
+                        }
+                    }
+                }
+            }
         } else {
-            val sizeInfo = currentWindowSizeInfo()
-            if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.padding(15.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                items(videos) { video ->
-                    val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-                    val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(
-                                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                                shape = RoundedCornerShape(8.dp),
-                                clip = false,
-                                ambientColor = Color.Black.copy(alpha = 0.18f),
-                                spotColor = Color.Black.copy(alpha = 0.18f)
-                            )
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                            .padding(vertical = 4.dp, horizontal = 6.dp)
-                            .clickable { onVideoClick(video.videoUrl) },
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        VideoThumbnail(
-                            thumbnailUrl = video.thumbnailUrl,
-                            emoji = emoji,
-                            gradient = gradient,
-                            duration = "",
-                            likeRate = "",
-                            viewCount = "",
-                            crop = true,
-                            modifier = Modifier
-                                .width(120.dp)
-                                .height(90.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                        )
-
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = video.title,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (video.author.isNotEmpty()) {
-                                Text(
-                                    text = video.author,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .padding(top = 2.dp)
-                                        .clickable { onAuthorClick(video.author) }
-                                )
-                            }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(top = 2.dp)
-                            ) {
-                                Text(
-                                    text = video.duration,
-                                    fontSize = 9.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = video.likeRate,
-                                    fontSize = 9.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = video.viewCount,
-                                    fontSize = 9.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
+                items(items = videos, key = { it.id }) { video ->
+                    VideoListItem(
+                        video = video,
+                        onClick = { onVideoClick(video.videoUrl) },
+                        onAuthorClick = onAuthorClick
+                    )
                 }
 
                 // 加载中指示器（自动触发加载时显示）
                 if (isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
+                    item { SearchLoadMoreIndicator() }
                 } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.search_no_more),
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
-            }
-            } else {
-                // 平板：多列网格，按列数分行渲染 VideoCard
-                val columns = sizeInfo.gridColumns
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.padding(15.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    videos.chunked(columns).forEach { rowVideos ->
-                        item {
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                rowVideos.forEach { video ->
-                                    VideoCard(
-                                        video = video,
-                                        onClick = { onVideoClick(video.videoUrl) },
-                                        onAuthorClick = onAuthorClick,
-                                        modifier = Modifier
-                                            .shadow(
-                                                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                                                shape = RoundedCornerShape(8.dp),
-                                                clip = false,
-                                                ambientColor = Color.Black.copy(alpha = 0.18f),
-                                                spotColor = Color.Black.copy(alpha = 0.18f)
-                                            )
-                                            .weight(1f)
-                                    )
-                                }
-                                repeat(columns - rowVideos.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-
-                    if (isLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
-                        item {
-                            Text(
-                                text = stringResource(R.string.search_no_more),
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
+                    item { SearchNoMoreHint() }
                 }
             }
         }
     }
     }
+}
+
+/**
+ * 网格列数：按「实测可用宽度」算，而不是只看宽度档位。
+ *
+ * 取 `floor((W + G) / (T + G))` 后夹在 [2, 5]，让卡片宽度始终落在目标值附近：
+ * 手机竖屏（约 330dp 可用）2 列、横屏手机（约 770dp）4 列、平板（约 1050dp）5 列。
+ * 下限必须夹到 2 —— `GridCells.Adaptive` 在 330dp 下只会算出 1 列，手机上就退化成单列了。
+ */
+private fun gridColumnsFor(availableWidth: Dp): Int {
+    val width = availableWidth.value
+    if (width.isNaN() || width <= 0f) return 2
+    val target = 168.dp
+    val gap = 12.dp
+    return ((availableWidth + gap) / (target + gap)).toInt().coerceIn(2, 5)
+}
+
+/** 搜索结果「加载中」页脚：列表与网格共用，网格侧由调用方指定 span 横跨整行。 */
+@Composable
+private fun SearchLoadMoreIndicator() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** 搜索结果「没有更多了」页脚：列表与网格共用。 */
+@Composable
+private fun SearchNoMoreHint() {
+    Text(
+        text = stringResource(R.string.search_no_more),
+        fontSize = 13.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    )
 }

@@ -56,6 +56,8 @@
     <string name="search_sort_longest">时长最长</string>
     <string name="search_sort_watching">他们在看</string>
     <string name="search_empty_hint">输入关键词或选择分类开始搜索</string>
+    <string name="search_layout_list">列表视图</string>
+    <string name="search_layout_grid">网格视图</string>
     <string name="search_result_count">%1$d 个结果</string>
     <string name="search_selected_count">已选择 %1$d 项</string>
 
