@@ -103,7 +103,6 @@ import androidx.media3.ui.PlayerView
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.model.VideoSource
-import app.amisles.hanime.feature.detail.ExoPlayerFactory
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -188,9 +187,6 @@ private fun formatTime(ms: Long): String {
 // ─────────────────────────────────────────────────────────────────────────────
 // 常量
 // ─────────────────────────────────────────────────────────────────────────────
-
-// 长视频阈值：超过则保持解码器前台热身，降低切回前台的解码延迟
-private const val LONG_VIDEO_MS = 15L * 60 * 1000
 
 // 控件隐藏时贴在播放器底部的简易进度条高度
 private val MINI_PROGRESS_HEIGHT = 3.dp
@@ -344,7 +340,6 @@ fun VideoPlayer(
     videoSources: List<VideoSource> = emptyList(),
     initialSourceUrl: String = "",
     initialPositionMs: Long = 0L,
-    preloadUrl: String = "",
     isFullscreen: Boolean = false,
     modifier: Modifier = Modifier,
     onFullscreenToggle: (Boolean) -> Unit = {},
@@ -428,6 +423,10 @@ fun VideoPlayer(
     var rebufferCount by remember { mutableStateOf(0) }
     var autoSwitched by remember { mutableStateOf(false) }
     var stableTicks by remember { mutableStateOf(0) }
+    // 上一次播放状态：用于区分「首次起播 / 换源引发的缓冲」与「播放中重新缓冲」
+    var lastPlaybackState by remember { mutableStateOf(Player.STATE_IDLE) }
+    // 播放失败：非空即进入可重试的失败态（不再用 isReady 冒充就绪）
+    var playbackError by remember { mutableStateOf<PlaybackException?>(null) }
     // 用 ref 持有最新值，避免 remember 的 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
     val sourcesRef = rememberUpdatedState(sortedSources)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
@@ -454,15 +453,39 @@ fun VideoPlayer(
         onQualityChanged(source.resolution)
     }
 
+    /**
+     * 失败态重试：清除错误后重新 prepare 当前媒体项，并尽量回到原播放位置。
+     */
+    fun retryPlayback() {
+        val position = exoPlayer.currentPosition
+        playbackError = null
+        isBuffering = true
+        // 媒体项被清空（极端路径）时按当前源重建，否则直接重新 prepare
+        if (exoPlayer.mediaItemCount == 0 && currentSourceUrl.isNotBlank()) {
+            exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(currentSourceUrl)))
+        }
+        exoPlayer.prepare()
+        if (position > 0L) exoPlayer.seekTo(position)
+    }
+
     // ── 播放器监听 ───────────────────────────────────────────────────────────
     val listener = remember {
         object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
+                val previousState = lastPlaybackState
+                lastPlaybackState = playbackState
                 isBuffering = playbackState == Player.STATE_BUFFERING
                 when (playbackState) {
                     Player.STATE_BUFFERING -> {
-                        // 仅「播放中」的缓冲视为 rebuffer
-                        if (isPlaying && !autoSwitched) {
+                        // 仅「从 READY 掉回 BUFFERING 且用户意图播放」才算一次 rebuffer。
+                        // 不能用 isPlaying 判定：ExoPlayer 进入缓冲会先回调 onIsPlayingChanged(false)，
+                        // 随后才回调 STATE_BUFFERING，以它为条件会让计数恒为 0、整套 ABR 失效。
+                        // 首次起播（IDLE→BUFFERING）与换画质（isSwitchingQuality）均不计入。
+                        // 取舍：播放中拖拽进度造成的短暂缓冲也会计入，可能触发一次降档，
+                        // 但降档后可经下方稳定升档路径恢复，影响可接受。
+                        val isRebuffer = previousState == Player.STATE_READY &&
+                            exoPlayer.playWhenReady && !isSwitchingQuality
+                        if (isRebuffer && !autoSwitched) {
                             rebufferCount++
                             if (rebufferCount >= 2) {
                                 val sources = sourcesRef.value
@@ -480,6 +503,7 @@ fun VideoPlayer(
                         isReady = true
                         isSwitchingQuality = false
                         rebufferCount = 0
+                        playbackError = null
                         // 续播：首帧就绪且有有效续播点（>5s 且未接近结尾）时跳转到上次位置
                         if (!initialSeekAppliedRef.value && initialPositionMsRef.value > 5000) {
                             val dur = exoPlayer.duration
@@ -488,8 +512,9 @@ fun VideoPlayer(
                             }
                             initialSeekAppliedRef.value = true
                         }
-                        // 解码优化：长视频保持解码器前台热身
-                        exoPlayer.setForegroundMode(exoPlayer.duration > LONG_VIDEO_MS)
+                        // 不调用 setForegroundMode(true)：它的语义是「为后台播放保活」，
+                        // 本应用没有播放用的前台服务（只有下载用的 DownloadService），可见播放器并不需要它，
+                        // 反而会让超长视频在后台继续放音且没有通知可依。后台继续观看由画中画承担（审查 D7）。
                         // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
                         if (autoSwitched) {
                             stableTicks++
@@ -523,13 +548,15 @@ fun VideoPlayer(
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 isBuffering = false
-                isReady = true
                 isSwitchingQuality = false
+                // 保留错误用于渲染可重试的失败态。此前把 isReady 置 true 会让中央播放按钮
+                // 呈现为「可播放」，用户反复点击无反应，也看不到任何失败原因。
+                playbackError = error
             }
         }
     }
 
-    // ── 副作用：初始化 / 监听注册 / 屏幕常亮 / 解码模式 / 控件自动隐藏 / 预加载 ──
+    // ── 副作用：初始化 / 监听注册 / 屏幕常亮 / 解码模式 / 控件自动隐藏 ──
     DisposableEffect(isPlaying) {
         if (isPlaying) {
             activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -583,13 +610,6 @@ fun VideoPlayer(
     // 切换视频时重置海报占位显示状态（posterUrl 变化即新视频）
     LaunchedEffect(posterUrl) {
         showPoster = posterUrl.isNotEmpty()
-    }
-
-    // 下一集预加载：将相关视频直链首段预热进 SimpleCache，进入即命中本地
-    LaunchedEffect(preloadUrl) {
-        if (preloadUrl.isNotBlank()) {
-            ExoPlayerFactory.warmCacheFor(preloadUrl, context)
-        }
     }
 
     DisposableEffect(Unit) {
@@ -1072,6 +1092,48 @@ fun VideoPlayer(
             )
         }
 
+        // 播放失败：始终展示（不受控件自动隐藏影响），给出原因与重试入口
+        val currentPlaybackError = playbackError
+        if (currentPlaybackError != null && !isInPip) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 24.dp)
+                    .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.detail_load_failed),
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = currentPlaybackError.errorCodeName,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    text = stringResource(R.string.common_retry),
+                    color = HanimePrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable {
+                            // 与播放器内既有控件一致：标记本次点击落在控件上，
+                            // 避免同一击又被外层手势当作空白点击而切换控制栏显隐
+                            markControlTap()
+                            retryPlayback()
+                        }
+                        .padding(horizontal = 20.dp, vertical = 6.dp)
+                )
+            }
+        }
+
         // 控件隐藏时，底部显示一条仅用于展示进度的简易进度条
         if (!isControlsVisible && !isInPip) {
             MiniPlaybackProgress(
@@ -1099,7 +1161,7 @@ fun VideoPlayer(
                     )
             )
 
-            if (!isPlaying && !isBuffering && isReady) {
+            if (!isPlaying && !isBuffering && isReady && playbackError == null) {
                 IconButton(
                     onClick = {
                         markControlTap()
