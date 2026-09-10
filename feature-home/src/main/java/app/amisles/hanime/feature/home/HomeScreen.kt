@@ -119,17 +119,27 @@ fun HomeScreenContent(
     val sizeInfo = currentWindowSizeInfo()
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
 
-    val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading) {
+    // 与渲染分支共用同一个判定，避免两处条件漂移
+    val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+    val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading, sizeInfo) {
         val map = mutableMapOf<String, Int>()
         var idx = 0
         idx++ // header
         idx++ // category
         if (!isLoading) {
             if (banner != null) idx++ // banner
+            val columns = sizeInfo.gridColumns.coerceAtLeast(1)
             sections.forEach { section ->
                 map[section.title] = idx // 标题 item 的索引
                 idx += 1 // 标题
-                idx += section.videos.take(HOME_SECTION_VISIBLE_COUNT).size // 视频行
+                // 视频区在手机是「每条一个 item」、在平板是「每行一个 item」：
+                // 索引必须与下方渲染分支严格一致，否则平板点分类会定位到错误位次（审查 H2）
+                val visibleCount = section.videos.take(HOME_SECTION_VISIBLE_COUNT).size
+                idx += if (isCompactWidth) {
+                    visibleCount
+                } else {
+                    (visibleCount + columns - 1) / columns
+                }
                 idx += 1 // 分区之间的 spacer
             }
             idx++ // bottom spacer
@@ -140,7 +150,8 @@ fun HomeScreenContent(
     }
 
     PullToRefreshBox(
-        isRefreshing = false,
+        // 与真实加载状态联动：此前恒为 false，下拉后指示器立即消失（审查 H1）
+        isRefreshing = isLoading,
         onRefresh = onRefresh,
         state = pullState,
         modifier = Modifier
@@ -149,12 +160,12 @@ fun HomeScreenContent(
             .statusBarsPadding()
     ) {
         ResponsiveContent {
+        // 状态栏内边距已由外层 PullToRefreshBox 提供，这里不再叠加，否则顶部留白翻倍（审查 H3）
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .statusBarsPadding()
         ) {
         item(key = "home-header") {
             Header(
@@ -233,7 +244,7 @@ fun HomeScreenContent(
                     }
                 }
 
-                if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
+                if (isCompactWidth) {
                     items(visibleVideos, key = { it.videoUrl }) { video ->
                         VideoListItem(
                             video = video,

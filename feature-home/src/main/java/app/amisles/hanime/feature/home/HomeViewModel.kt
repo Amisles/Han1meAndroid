@@ -6,7 +6,6 @@ import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.data.repository.HanimeRepository
-import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,8 +38,9 @@ class HomeViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
+    // 首页数据在 VM 创建时即加载（不放到 UI 的 LaunchedEffect）：
+    // 首页是启动页，越早发起请求首屏越快；VM 由导航图持有，重建即重新拉取（审查 O19）。
     init {
-        AppLogger.d("HomeViewModel", "HomeViewModel created, calling loadHomeData")
         loadHomeData()
     }
 
@@ -66,7 +66,9 @@ class HomeViewModel @Inject constructor(
                     when (event) {
                         is HomeDataEvent.Banner -> _banner.value = event.banner
                         is HomeDataEvent.Section -> {
-                            _sections.value = _sections.value + event.section
+                            // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块（审查 H4）
+                            _sections.value = _sections.value
+                                .filterNot { it.title == event.section.title } + event.section
                         }
                         is HomeDataEvent.Error -> _error.value = event.message
                     }
