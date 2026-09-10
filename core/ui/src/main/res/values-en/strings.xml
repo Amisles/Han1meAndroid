@@ -246,6 +246,7 @@
     <string name="settings_base_url_hint">Enter website URL, leave empty for default</string>
     <string name="settings_base_url_updated">Website URL updated</string>
     <string name="settings_base_url_restored">Restored to default URL</string>
+    <string name="settings_base_url_invalid">Invalid URL. Only https domains are supported; setting unchanged</string>
     <string name="settings_language_zh_cn">简体中文</string>
     <string name="settings_language_zh_tw">繁體中文</string>
     <string name="settings_language_en">English</string>

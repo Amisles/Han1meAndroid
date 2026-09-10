@@ -44,6 +44,13 @@ object Preferences {
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
+    // 基址校验：只接受 https + 形如域名/IP 的 host（可带端口），拒绝任意字符串。
+    // 视频防盗链 Referer 与登录 Cookie 都会发往该地址，放开 http 会让它们在网络中以明文传输。
+    private val HTTPS_PREFIX = Regex("^https://([^/]+)", RegexOption.IGNORE_CASE)
+    private val HOST_PATTERN = Regex(
+        "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*(:\\d{1,5})?$"
+    )
+
     // 支持登录的官方域名（其余镜像站登录接口返回“站点维护中”）
     private val LOGIN_SUPPORTED_DOMAINS = setOf("hanime1.me", "hanimeone.me")
 
@@ -106,7 +113,8 @@ object Preferences {
         _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径），回写以保证后续拼接正确
         val rawBaseUrl = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
-        val safeBaseUrl = sanitizeBaseUrl(rawBaseUrl)
+        // 历史值可能含路径（如 /enter）或为 http：清洗失败时回退默认地址，避免带着明文地址继续用
+        val safeBaseUrl = sanitizeBaseUrl(rawBaseUrl) ?: DEFAULT_BASE_URL
         if (safeBaseUrl != rawBaseUrl) {
             sp.edit { putString(SP_BASE_URL, safeBaseUrl) }
         }
@@ -247,20 +255,33 @@ object Preferences {
         _themeModeFlow.value = mode
     }
 
-    fun setBaseUrl(url: String) {
-        val safeUrl = sanitizeBaseUrl(url)
+    /**
+     * 设置站点基址。留空表示恢复默认地址（与设置页提示一致）。
+     *
+     * @return true 表示输入被接受（可能已规范化为「https:// + host」）；
+     *   false 表示输入非法，此时保持原设置不变，由调用方提示用户（审查 G1）。
+     */
+    fun setBaseUrl(url: String): Boolean {
+        val input = url.ifBlank { DEFAULT_BASE_URL }
+        val safeUrl = sanitizeBaseUrl(input) ?: return false
         sp.edit { putString(SP_BASE_URL, safeUrl) }
         _baseUrlFlow.value = safeUrl
+        return true
     }
 
     /**
-     * 只保留协议+域名，去除路径（如镜像站的 /enter 入口）。
+     * 规范化为「https:// + host + 可选端口」，去掉路径（如镜像站的 /enter 入口），
      * 确保后续拼接 /search、/watch 等路径时不会产生 /enter/search 这类无效 URL。
+     *
+     * 只接受 https：该地址会承载登录 Cookie 与视频防盗链 Referer（审查 G1）。
+     *
+     * @return 规范化后的地址；输入不是合法 https 域名/IP 时返回 null。
      */
-    private fun sanitizeBaseUrl(url: String): String {
+    private fun sanitizeBaseUrl(url: String): String? {
         val trimmed = url.trim().trimEnd('/')
-        val hostOnly = Regex("^(https?://[^/]+)").find(trimmed)?.value
-        return if (hostOnly.isNullOrEmpty()) DEFAULT_BASE_URL else hostOnly
+        val host = HTTPS_PREFIX.find(trimmed)?.groupValues?.get(1) ?: return null
+        if (!HOST_PATTERN.matches(host)) return null
+        return "https://$host"
     }
 
     fun saveLogin(cookieString: String, userId: String? = null) {

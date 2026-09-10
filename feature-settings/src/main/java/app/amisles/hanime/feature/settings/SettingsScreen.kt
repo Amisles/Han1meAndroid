@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.settings
 
 import android.content.Context
+import android.os.Environment
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,12 +70,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 data class LanguageOption(val code: String, val label: String)
 
-@Composable
-fun appLanguageOptions() = listOf(
-    LanguageOption(Preferences.LANGUAGE_ZH_CN, stringResource(R.string.settings_language_zh_cn)),
-    LanguageOption(Preferences.LANGUAGE_ZH_TW, stringResource(R.string.settings_language_zh_tw)),
-    LanguageOption(Preferences.LANGUAGE_EN, stringResource(R.string.settings_language_en)),
-    LanguageOption(Preferences.LANGUAGE_JA, stringResource(R.string.settings_language_ja))
+/**
+ * 语言选项：(语言代码, 展示文案资源 id)。
+ * 返回资源 id 而不是已解析字符串，避免「@Composable 函数返回数据列表」这种易被误当作纯函数调用的形态
+ * （审查 G6 / O21）。
+ */
+private fun languageOptionRes(): List<Pair<String, Int>> = listOf(
+    Preferences.LANGUAGE_ZH_CN to R.string.settings_language_zh_cn,
+    Preferences.LANGUAGE_ZH_TW to R.string.settings_language_zh_tw,
+    Preferences.LANGUAGE_EN to R.string.settings_language_en,
+    Preferences.LANGUAGE_JA to R.string.settings_language_ja
 )
 
 @Composable
@@ -169,6 +174,30 @@ private fun <T> SettingsDropdownCard(
     }
 }
 
+/**
+ * 文件夹浏览器允许向上浏览到的根目录。
+ *
+ * 下载目录只可能落在「主外部存储」或「应用自身的文件目录」下，因此把上溯限制在这些根之内，
+ * 避免用户一路浏览到 / 或 /data 这类与功能无关的位置（审查 G2）。
+ */
+@Suppress("DEPRECATION") // 仅用 getExternalStorageDirectory 取根路径，不用于读写
+private fun pickerRoots(context: Context): List<File> = buildList {
+    Environment.getExternalStorageDirectory()?.let { add(it) }
+    context.getExternalFilesDir(null)?.let { add(it) }
+    add(context.filesDir)
+}.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
+
+/**
+ * [current] 是否还能向上走：其父目录必须仍位于某个允许的根之内（含根本身）。
+ */
+private fun canNavigateUp(current: File, roots: List<File>): Boolean {
+    val parent = current.parentFile ?: return false
+    val parentPath = runCatching { parent.canonicalPath }.getOrNull() ?: return false
+    return roots.any { root ->
+        parentPath == root.path || parentPath.startsWith(root.path + File.separator)
+    }
+}
+
 @Composable
 private fun FolderPickerDialog(
     initialPath: String,
@@ -193,6 +222,8 @@ private fun FolderPickerDialog(
     var showNewFolder by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var toastRes by remember { mutableStateOf<Int?>(null) }
+
+    val roots = remember(context) { pickerRoots(context) }
 
     val subDirs = remember(currentDir) {
         currentDir.listFiles { f -> f.isDirectory }
@@ -262,11 +293,11 @@ private fun FolderPickerDialog(
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
                 )
-                if (currentDir.parentFile != null) {
+                if (canNavigateUp(currentDir, roots)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { currentDir = currentDir.parentFile!! }
+                            .clickable { currentDir.parentFile?.let { parent -> currentDir = parent } }
                             .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -376,7 +407,8 @@ fun SettingsScreen(
 
     var showStoragePathDialog by remember { mutableStateOf(false) }
 
-    val languageOptions = appLanguageOptions()
+    val languageOptions = languageOptionRes()
+        .map { LanguageOption(it.first, stringResource(it.second)) }
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
     val themeModeOptions = listOf(
         ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
@@ -693,9 +725,17 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.setBaseUrl(baseUrlInput)
+                    // 此前无条件提示「已更新」，非法输入被静默清洗成默认地址后用户无从得知（审查 G1）
+                    val applied = viewModel.setBaseUrl(baseUrlInput)
                     showBaseUrlDialog = false
-                    Toast.makeText(context, context.getString(R.string.settings_base_url_updated), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(
+                            if (applied) R.string.settings_base_url_updated
+                            else R.string.settings_base_url_invalid
+                        ),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }) {
                     Text(stringResource(R.string.common_save), color = MaterialTheme.colorScheme.primary)
                 }

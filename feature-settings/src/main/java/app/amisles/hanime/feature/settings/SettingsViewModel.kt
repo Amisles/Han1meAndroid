@@ -27,12 +27,32 @@ import app.amisles.hanime.core.common.util.AppLogger
 data class SettingsUiState(
     val appLanguage: String = Preferences.LANGUAGE_ZH_CN,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val maxDownloadConcurrent: Int = 3,
+    val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
     val baseUrl: String = Preferences.DEFAULT_BASE_URL,
     val isLoginSupported: Boolean = true,
-    val downloadStoragePath: String = Preferences.downloadStoragePath
+    val downloadStoragePath: String = ""
 ) {
     val isDefaultBaseUrl: Boolean get() = baseUrl == Preferences.DEFAULT_BASE_URL
+
+    companion object {
+        /** 与 Preferences 的默认并发数保持一致。 */
+        const val DEFAULT_MAX_DOWNLOAD_CONCURRENT = 3
+
+        /**
+         * 用当前持久化值构造初始态，只在 VM 初始化时调用一次。
+         *
+         * 之所以不写在数据类默认值里：`downloadStoragePath` 的取值是一次真正的 SharedPreferences 读盘，
+         * 放进默认值会让「构造数据类」隐含 IO，也让单测 / 预览无法得到纯初始值（审查 G7）。
+         */
+        fun fromPreferences(): SettingsUiState = SettingsUiState(
+            appLanguage = Preferences.appLanguage,
+            themeMode = Preferences.themeMode,
+            maxDownloadConcurrent = Preferences.maxDownloadConcurrent,
+            baseUrl = Preferences.baseUrl,
+            isLoginSupported = Preferences.isLoginSupported,
+            downloadStoragePath = Preferences.downloadStoragePath
+        )
+    }
 }
 
 /**
@@ -83,14 +103,7 @@ class SettingsViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = SettingsUiState(
-            appLanguage = Preferences.appLanguage,
-            themeMode = Preferences.themeMode,
-            maxDownloadConcurrent = Preferences.maxDownloadConcurrent,
-            baseUrl = Preferences.baseUrl,
-            isLoginSupported = Preferences.isLoginSupported,
-            downloadStoragePath = Preferences.downloadStoragePath
-        )
+        initialValue = SettingsUiState.fromPreferences()
     )
 
     fun setAppLanguage(code: String) {
@@ -106,9 +119,11 @@ class SettingsViewModel @Inject constructor(
         Preferences.setMaxDownloadConcurrent(count)
     }
 
-    fun setBaseUrl(url: String) {
-        Preferences.setBaseUrl(url)
-    }
+    /**
+     * 设置站点基址。
+     * @return true = 已生效；false = 输入非法（非 https 域名），原设置保持不变
+     */
+    fun setBaseUrl(url: String): Boolean = Preferences.setBaseUrl(url)
 
     fun restoreDefaultBaseUrl() {
         Preferences.setBaseUrl(Preferences.DEFAULT_BASE_URL)
@@ -154,13 +169,20 @@ class SettingsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val cacheDir = app.cacheDir
-                    if (cacheDir.exists()) {
-                        cacheDir.listFiles()?.forEach { it.deleteRecursively() }
-                    }
+                    if (!cacheDir.exists()) 0
+                    // 统计未能删除的条目：被占用的文件会删除失败，此前被静默忽略、仍提示「已清除」（审查 G3）
+                    else cacheDir.listFiles()?.count { !it.deleteRecursively() } ?: 0
                 }
             }
             result.fold(
-                onSuccess = { _events.emit(SettingsUiEvent.Toast(R.string.settings_cache_cleared)) },
+                onSuccess = { failed ->
+                    if (failed > 0) {
+                        AppLogger.e("SettingsViewModel", "清除缓存未完全成功: $failed 项未能删除")
+                        _events.emit(SettingsUiEvent.Toast(R.string.settings_cache_clear_failed))
+                    } else {
+                        _events.emit(SettingsUiEvent.Toast(R.string.settings_cache_cleared))
+                    }
+                },
                 onFailure = { e ->
                     AppLogger.e("SettingsViewModel", "清除缓存失败: ${e.message}", e)
                     _events.emit(SettingsUiEvent.Toast(R.string.settings_cache_clear_failed))

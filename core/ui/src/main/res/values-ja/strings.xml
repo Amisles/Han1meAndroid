@@ -246,6 +246,7 @@
     <string name="settings_base_url_hint">サイトURLを入力、空欄でデフォルト</string>
     <string name="settings_base_url_updated">サイトURLを更新しました</string>
     <string name="settings_base_url_restored">デフォルトURLに戻しました</string>
+    <string name="settings_base_url_invalid">無効なURLです。https ドメインのみ対応（設定は変更していません）</string>
     <string name="settings_language_zh_cn">简体中文</string>
     <string name="settings_language_zh_tw">繁體中文</string>
     <string name="settings_language_en">English</string>
