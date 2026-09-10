@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -67,16 +66,25 @@ data class AppFeature(
     val title: String
 )
 
-@Composable
-private fun appFeatures() = listOf(
-    AppFeature(Icons.Filled.Home, stringResource(R.string.about_feature_1)),
-    AppFeature(Icons.Filled.Search, stringResource(R.string.about_feature_2)),
-    AppFeature(Icons.Filled.PlayArrow, stringResource(R.string.about_feature_3)),
-    AppFeature(Icons.Filled.Download, stringResource(R.string.about_feature_4)),
-    AppFeature(Icons.Filled.Favorite, stringResource(R.string.about_feature_5)),
-    AppFeature(Icons.Filled.Settings, stringResource(R.string.about_feature_6))
+/**
+ * 功能列表：(图标, 文案资源 id)。由调用方在组合期解析字符串，
+ * 避免「@Composable 函数返回数据列表」这种形态（审查 G6 / O21）。
+ */
+private fun appFeatureRes(): List<Pair<ImageVector, Int>> = listOf(
+    Icons.Filled.Home to R.string.about_feature_1,
+    Icons.Filled.Search to R.string.about_feature_2,
+    Icons.Filled.PlayArrow to R.string.about_feature_3,
+    Icons.Filled.Download to R.string.about_feature_4,
+    Icons.Filled.Favorite to R.string.about_feature_5,
+    Icons.Filled.Settings to R.string.about_feature_6
 )
 
+/**
+ * 致谢列表。
+ *
+ * 版本号需与 `gradle/libs.versions.toml` 手动保持一致：升级依赖时务必同步本表，
+ * 否则「关于」页展示的版本会失真（审查 G5）。彻底消除漂移需由 Gradle 生成资源注入，属构建脚本改动。
+ */
 private val openSourceProjects = listOf(
     OpenSourceProject(
         name = "Android Gradle Plugin",
@@ -313,7 +321,8 @@ fun AboutScreen(
                                 .fillMaxWidth()
                                 .height(0.5.dp)
                                 .padding(horizontal = 16.dp)
-                                .background(Color.White.copy(alpha = 0.06f))
+                                // 见审查 O5：白色半透明线在浅色主题下不可见
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         )
                         Row(
                             modifier = Modifier
@@ -391,7 +400,8 @@ fun AboutScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                        val features = appFeatures()
+                        val features = appFeatureRes()
+                            .map { AppFeature(it.first, stringResource(it.second)) }
                         features.forEachIndexed { index, feature ->
                             Row(
                                 modifier = Modifier
@@ -418,7 +428,8 @@ fun AboutScreen(
                                         .fillMaxWidth()
                                         .height(0.5.dp)
                                         .padding(horizontal = 16.dp)
-                                        .background(Color.White.copy(alpha = 0.06f))
+                                        // 见审查 O5：白色半透明线在浅色主题下不可见
+                                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                                 )
                             }
                         }

@@ -68,6 +68,9 @@ fun AuthorScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
+    // 先落到局部不可变变量：委托属性在两次读取之间可能变化，同时便于智能转换（审查 O22）
+    val loadedAuthorData = authorData
+
     LaunchedEffect(authorPageUrl) {
         if (authorPageUrl.isNotEmpty()) {
             viewModel.loadAuthorPage(authorPageUrl)
@@ -103,9 +106,9 @@ fun AuthorScreen(
                 message = error ?: stringResource(R.string.author_load_failed),
                 onRetry = { viewModel.loadAuthorPage(authorPageUrl) }
             )
-        } else if (authorData != null) {
+        } else if (loadedAuthorData != null) {
             AuthorContent(
-                authorData = authorData!!,
+                authorData = loadedAuthorData,
                 onVideoClick = onVideoClick,
                 onViewAllVideos = onViewAllVideos,
                 onViewAllPlaylists = onViewAllPlaylists,

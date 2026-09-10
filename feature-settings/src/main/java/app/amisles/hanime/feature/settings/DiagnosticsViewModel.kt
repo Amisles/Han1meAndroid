@@ -22,8 +22,13 @@ import javax.inject.Inject
 sealed class DiagnosticsUiState {
     /** 初始空闲态 */
     object Idle : DiagnosticsUiState()
-    /** 诊断进行中，results 为已完成项（增量更新） */
-    data class Running(val results: List<DiagnosticResult>) : DiagnosticsUiState()
+    /**
+     * 诊断进行中。
+     *
+     * 不携带「已完成项」：`NetworkDiagnostics.runAll()` 是一次性返回整批结果，增量结果从未真正产生，
+     * 留着字段只会让数据的微小变化也触发跨状态动画（审查 G4）。
+     */
+    data object Running : DiagnosticsUiState()
     /** 诊断完成 */
     data class Done(val results: List<DiagnosticResult>) : DiagnosticsUiState()
 }
@@ -41,7 +46,7 @@ class DiagnosticsViewModel @Inject constructor(
     fun runDiagnostics() {
         if (_uiState.value is DiagnosticsUiState.Running) return
         viewModelScope.launch {
-            _uiState.value = DiagnosticsUiState.Running(emptyList())
+            _uiState.value = DiagnosticsUiState.Running
             try {
                 val results = diagnostics.runAll()
                 _uiState.value = DiagnosticsUiState.Done(results)

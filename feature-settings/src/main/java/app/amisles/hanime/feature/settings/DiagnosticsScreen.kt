@@ -157,26 +157,22 @@ fun DiagnosticsScreen(
                     }
                 }
                 is DiagnosticsUiState.Running -> {
-                    if (state.results.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                CircularProgressIndicator(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    strokeWidth = 2.5.dp
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                Text(
-                                    text = stringResource(R.string.diagnostics_running),
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = stringResource(R.string.diagnostics_running),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    } else {
-                        ResultsList(state.results)
                     }
                 }
                 is DiagnosticsUiState.Done -> ResultsList(state.results)
