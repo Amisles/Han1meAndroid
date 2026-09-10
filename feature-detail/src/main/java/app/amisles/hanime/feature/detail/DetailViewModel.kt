@@ -177,6 +177,10 @@ class DetailViewModel @Inject constructor(
         _replyError.value = null
         _expandedReplies.value = emptySet()
 
+        // 切换视频时清空下载画质，避免弹窗短暂展示上一部视频的画质列表
+        _downloadQualities.value = emptyList()
+        _isLoadingQualities.value = false
+
         detailLoadJob?.cancel() // 取消上一次未完成的详情请求（快速重进页面去重）
         detailLoadJob = viewModelScope.launch {
             var mainArrived = false
@@ -251,14 +255,30 @@ class DetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 判断异步响应是否仍属于当前视频。
+     *
+     * 详情页会被「快速重进另一条视频」复用，而评论 / 回复 / 画质等加载各自独立于
+     * [detailLoadJob]，旧视频的响应可能在新视频界面之后才返回。统一在结果落地前用
+     * 发起时的 videoId 校验一次，避免旧数据写进新视频状态（评论串页、画质错挂 videoId）。
+     */
+    private fun isSameVideoAsRequest(requestVideoId: String): Boolean =
+        requestVideoId == currentVideoId
+
     fun loadDownloadQualities() {
         if (currentVideoId.isEmpty()) return
-        AppLogger.d("DetailViewModel", "loadDownloadQualities called, videoId: $currentVideoId")
+        val requestVideoId = currentVideoId
+        AppLogger.d("DetailViewModel", "loadDownloadQualities called, videoId: $requestVideoId")
         _isLoadingQualities.value = true
 
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                repository.getDownloadQualities(currentVideoId)
+                repository.getDownloadQualities(requestVideoId)
+            }
+            if (!isSameVideoAsRequest(requestVideoId)) {
+                // 已切到其他视频：丢弃结果，相关状态已由 loadVideoDetail 重置
+                AppLogger.d("DetailViewModel", "Discard stale qualities response: $requestVideoId")
+                return@launch
             }
             when (result) {
                 is AppResult.Success -> {
@@ -285,13 +305,19 @@ class DetailViewModel @Inject constructor(
             AppLogger.d("DetailViewModel", "Comments already loaded, skip")
             return
         }
-        AppLogger.d("DetailViewModel", "loadComments called, videoId: $currentVideoId")
+        val requestVideoId = currentVideoId
+        AppLogger.d("DetailViewModel", "loadComments called, videoId: $requestVideoId")
         _isLoadingComments.value = true
         _commentsError.value = null
 
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                repository.getComments(currentVideoId)
+                repository.getComments(requestVideoId)
+            }
+            if (!isSameVideoAsRequest(requestVideoId)) {
+                // 已切到其他视频：丢弃结果，避免评论串到别的视频
+                AppLogger.d("DetailViewModel", "Discard stale comments response: $requestVideoId")
+                return@launch
             }
             when (result) {
                 is AppResult.Success -> {
@@ -315,6 +341,7 @@ class DetailViewModel @Inject constructor(
      */
     fun loadReplies(commentId: String, force: Boolean = false) {
         if (commentId.isEmpty()) return
+        val requestVideoId = currentVideoId
         if (!force && _repliesCache.value.containsKey(commentId)) {
             AppLogger.d("DetailViewModel", "Replies for $commentId already cached, skip")
             return
@@ -330,6 +357,11 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.getReplies(commentId)
+            }
+            if (!isSameVideoAsRequest(requestVideoId)) {
+                // 已切到其他视频：丢弃结果，避免旧视频的回复写进缓存
+                AppLogger.d("DetailViewModel", "Discard stale replies response: $commentId")
+                return@launch
             }
             when (result) {
                 is AppResult.Success -> {
@@ -410,6 +442,8 @@ class DetailViewModel @Inject constructor(
             "@${target.replyToUsername} $trimmed"
         } else trimmed
 
+        // 结果落地前需校验 videoId：切页后不能把回复写进新视频的回复列表
+        val requestVideoId = currentVideoId
         _isPostingReply.value = true
         _replyError.value = null
 
@@ -439,6 +473,12 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.replyComment(target.commentId, finalText, detail.csrfToken)
+            }
+            // 已切到其他视频：不回写也不回滚（相关状态由 loadVideoDetail 整体重置）。
+            // 不取消 POST —— 服务端可能已创建回复，取消只会让客户端状态更不可信。
+            if (!isSameVideoAsRequest(requestVideoId)) {
+                AppLogger.d("DetailViewModel", "Discard stale reply result: ${target.commentId}")
+                return@launch
             }
             when (result) {
                 is AppResult.Success -> {
@@ -505,17 +545,24 @@ class DetailViewModel @Inject constructor(
             return
         }
 
+        // 绑定发起时的视频：既用于请求，也用于结果落地前的校验
+        val requestVideoId = currentVideoId
         _isPostingComment.value = true
         _postCommentError.value = null
 
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 repository.postComment(
-                    videoId = currentVideoId,
+                    videoId = requestVideoId,
                     commentText = trimmed,
                     commentCount = detail.commentCount,
                     csrfToken = detail.csrfToken
                 )
+            }
+            if (!isSameVideoAsRequest(requestVideoId)) {
+                // 已切到其他视频：丢弃 UI 更新（评论已在服务端创建），避免插进别的视频列表
+                AppLogger.d("DetailViewModel", "Discard stale posted comment: $requestVideoId")
+                return@launch
             }
             when (result) {
                 is AppResult.Success -> {
@@ -563,6 +610,8 @@ class DetailViewModel @Inject constructor(
         // 防止同一评论在请求未完成前被重复点击
         if (_likingComments.value.contains(comment.id)) return
 
+        // 回滚是按 comment.id 在新列表里定位，切页后必须放弃，否则会写坏新视频的评论
+        val requestVideoId = currentVideoId
         val willLike = comment.likeStatus != 1
         val optimistic = comment.copy(
             likeStatus = if (willLike) 1 else 0,
@@ -580,6 +629,11 @@ class DetailViewModel @Inject constructor(
                     likeCount = comment.likeCount,
                     csrfToken = detail.csrfToken
                 )
+            }
+            if (!isSameVideoAsRequest(requestVideoId)) {
+                // 已切到其他视频：不回滚也不提示，评论列表已由 loadVideoDetail 整体重置
+                AppLogger.d("DetailViewModel", "Discard stale like result: ${comment.id}")
+                return@launch
             }
             when (result) {
                 is AppResult.Success -> {

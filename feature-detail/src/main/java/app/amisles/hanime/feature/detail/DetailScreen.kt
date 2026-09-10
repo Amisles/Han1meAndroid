@@ -34,9 +34,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
@@ -155,14 +156,22 @@ fun DetailScreen(
         }
     }
 
-    // 进度记忆：每 5 秒保存一次当前播放位置/时长，离场时保存最终进度并释放
-    DisposableEffect(exoPlayer) {
+    // 进度记忆：每 5 秒检查一次，仅在「页面至少 STARTED 且播放位置确实前进」时落库，
+    // 离场时再保存最终进度并释放。此前只要 playbackState != IDLE 就写库，于是暂停 / 缓冲 /
+    // 切后台 / 熄屏期间位置根本没有变化，却仍每 5 秒触发一次「读历史 + 写历史」两次数据库操作
+    // （审查 D8）。用位置是否推进来判定，既覆盖播放中，也天然跳过上述空转场景。
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(exoPlayer, lifecycleOwner) {
         val job = scope.launch {
+            var lastSavedPosition = -1L
             while (true) {
                 delay(5000)
-                val state = exoPlayer.playbackState
-                if (state != Player.STATE_IDLE && exoPlayer.currentPosition > 0) {
-                    viewModel.savePlaybackProgress(exoPlayer.currentPosition, exoPlayer.duration)
+                val position = exoPlayer.currentPosition
+                val visible = lifecycleOwner.lifecycle.currentState
+                    .isAtLeast(Lifecycle.State.STARTED)
+                if (visible && position > 0 && position != lastSavedPosition) {
+                    viewModel.savePlaybackProgress(position, exoPlayer.duration)
+                    lastSavedPosition = position
                 }
             }
         }
