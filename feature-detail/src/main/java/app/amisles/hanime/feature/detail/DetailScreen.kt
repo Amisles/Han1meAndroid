@@ -301,6 +301,8 @@ fun DetailScreen(
                             onFullscreenToggle = { full -> isPlayerFullscreen = full },
                             onPlaybackEnded = { handlePlaybackEnded() },
                             autoPlayNext = autoPlayNext,
+                            // 平板常态横持，自动全屏会误触发；此处仅保留按钮手动进入全屏
+                            autoFullscreenEnabled = false,
                             modifier = Modifier
                         )
                     } else {

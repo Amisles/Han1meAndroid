@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.util.Rational
+import android.view.OrientationEventListener
 import android.view.WindowManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -120,6 +121,57 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
+
+/**
+ * 设备当前的物理朝向。
+ *
+ * 角度由 [OrientationEventListener] 给出：以设备自然方向（竖屏、顶部朝上）为 0°、随顺时针旋转增大，
+ * 90° 附近为设备左侧朝上（即顶部朝右），270° 附近为设备右侧朝上（即顶部朝左）。
+ *
+ * 角度 → 屏幕方向常量的对应（依据 androidx.camera `RotationProvider` 的角度→Surface 旋转表，
+ * 以及 `ROTATION_90`↔`LANDSCAPE`、`ROTATION_270`↔`REVERSE_LANDSCAPE` 的约定）：
+ * 顶部朝右对应 `SCREEN_ORIENTATION_REVERSE_LANDSCAPE`，顶部朝左对应 `SCREEN_ORIENTATION_LANDSCAPE`。
+ * 两者不要写反，否则全屏会**持续**上下颠倒（而非只抖一下）。
+ */
+private enum class DeviceTilt(val landscapeOrientation: Int?) {
+    /** 竖持（正竖或倒竖）。 */
+    PORTRAIT(null),
+
+    /** 横置、设备顶部朝左。 */
+    TOP_TO_LEFT(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE),
+
+    /** 横置、设备顶部朝右。 */
+    TOP_TO_RIGHT(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
+
+    /** 是否横置（两个横屏方向之一）。 */
+    val isLandscape: Boolean get() = landscapeOrientation != null
+}
+
+/**
+ * 把 [OrientationEventListener] 的角度归类为具体物理朝向。
+ *
+ * 45° 附近的临界区（设备近乎平放或斜持）返回 null，交由后续回调判定，避免角度抖动引发反复切换。
+ */
+private fun classifyDeviceTilt(orientation: Int): DeviceTilt? = when (orientation) {
+    in 55..125 -> DeviceTilt.TOP_TO_RIGHT
+    in 235..305 -> DeviceTilt.TOP_TO_LEFT
+    in 0..35, in 325..359 -> DeviceTilt.PORTRAIT
+    in 145..215 -> DeviceTilt.PORTRAIT
+    else -> null
+}
+
+/**
+ * 是否为任一「锁定横屏」的方向常量。
+ *
+ * 全屏是本应用唯一会锁屏幕方向的地方；若快照 [Activity.requestedOrientation] 时恰好
+ * 取到这些值（例如在全屏中跳转下一条视频、新旧页面组合与销毁顺序不定），说明该值
+ * 来源于全屏本身，不能作为退出全屏的恢复目标，否则退出后页面会永远停在横屏。
+ */
+private val Int.isLandscapeOrientation: Boolean
+    get() = this == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+        || this == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        || this == ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
 
 private fun formatTime(ms: Long): String {
     if (ms <= 0) return "00:00"
@@ -300,13 +352,17 @@ fun VideoPlayer(
     onQualityChanged: (String) -> Unit = {},
     onPlaybackEnded: () -> Unit = {},
     autoPlayNext: Boolean = true,
-    onAutoPlayNextChanged: (Boolean) -> Unit = {}
+    onAutoPlayNextChanged: (Boolean) -> Unit = {},
+    // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
+    autoFullscreenEnabled: Boolean = true
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    // 退出全屏时恢复的屏幕方向
+    // 退出全屏时恢复的屏幕方向。若快照到的本身就是横屏锁定值（全屏中跳转下一条视频时
+    // 新旧页面的组合/销毁顺序不定），则回退为 UNSPECIFIED，避免退出全屏后页面停在横屏
     val initialOrientation = remember(activity) {
-        activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        activity?.requestedOrientation?.takeUnless { it.isLandscapeOrientation }
+            ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
     val initialBarsBehavior = remember(activity) {
         activity?.window?.let { w ->
@@ -353,6 +409,10 @@ fun VideoPlayer(
 
     // 画中画状态
     var isInPip by remember { mutableStateOf(false) }
+
+    // 设备当前物理朝向（由下方 OrientationEventListener 维护，null = 尚未确定）。
+    // 只用于决定全屏时锁到哪一侧横屏，不参与业务逻辑。
+    var deviceTilt by remember { mutableStateOf<DeviceTilt?>(null) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val sortedSources = remember(videoSources) {
@@ -626,8 +686,15 @@ fun VideoPlayer(
     }
 
     // ── 全屏与旋屏 ───────────────────────────────────────────────────────────
-    // 全屏：隐藏系统栏并锁定为横屏（SENSOR_LANDSCAPE 而非 SENSOR）；退出时复位
-    LaunchedEffect(isFullscreen, activity) {
+    // 全屏：隐藏系统栏并把方向锁到横屏，退出时复位。
+    //
+    // 方向优先用我们自己监听到的物理朝向（deviceTilt）锁到**具体一侧**，而不是只丢一个
+    // SENSOR_LANDSCAPE 让系统去猜：系统「自动旋转」关闭时它自己的方向传感器是停用的，
+    // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧、待传感器就绪后再翻回来 —— 对外表现就是
+    // 「点全屏 / 自动全屏的瞬间画面上下颠倒，随后才转正」。我们自己的 OrientationEventListener
+    // 不受系统自动旋转开关影响，所以直接把正确的一侧告诉系统即可。只有朝向尚未确定、或设备
+    // 本就竖持（此时不存在「正确的一侧」）时，才回退到 SENSOR_LANDSCAPE。
+    LaunchedEffect(isFullscreen, activity, deviceTilt) {
         if (activity != null) {
             val window = activity.window
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -635,15 +702,73 @@ fun VideoPlayer(
                 insetsController.hide(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                try {
-                    activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                } catch (_: Exception) {}
+                val target = deviceTilt?.landscapeOrientation
+                if (target != null) {
+                    try { activity.requestedOrientation = target } catch (_: Exception) {}
+                } else if (!activity.requestedOrientation.isLandscapeOrientation) {
+                    // 朝向未知、或设备本就竖持（此时不存在「正确的一侧」）：交给系统的横屏传感器选一个
+                    try {
+                        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                    } catch (_: Exception) {}
+                }
+                // 其余情况：已锁在横屏、此刻却判到竖屏 —— 多半是左右横置翻转（180°）途经竖屏，
+                // 保持当前方向不动，等去抖确认后由横屏自动全屏逻辑退出全屏
             } else {
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = initialBarsBehavior
                 try { activity.requestedOrientation = initialOrientation } catch (_: Exception) {}
             }
         }
+    }
+
+    // ── 横屏自动全屏 ─────────────────────────────────────────────────────────
+    // 设备由竖转横时自动进入全屏，由横转竖时自动退出（平板分栏由调用方关闭该行为）。
+    // 用 ref 持有最新的状态与回调，避免 Effect 闭包捕获到陈旧的 isFullscreen / 回调。
+    val orientationFlipRef = rememberUpdatedState { landscape: Boolean ->
+        if (autoFullscreenEnabled && !isInPip) {
+            if (landscape && !isFullscreen) onFullscreenToggle(true)
+            else if (!landscape && isFullscreen) onFullscreenToggle(false)
+        }
+    }
+
+    // 监听器始终注册（不随 autoFullscreenEnabled 走）：平板虽不自动全屏，但手动点全屏时同样
+    // 需要 deviceTilt 才能锁到正确的一侧。是否触发自动全屏由上面的 ref 内部判断。
+    DisposableEffect(activity) {
+        val act = activity ?: return@DisposableEffect onDispose {}
+        // 上一次「已生效」的方向（null = 尚未登记），仅在真正翻转时才上报；不参与组合，用局部变量即可
+        var lastLandscape: Boolean? = null
+        // 竖屏的待确认次数：左右横置互相翻转要旋转 180°、途中必然途经竖屏，而全屏时
+        // SENSOR_LANDSCAPE 不会让画面经过竖屏；若一次判到竖屏就退出，会出现
+        // 「退出全屏又立刻重新进入」的抖动，故竖屏需连续两次判定才生效
+        var portraitStreak = 0
+        val listener = object : OrientationEventListener(act) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) return
+                // 临界区返回 null：维持原判定，等角度稳定后再判
+                val tilt = classifyDeviceTilt(orientation) ?: return
+                // 物理朝向始终同步（左右翻转也要更新，供全屏锁方向用）；
+                // 重复写入同一个枚举值不会触发重组
+                deviceTilt = tilt
+                val landscape = tilt.isLandscape
+                val previous = lastLandscape
+                if (previous == landscape) {
+                    portraitStreak = 0
+                    return
+                }
+                if (!landscape && previous != null) {
+                    portraitStreak++
+                    if (portraitStreak < 2) return
+                }
+                portraitStreak = 0
+                lastLandscape = landscape
+                // 首次回调只用于登记当前朝向：起始即竖屏说明无需动作，
+                // 但起始即横屏（横持手机进入详情页）仍应自动进入全屏
+                if (previous == null && !landscape) return
+                orientationFlipRef.value(landscape)
+            }
+        }
+        listener.enable()
+        onDispose { listener.disable() }
     }
 
     // ── 画中画 ───────────────────────────────────────────────────────────────
