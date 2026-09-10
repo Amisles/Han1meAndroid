@@ -74,6 +74,17 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 提交一次搜索（搜索按钮 / 输入法回车 / 历史记录 / 初值注入共用）。
+     *
+     * [setQuery] 只在关键词变化时才触发 resetSearch → executeSearch，因此这里要覆盖
+     * 「关键词未变但用户仍想重搜」的场景；反之关键词变化时不再额外调一次 executeSearch，
+     * 避免同一关键词连续发两次请求（审查 S2）。
+     */
+    fun submitSearch(query: String) {
+        if (_query.value == query) executeSearch() else setQuery(query)
+    }
+
     fun setGenre(newGenre: String?) {
         if (_genre.value != newGenre) {
             _genre.value = newGenre
@@ -124,7 +135,8 @@ class SearchViewModel @Inject constructor(
             when (result) {
                 is AppResult.Success -> {
                     val data = result.data
-                    _videos.value = data.videos
+                    // 去重：同一 id 重复出现会与 LazyColumn 的 key 冲突并直接崩溃
+                    _videos.value = data.videos.distinctBy { it.id }
                     _currentPage.value = data.currentPage
                     _totalPages.value = data.totalPages
                     _hasMore.value = data.hasNextPage
@@ -165,7 +177,9 @@ class SearchViewModel @Inject constructor(
                 is AppResult.Success -> {
                     val data = result.data
                     if (data.videos.isNotEmpty()) {
-                        _videos.value = _videos.value + data.videos
+                        // 分页追加必须去重：站点结果集在两次请求之间漂移时会重复返回已有条目，
+                        // 而列表以 id 作为 Lazy key，重复 key 会抛 IllegalArgumentException 崩溃
+                        _videos.value = (_videos.value + data.videos).distinctBy { it.id }
                     }
                     _currentPage.value = data.currentPage
                     _totalPages.value = data.totalPages

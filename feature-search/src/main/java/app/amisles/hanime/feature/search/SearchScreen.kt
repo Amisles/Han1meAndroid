@@ -80,6 +80,12 @@ import app.amisles.hanime.data.preferences.SearchLayoutMode
 val allCategory = Category("", R.string.search_all, "")
 val filterTypes = listOf(allCategory) + categories
 
+/**
+ * 排序选项。
+ *
+ * [labelRes] 用于界面展示；[label] 与 [apiValue] 都只是**匹配键**（站点简中 / 繁中两套用词），
+ * 用于把导航传入的 `initialSort` 映射到具体选项，不参与展示（审查 G8）。
+ */
 data class SortOption(val label: String, val labelRes: Int, val apiValue: String)
 
 val sortOptions = listOf(
@@ -161,8 +167,7 @@ fun SearchScreen(
         if (!initialKeyword.isNullOrEmpty()) {
             val cleanedKeyword = initialKeyword.trimStart('#').trim()
             localQuery.value = cleanedKeyword
-            viewModel.setQuery(cleanedKeyword)
-            viewModel.executeSearch()
+            viewModel.submitSearch(cleanedKeyword)
         }
     }
 
@@ -173,8 +178,8 @@ fun SearchScreen(
             }
             if (match != null) {
                 selectedFilter.value = match
+                // setGenre 在值变化时会自行触发一次搜索，此处不再重复调用（审查 S2）
                 viewModel.setGenre(match.apiValue)
-                viewModel.executeSearch()
             }
         }
     }
@@ -187,8 +192,8 @@ fun SearchScreen(
             }
             if (match != null) {
                 selectedSort.value = match
+                // setSort 在值变化时会自行触发一次搜索，此处不再重复调用（审查 S2）
                 viewModel.setSort(match.apiValue)
-                viewModel.executeSearch()
             }
         }
     }
@@ -219,8 +224,7 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
                     onSearch = {
-                        viewModel.setQuery(localQuery.value)
-                        viewModel.executeSearch()
+                        viewModel.submitSearch(localQuery.value)
                         keyboardController?.hide()
                     }
                 ),
@@ -261,8 +265,7 @@ fun SearchScreen(
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.primary)
                     .clickable {
-                        viewModel.setQuery(localQuery.value)
-                        viewModel.executeSearch()
+                        viewModel.submitSearch(localQuery.value)
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -450,8 +453,7 @@ fun SearchScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     localQuery.value = historyQuery
-                                    viewModel.setQuery(historyQuery)
-                                    viewModel.executeSearch()
+                                    viewModel.submitSearch(historyQuery)
                                 }
                                 .padding(horizontal = 12.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
