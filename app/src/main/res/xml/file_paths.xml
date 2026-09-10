@@ -1,4 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?><!--
+  下载文件的共享路径：供内置播放器把本地文件交给外部播放器打开（FileProvider）。
+
+  为什么根路径覆盖得比较宽：设置页允许用户把下载目录指向任意绝对路径
+  （Preferences.downloadStoragePath + FolderPickerDialog），因此这里必须同时覆盖
+  「主外部存储」与「可移动存储（SD 卡）」。<external-path> 只映射到
+  Environment.getExternalStorageDirectory()，SD 卡上的下载会因找不到匹配根路径而
+  直接抛 IllegalArgumentException（表现为点击播放总是「打开失败」，审查 W7）。
+
+  安全性：本 Provider 声明为 exported=false 且仅按次授权，其它应用只能访问本应用
+  显式授予 URI 的那一个文件，无法借这些根路径遍历目录。
+  路径匹配取「最长前缀」，因此 /storage/emulated/0 下的文件仍命中 external_files 根。
+-->
 <paths>
     <external-path
         name="external_files"
@@ -6,4 +18,9 @@
     <files-path
         name="files"
         path="." />
+    <!-- 覆盖 /storage（含 /storage/emulated/0 与 /storage/XXXX-XXXX 的可移动存储），
+         但不覆盖 /data 等其它位置 -->
+    <root-path
+        name="shared_storage"
+        path="storage" />
 </paths>
