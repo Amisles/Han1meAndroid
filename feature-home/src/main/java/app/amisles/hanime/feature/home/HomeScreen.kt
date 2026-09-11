@@ -366,7 +366,7 @@ private fun SkeletonVideoRow(alpha: Float) {
         // 缩略图占位
         Box(
             modifier = Modifier
-                .width(120.dp)
+                .width(150.dp)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
                 .background(MaterialTheme.colorScheme.surface)

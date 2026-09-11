@@ -255,7 +255,7 @@ private fun PlaylistSummaryCard(
             viewCount = playlist.videoCount,
             crop = true,
             modifier = Modifier
-                .width(120.dp)
+                .width(150.dp)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )

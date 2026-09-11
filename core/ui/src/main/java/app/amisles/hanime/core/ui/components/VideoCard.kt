@@ -156,7 +156,7 @@ fun VideoListItem(
             viewCount = "",
             crop = true,
             modifier = Modifier
-                .width(120.dp)
+                .width(150.dp)
                 .aspectRatio(16f / 9f)
                 .shadow(
                     elevation = if (isDark) 0.dp else 1.5.dp,

@@ -399,7 +399,7 @@ private fun FavoriteVideoItem(
             viewCount = video.viewCount,
             crop = true,
             modifier = Modifier
-                .width(110.dp)
+                .width(140.dp)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )
