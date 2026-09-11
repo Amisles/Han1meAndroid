@@ -182,32 +182,31 @@ class NetworkService @Inject constructor(
         return FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchSearchPageWithBaseUrl(query: String, genre: String? = null, sort: String? = null, page: Int = 1): FetchResult {
+    suspend fun fetchSearchPageWithBaseUrl(query: String, genre: String? = null, sort: String? = null, page: Int = 1, tags: List<String> = emptyList(), broad: Boolean = false): FetchResult {
         AppLogger.log("NetworkService", "fetchSearchPageWithBaseUrl called")
         val baseUrl = getCurrentBaseUrl()
         AppLogger.log("NetworkService", "Using base URL: $baseUrl")
-        val url = buildString {
-            append("$baseUrl/search?")
-
-            if (query.isNotEmpty()) {
-                append("query=").append(URLEncoder.encode(query, StandardCharsets.UTF_8))
-            }
-
-            if (genre != null && genre.isNotEmpty()) {
-                if (query.isNotEmpty()) append("&")
-                append("genre=").append(URLEncoder.encode(genre, StandardCharsets.UTF_8))
-            }
-
-            if (sort != null && sort.isNotEmpty()) {
-                if (query.isNotEmpty() || (genre != null && genre.isNotEmpty())) append("&")
-                append("sort=").append(URLEncoder.encode(sort, StandardCharsets.UTF_8))
-            }
-
-            if (page > 1) {
-                if (query.isNotEmpty() || (genre != null && genre.isNotEmpty()) || (sort != null && sort.isNotEmpty())) append("&")
-                append("page=").append(page)
-            }
+        val queryParts = mutableListOf<String>()
+        if (query.isNotEmpty()) {
+            queryParts += "query=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
         }
+        if (genre != null && genre.isNotEmpty()) {
+            queryParts += "genre=" + URLEncoder.encode(genre, StandardCharsets.UTF_8)
+        }
+        if (sort != null && sort.isNotEmpty()) {
+            queryParts += "sort=" + URLEncoder.encode(sort, StandardCharsets.UTF_8)
+        }
+        for (tag in tags) {
+            // tags%5B%5D= 即 tags[]= 的 URL 编码形式，与官网搜索链接保持一致
+            queryParts += "tags%5B%5D=" + URLEncoder.encode(tag, StandardCharsets.UTF_8)
+        }
+        if (broad) {
+            queryParts += "broad=on"
+        }
+        if (page > 1) {
+            queryParts += "page=$page"
+        }
+        val url = "$baseUrl/search?" + queryParts.joinToString("&")
         val html = executeRequest(buildRequest(url))
         return FetchResult(html, baseUrl)
     }

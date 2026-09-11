@@ -30,6 +30,12 @@ class SearchViewModel @Inject constructor(
     private val _sort = MutableStateFlow<String?>(null)
     val sort: StateFlow<String?> = _sort.asStateFlow()
 
+    private val _tags = MutableStateFlow<List<String>>(emptyList())
+    val tags: StateFlow<List<String>> = _tags.asStateFlow()
+
+    private val _broad = MutableStateFlow(false)
+    val broad: StateFlow<Boolean> = _broad.asStateFlow()
+
     private val _videos = MutableStateFlow<List<HanimeVideo>>(emptyList())
     val videos: StateFlow<List<HanimeVideo>> = _videos.asStateFlow()
 
@@ -99,6 +105,21 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 设置标签搜索条件（多选）。仅更新状态、不主动发起搜索，
+     * 由调用方在底部面板「应用」时统一调用 [resetSearch] 提交，避免每次勾选都发一次请求。
+     */
+    fun setTags(newTags: List<String>) {
+        _tags.value = newTags
+    }
+
+    /**
+     * 设置广泛匹配开关。与 [setTags] 同样只更新状态，由「应用」动作统一提交。
+     */
+    fun setBroad(newBroad: Boolean) {
+        _broad.value = newBroad
+    }
+
     fun resetSearch() {
         currentPageNum = 1
         _currentPage.value = 1
@@ -106,13 +127,13 @@ class SearchViewModel @Inject constructor(
         _videos.value = emptyList()
         _hasMore.value = true
         _error.value = null
-        if (_query.value.isNotEmpty() || _sort.value != null || _genre.value != null) {
+        if (_query.value.isNotEmpty() || _sort.value != null || _genre.value != null || _tags.value.isNotEmpty()) {
             executeSearch()
         }
     }
 
     fun executeSearch() {
-        if (_query.value.isEmpty() && _sort.value == null && _genre.value == null) return
+        if (_query.value.isEmpty() && _sort.value == null && _genre.value == null && _tags.value.isEmpty()) return
 
         searchJob?.cancel()
         loadMoreJob?.cancel()
@@ -129,7 +150,9 @@ class SearchViewModel @Inject constructor(
                     query = _query.value,
                     genre = _genre.value,
                     sort = _sort.value,
-                    page = currentPageNum
+                    page = currentPageNum,
+                    tags = _tags.value,
+                    broad = _broad.value
                 )
             }
             when (result) {
@@ -158,7 +181,7 @@ class SearchViewModel @Inject constructor(
 
     fun loadMore() {
         if (_isLoadingMore.value || !_hasMore.value) return
-        if (_query.value.isEmpty() && _sort.value == null && _genre.value == null) return
+        if (_query.value.isEmpty() && _sort.value == null && _genre.value == null && _tags.value.isEmpty()) return
 
         loadMoreJob?.cancel()
         _isLoadingMore.value = true
@@ -170,7 +193,9 @@ class SearchViewModel @Inject constructor(
                     query = _query.value,
                     genre = _genre.value,
                     sort = _sort.value,
-                    page = currentPageNum
+                    page = currentPageNum,
+                    tags = _tags.value,
+                    broad = _broad.value
                 )
             }
             when (result) {

@@ -212,9 +212,9 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1): AppResult<SearchResult> {
+    suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1, tags: List<String> = emptyList(), broad: Boolean = false): AppResult<SearchResult> {
         return try {
-            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
+            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page, tags, broad)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parseWithPagination(result.html, result.baseUrl))
         } catch (e: IOException) {

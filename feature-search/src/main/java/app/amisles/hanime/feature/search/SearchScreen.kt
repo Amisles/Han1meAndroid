@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -42,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -59,6 +61,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -120,12 +123,18 @@ fun SearchScreen(
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
     val sortValue by viewModel.sort.collectAsStateWithLifecycle()
     val genreValue by viewModel.genre.collectAsStateWithLifecycle()
+    val tagsValue by viewModel.tags.collectAsStateWithLifecycle()
+    val broadValue by viewModel.broad.collectAsStateWithLifecycle()
 
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
     val selectedSort = remember { mutableStateOf(sortOptions[0]) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    var showTagSheet by remember { mutableStateOf(false) }
+    // 底部标签面板的本地选择态（存 value，官网原值），「应用」时才提交给 ViewModel
+    val selectedTags = remember { mutableStateOf(tagsValue.toSet()) }
+    val broadLocal = remember { mutableStateOf(broadValue) }
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
 
@@ -199,6 +208,7 @@ fun SearchScreen(
     }
 
     ResponsiveContent {
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -288,6 +298,27 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 15.dp)
             ) {
+                // 标签筛选入口：显示已选数量，点击打开底部选择面板
+                item(key = "tag_filter_chip") {
+                    val count = tagsValue.size
+                    val isSelected = count > 0
+                    val shape = RoundedCornerShape(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .clip(shape)
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                            .clickable { showTagSheet = true }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = if (count > 0) "标签 ($count)" else "标签",
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
                 items(items = filterTypes, key = { it.displayRes }) { filter ->
                     val isSelected = selectedFilter.value.apiValue == filter.apiValue
                     val shape = RoundedCornerShape(16.dp)
@@ -588,6 +619,22 @@ fun SearchScreen(
             }
         }
     }
+        if (showTagSheet) {
+            TagFilterSheet(
+                initialTags = selectedTags.value,
+                initialBroad = broadLocal.value,
+                onDismiss = { showTagSheet = false },
+                onApply = { appliedTags, appliedBroad ->
+                    selectedTags.value = appliedTags
+                    broadLocal.value = appliedBroad
+                    showTagSheet = false
+                    viewModel.setTags(appliedTags.toList())
+                    viewModel.setBroad(appliedBroad)
+                    viewModel.resetSearch()
+                }
+            )
+        }
+    }
     }
 }
 
@@ -631,4 +678,180 @@ private fun SearchNoMoreHint() {
             .padding(20.dp),
         textAlign = androidx.compose.ui.text.style.TextAlign.Center
     )
+}
+
+/**
+ * 标签选择底部面板（自绘，不依赖 ModalBottomSheet，规避额外依赖与构建风险）。
+ *
+ * 仅维护一份本地选择态，[onApply] 时才把最终结果回传给 ViewModel；
+ * 关闭（点遮罩 / 关闭按钮 / 应用）均不会自动发起请求，由调用方统一提交。
+ */
+@Composable
+private fun TagFilterSheet(
+    initialTags: Set<String>,
+    initialBroad: Boolean,
+    onDismiss: () -> Unit,
+    onApply: (Set<String>, Boolean) -> Unit
+) {
+    val selected = remember { mutableStateOf(initialTags) }
+    val broad = remember { mutableStateOf(initialBroad) }
+    val sizeInfo = currentWindowSizeInfo()
+    val chipCols = if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) 3 else 5
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
+            .clickable { onDismiss() }
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                )
+                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+        ) {
+            // 顶部标题栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "选择标签",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // 广泛匹配开关
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "广泛匹配",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Switch(
+                    checked = broad.value,
+                    onCheckedChange = { broad.value = it }
+                )
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+
+            // 标签网格（可滚动）：类目标题横跨整行，其后为该类目下的标签 chips
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(chipCols),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(4.dp)
+            ) {
+                SearchTagCatalog.groups.forEach { group ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = group.category,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                        )
+                    }
+                    items(items = group.tags, key = { it.value }) { tag ->
+                        val isSelected = selected.value.contains(tag.value)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable {
+                                    selected.value = if (isSelected) {
+                                        selected.value - tag.value
+                                    } else {
+                                        selected.value + tag.value
+                                    }
+                                }
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = tag.label,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 底部操作栏：清除（本地） / 应用（回传）
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "清除",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { selected.value = emptySet() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable { onApply(selected.value, broad.value) }
+                        .padding(horizontal = 24.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = if (selected.value.isEmpty()) "应用" else "应用 (${selected.value.size})",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
+    }
 }
