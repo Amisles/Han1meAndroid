@@ -39,6 +39,9 @@ class SearchViewModel @Inject constructor(
     private val _date = MutableStateFlow("")
     val date: StateFlow<String> = _date.asStateFlow()
 
+    private val _duration = MutableStateFlow("")
+    val duration: StateFlow<String> = _duration.asStateFlow()
+
     private val _videos = MutableStateFlow<List<HanimeVideo>>(emptyList())
     val videos: StateFlow<List<HanimeVideo>> = _videos.asStateFlow()
 
@@ -133,13 +136,24 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    /** 是否存在任一有效搜索条件（关键词 / 分类 / 排序 / 标签 / 发布日期）。 */
+    /**
+     * 设置时长筛选值（官网原值，空串 = 全部）。单值筛选，变更后立即提交搜索。
+     */
+    fun setDuration(newDuration: String) {
+        if (_duration.value != newDuration) {
+            _duration.value = newDuration
+            resetSearch()
+        }
+    }
+
+    /** 是否存在任一有效搜索条件（关键词 / 分类 / 排序 / 标签 / 发布日期 / 时长）。 */
     private fun hasAnyCriteria(): Boolean =
         _query.value.isNotEmpty() ||
             _sort.value != null ||
             _genre.value != null ||
             _tags.value.isNotEmpty() ||
-            _date.value.isNotEmpty()
+            _date.value.isNotEmpty() ||
+            _duration.value.isNotEmpty()
 
     fun resetSearch() {
         currentPageNum = 1
@@ -174,7 +188,8 @@ class SearchViewModel @Inject constructor(
                     page = currentPageNum,
                     tags = _tags.value,
                     broad = _broad.value,
-                    date = _date.value
+                    date = _date.value,
+                    duration = _duration.value
                 )
             }
             when (result) {
@@ -218,7 +233,8 @@ class SearchViewModel @Inject constructor(
                     page = currentPageNum,
                     tags = _tags.value,
                     broad = _broad.value,
-                    date = _date.value
+                    date = _date.value,
+                    duration = _duration.value
                 )
             }
             when (result) {

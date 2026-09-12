@@ -189,7 +189,8 @@ class NetworkService @Inject constructor(
         page: Int = 1,
         tags: List<String> = emptyList(),
         broad: Boolean = false,
-        date: String = ""
+        date: String = "",
+        duration: String = ""
     ): FetchResult {
         AppLogger.log("NetworkService", "fetchSearchPageWithBaseUrl called")
         val baseUrl = getCurrentBaseUrl()
@@ -214,6 +215,10 @@ class NetworkService @Inject constructor(
         if (date.isNotEmpty()) {
             // 官网「发布日期」筛选，快捷值如 date=過去 24 小時；空串 = 全部，不追加
             queryParts += "date=" + URLEncoder.encode(date, StandardCharsets.UTF_8)
+        }
+        if (duration.isNotEmpty()) {
+            // 官网「时长」筛选，取值如 duration=30 分鐘 + / 0 - 20 分鐘；空串 = 全部，不追加
+            queryParts += "duration=" + URLEncoder.encode(duration, StandardCharsets.UTF_8)
         }
         if (page > 1) {
             queryParts += "page=$page"

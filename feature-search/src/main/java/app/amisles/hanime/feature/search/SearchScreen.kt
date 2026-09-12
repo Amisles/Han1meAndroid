@@ -126,6 +126,7 @@ fun SearchScreen(
     val tagsValue by viewModel.tags.collectAsStateWithLifecycle()
     val broadValue by viewModel.broad.collectAsStateWithLifecycle()
     val dateValue by viewModel.date.collectAsStateWithLifecycle()
+    val durationValue by viewModel.duration.collectAsStateWithLifecycle()
 
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -134,6 +135,7 @@ fun SearchScreen(
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showTagSheet by remember { mutableStateOf(false) }
     var showDateSheet by remember { mutableStateOf(false) }
+    var showDurationSheet by remember { mutableStateOf(false) }
     // 底部标签面板的本地选择态（存 value，官网原值），「应用」时才提交给 ViewModel
     val selectedTags = remember { mutableStateOf(tagsValue.toSet()) }
     val broadLocal = remember { mutableStateOf(broadValue) }
@@ -341,6 +343,26 @@ fun SearchScreen(
                         )
                     }
                 }
+                // 时长筛选入口：显示当前选择，点击打开底部选择面板
+                item(key = "duration_filter_chip") {
+                    val isSelected = durationValue.isNotEmpty()
+                    val shape = RoundedCornerShape(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .clip(shape)
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                            .clickable { showDurationSheet = true }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = if (isSelected) durationChipLabel(durationValue) else "时长",
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
                 items(items = filterTypes, key = { it.displayRes }) { filter ->
                     val isSelected = selectedFilter.value.apiValue == filter.apiValue
                     val shape = RoundedCornerShape(16.dp)
@@ -469,7 +491,7 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .height(400.dp)
             )
-        } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null && tagsValue.isEmpty() && dateValue.isEmpty()) {
+        } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null && tagsValue.isEmpty() && dateValue.isEmpty() && durationValue.isEmpty()) {
             if (searchHistory.isNotEmpty()) {
                 Row(
                     modifier = Modifier
@@ -664,6 +686,17 @@ fun SearchScreen(
                 onApply = { appliedDate ->
                     showDateSheet = false
                     viewModel.setDate(appliedDate)
+                }
+            )
+        }
+
+        if (showDurationSheet) {
+            DurationFilterSheet(
+                initialDuration = durationValue,
+                onDismiss = { showDurationSheet = false },
+                onApply = { appliedDuration ->
+                    showDurationSheet = false
+                    viewModel.setDuration(appliedDuration)
                 }
             )
         }
@@ -1172,6 +1205,167 @@ private fun DateDropdown(
                         expanded = false
                     }
                 )
+            }
+        }
+    }
+}
+
+/** 时长选项：[dataValue] 为官网原值（直接作为 duration 参数），[label] 为界面展示名。 */
+private data class DurationOption(val dataValue: String, val label: String)
+
+private val durationOptions = listOf(
+    DurationOption("", "全部"),
+    DurationOption("1 分鐘 +", "1 分钟 +"),
+    DurationOption("5 分鐘 +", "5 分钟 +"),
+    DurationOption("10 分鐘 +", "10 分钟 +"),
+    DurationOption("20 分鐘 +", "20 分钟 +"),
+    DurationOption("30 分鐘 +", "30 分钟 +"),
+    DurationOption("60 分鐘 +", "60 分钟 +"),
+    DurationOption("0 - 10 分鐘", "0 - 10 分钟"),
+    DurationOption("0 - 20 分鐘", "0 - 20 分钟")
+)
+
+/** 筛选 chip 展示文案：命中选项取中文 label，否则原样展示。 */
+private fun durationChipLabel(value: String): String =
+    durationOptions.firstOrNull { it.dataValue == value }?.label ?: value
+
+/**
+ * 时长选择底部面板（自绘，风格与 [TagFilterSheet] / [DateFilterSheet] 一致）。
+ *
+ * 单项选择；「取消」不产生任何副作用，[onApply] 时回传最终 duration 值（空串 = 全部），
+ * 由调用方统一提交搜索。
+ */
+@Composable
+private fun DurationFilterSheet(
+    initialDuration: String,
+    onDismiss: () -> Unit,
+    onApply: (String) -> Unit
+) {
+    val selected = remember { mutableStateOf(initialDuration) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
+            .clickable { onDismiss() }
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.75f)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                )
+                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+        ) {
+            // 标题栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "时长",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+
+            // 选项（单选）
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(items = durationOptions, key = { it.dataValue }) { option ->
+                    val isSelected = selected.value == option.dataValue
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selected.value = option.dataValue }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = option.label,
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+
+            // 底部操作栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "取消",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onDismiss() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable { onApply(selected.value) }
+                        .padding(horizontal = 24.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = "显示搜索结果",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             }
         }
     }
