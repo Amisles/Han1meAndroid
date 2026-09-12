@@ -93,7 +93,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -792,15 +792,29 @@ fun VideoPlayer(
     }
 
     // ── 画中画 ───────────────────────────────────────────────────────────────
-    // 全屏播放中按 Home/概览键自动进入画中画（API 26+）；退出 PiP 时复位 isInPip
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, isFullscreen) {
+    // 全屏播放中按 Home/概览键自动进入画中画（API 26+）；退出 PiP 时复位 isInPip。
+    //
+    // 必须观察 **Activity** 的生命周期，不能观察 LocalLifecycleOwner：在 Compose Navigation 中
+    // LocalLifecycleOwner 指向当前目的地对应的 NavBackStackEntry，任何一次应用内导航（例如连播
+    // 自动切到下一集）都会让旧目的地由 RESUMED 退到 STARTED 并派发 ON_PAUSE，被误判为
+    // 「用户离开 App」，于是全屏播放器会突然缩成画中画。只有 Activity 的 ON_PAUSE 才等价于离开 App。
+    //
+    // isFullscreen / isPlaying 一律经 ref 取最新值：观察者只在 activity 变化时重建，若直接闭包捕获
+    // 会固化成陈旧快照（例如视频播完后 isPlaying 名义上已为 false，观察者却仍读到 true）而误触发。
+    val isFullscreenRef = rememberUpdatedState(isFullscreen)
+    val isPlayingRef = rememberUpdatedState(isPlaying)
+    DisposableEffect(activity) {
+        val act = activity ?: return@DisposableEffect onDispose {}
+        // android.app.Activity 自身并没有 lifecycle —— LifecycleOwner 是 androidx 的接口，由
+        // ComponentActivity 实现（本应用唯一的 Activity 即 MainActivity : ComponentActivity），
+        // 故安全向下转型后即可观察 Activity 的真实生命周期。
+        val owner = act as? LifecycleOwner ?: return@DisposableEffect onDispose {}
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    if (isFullscreen && isPlaying && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                        && activity?.isInPictureInPictureMode != true) {
-                        activity?.enterPictureInPictureMode(buildPipParams())
+                    if (isFullscreenRef.value && isPlayingRef.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                        && act.isInPictureInPictureMode != true) {
+                        act.enterPictureInPictureMode(buildPipParams())
                         isInPip = true
                     }
                 }
@@ -810,8 +824,8 @@ fun VideoPlayer(
                 else -> {}
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
     }
 
     // ── 手势提示自动清除 ─────────────────────────────────────────────────────
