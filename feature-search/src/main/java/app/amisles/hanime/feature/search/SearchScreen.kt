@@ -125,6 +125,7 @@ fun SearchScreen(
     val genreValue by viewModel.genre.collectAsStateWithLifecycle()
     val tagsValue by viewModel.tags.collectAsStateWithLifecycle()
     val broadValue by viewModel.broad.collectAsStateWithLifecycle()
+    val dateValue by viewModel.date.collectAsStateWithLifecycle()
 
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -132,6 +133,7 @@ fun SearchScreen(
     val selectedSort = remember { mutableStateOf(sortOptions[0]) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showTagSheet by remember { mutableStateOf(false) }
+    var showDateSheet by remember { mutableStateOf(false) }
     // 底部标签面板的本地选择态（存 value，官网原值），「应用」时才提交给 ViewModel
     val selectedTags = remember { mutableStateOf(tagsValue.toSet()) }
     val broadLocal = remember { mutableStateOf(broadValue) }
@@ -319,6 +321,26 @@ fun SearchScreen(
                         )
                     }
                 }
+                // 发布日期筛选入口：显示当前选择，点击打开底部选择面板
+                item(key = "date_filter_chip") {
+                    val isSelected = dateValue.isNotEmpty()
+                    val shape = RoundedCornerShape(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .clip(shape)
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                            .clickable { showDateSheet = true }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = if (isSelected) dateChipLabel(dateValue) else "日期",
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
                 items(items = filterTypes, key = { it.displayRes }) { filter ->
                     val isSelected = selectedFilter.value.apiValue == filter.apiValue
                     val shape = RoundedCornerShape(16.dp)
@@ -447,7 +469,7 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .height(400.dp)
             )
-        } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null) {
+        } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null && tagsValue.isEmpty() && dateValue.isEmpty()) {
             if (searchHistory.isNotEmpty()) {
                 Row(
                     modifier = Modifier
@@ -631,6 +653,17 @@ fun SearchScreen(
                     viewModel.setTags(appliedTags.toList())
                     viewModel.setBroad(appliedBroad)
                     viewModel.resetSearch()
+                }
+            )
+        }
+
+        if (showDateSheet) {
+            DateFilterSheet(
+                initialDate = dateValue,
+                onDismiss = { showDateSheet = false },
+                onApply = { appliedDate ->
+                    showDateSheet = false
+                    viewModel.setDate(appliedDate)
                 }
             )
         }
@@ -851,6 +884,294 @@ private fun TagFilterSheet(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
+            }
+        }
+    }
+}
+
+/** 发布日期快捷选项：[dataValue] 为官网原值（直接作为 date 参数），[label] 为界面展示名。 */
+private data class DateOption(val dataValue: String, val label: String)
+
+private val dateQuickOptions = listOf(
+    DateOption("", "全部"),
+    DateOption("過去 24 小時", "过去 24 小时"),
+    DateOption("過去 2 天", "过去 2 天"),
+    DateOption("過去 1 週", "过去 1 周"),
+    DateOption("過去 1 個月", "过去 1 个月"),
+    DateOption("過去 3 個月", "过去 3 个月"),
+    DateOption("過去 1 年", "过去 1 年")
+)
+
+/** 年份下拉：首项「全部」表示不限定年份。 */
+private val dateYearOptions: List<String> = listOf("全部") + (2026 downTo 1990).map { "$it 年" }
+
+/** 月份下拉：首项「全部」表示不限定月份。 */
+private val dateMonthOptions: List<String> = listOf("全部") + (1..12).map { "$it 月" }
+
+private const val DATE_ALL = "全部"
+
+/** 筛选 chip 展示文案：快捷项取中文 label，年 / 月自定义值原样展示。 */
+private fun dateChipLabel(value: String): String =
+    dateQuickOptions.firstOrNull { it.dataValue == value }?.label ?: value
+
+/**
+ * 由「年 / 月」下拉值合成官网 date 参数。
+ *
+ * 快捷项直接使用官网原值；自定义年月时按 `YYYY 年 M 月` 拼接（仅年 → `YYYY 年`，仅月 → `M 月`，
+ * 两者皆「全部」→ 空串 = 全部）。
+ *
+ * 注意：该拼接格式依据官网下拉选项文案（值为 `2026 年` / `3 月`）推断，尚未与官网 JS 逐字核对；
+ * 若实测与官网不一致，请以官网实际请求为准调整此处。
+ */
+private fun buildDateValue(year: String, month: String): String {
+    val y = if (year == DATE_ALL) "" else year
+    val m = if (month == DATE_ALL) "" else month
+    return listOf(y, m).filter { it.isNotEmpty() }.joinToString(" ")
+}
+
+private val DATE_YEAR_REGEX = Regex("^(\\d{4}) 年")
+private val DATE_MONTH_REGEX = Regex("(\\d{1,2}) 月")
+
+/** 从已有 date 值反解年份下拉项（无年份 → 全部），用于再次打开面板时回显。 */
+private fun dateYearOf(value: String): String =
+    DATE_YEAR_REGEX.find(value)?.let { it.groupValues[1] + " 年" } ?: DATE_ALL
+
+/** 从已有 date 值反解月份下拉项（无月份 → 全部）。 */
+private fun dateMonthOf(value: String): String =
+    DATE_MONTH_REGEX.find(value)?.let { it.groupValues[1] + " 月" } ?: DATE_ALL
+
+/**
+ * 发布日期选择底部面板（自绘，风格与 [TagFilterSheet] 一致，不引入 ModalBottomSheet 依赖）。
+ *
+ * 交互：快捷项与「年 / 月」互斥 —— 点选任一快捷项即清空年月；改动年月即取消快捷项选择。
+ * 「取消」不产生任何副作用；[onApply] 时回传最终 date 值（空串 = 全部），由调用方统一提交搜索。
+ */
+@Composable
+private fun DateFilterSheet(
+    initialDate: String,
+    onDismiss: () -> Unit,
+    onApply: (String) -> Unit
+) {
+    // 当前选中的快捷项 dataValue；null 表示由「年 / 月」自定义
+    val quick = remember { mutableStateOf(dateQuickOptions.firstOrNull { it.dataValue == initialDate }?.dataValue) }
+    val year = remember { mutableStateOf(dateYearOf(initialDate)) }
+    val month = remember { mutableStateOf(dateMonthOf(initialDate)) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
+            .clickable { onDismiss() }
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                )
+                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+        ) {
+            // 标题栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "发布日期",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+
+            // 快捷项（单选）
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(items = dateQuickOptions, key = { it.dataValue }) { option ->
+                    val isSelected = quick.value == option.dataValue
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                quick.value = option.dataValue
+                                year.value = DATE_ALL
+                                month.value = DATE_ALL
+                            }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = option.label,
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+
+            // 自定义年 / 月
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DateDropdown(
+                    label = year.value,
+                    options = dateYearOptions,
+                    modifier = Modifier.weight(1f),
+                    onSelect = {
+                        year.value = it
+                        quick.value = null
+                    }
+                )
+                DateDropdown(
+                    label = month.value,
+                    options = dateMonthOptions,
+                    modifier = Modifier.weight(1f),
+                    onSelect = {
+                        month.value = it
+                        quick.value = null
+                    }
+                )
+            }
+
+            // 底部操作栏
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "取消",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onDismiss() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable {
+                            val value = quick.value ?: buildDateValue(year.value, month.value)
+                            onApply(value)
+                        }
+                        .padding(horizontal = 24.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = "显示搜索结果",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 年 / 月下拉按钮（自绘，与筛选栏排序下拉同款视觉；官网年份较多，故限定最大高度并可滚动）。 */
+@Composable
+private fun DateDropdown(
+    label: String,
+    options: List<String>,
+    modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 300.dp)
+        ) {
+            options.forEach { option ->
+                val isSelected = option == label
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    }
+                )
             }
         }
     }

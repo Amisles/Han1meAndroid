@@ -182,7 +182,15 @@ class NetworkService @Inject constructor(
         return FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchSearchPageWithBaseUrl(query: String, genre: String? = null, sort: String? = null, page: Int = 1, tags: List<String> = emptyList(), broad: Boolean = false): FetchResult {
+    suspend fun fetchSearchPageWithBaseUrl(
+        query: String,
+        genre: String? = null,
+        sort: String? = null,
+        page: Int = 1,
+        tags: List<String> = emptyList(),
+        broad: Boolean = false,
+        date: String = ""
+    ): FetchResult {
         AppLogger.log("NetworkService", "fetchSearchPageWithBaseUrl called")
         val baseUrl = getCurrentBaseUrl()
         AppLogger.log("NetworkService", "Using base URL: $baseUrl")
@@ -202,6 +210,10 @@ class NetworkService @Inject constructor(
         }
         if (broad) {
             queryParts += "broad=on"
+        }
+        if (date.isNotEmpty()) {
+            // 官网「发布日期」筛选，快捷值如 date=過去 24 小時；空串 = 全部，不追加
+            queryParts += "date=" + URLEncoder.encode(date, StandardCharsets.UTF_8)
         }
         if (page > 1) {
             queryParts += "page=$page"
