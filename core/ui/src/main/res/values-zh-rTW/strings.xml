@@ -32,11 +32,12 @@
     <string name="search_history">搜尋歷史</string>
     <string name="search_no_results">暫無搜尋結果</string>
     <string name="search_sort">排序</string>
+    <string name="search_sort_default">預設排序</string>
     <string name="search_genre">分類</string>
     <string name="search_load_more">載入更多</string>
     <string name="search_loading_more">載入中...</string>
     <string name="search_no_more">沒有更多了</string>
-    <string name="search_all">全部</string>
+    <string name="search_all">全部分類</string>
     <string name="search_sort_new_release">最新上市</string>
     <string name="search_sort_new_upload">最新上傳</string>
     <string name="search_sort_daily">本日排行</string>
@@ -46,7 +47,7 @@
     <string name="search_sort_like_ratio">點讚比例</string>
     <string name="search_sort_longest">時長最長</string>
     <string name="search_sort_watching">他們在看</string>
-    <string name="search_empty_hint">輸入關鍵詞或選擇分類開始搜尋</string>
+    <string name="search_empty_hint">輸入關鍵詞，或選擇分類 / 標籤 / 日期 / 時長開始搜尋</string>
     <string name="search_layout_list">清單檢視</string>
     <string name="search_layout_grid">網格檢視</string>
     <string name="search_result_count">%1$d 個結果</string>

@@ -40,6 +40,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -131,7 +132,9 @@ fun SearchScreen(
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
-    val selectedSort = remember { mutableStateOf(sortOptions[0]) }
+    // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，
+    // 避免下拉里宣称一个实际并未生效的排序值
+    val selectedSort = remember { mutableStateOf<SortOption?>(null) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showTagSheet by remember { mutableStateOf(false) }
     var showDateSheet by remember { mutableStateOf(false) }
@@ -298,70 +301,68 @@ fun SearchScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 15.dp, vertical = 12.dp)
         ) {
+            // 是否存在任何已生效的筛选条件（决定是否显示「清除筛选」入口）
+            val hasActiveFilter = genreValue != null || tagsValue.isNotEmpty() ||
+                dateValue.isNotEmpty() || durationValue.isNotEmpty()
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 15.dp)
             ) {
-                // 标签筛选入口：显示已选数量，点击打开底部选择面板
+                // 一键清除全部筛选：仅在确有筛选生效时出现（分类的「全部分类」只重置分类，不承担此职责）
+                if (hasActiveFilter) {
+                    item(key = "clear_filters_chip") {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable {
+                                    // 同步 UI 本地态后再让 ViewModel 一次性清空并只发一次请求
+                                    selectedTags.value = emptySet()
+                                    broadLocal.value = false
+                                    selectedFilter.value = allCategory
+                                    viewModel.clearFilters()
+                                }
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "清除筛选",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                // 筛选入口组：点击打开底部选择面板，带下拉箭头以区别于右侧「分类」单选 chip
                 item(key = "tag_filter_chip") {
                     val count = tagsValue.size
-                    val isSelected = count > 0
-                    val shape = RoundedCornerShape(16.dp)
-                    Box(
-                        modifier = Modifier
-                            .clip(shape)
-                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                            .clickable { showTagSheet = true }
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = if (count > 0) "标签 ($count)" else "标签",
-                            fontSize = 13.sp,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
+                    FilterEntryChip(
+                        label = if (count > 0) "标签 ($count)" else "标签",
+                        selected = count > 0,
+                        onClick = { showTagSheet = true }
+                    )
                 }
-                // 发布日期筛选入口：显示当前选择，点击打开底部选择面板
                 item(key = "date_filter_chip") {
-                    val isSelected = dateValue.isNotEmpty()
-                    val shape = RoundedCornerShape(16.dp)
-                    Box(
-                        modifier = Modifier
-                            .clip(shape)
-                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                            .clickable { showDateSheet = true }
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = if (isSelected) dateChipLabel(dateValue) else "日期",
-                            fontSize = 13.sp,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    FilterEntryChip(
+                        label = if (dateValue.isNotEmpty()) dateChipLabel(dateValue) else "日期",
+                        selected = dateValue.isNotEmpty(),
+                        onClick = { showDateSheet = true }
+                    )
                 }
-                // 时长筛选入口：显示当前选择，点击打开底部选择面板
                 item(key = "duration_filter_chip") {
-                    val isSelected = durationValue.isNotEmpty()
-                    val shape = RoundedCornerShape(16.dp)
+                    FilterEntryChip(
+                        label = if (durationValue.isNotEmpty()) durationChipLabel(durationValue) else "时长",
+                        selected = durationValue.isNotEmpty(),
+                        onClick = { showDurationSheet = true }
+                    )
+                }
+                // 组间分隔线：左侧是「筛选入口」，右侧是「分类」单选，避免被读成同一组
+                item(key = "filter_group_divider") {
                     Box(
                         modifier = Modifier
-                            .clip(shape)
-                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                            .clickable { showDurationSheet = true }
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = if (isSelected) durationChipLabel(durationValue) else "时长",
-                            fontSize = 13.sp,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                            .width(1.dp)
+                            .height(20.dp)
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    )
                 }
                 items(items = filterTypes, key = { it.displayRes }) { filter ->
                     val isSelected = selectedFilter.value.apiValue == filter.apiValue
@@ -413,7 +414,8 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = stringResource(selectedSort.value.labelRes),
+                            text = selectedSort.value?.let { stringResource(it.labelRes) }
+                                ?: stringResource(R.string.search_sort_default),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
@@ -474,7 +476,13 @@ fun SearchScreen(
             }
         }
 
-        if (isLoading) {
+        // 已有结果在屏时重新搜索：只在顶部显示细进度条、保留旧列表，
+        // 不再把结果区整块换成空 spinner（易被误读为「结果没了」）
+        if (isLoading && videos.isNotEmpty()) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
+        if (isLoading && videos.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -919,6 +927,40 @@ private fun TagFilterSheet(
                 }
             }
         }
+    }
+}
+
+/**
+ * 筛选入口 chip（标签 / 日期 / 时长共用）：统一外观，并在文字右侧固定带一个下拉箭头，
+ * 提示「点击会打开选择面板」，与右侧点一下就选中的「分类」chip 区分开。
+ */
+@Composable
+private fun FilterEntryChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+            .clickable { onClick() }
+            .padding(start = 14.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
+        )
+        Icon(
+            imageVector = Icons.Default.ArrowDropDown,
+            contentDescription = null,
+            tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 

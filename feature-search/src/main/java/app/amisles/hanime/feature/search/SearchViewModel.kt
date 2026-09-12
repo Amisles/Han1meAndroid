@@ -146,6 +146,24 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 一键清除全部筛选条件（分类 / 标签 / 广泛匹配 / 发布日期 / 时长），只发起一次搜索。
+     *
+     * 不能由外部依次调用 setGenre / setDate / setDuration：它们各自在值变化时都会调用
+     * [resetSearch]，会连续触发多次请求；这里统一改完状态再 reset 一次。
+     */
+    fun clearFilters() {
+        val hasFilter = _genre.value != null || _tags.value.isNotEmpty() ||
+            _broad.value || _date.value.isNotEmpty() || _duration.value.isNotEmpty()
+        if (!hasFilter) return
+        _genre.value = null
+        _tags.value = emptyList()
+        _broad.value = false
+        _date.value = ""
+        _duration.value = ""
+        resetSearch()
+    }
+
     /** 是否存在任一有效搜索条件（关键词 / 分类 / 排序 / 标签 / 发布日期 / 时长）。 */
     private fun hasAnyCriteria(): Boolean =
         _query.value.isNotEmpty() ||
@@ -159,11 +177,14 @@ class SearchViewModel @Inject constructor(
         currentPageNum = 1
         _currentPage.value = 1
         _totalPages.value = 1
-        _videos.value = emptyList()
         _hasMore.value = true
         _error.value = null
         if (hasAnyCriteria()) {
+            // 保留上一次的结果直到新结果返回：由界面在顶部显示细进度条，
+            // 而不是先把列表清空、让结果区闪成一块空 spinner（容易被误读为「结果没了」）
             executeSearch()
+        } else {
+            _videos.value = emptyList()
         }
     }
 
