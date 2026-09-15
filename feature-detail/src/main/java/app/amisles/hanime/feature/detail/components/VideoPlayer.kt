@@ -202,7 +202,8 @@ private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 可交互进度条（时间文本 + 滑块）。进度轮询下沉到本组合内部，仅重排自身、不触发外层 VideoPlayer 重排。
+ * 可交互进度条（时间文本 + 滑块）。轨道按三层亮度同时展示「已播放 / 已缓冲 / 未缓冲」。
+ * 进度轮询下沉到本组合内部，仅重排自身、不触发外层 VideoPlayer 重排。
  *
  * @param onSeekInteract 用户点击 / 拖动时回调，外层据此判定本次触摸落在控件上、不做「切换控件显隐」。
  */
@@ -215,10 +216,13 @@ private fun PlaybackProgressBar(
 ) {
     var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var duration by remember { mutableLongStateOf(exoPlayer.duration) }
+    // 已缓冲位置（毫秒）：用于在轨道上画「已缓冲」段，与手指拖动无关，始终刷新
+    var bufferedPosition by remember { mutableLongStateOf(exoPlayer.bufferedPosition) }
     var isDragging by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         while (true) {
+            bufferedPosition = exoPlayer.bufferedPosition
             if (!isDragging) {
                 currentPosition = exoPlayer.currentPosition
                 duration = exoPlayer.duration
@@ -271,6 +275,12 @@ private fun PlaybackProgressBar(
                 )
             },
             track = {
+                // 三层亮度：30% = 未缓冲，60% = 已缓冲未播放，100% = 已播放。
+                // 必须 coerceIn：fillMaxWidth(fraction) 要求 fraction 落在 0f..1f，越界会抛异常
+                val playedFraction = (if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f)
+                    .coerceIn(0f, 1f)
+                val bufferedFraction = (if (duration > 0) bufferedPosition.toFloat() / duration.toFloat() else 0f)
+                    .coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -279,9 +289,17 @@ private fun PlaybackProgressBar(
                         .clip(RoundedCornerShape(1.dp))
                         .background(Color.White.copy(alpha = 0.3f))
                 ) {
+                    // 已缓冲（含已播放部分）：压在已播放段之下，向右拖拽时可预览可跳范围
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f)
+                            .fillMaxWidth(bufferedFraction)
+                            .height(8.dp)
+                            .background(Color.White.copy(alpha = 0.6f))
+                    )
+                    // 已播放
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(playedFraction)
                             .height(8.dp)
                             .clip(RoundedCornerShape(1.dp))
                             .background(Color.White)
@@ -293,8 +311,9 @@ private fun PlaybackProgressBar(
 }
 
 /**
- * 控件隐藏时贴在播放器最底部的简易进度条：仅展示进度、不接受交互（不加 clickable，
- * 点击穿透到外层手势等同于点击空白区域唤回控件），因此无需拖动 / 缓冲进度等能力。
+ * 控件隐藏时贴在播放器最底部的简易进度条：同时展示「已播放 / 已缓冲」两段进度，
+ * 不接受交互（不加 clickable，点击穿透到外层手势等同于点击空白区域唤回控件）。
+ * 三层亮度与可交互进度条一致：25% = 未缓冲，55% = 已缓冲未播放，100% = 已播放。
  * 轮询仅在自身显示在组合中时运行，控件显示时无额外开销。
  */
 @Composable
@@ -303,11 +322,18 @@ private fun MiniPlaybackProgress(
     modifier: Modifier = Modifier
 ) {
     var progress by remember { mutableFloatStateOf(0f) }
+    var buffered by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(Unit) {
         while (true) {
             val d = exoPlayer.duration
-            progress = if (d > 0) (exoPlayer.currentPosition.toFloat() / d).coerceIn(0f, 1f) else 0f
+            if (d > 0) {
+                progress = (exoPlayer.currentPosition.toFloat() / d).coerceIn(0f, 1f)
+                buffered = (exoPlayer.bufferedPosition.toFloat() / d).coerceIn(0f, 1f)
+            } else {
+                progress = 0f
+                buffered = 0f
+            }
             delay(if (exoPlayer.isPlaying) 500 else 1000)
         }
     }
@@ -318,6 +344,14 @@ private fun MiniPlaybackProgress(
             .height(MINI_PROGRESS_HEIGHT)
             .background(Color.White.copy(alpha = 0.25f))
     ) {
+        // 已缓冲（含已播放部分）
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(buffered)
+                .background(Color.White.copy(alpha = 0.55f))
+        )
+        // 已播放
         Box(
             modifier = Modifier
                 .fillMaxHeight()
