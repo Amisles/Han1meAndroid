@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.download
 
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,7 +51,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -67,7 +65,6 @@ import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Header
 import coil3.compose.AsyncImage
-import java.io.File
 
 enum class DownloadFilter {
     ALL, DOWNLOADING, COMPLETED, FAILED, PAUSED
@@ -94,7 +91,9 @@ private data class TaskOrderKey(
 
 @Composable
 fun DownloadScreen(
-    onNavigate: (String) -> Unit = {}
+    onNavigate: (String) -> Unit = {},
+    // 点「播放」：交给上层跳转到应用内的本地播放页，不再走外部播放器 Intent
+    onPlayLocalVideo: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val viewModel: DownloadViewModel = hiltViewModel()
@@ -440,7 +439,7 @@ fun DownloadScreen(
                                     selectedIds + task.id
                                 }
                             },
-                            onPlayClick = { playVideoFile(context, task.filePath) },
+                            onPlayClick = { onPlayLocalVideo(task.filePath) },
                             onDeleteClick = {
                                 // 删除已完成任务会连带删除本地文件，先确认
                                 deleteTargetId = task.id
@@ -484,7 +483,7 @@ fun DownloadScreen(
                                 onResumeClick = { viewModel.resumeDownload(task.id) },
                                 onCancelClick = { viewModel.cancelDownload(task.id) },
                                 onRetryClick = { viewModel.resumeDownload(task.id) },
-                                onPlayClick = { playVideoFile(context, task.filePath) },
+                                onPlayClick = { onPlayLocalVideo(task.filePath) },
                                 onDeleteClick = {
                                     // 删除已完成任务会连带删除本地文件，先确认
                                     deleteTargetId = task.id
@@ -985,37 +984,5 @@ fun formatFileSize(bytes: Long): String {
         bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
         bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
         else -> String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0))
-    }
-}
-
-private fun playVideoFile(context: android.content.Context, filePath: String) {
-    val file = File(filePath)
-    if (!file.exists()) {
-        Toast.makeText(context, context.getString(R.string.download_file_not_exist), Toast.LENGTH_SHORT).show()
-        return
-    }
-
-    try {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "video/mp4")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        val chooser = Intent.createChooser(intent, context.getString(R.string.download_choose_player)).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        context.startActivity(chooser)
-    } catch (e: Exception) {
-        // 预期会命中的两类异常：FileProvider 找不到匹配根路径（IllegalArgumentException）
-        // 与设备上没有任何可处理 ACTION_VIEW 的应用（ActivityNotFoundException），提示一致故合并（审查 O6）
-        Toast.makeText(context, context.getString(R.string.download_open_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
     }
 }

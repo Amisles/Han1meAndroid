@@ -7,6 +7,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -166,6 +167,34 @@ object ExoPlayerFactory {
             .build()
             .apply {
                 playWhenReady = false
+                volume = 1f
+            }
+    }
+
+    /**
+     * 构建**本地文件**播放器（播放已下载视频用）。
+     *
+     * 与 [buildVideoPlayer] 的三点差异：
+     * 1. 数据源换成 [DefaultDataSource]：它按 URI scheme 分派 —— `file:` / `content:` 走本地读取，
+     *    只有 `http(s):` 才回落到带反限速 UA / 防盗链 Referer 的上游数据源。
+     *    原链路的上游是 `DefaultHttpDataSource`，只认 http(s)，喂 `file://` 会直接打开失败。
+     * 2. 不挂 SimpleCache：文件本来就在磁盘上，再叠一层 512MB 缓存只会把同一份数据重复落盘。
+     * 3. `playWhenReady = true`：用户是点「播放」进来的，应当直接起播，不必再点一次中央播放键。
+     *
+     * 其余（网络感知 LoadControl、上游请求头、超时）与在线播放保持一致。
+     */
+    fun buildLocalVideoPlayer(context: Context): ExoPlayer {
+        val dataSourceFactory = DefaultDataSource.Factory(
+            context.applicationContext,
+            buildUpstreamFactory(15_000, 15_000)
+        )
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+        return ExoPlayer.Builder(context.applicationContext)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(buildLoadControlForNetwork(context))
+            .build()
+            .apply {
+                playWhenReady = true
                 volume = 1f
             }
     }

@@ -54,6 +54,7 @@ import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.NavRail
 import app.amisles.hanime.feature.detail.DetailScreen
+import app.amisles.hanime.feature.detail.LocalPlayerScreen
 import app.amisles.hanime.feature.download.DownloadScreen
 import app.amisles.hanime.feature.profile.FavoriteScreen
 import app.amisles.hanime.feature.profile.HistoryScreen
@@ -297,6 +298,9 @@ fun HanimeApp() {
                                     launchSingleTop = true
                                     restoreState = true
                                 }
+                            },
+                            onPlayLocalVideo = { filePath ->
+                                navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
                             }
                         )
                     }
@@ -475,6 +479,19 @@ fun HanimeApp() {
                             onNavigateToSettings = {
                                 navController.navigate("settings")
                             }
+                        )
+                    }
+                    // 本地视频播放页（下载页「播放」入口）：普通入栈导航，系统返回即回到下载页
+                    composable(
+                        route = "localPlayer?filePath={filePath}",
+                        arguments = listOf(navArgument("filePath") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        LocalPlayerScreen(
+                            filePath = backStackEntry.arguments?.getString("filePath")
                         )
                     }
                 }
