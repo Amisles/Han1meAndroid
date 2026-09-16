@@ -350,24 +350,6 @@ fun DetailScreen(
                     .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
                     .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
             ) {
-                if (!isPlayerFullscreen) {
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.background)
-                                .padding(horizontal = 15.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            DetailBackButton(
-                                onBackClick = onBackClick,
-                                tint = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
-                }
-
                 if (isLoading) {
                     item(key = "detail_skeleton") {
                         DetailSkeletonScreen()
