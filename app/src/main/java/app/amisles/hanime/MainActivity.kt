@@ -148,7 +148,8 @@ fun HanimeApp() {
         !currentRoute.startsWith("videoListPage") &&
         !currentRoute.startsWith("playlistListPage") &&
         !currentRoute.startsWith("playlistDetail") &&
-        !currentRoute.startsWith("accountEdit")
+        !currentRoute.startsWith("accountEdit") &&
+        !currentRoute.startsWith("localPlayer")
 
     val useRail = currentWindowSizeInfo().useNavigationRail
 
@@ -198,12 +199,20 @@ fun HanimeApp() {
                     }
                 }
             ) { innerPadding ->
+                // 沉浸式路由（本地播放页）：不预留底部导航栏与系统栏内边距，让页面铺满整屏 ——
+                // 这样页面里「播放器垂直居中」才是相对**整块屏幕**，否则会因内容区被内缩而整体偏上
+                // （偏上量恰为内缩高度的一半）。
+                val immersiveRoute = currentRoute.startsWith("localPlayer")
                 NavHost(
                     navController = navController,
                     startDestination = "home",
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .padding(bottom = innerPadding.calculateBottomPadding()),
+                    modifier = if (immersiveRoute) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .navigationBarsPadding()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    },
                     enterTransition = { EnterTransition.None },
                     exitTransition = { ExitTransition.None },
                     popEnterTransition = { EnterTransition.None },
@@ -491,7 +500,8 @@ fun HanimeApp() {
                         })
                     ) { backStackEntry ->
                         LocalPlayerScreen(
-                            filePath = backStackEntry.arguments?.getString("filePath")
+                            filePath = backStackEntry.arguments?.getString("filePath"),
+                            onBackClick = { navController.popBackStack() }
                         )
                     }
                 }
