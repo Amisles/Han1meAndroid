@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.search
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
@@ -325,7 +327,7 @@ fun SearchScreen(
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = "清除筛选",
+                                text = stringResource(R.string.search_filter_clear_all),
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -336,21 +338,33 @@ fun SearchScreen(
                 item(key = "tag_filter_chip") {
                     val count = tagsValue.size
                     FilterEntryChip(
-                        label = if (count > 0) "标签 ($count)" else "标签",
+                        label = if (count > 0) {
+                            stringResource(R.string.search_filter_tag_count, count)
+                        } else {
+                            stringResource(R.string.search_filter_tag)
+                        },
                         selected = count > 0,
                         onClick = { showTagSheet = true }
                     )
                 }
                 item(key = "date_filter_chip") {
                     FilterEntryChip(
-                        label = if (dateValue.isNotEmpty()) dateChipLabel(dateValue) else "日期",
+                        label = if (dateValue.isNotEmpty()) {
+                            dateChipLabel(dateValue)
+                        } else {
+                            stringResource(R.string.search_filter_date)
+                        },
                         selected = dateValue.isNotEmpty(),
                         onClick = { showDateSheet = true }
                     )
                 }
                 item(key = "duration_filter_chip") {
                     FilterEntryChip(
-                        label = if (durationValue.isNotEmpty()) durationChipLabel(durationValue) else "时长",
+                        label = if (durationValue.isNotEmpty()) {
+                            durationChipLabel(durationValue)
+                        } else {
+                            stringResource(R.string.search_filter_duration)
+                        },
                         selected = durationValue.isNotEmpty(),
                         onClick = { showDurationSheet = true }
                     )
@@ -797,7 +811,7 @@ private fun TagFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "选择标签",
+                    text = stringResource(R.string.search_tag_sheet_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onBackground
@@ -827,7 +841,7 @@ private fun TagFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "广泛匹配",
+                    text = stringResource(R.string.search_tag_broad_match),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -857,7 +871,7 @@ private fun TagFilterSheet(
                 SearchTagCatalog.groups.forEach { group ->
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
-                            text = group.category,
+                            text = stringResource(group.categoryRes),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -882,7 +896,7 @@ private fun TagFilterSheet(
                                 .padding(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Text(
-                                text = tag.label,
+                                text = stringResource(tag.labelRes),
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
@@ -902,7 +916,7 @@ private fun TagFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "清除",
+                    text = stringResource(R.string.search_tag_clear),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
@@ -919,7 +933,11 @@ private fun TagFilterSheet(
                         .padding(horizontal = 24.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        text = if (selected.value.isEmpty()) "应用" else "应用 (${selected.value.size})",
+                        text = if (selected.value.isEmpty()) {
+                            stringResource(R.string.search_tag_apply)
+                        } else {
+                            stringResource(R.string.search_tag_apply_count, selected.value.size)
+                        },
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -964,30 +982,48 @@ private fun FilterEntryChip(
     }
 }
 
-/** 发布日期快捷选项：[dataValue] 为官网原值（直接作为 date 参数），[label] 为界面展示名。 */
-private data class DateOption(val dataValue: String, val label: String)
-
-private val dateQuickOptions = listOf(
-    DateOption("", "全部"),
-    DateOption("過去 24 小時", "过去 24 小时"),
-    DateOption("過去 2 天", "过去 2 天"),
-    DateOption("過去 1 週", "过去 1 周"),
-    DateOption("過去 1 個月", "过去 1 个月"),
-    DateOption("過去 3 個月", "过去 3 个月"),
-    DateOption("過去 1 年", "过去 1 年")
-)
-
-/** 年份下拉：首项「全部」表示不限定年份。 */
-private val dateYearOptions: List<String> = listOf("全部") + (2026 downTo 1990).map { "$it 年" }
-
-/** 月份下拉：首项「全部」表示不限定月份。 */
-private val dateMonthOptions: List<String> = listOf("全部") + (1..12).map { "$it 月" }
-
+/** 官网 date 参数中代表「不限定」的原值；同时用作年 / 月下拉首项的哨兵值。 */
 private const val DATE_ALL = "全部"
 
-/** 筛选 chip 展示文案：快捷项取中文 label，年 / 月自定义值原样展示。 */
-private fun dateChipLabel(value: String): String =
-    dateQuickOptions.firstOrNull { it.dataValue == value }?.label ?: value
+/** 发布日期快捷选项：[dataValue] 为官网原值（直接作为 date 参数），[labelRes] 仅用于界面展示。 */
+private data class DateOption(val dataValue: String, @StringRes val labelRes: Int)
+
+private val dateQuickOptions = listOf(
+    DateOption("", R.string.search_filter_all),
+    DateOption("過去 24 小時", R.string.search_date_past_24h),
+    DateOption("過去 2 天", R.string.search_date_past_2d),
+    DateOption("過去 1 週", R.string.search_date_past_1w),
+    DateOption("過去 1 個月", R.string.search_date_past_1m),
+    DateOption("過去 3 個月", R.string.search_date_past_3m),
+    DateOption("過去 1 年", R.string.search_date_past_1y)
+)
+
+/**
+ * 年份下拉：首项「全部」表示不限定年份。
+ *
+ * **取值必须是官网原值**（`2026 年`）—— 它既要用于回显比较，也会直接拼进 date 参数，
+ * 因此不参与本地化；界面展示另由 [yearDisplay] 按各语言的格式串渲染。
+ */
+private val dateYearOptions: List<String> = listOf(DATE_ALL) + (2026 downTo 1990).map { "$it 年" }
+
+/** 月份下拉：首项「全部」表示不限定月份。取值同为官网原值（`3 月`），展示由 [monthDisplay] 负责。 */
+private val dateMonthOptions: List<String> = listOf(DATE_ALL) + (1..12).map { "$it 月" }
+
+/**
+ * 筛选 chip 展示文案：命中快捷项取本地化 label；年 / 月自定义值按本地化格式重组 ——
+ * value 本身是官网原值（`2026 年` / `3 月`），直接展示会把繁体措辞带进其它语言的界面。
+ */
+@Composable
+private fun dateChipLabel(value: String): String {
+    dateQuickOptions.firstOrNull { it.dataValue == value }?.let { return stringResource(it.labelRes) }
+    val year = dateYearOf(value)
+    val month = dateMonthOf(value)
+    val parts = buildList {
+        if (year != DATE_ALL) add(yearDisplay(year))
+        if (month != DATE_ALL) add(monthDisplay(month))
+    }
+    return if (parts.isEmpty()) stringResource(R.string.search_filter_all) else parts.joinToString(" ")
+}
 
 /**
  * 由「年 / 月」下拉值合成官网 date 参数。
@@ -1014,6 +1050,29 @@ private fun dateYearOf(value: String): String =
 /** 从已有 date 值反解月份下拉项（无月份 → 全部）。 */
 private fun dateMonthOf(value: String): String =
     DATE_MONTH_REGEX.find(value)?.let { it.groupValues[1] + " 月" } ?: DATE_ALL
+
+/**
+ * 年份下拉的展示文案。值为官网原值（`2026 年`）时只取数字部分，由各语言的
+ * `search_date_year_format` 决定是否补「年」后缀（英文为裸数字 `2026`，日文为 `2026年`）。
+ */
+@Composable
+private fun yearDisplay(value: String): String =
+    if (value == DATE_ALL) {
+        stringResource(R.string.search_filter_all)
+    } else {
+        stringResource(R.string.search_date_year_format, value.removeSuffix(" 年").trim())
+    }
+
+/**
+ * 月份下拉的展示文案。值形如 `3 月`（官网原值）时按序号取本地化月份名
+ * （英文 January…December，日文 1月…12月）；官网 date 参数仍用原值，不受展示影响。
+ */
+@Composable
+private fun monthDisplay(value: String): String {
+    if (value == DATE_ALL) return stringResource(R.string.search_filter_all)
+    val index = value.removeSuffix(" 月").trim().toIntOrNull() ?: return value
+    return stringArrayResource(R.array.search_date_month_names).getOrNull(index - 1) ?: value
+}
 
 /**
  * 发布日期选择底部面板（自绘，风格与 [TagFilterSheet] 一致，不引入 ModalBottomSheet 依赖）。
@@ -1057,7 +1116,7 @@ private fun DateFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "发布日期",
+                    text = stringResource(R.string.search_date_sheet_title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onBackground
@@ -1104,7 +1163,7 @@ private fun DateFilterSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = option.label,
+                            text = stringResource(option.labelRes),
                             fontSize = 14.sp,
                             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
@@ -1137,8 +1196,9 @@ private fun DateFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 DateDropdown(
-                    label = year.value,
+                    value = year.value,
                     options = dateYearOptions,
+                    display = { yearDisplay(it) },
                     modifier = Modifier.weight(1f),
                     onSelect = {
                         year.value = it
@@ -1146,8 +1206,9 @@ private fun DateFilterSheet(
                     }
                 )
                 DateDropdown(
-                    label = month.value,
+                    value = month.value,
                     options = dateMonthOptions,
+                    display = { monthDisplay(it) },
                     modifier = Modifier.weight(1f),
                     onSelect = {
                         month.value = it
@@ -1164,7 +1225,7 @@ private fun DateFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "取消",
+                    text = stringResource(R.string.search_sheet_cancel),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -1184,7 +1245,7 @@ private fun DateFilterSheet(
                         .padding(horizontal = 24.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        text = "显示搜索结果",
+                        text = stringResource(R.string.search_sheet_show_results),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -1198,8 +1259,10 @@ private fun DateFilterSheet(
 /** 年 / 月下拉按钮（自绘，与筛选栏排序下拉同款视觉；官网年份较多，故限定最大高度并可滚动）。 */
 @Composable
 private fun DateDropdown(
-    label: String,
+    value: String,
     options: List<String>,
+    /** 把官网原值渲染成本地化的展示文案（年 / 月各一套）。 */
+    display: @Composable (String) -> String,
     modifier: Modifier = Modifier,
     onSelect: (String) -> Unit
 ) {
@@ -1214,7 +1277,7 @@ private fun DateDropdown(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = label,
+                text = display(value),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f)
@@ -1232,11 +1295,11 @@ private fun DateDropdown(
             modifier = Modifier.heightIn(max = 300.dp)
         ) {
             options.forEach { option ->
-                val isSelected = option == label
+                val isSelected = option == value
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = option,
+                            text = display(option),
                             fontSize = 14.sp,
                             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1252,24 +1315,25 @@ private fun DateDropdown(
     }
 }
 
-/** 时长选项：[dataValue] 为官网原值（直接作为 duration 参数），[label] 为界面展示名。 */
-private data class DurationOption(val dataValue: String, val label: String)
+/** 时长选项：[dataValue] 为官网原值（直接作为 duration 参数），[labelRes] 仅用于界面展示。 */
+private data class DurationOption(val dataValue: String, @StringRes val labelRes: Int)
 
 private val durationOptions = listOf(
-    DurationOption("", "全部"),
-    DurationOption("1 分鐘 +", "1 分钟 +"),
-    DurationOption("5 分鐘 +", "5 分钟 +"),
-    DurationOption("10 分鐘 +", "10 分钟 +"),
-    DurationOption("20 分鐘 +", "20 分钟 +"),
-    DurationOption("30 分鐘 +", "30 分钟 +"),
-    DurationOption("60 分鐘 +", "60 分钟 +"),
-    DurationOption("0 - 10 分鐘", "0 - 10 分钟"),
-    DurationOption("0 - 20 分鐘", "0 - 20 分钟")
+    DurationOption("", R.string.search_filter_all),
+    DurationOption("1 分鐘 +", R.string.search_duration_1m_plus),
+    DurationOption("5 分鐘 +", R.string.search_duration_5m_plus),
+    DurationOption("10 分鐘 +", R.string.search_duration_10m_plus),
+    DurationOption("20 分鐘 +", R.string.search_duration_20m_plus),
+    DurationOption("30 分鐘 +", R.string.search_duration_30m_plus),
+    DurationOption("60 分鐘 +", R.string.search_duration_60m_plus),
+    DurationOption("0 - 10 分鐘", R.string.search_duration_0_10m),
+    DurationOption("0 - 20 分鐘", R.string.search_duration_0_20m)
 )
 
-/** 筛选 chip 展示文案：命中选项取中文 label，否则原样展示。 */
+/** 筛选 chip 展示文案：命中选项取本地化 label，否则原样展示。 */
+@Composable
 private fun durationChipLabel(value: String): String =
-    durationOptions.firstOrNull { it.dataValue == value }?.label ?: value
+    durationOptions.firstOrNull { it.dataValue == value }?.let { stringResource(it.labelRes) } ?: value
 
 /**
  * 时长选择底部面板（自绘，风格与 [TagFilterSheet] / [DateFilterSheet] 一致）。
@@ -1310,7 +1374,7 @@ private fun DurationFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "时长",
+                    text = stringResource(R.string.search_filter_duration),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onBackground
@@ -1353,7 +1417,7 @@ private fun DurationFilterSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = option.label,
+                            text = stringResource(option.labelRes),
                             fontSize = 14.sp,
                             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
@@ -1385,7 +1449,7 @@ private fun DurationFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "取消",
+                    text = stringResource(R.string.search_sheet_cancel),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -1402,7 +1466,7 @@ private fun DurationFilterSheet(
                         .padding(horizontal = 24.dp, vertical = 10.dp)
                 ) {
                     Text(
-                        text = "显示搜索结果",
+                        text = stringResource(R.string.search_sheet_show_results),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onPrimary
