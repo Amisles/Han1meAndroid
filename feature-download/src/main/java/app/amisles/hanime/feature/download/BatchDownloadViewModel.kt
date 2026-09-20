@@ -93,7 +93,7 @@ class BatchDownloadViewModel @Inject constructor(
                 } else {
                     val isDownloaded = task.status == DownloadStatus.COMPLETED
                     val isDownloading = task.status == DownloadStatus.DOWNLOADING ||
-                        task.status == DownloadStatus.PENDING
+                            task.status == DownloadStatus.PENDING
                     if (video.isDownloaded == isDownloaded && video.isDownloading == isDownloading) {
                         // 状态未变时复用原对象，避免下游无意义重组
                         video
@@ -466,7 +466,9 @@ class BatchDownloadViewModel @Inject constructor(
             )
         }
 
-        viewModelScope.launch {
+        // O5：startDownload 内部会做目录解析、canonicalPath 校验等磁盘 I/O；批量选中几十个视频时
+        // 在主线程连续执行会卡顿。改到 IO 线程（下载任务本身仍是异步的，界面状态已在上方同步更新）。
+        viewModelScope.launch(Dispatchers.IO) {
             selectedVideos.forEach { video ->
                 try {
                     val quality = if (video.qualities.isNotEmpty() && video.selectedQualityIndex < video.qualities.size) {
