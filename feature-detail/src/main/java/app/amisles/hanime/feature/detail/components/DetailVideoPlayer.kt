@@ -9,6 +9,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,6 +42,9 @@ internal fun DetailVideoPlayer(
     autoFullscreenEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    // 循环播放偏好：与连播不同，循环完全由播放器自身完成，外层无需感知，故在此就地读取
+    val loopPlayback by Preferences.loopPlaybackFlow.collectAsStateWithLifecycle()
+
     VideoPlayer(
         exoPlayer = exoPlayer,
         posterUrl = detail.posterUrl,
@@ -53,6 +58,8 @@ internal fun DetailVideoPlayer(
         onPlaybackEnded = { onPlaybackEnded() },
         autoPlayNext = autoPlayNext,
         onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+        isLoopPlayback = loopPlayback,
+        onLoopPlaybackChanged = { Preferences.setLoopPlayback(it) },
         autoFullscreenEnabled = autoFullscreenEnabled,
         modifier = modifier
     )

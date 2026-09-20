@@ -388,6 +388,7 @@
     <string name="detail_download_completed">この動画はダウンロード済みです</string>
     <string name="detail_download_button">動画をダウンロード</string>
     <string name="detail_auto_play_next">自動再生</string>
+    <string name="detail_loop_playback">ループ再生</string>
     <string name="detail_more">その他</string>
     <string name="detail_pip">ピクチャー・イン・ピクチャー</string>
 

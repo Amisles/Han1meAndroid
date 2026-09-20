@@ -388,6 +388,7 @@
     <string name="detail_download_completed">該影片已下載完成</string>
     <string name="detail_download_button">下載此影片</string>
     <string name="detail_auto_play_next">連播</string>
+    <string name="detail_loop_playback">循環播放</string>
     <string name="detail_more">更多</string>
     <string name="detail_pip">畫中畫</string>
 

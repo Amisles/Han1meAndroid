@@ -399,6 +399,7 @@
     <string name="detail_download_completed">该视频已下载完成</string>
     <string name="detail_download_button">下载此视频</string>
     <string name="detail_auto_play_next">连播</string>
+    <string name="detail_loop_playback">循环播放</string>
     <string name="detail_more">更多</string>
     <string name="detail_pip">画中画</string>
 

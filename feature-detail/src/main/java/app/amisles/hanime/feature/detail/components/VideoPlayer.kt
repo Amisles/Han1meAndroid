@@ -382,6 +382,9 @@ fun VideoPlayer(
     onPlaybackEnded: () -> Unit = {},
     autoPlayNext: Boolean = true,
     onAutoPlayNextChanged: (Boolean) -> Unit = {},
+    // 循环播放：开启后当前视频播完自动从头重播（默认关闭）
+    isLoopPlayback: Boolean = false,
+    onLoopPlaybackChanged: (Boolean) -> Unit = {},
     // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
     autoFullscreenEnabled: Boolean = true
 ) {
@@ -464,6 +467,7 @@ fun VideoPlayer(
     // 用 ref 持有最新值，避免 remember 的 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
     val sourcesRef = rememberUpdatedState(sortedSources)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
+    val isLoopPlaybackRef = rememberUpdatedState(isLoopPlayback)
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
 
@@ -564,8 +568,10 @@ fun VideoPlayer(
                         }
                     }
                     Player.STATE_ENDED -> {
-                        // 播放结束：通知外层（如触发下一集自动播放）
-                        onPlaybackEndedRef.value.invoke()
+                        // 播放结束：通知外层（如触发下一集自动播放）。
+                        // 循环播放时必须跳过：ExoPlayer 已在 repeatMode=REPEAT_MODE_ONE 下自行从头重播，
+                        // 此时若仍走「结束」流程，连播会切到下一集、非连播则停在结束画面（黑屏），循环被打断。
+                        if (!isLoopPlaybackRef.value) onPlaybackEndedRef.value.invoke()
                     }
                 }
             }
@@ -598,6 +604,14 @@ fun VideoPlayer(
         onDispose {
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    // 循环播放：由 player.repeatMode 实现，偏好变化即时下发。
+    // 切集 / 换画质复用同一播放器实例，repeatMode 会保留，故以 isLoopPlayback 为键重新下发，
+    // 避免「退出页面再进入」后开关状态与实际行为不一致。
+    LaunchedEffect(isLoopPlayback) {
+        exoPlayer.repeatMode =
+            if (isLoopPlayback) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
 
     LaunchedEffect(Unit) {
@@ -1379,7 +1393,7 @@ fun VideoPlayer(
                     )
                 }
 
-                // 更多：点击弹出下拉框，内含连播开关
+                // 更多：点击弹出下拉框，内含连播与循环播放开关
                 Box {
                     IconButton(
                         onClick = {
@@ -1423,6 +1437,28 @@ fun VideoPlayer(
                                 )
                             },
                             onClick = { onAutoPlayNextChanged(!autoPlayNext) },
+                            modifier = Modifier.height(40.dp)
+                        )
+
+                        // 循环播放开关：开启后当前视频播完自动重播，而不是停在结束画面
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.detail_loop_playback),
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            trailingIcon = {
+                                Switch(
+                                    checked = isLoopPlayback,
+                                    onCheckedChange = { onLoopPlaybackChanged(it) },
+                                    modifier = Modifier.scale(0.78f)
+                                )
+                            },
+                            onClick = { onLoopPlaybackChanged(!isLoopPlayback) },
                             modifier = Modifier.height(40.dp)
                         )
 

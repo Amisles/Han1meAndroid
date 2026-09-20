@@ -60,6 +60,7 @@ fun LocalPlayerScreen(
 ) {
     val context = LocalContext.current
     val autoPlayNext by Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
+    val loopPlayback by Preferences.loopPlaybackFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
     var isPlayerFullscreen by remember { mutableStateOf(false) }
 
@@ -104,6 +105,8 @@ fun LocalPlayerScreen(
                 onQualityChanged = { Preferences.setPreferredQuality(it) },
                 autoPlayNext = autoPlayNext,
                 onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                isLoopPlayback = loopPlayback,
+                onLoopPlaybackChanged = { Preferences.setLoopPlayback(it) },
                 autoFullscreenEnabled = !sizeInfo.isTablet,
                 modifier = Modifier.align(Alignment.Center)
             )

@@ -39,6 +39,7 @@ object Preferences {
     private const val SP_PLAYBACK_SPEED = "playback_speed"
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
+    private const val SP_LOOP_PLAYBACK = "loop_playback"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
 
@@ -95,6 +96,10 @@ object Preferences {
     private val _autoPlayNextFlow = MutableStateFlow(true)
     val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
+    // 循环播放：默认关闭。开启后当前视频播完自动从头重播（由 player.repeatMode 实现），不再进入结束态
+    private val _loopPlaybackFlow = MutableStateFlow(false)
+    val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
+
     // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
     private val _downloadStoragePathFlow = MutableStateFlow("")
     val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
@@ -124,6 +129,7 @@ object Preferences {
         _playbackSpeedFlow.value = sp.getFloat(SP_PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = sp.getString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = sp.getBoolean(SP_AUTO_PLAY_NEXT, true)
+        _loopPlaybackFlow.value = sp.getBoolean(SP_LOOP_PLAYBACK, false)
         _downloadStoragePathFlow.value = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(sp.getString(SP_SEARCH_LAYOUT_MODE, null))
@@ -242,6 +248,7 @@ object Preferences {
     val playbackSpeed: Float get() = _playbackSpeedFlow.value
     val preferredQuality: String get() = _preferredQualityFlow.value
     val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
+    val loopPlayback: Boolean get() = _loopPlaybackFlow.value
     val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
     fun setAppLanguage(lang: String) {
@@ -344,6 +351,11 @@ object Preferences {
     fun setAutoPlayNext(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled
+    }
+
+    fun setLoopPlayback(enabled: Boolean) {
+        sp.edit { putBoolean(SP_LOOP_PLAYBACK, enabled) }
+        _loopPlaybackFlow.value = enabled
     }
 
     /**
