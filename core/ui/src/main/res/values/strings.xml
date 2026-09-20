@@ -394,6 +394,9 @@
     <string name="detail_select_quality">选择画质</string>
     <string name="detail_no_download">暂无下载资源</string>
     <string name="detail_download_added">已添加下载任务</string>
+    <string name="detail_download_invalid_url">下载失败：资源地址无效</string>
+    <string name="detail_download_in_progress">该视频正在下载中</string>
+    <string name="detail_download_completed">该视频已下载完成</string>
     <string name="detail_download_button">下载此视频</string>
     <string name="detail_auto_play_next">连播</string>
     <string name="detail_more">更多</string>

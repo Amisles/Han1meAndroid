@@ -774,11 +774,16 @@ fun DownloadTaskItem(
                     contentScale = ContentScale.Crop
                 )
             } else {
+                // S3 起 quality 统一为官网画质全称（可能较长，如「1080p 高清」），
+                // 限制两行 + 省略号并居中，避免撑破 80x60 的缩略图位
                 Text(
                     text = task.quality,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
         }

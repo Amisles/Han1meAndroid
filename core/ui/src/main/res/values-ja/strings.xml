@@ -383,6 +383,9 @@
     <string name="detail_select_quality">画質を選択</string>
     <string name="detail_no_download">ダウンロードリソースがありません</string>
     <string name="detail_download_added">ダウンロードタスクを追加しました</string>
+    <string name="detail_download_invalid_url">ダウンロード失敗：リソースURLが無効です</string>
+    <string name="detail_download_in_progress">この動画はダウンロード中です</string>
+    <string name="detail_download_completed">この動画はダウンロード済みです</string>
     <string name="detail_download_button">動画をダウンロード</string>
     <string name="detail_auto_play_next">自動再生</string>
     <string name="detail_more">その他</string>

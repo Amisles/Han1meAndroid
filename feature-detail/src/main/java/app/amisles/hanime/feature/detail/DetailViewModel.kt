@@ -511,18 +511,26 @@ class DetailViewModel @Inject constructor(
         _replyError.value = null
     }
 
-    fun startDownload(quality: DownloadQuality) {
+    /**
+     * M5：发起下载并返回结果码，由调用方决定提示文案（此前无论成功还是直链非法都提示「已添加」）。
+     *
+     * S3：quality 统一传 `quality.quality`（不再传 resolution）。批次页（BatchDownloadViewModel）
+     * 传的正是同一个字段，两处一致才能让「文件名 + 去重键」对上 —— 否则同一视频会在两个入口
+     * 生成两个不同名的文件。
+     */
+    fun startDownload(quality: DownloadQuality): Int {
         val detail = _videoDetail.value
         val title = detail?.title ?: "video"
         val thumbnailUrl = detail?.posterUrl ?: ""
-        downloadManager.startDownload(
+        val result = downloadManager.startDownload(
             title,
-            quality.resolution,
+            quality.quality,
             quality.downloadUrl,
             thumbnailUrl,
             currentVideoId
         )
-        AppLogger.d("DetailViewModel", "Started download: ${quality.resolution}")
+        AppLogger.d("DetailViewModel", "Start download result=$result, quality=${quality.quality}")
+        return result
     }
 
     /**

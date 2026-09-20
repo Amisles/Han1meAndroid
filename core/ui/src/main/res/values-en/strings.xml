@@ -383,6 +383,9 @@
     <string name="detail_select_quality">Select Quality</string>
     <string name="detail_no_download">No download available</string>
     <string name="detail_download_added">Download task added</string>
+    <string name="detail_download_invalid_url">Download failed: invalid resource URL</string>
+    <string name="detail_download_in_progress">This video is already downloading</string>
+    <string name="detail_download_completed">This video is already downloaded</string>
     <string name="detail_download_button">Download Video</string>
     <string name="detail_auto_play_next">Auto-play</string>
     <string name="detail_more">More</string>

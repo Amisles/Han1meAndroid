@@ -43,6 +43,7 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
@@ -399,11 +400,12 @@ fun DetailScreen(
             isLoadingQualities = isLoadingQualities,
             downloadQualities = downloadQualities,
             onQualitySelected = { quality ->
-                viewModel.startDownload(quality)
+                val result = viewModel.startDownload(quality)
                 showDownloadDialog = false
                 scope.launch {
                     snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.detail_download_added),
+                        // M5：区分「已加入 / 已在下载 / 已下载 / 地址无效」，此前一律提示「已添加」
+                        message = context.getString(downloadResultMessage(result)),
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -440,4 +442,12 @@ fun DetailScreen(
             onDismiss = { showLoginUnsupportedDialog = false }
         )
     }
+}
+
+/** M5：把 DownloadManager.startDownload 的结果码映射为提示文案。 */
+private fun downloadResultMessage(result: Int): Int = when (result) {
+    DownloadManager.RESULT_INVALID_URL -> R.string.detail_download_invalid_url
+    DownloadManager.RESULT_ALREADY_ACTIVE -> R.string.detail_download_in_progress
+    DownloadManager.RESULT_ALREADY_COMPLETED -> R.string.detail_download_completed
+    else -> R.string.detail_download_added
 }
