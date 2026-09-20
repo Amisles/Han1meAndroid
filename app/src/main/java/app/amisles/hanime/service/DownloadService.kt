@@ -5,12 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.edit
 import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadStatus
@@ -24,9 +22,14 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * 设计说明：
  * - 每个任务使用独立的通知 id（NOTIFICATION_ID_BASE + taskId），并发下载互不覆盖（D6 修复）
+ * - **「活动任务」只包含 DOWNLOADING / PENDING**（S1/S2 修复）：PAUSED 与「已取消」都必须从
+ *   [activeTasks] 移除，否则该集合永不为空 -> stopForeground/stopSelf 永不执行，
+ *   dataSync 前台服务会永久泄漏；同时暂停态改用 setOngoing(false) 的常规通知，用户可自行划掉。
+ * - 取消由 DownloadManager 通过 [ACTION_REMOVE_TASK] 显式通知（cancelDownload 会删掉任务记录，
+ *   无法走进度通道），本服务据此撤销该任务的通知并重算活动集合。
  * - 初次进入前台调用 startForeground；后续进度更新使用 NotificationManager.notify（避免反复调用 startForeground）
- * - 仅当所有任务都结束才 stopForeground + stopSelf（D6 修复：避免单任务完成误杀其它进行中任务的通知）
- * - 若前台任务恰好完成，自动将另一个仍在进行的任务提升为前台通知
+ * - 仅当所有活动任务都结束才 stopForeground + stopSelf
+ * - 若前台任务恰好结束/暂停/被移除，自动将另一个仍在进行的任务提升为前台通知
  * - 使用 START_NOT_STICKY：系统杀死服务后不自动重启，由 DownloadManager 按需重新启动
  */
 class DownloadService : Service() {
@@ -36,62 +39,22 @@ class DownloadService : Service() {
         // D6：每个任务独立通知 id = BASE + taskId，避免并发互相覆盖
         const val NOTIFICATION_ID_BASE = 1000
 
-        const val ACTION_START = "app.amisles.hanime.service.action.START"
-        const val ACTION_STOP = "app.amisles.hanime.service.action.STOP"
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
 
+        /**
+         * 取消/删除任务：撤销该任务的通知并从活动集合移除。
+         * 与 EXTRA_TASK_ID 一样，本常量需与 DownloadManager 侧的同名常量手工保持一致
+         * （data 模块不能依赖 app 模块）。
+         */
+        const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
+
         const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
-
-        // B1：必须与 Preferences.NAME（"hanime_app_prefs"）区分开。
-        // Preferences 以 EncryptedSharedPreferences 托管该文件，而 Android 的 ContextImpl 按
-        // 「文件名 + 进程」缓存 SharedPreferencesImpl——同包同进程同 MODE 会拿到**同一个实例**，
-        // 因此这里的明文写入会把明文键塞进加密存储，污染 Preferences 的读写与迁移判断。
-        private const val PREFS_NAME = "download_service_state"
-        private const val PREF_LAST_DL_TITLE = "last_download_title"
-        private const val PREF_LAST_DL_PROGRESS = "last_download_progress"
-
-        /**
-         * 启动下载前台服务并显示初始进度通知。
-         */
-        fun startDownload(context: Context, taskId: Int, title: String) {
-            runCatching {
-                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
-                    putString(PREF_LAST_DL_TITLE, title)
-                    putInt(PREF_LAST_DL_PROGRESS, 0)
-                }
-            }
-            val intent = Intent().apply {
-                setClassName(context, SERVICE_CLASS_NAME)
-                action = ACTION_START
-                putExtra(EXTRA_TASK_ID, taskId)
-                putExtra(EXTRA_TITLE, title)
-            }
-            context.startForegroundService(intent)
-        }
-
-        /**
-         * 停止下载前台服务。使用 stopService 直接停止，避免后台 startService 限制。
-         */
-        fun stopDownload(context: Context) {
-            runCatching {
-                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
-                    remove(PREF_LAST_DL_TITLE)
-                    remove(PREF_LAST_DL_PROGRESS)
-                }
-            }
-            val intent = Intent().apply {
-                setClassName(context, SERVICE_CLASS_NAME)
-                action = ACTION_STOP
-            }
-            // 直接 stopService：若服务未运行系统会忽略，避免后台 startService 限制
-            context.stopService(intent)
-        }
     }
 
-    // taskId -> (title, progress)，记录仍在进行的下载任务
+    // taskId -> (title, progress)，记录仍在进行的下载任务（仅 DOWNLOADING/PENDING）
     private val activeTasks = ConcurrentHashMap<Int, Pair<String, Int>>()
     private var foregroundTaskId = -1
     private var isForegroundStarted = false
@@ -109,11 +72,7 @@ class DownloadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val taskId = intent?.getIntExtra(EXTRA_TASK_ID, -1) ?: -1
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val title = intent?.getStringExtra(EXTRA_TITLE) ?: prefs.getString(PREF_LAST_DL_TITLE, null)
-        if (!title.isNullOrEmpty()) {
-            runCatching { prefs.edit { putString(PREF_LAST_DL_TITLE, title) } }
-        }
+        val title = intent?.getStringExtra(EXTRA_TITLE)
         val progressExtra = intent?.getIntExtra(EXTRA_PROGRESS, -1) ?: -1
         val progress = if (progressExtra >= 0) progressExtra else 0
         val statusStr = intent?.getStringExtra(EXTRA_STATUS)
@@ -121,30 +80,16 @@ class DownloadService : Service() {
         val action = intent?.action
 
         when {
-            // 显式停止
-            action == ACTION_STOP -> {
-                activeTasks.clear()
-                if (isForegroundStarted) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    isForegroundStarted = false
-                }
-                foregroundTaskId = -1
-                stopSelfResult(startId)
-            }
+            // S1：任务被取消/删除 —— 撤销通知并重算活动集合。必须置于状态分支之前：
+            // 该 Intent 不带 EXTRA_STATUS，否则会被当作进度更新处理。
+            action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
+            // S2：暂停不算「活动下载」，否则前台服务与通知永不释放
+            status == DownloadStatus.PAUSED -> handlePaused(taskId, title ?: "", progress, startId)
             // 下载完成 / 失败：发普通通知（自动消失），且仅当所有任务结束才退出前台
-            status == DownloadStatus.COMPLETED -> {
-                val safeTitle = title ?: ""
-                handleTerminal(taskId, safeTitle, buildCompletedNotification(safeTitle), startId)
-            }
-            status == DownloadStatus.FAILED -> {
-                val safeTitle = title ?: ""
-                handleTerminal(taskId, safeTitle, buildFailedNotification(safeTitle), startId)
-            }
-            // 默认（含 DOWNLOADING / ACTION_START / PAUSED / PENDING / 无状态）：作为进度通知处理
-            else -> {
-                val safeTitle = title ?: ""
-                handleProgress(taskId, safeTitle, progress, status, startId)
-            }
+            status == DownloadStatus.COMPLETED -> handleTerminal(taskId, buildCompletedNotification(title ?: ""), startId)
+            status == DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(title ?: ""), startId)
+            // 默认（含 DOWNLOADING / 无状态）：作为进度通知处理
+            else -> handleProgress(taskId, title ?: "", progress, status, startId)
         }
         // START_NOT_STICKY：系统杀死服务后不自动重启（由 DownloadManager 按需重启）
         return START_NOT_STICKY
@@ -168,7 +113,7 @@ class DownloadService : Service() {
         } else if (foregroundTaskId == taskId) {
             notificationManager.notify(notificationId(taskId), notification)
         } else {
-            // 次级任务：前台任务仍在则发独立通知；否则提升为本任务为前台通知
+            // 次级任务：前台任务仍在则发独立通知；否则提升本任务为前台通知
             if (foregroundTaskId >= 0 && activeTasks.containsKey(foregroundTaskId)) {
                 notificationManager.notify(notificationId(taskId), notification)
             } else {
@@ -182,11 +127,14 @@ class DownloadService : Service() {
      * 处理完成 / 失败。发普通通知，且仅当所有任务都结束才退出前台并停止服务；
      * 若前台任务恰好是刚结束的，自动提升另一个活动任务为前台通知。
      */
-    private fun handleTerminal(taskId: Int, title: String, terminalNotification: Notification, startId: Int) {
+    private fun handleTerminal(taskId: Int, terminalNotification: Notification, startId: Int) {
         if (taskId >= 0) {
             activeTasks.remove(taskId)
         }
-        if (activeTasks.isEmpty()) {
+        // 前台任务恰是刚结束的（或前台任务已不存在）-> 需要重新选出前台任务
+        val needPromote = foregroundTaskId == taskId || !activeTasks.containsKey(foregroundTaskId)
+        val next = if (needPromote) activeTasks.keys.firstOrNull() else null
+        if (needPromote && next == null) {
             if (isForegroundStarted) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 isForegroundStarted = false
@@ -197,21 +145,92 @@ class DownloadService : Service() {
                 notificationManager.notify(notificationId(taskId), terminalNotification)
             }
             stopSelfResult(startId)
-        } else if (foregroundTaskId == taskId || !activeTasks.containsKey(foregroundTaskId)) {
-            // 前台任务恰是刚结束的（或前台任务已不存在），提升另一个活动任务为前台通知
-            val next = activeTasks.keys.first()
+        } else if (next != null) {
             foregroundTaskId = next
             val (t, p) = activeTasks[next]!!
             if (taskId >= 0) {
                 notificationManager.notify(notificationId(taskId), terminalNotification)
             }
-            startForeground(notificationId(next), buildProgressNotification(t, p), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            startForeground(
+                notificationId(next),
+                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
         } else {
             // 前台仍是其它任务：仅发刚结束任务的普通完成/失败通知
             if (taskId >= 0) {
                 notificationManager.notify(notificationId(taskId), terminalNotification)
             }
         }
+    }
+
+    /**
+     * S2：处理暂停。暂停态不再计入活动任务，并改用可划掉的常规通知：
+     * - 已无进行中任务 -> 退出前台并停止服务（否则「已暂停」会永久占着 dataSync 前台服务）；
+     * - 暂停的恰是前台任务 -> 把其它进行中任务提升为前台。
+     */
+    private fun handlePaused(taskId: Int, title: String, progress: Int, startId: Int) {
+        if (taskId < 0) {
+            stopSelfResult(startId)
+            return
+        }
+        val wasForeground = foregroundTaskId == taskId
+        activeTasks.remove(taskId)
+        val notification = buildPausedNotification(title, progress)
+        if (activeTasks.isEmpty()) {
+            if (isForegroundStarted) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                isForegroundStarted = false
+            }
+            foregroundTaskId = -1
+            // 退出前台后再发暂停通知，避免被 stopForeground(REMOVE) 一并移除
+            notificationManager.notify(notificationId(taskId), notification)
+            stopSelfResult(startId)
+        } else if (wasForeground || !activeTasks.containsKey(foregroundTaskId)) {
+            val next = activeTasks.keys.first()
+            foregroundTaskId = next
+            val (t, p) = activeTasks[next]!!
+            notificationManager.notify(notificationId(taskId), notification)
+            startForeground(
+                notificationId(next),
+                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            notificationManager.notify(notificationId(taskId), notification)
+        }
+    }
+
+    /**
+     * S1：处理取消/删除任务。DownloadManager.cancelDownload 会直接删掉任务记录，
+     * 无法再走进度通道，因此必须由本方法撤销其通知，否则该通知（ongoing 且不可划掉）会永久残留。
+     */
+    private fun handleRemove(taskId: Int, startId: Int) {
+        if (taskId < 0) {
+            stopSelfResult(startId)
+            return
+        }
+        val wasForeground = foregroundTaskId == taskId
+        activeTasks.remove(taskId)
+        notificationManager.cancel(notificationId(taskId))
+        val next = activeTasks.keys.firstOrNull()
+        if (next == null) {
+            if (isForegroundStarted) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                isForegroundStarted = false
+            }
+            foregroundTaskId = -1
+            stopSelfResult(startId)
+        } else if (wasForeground || !activeTasks.containsKey(foregroundTaskId)) {
+            foregroundTaskId = next
+            val (t, p) = activeTasks[next]!!
+            startForeground(
+                notificationId(next),
+                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        }
+        // 其余情况：前台仍是别的任务，被移除任务的通知已 cancel，无需额外处理
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -245,6 +264,23 @@ class DownloadService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setContentIntent(buildContentIntent())
+            .build()
+    }
+
+    /**
+     * S2：暂停态通知改用常规通知（可划掉、点击自动消失）。
+     * 若继续用 setOngoing(true)，暂停后该通知将无法由用户自行清除。
+     */
+    private fun buildPausedNotification(title: String, progress: Int): Notification {
+        val displayTitle = title.ifEmpty { getString(R.string.download_notification_downloading) }
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(displayTitle)
+            .setContentText(getString(R.string.download_notification_paused, progress.coerceIn(0, 100)))
+            .setProgress(100, progress.coerceIn(0, 100), false)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setOngoing(false)
+            .setAutoCancel(true)
             .setContentIntent(buildContentIntent())
             .build()
     }

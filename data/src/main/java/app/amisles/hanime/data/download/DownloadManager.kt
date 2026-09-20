@@ -22,8 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.channels.Channel
 import okhttp3.OkHttpClient
 import okhttp3.Dispatcher
@@ -65,6 +63,13 @@ private data class ProgressUpdate(
 // 分块请求服务器返回 200（忽略 Range）时抛出的标记异常。
 private class RangeNotSupportedException(message: String) : IOException(message)
 
+// M2：源文件内容/大小已变化（Content-Range 总量与本地持久化的 totalBytes 不符）。
+// 续传会把旧前缀与新后缀拼在一起，必须由上层丢弃旧进度整份重下。
+private class SourceChangedException(message: String) : IOException(message)
+
+// Content-Range: bytes <start>-<end>/<total|*>
+private val CONTENT_RANGE_REGEX = Regex("bytes\\s+(\\d+)-(\\d+)/(\\d+|\\*)")
+
 // 用于自适应分块数决策
 private enum class NetworkClass { WIFI, CELLULAR, OTHER }
 
@@ -75,8 +80,8 @@ private fun getCurrentNetworkClass(context: Context): NetworkClass {
     val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return NetworkClass.OTHER
     return when {
         caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) -> NetworkClass.WIFI
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) -> NetworkClass.WIFI
         caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkClass.CELLULAR
         else -> NetworkClass.OTHER
     }
@@ -132,12 +137,13 @@ class DownloadManager @Inject constructor(
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val tasksLock = ReentrantLock()
-    private val downloadSemaphore: Semaphore = Semaphore(MAX_CONCURRENT)
     @Volatile
     private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
     private val activeSlots = AtomicInteger(0)
     private val downloadServiceStarted = AtomicBoolean(false)
+    // M4：各任务最近一次已转发的整数百分比，用于抑制「百分比未变」的重复跨进程通知
+    private val lastNotifiedPercent = ConcurrentHashMap<Int, Int>()
 
     /**
      * 落盘串行化队列（修复 S10）。
@@ -179,6 +185,28 @@ class DownloadManager @Inject constructor(
             AppLogger.log("DownloadManager", "自定义存储路径不可写，回退默认目录: $custom")
         }
         return defaultDownloadDir
+    }
+
+    /**
+     * 按 UTF-8 字节预算截断文件名主体。
+     *
+     * ext4 等文件系统单个文件名上限 255 字节，而中文标题按每字 3 字节极易越界；
+     * 越界时 createNewFile 抛 ENAMETOOLONG，任务会以一个很难懂的 IO 异常失败。
+     * 尾部的 `_<videoId>.mp4` 需完整保留（它是文件身份的一部分），故预算从尾部反推。
+     */
+    private fun clampFileNameBase(baseName: String, uniqueSuffix: String): String {
+        val tailBytes = "_$uniqueSuffix.mp4".toByteArray(Charsets.UTF_8).size
+        val budget = (MAX_FILE_NAME_BYTES - tailBytes).coerceAtLeast(16)
+        if (baseName.toByteArray(Charsets.UTF_8).size <= budget) return baseName
+        val sb = StringBuilder()
+        var used = 0
+        for (ch in baseName) {
+            val len = ch.toString().toByteArray(Charsets.UTF_8).size
+            if (used + len > budget) break
+            sb.append(ch)
+            used += len
+        }
+        return sb.toString()
     }
 
     private fun ensureDirWritable(dir: File): Boolean {
@@ -233,11 +261,33 @@ class DownloadManager @Inject constructor(
                         errorMessage = entity.errorMessage
                     )
                 }
+                // M6：DB 里的 COMPLETED 不代表文件还在（用户清理下载目录 / 卸载重装 / 存储卡移除）。
+                // 不校验会让「已完成」条目点播放直接黑屏，且 isVideoDownloaded 会禁止重新下载，形成死角。
+                val verifiedTasks = restoredTasks.map { task ->
+                    if (task.status != DownloadStatus.COMPLETED) {
+                        task
+                    } else {
+                        val f = File(task.filePath)
+                        if (f.exists() && f.length() > 0) {
+                            task
+                        } else {
+                            AppLogger.log(
+                                "DownloadManager",
+                                "已完成任务的本地文件缺失，标记为失败: ${task.title} (${task.filePath})"
+                            )
+                            task.copy(status = DownloadStatus.FAILED, errorMessage = "本地文件已被删除或移动")
+                        }
+                    }
+                }
                 tasksLock.withLock {
                     taskMap.clear()
-                    restoredTasks.forEach { taskMap[it.id] = it }
+                    verifiedTasks.forEach { taskMap[it.id] = it }
                     emitTasks()
                 }
+                // 同步落库：getCompletedDownloadCount() 等接口按库统计，不回写会与内存态长期不一致
+                verifiedTasks.zip(restoredTasks)
+                    .filter { (verified, original) -> verified.status != original.status }
+                    .forEach { (verified, _) -> persistTask(verified) }
                 taskIdCounter.set(downloadDao.getMaxId() ?: 0)
                 AppLogger.log("DownloadManager", "Restored ${restoredTasks.size} tasks from DB, taskIdCounter=$taskIdCounter")
                 val interruptedIds = entities.filter {
@@ -254,6 +304,13 @@ class DownloadManager @Inject constructor(
         }
     }
 
+    /**
+     * 新建下载任务。
+     *
+     * @return 成功时为任务 id；[RESULT_INVALID_URL] 直链非法或路径越界；
+     *         [RESULT_ALREADY_ACTIVE] 同一文件已有进行中/等待中的任务（未新建）；
+     *         [RESULT_ALREADY_COMPLETED] 同一文件已下载完成（未新建）。
+     */
     fun startDownload(
         title: String,
         quality: String,
@@ -263,7 +320,7 @@ class DownloadManager @Inject constructor(
     ): Int {
         if (url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) {
             AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"$url\" (title=$title, videoId=$videoId)")
-            return -1
+            return RESULT_INVALID_URL
         }
         val dir = resolveDownloadDir()
         val uniqueSuffix = if (videoId.isNotBlank()) {
@@ -272,24 +329,33 @@ class DownloadManager @Inject constructor(
             url.hashCode().toString(36)
         }
         val baseName = "${title}_$quality".replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        val fileName = "${baseName}_${uniqueSuffix}.mp4"
+        val fileName = "${clampFileNameBase(baseName, uniqueSuffix)}_$uniqueSuffix.mp4"
         val targetFile = File(dir, fileName)
         val canonical = runCatching { targetFile.canonicalPath }.getOrDefault(targetFile.absolutePath)
         val dirCanonical = runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath)
         if (!canonical.startsWith(dirCanonical + File.separator) && canonical != dirCanonical) {
             AppLogger.logError("DownloadManager", "拒绝下载：路径越界 fileName=\"$fileName\"")
-            return -1
+            return RESULT_INVALID_URL
         }
         val filePath = targetFile.absolutePath
 
         tasksLock.withLock {
-            val existingTask = taskMap.values.find { it.url == url && it.quality == quality }
+            // S3：去重必须按「文件身份」而非 (url, quality)。downloadUrl 是带时效签名的 CDN 直链，
+            // 重新拉取画质页会得到不同 url；而落盘路径由 (title, quality, videoId) 决定 —— 两者不一致时
+            // 会并存两个 filePath 完全相同的任务，两条链路的 RandomAccessFile 在重叠区间并发写同一文件，
+            // 且删除任一条都会把共享文件删掉。
+            val existingTask = taskMap.values.find { it.filePath == filePath }
             if (existingTask != null) {
-                AppLogger.log("DownloadManager", "Download already exists for $quality: $title (taskId=${existingTask.id})")
-                if (existingTask.status == DownloadStatus.PAUSED || existingTask.status == DownloadStatus.FAILED) {
-                    resumeDownloadInternal(existingTask.id)
+                AppLogger.log("DownloadManager", "该文件已有下载任务，复用 taskId=${existingTask.id}: $title ($quality)")
+                return when (existingTask.status) {
+                    // 暂停/失败：复用即续传（保持「点下载 = 继续」的既有语义）
+                    DownloadStatus.PAUSED, DownloadStatus.FAILED -> {
+                        resumeDownloadInternal(existingTask.id)
+                        existingTask.id
+                    }
+                    DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> RESULT_ALREADY_ACTIVE
+                    DownloadStatus.COMPLETED -> RESULT_ALREADY_COMPLETED
                 }
-                return existingTask.id
             }
 
             val taskId = taskIdCounter.incrementAndGet()
@@ -339,8 +405,13 @@ class DownloadManager @Inject constructor(
         val partmapFile = File(task.filePath + PARTMAP_SUFFIX)
         if (partmapFile.exists() && file.exists()) {
             val (cc, bitmap) = readPartmap(partmapFile)
-            if (cc > 0 && bitmap != null && bitmap.any { !it }) {
-                return 0L to bitmap
+            if (cc > 0 && bitmap != null) {
+                // S4：位图表只是「上次写入时的意图记录」，与文件实际长度可能不一致
+                // （文件被外部截断/替换、存储卸载重挂、上次写入未落盘即崩溃）。
+                // 只有「该块区间末尾字节确实落在当前文件长度内」才承认它完成，否则清位重下 ——
+                // 否则会出现「位图说完成、数据不在」→ 收尾校验恒失败 → 永久 FAILED 且无法自愈。
+                // 注意：全部完成且长度达标的位图表在此同样返回（不再删文件重下），由分块流程直接收尾。
+                return 0L to sanitizePartmap(task, file, cc, bitmap)
             }
         }
         // 回退：文件级续传（单连接）或整文件重下
@@ -353,11 +424,41 @@ class DownloadManager @Inject constructor(
         val fileLen = if (file.exists()) file.length() else 0L
         val totalKnown = task.totalBytes > 0
         val safeResume = fileLen > 0
-            && fileLen >= task.downloadedBytes.coerceAtLeast(0L)
-            && (!totalKnown || fileLen < task.totalBytes)
+                && fileLen >= task.downloadedBytes.coerceAtLeast(0L)
+                && (!totalKnown || fileLen < task.totalBytes)
         if (safeResume) return fileLen to null
         if (file.exists()) runCatching { file.delete() }
         return 0L to null
+    }
+
+    /**
+     * S4：把位图表与实际文件长度对齐。位图中标记完成、但其区间末尾字节尚未落盘的块一律清位重下。
+     * totalBytes 未知（<=0）时无法推导块边界，保持原样（此时收尾的完整性校验也会跳过）。
+     */
+    private fun sanitizePartmap(task: DownloadTask, file: File, chunkCount: Int, bitmap: BooleanArray): BooleanArray {
+        val total = task.totalBytes
+        if (total <= 0) return bitmap
+        val fileLen = runCatching { file.length() }.getOrDefault(0L)
+        var cleared = 0
+        val sanitized = BooleanArray(chunkCount) { i ->
+            val ok = bitmap[i] && chunkEndExclusive(i, chunkCount, total) <= fileLen
+            if (!ok && bitmap[i]) cleared++
+            ok
+        }
+        if (cleared > 0) {
+            AppLogger.log(
+                "DownloadManager",
+                "续传一致性校验：$cleared/$chunkCount 个已完成块的数据不在磁盘上" +
+                    "(fileLen=$fileLen, total=$total)，已清位重下"
+            )
+        }
+        return sanitized
+    }
+
+    /** 第 index 块的「区间末尾 + 1」，即该块完成时文件长度应达到的下界。 */
+    private fun chunkEndExclusive(index: Int, chunkCount: Int, totalBytes: Long): Long {
+        if (chunkCount <= 0) return 0L
+        return if (index == chunkCount - 1) totalBytes else (index + 1) * (totalBytes / chunkCount)
     }
 
     /**
@@ -377,34 +478,47 @@ class DownloadManager @Inject constructor(
         taskCancelFlags.remove(task.id)
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
-                downloadSemaphore.withPermit {
-                    AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
+                AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
 
-                    updateTask(task.id) { it.copy(status = DownloadStatus.DOWNLOADING) }
+                updateTask(task.id) { it.copy(status = DownloadStatus.DOWNLOADING) }
+                try {
                     downloadFile(task.id, task.url, task.filePath, resumeBytes, resumeChunkMap)
-
-                    if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(task.id)) {
-                        AppLogger.log("DownloadManager", "下载被取消，保留暂停状态: ${task.title}")
-                        return@launch
-                    }
-
-                    updateTask(task.id) { t ->
-                        val onDisk = runCatching { File(t.filePath).length() }.getOrDefault(0L)
-                        if (t.totalBytes > 0 && (t.downloadedBytes < t.totalBytes || onDisk < t.totalBytes)) {
-                            AppLogger.logError(
-                                "DownloadManager",
-                                "完整性校验失败 ${task.title}: ${t.downloadedBytes}/${t.totalBytes} (磁盘 $onDisk)"
-                            )
-                            t.copy(
-                                status = DownloadStatus.FAILED,
-                                errorMessage = "下载不完整（${t.downloadedBytes}/${t.totalBytes} 字节）"
-                            )
-                        } else {
-                            t.copy(status = DownloadStatus.COMPLETED)
-                        }
-                    }
-                    AppLogger.log("DownloadManager", "下载完成: ${task.title}")
+                } catch (e: SourceChangedException) {
+                    // M2：源文件已变，旧位图表/旧文件已无意义 —— 丢弃后整份重下。
+                    // 首下（无续传起点）时直接上抛交给失败处理，不做无谓的重试。
+                    if (resumeBytes == 0L && resumeChunkMap == null) throw e
+                    AppLogger.logError(
+                        "DownloadManager",
+                        "源文件已变化，丢弃旧进度后重新下载: ${task.title}, ${e.message}",
+                        e
+                    )
+                    runCatching { File(task.filePath).takeIf { f -> f.exists() }?.delete() }
+                    runCatching { File(task.filePath + PARTMAP_SUFFIX).delete() }
+                    updateTask(task.id) { it.copy(downloadedBytes = 0, totalBytes = 0, errorMessage = "") }
+                    downloadFile(task.id, task.url, task.filePath, 0L, null)
                 }
+
+                if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(task.id)) {
+                    AppLogger.log("DownloadManager", "下载被取消，保留暂停状态: ${task.title}")
+                    return@launch
+                }
+
+                updateTask(task.id) { t ->
+                    val onDisk = runCatching { File(t.filePath).length() }.getOrDefault(0L)
+                    if (t.totalBytes > 0 && (t.downloadedBytes < t.totalBytes || onDisk < t.totalBytes)) {
+                        AppLogger.logError(
+                            "DownloadManager",
+                            "完整性校验失败 ${task.title}: ${t.downloadedBytes}/${t.totalBytes} (磁盘 $onDisk)"
+                        )
+                        t.copy(
+                            status = DownloadStatus.FAILED,
+                            errorMessage = "下载不完整（${t.downloadedBytes}/${t.totalBytes} 字节）"
+                        )
+                    } else {
+                        t.copy(status = DownloadStatus.COMPLETED)
+                    }
+                }
+                AppLogger.log("DownloadManager", "下载完成: ${task.title}")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: IOException) {
@@ -446,7 +560,7 @@ class DownloadManager @Inject constructor(
 
     fun updateConcurrencyLimit(maxConcurrent: Int) {
         val safeMax = maxConcurrent.coerceIn(1, MAX_CONCURRENT)
-        // 仅更新软门限；信号量固定容量，不再重建对象（避免旧许可成为孤儿）
+        // 并发门控只有 activeSlots + concurrencyLimit 一套（O1：冗余的信号量已移除）
         concurrencyLimit = safeMax
         AppLogger.log("DownloadManager", "并发下载数已更新为: $safeMax")
 
@@ -502,7 +616,9 @@ class DownloadManager @Inject constructor(
      * 探测窗口 [0, PROBE_WINDOW) 读后即弃（约 512KB，相对多 MB 视频可忽略；O9 指标闭环后可省）。
      */
     private suspend fun probeSupportAndThroughput(taskId: Int, url: String): ProbeResult? {
-        return runCatching {
+        // O8：改为显式 catch。此前整体包在 runCatching 里，任何挂起点上的取消都会被吞成 null，
+        // 使「已取消的任务」继续走单连接重下；当前函数体内虽然没有挂起点，但那是脆弱写法。
+        return try {
             val t0 = System.nanoTime()
             val call = client.newCall(
                 Request.Builder().url(url)
@@ -514,22 +630,30 @@ class DownloadManager @Inject constructor(
             trackCall(taskId, call) // 复用任务级 Call 跟踪，暂停时可由 cancelTaskCalls 中断
             val resp = call.execute()
             resp.use { r ->
-                if (r.code != 206) return@runCatching null
-                val total = r.header("Content-Range")
-                    ?.let { Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull() } ?: 0L
-                val input = r.body.byteStream()
-                val buf = ByteArray(64 * 1024)
-                var read = 0L
-                while (read < PROBE_WINDOW) {
-                    val n = input.read(buf)
-                    if (n == -1) break
-                    read += n
+                if (r.code != 206) {
+                    null
+                } else {
+                    val total = r.header("Content-Range")
+                        ?.let { Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull() } ?: 0L
+                    val input = r.body.byteStream()
+                    val buf = ByteArray(64 * 1024)
+                    var read = 0L
+                    while (read < PROBE_WINDOW) {
+                        val n = input.read(buf)
+                        if (n == -1) break
+                        read += n
+                    }
+                    val dt = (System.nanoTime() - t0) / 1e9
+                    val bps = if (dt > 0.05) (read / dt).toLong() else 0L
+                    ProbeResult(supportsRange = true, totalBytes = total, bps = bps)
                 }
-                val dt = (System.nanoTime() - t0) / 1e9
-                val bps = if (dt > 0.05) (read / dt).toLong() else 0L
-                ProbeResult(supportsRange = true, totalBytes = total, bps = bps)
             }
-        }.getOrNull()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            AppLogger.log("DownloadManager", "首下探测失败，降级单连接: ${e.message}")
+            null
+        }
     }
 
     /**
@@ -586,11 +710,20 @@ class DownloadManager @Inject constructor(
             }
 
             val isPartial = resp.code == 206
+            val persistedTotal = taskMap[taskId]?.totalBytes ?: 0L
+            val totalFromRange = resp.header("Content-Range")?.let {
+                Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull()
+            }
+            // M2：断点续传时若服务端总量与本地记录不符，说明源文件已变 —— 旧前缀 + 新后缀会拼成坏文件，
+            // 直接抛出让上层丢弃旧进度整份重下（仅在确有续传起点时才判定）。
+            if (isPartial && resumeBytes > 0 && totalFromRange != null &&
+                persistedTotal > 0 && totalFromRange != persistedTotal
+            ) {
+                throw SourceChangedException(
+                    "源文件大小已变化：本地 $persistedTotal，服务端 $totalFromRange"
+                )
+            }
             val totalBytes = if (isPartial && resumeBytes > 0) {
-                val contentRange = resp.header("Content-Range")
-                val totalFromRange = contentRange?.let {
-                    Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull()
-                }
                 totalFromRange ?: (resumeBytes + bodyLength)
             } else {
                 bodyLength
@@ -649,8 +782,10 @@ class DownloadManager @Inject constructor(
      */
     private fun effectiveChunkCap(): Int {
         val active = maxOf(activeSlots.get(), 1)
-        val perTask = MAX_TOTAL_CONNECTIONS / active
-        return perTask.coerceAtLeast(1)
+        // O2：整数除法在任务数接近上限时会把每任务连接数压到 1（5 个任务 → 8/5=1 → chunkCount=1 →
+        // 每个任务都退化为单连接），与「多线程下载」的预期完全相反。这里给每任务一个保底值；
+        // 代价是最坏情况下总连接数略超软预算（5×2=10，仍低于 OkHttp maxRequestsPerHost=16），可接受。
+        return maxOf(MIN_CHUNKS_PER_TASK, MAX_TOTAL_CONNECTIONS / active)
     }
 
     /**
@@ -667,23 +802,38 @@ class DownloadManager @Inject constructor(
         resumeMap: BooleanArray? = null
     ) {
         val chunkCount = resumeMap?.size ?: computeChunkCount(getCurrentNetworkClass(context), singleBps, totalBytes)
-        // 不足 2 块无并行收益，退回单连接
+        val outputFile = File(filePath)
+        val partmapFile = File(filePath + PARTMAP_SUFFIX)
+        // O7：不足 2 块无并行收益，退回单连接；同时清掉可能残留的位图表，避免留下孤儿文件
         if (chunkCount < 2) {
+            if (partmapFile.exists()) runCatching { partmapFile.delete() }
             downloadFileSingle(taskId, url, filePath, 0L)
             return
         }
 
-        val outputFile = File(filePath)
-        val partmapFile = File(filePath + PARTMAP_SUFFIX)
         val chunkDone = resumeMap ?: BooleanArray(chunkCount)
         if (resumeMap == null) {
             // 首下：清空旧文件与旧位图表，重新分块（O8：不再 setLength 预分配，避免空洞）
             if (outputFile.exists()) outputFile.delete()
             outputFile.parentFile?.mkdirs()
             outputFile.createNewFile()
-            writePartmap(partmapFile, chunkCount, chunkDone)
+            // M7：位图表是分块续传的唯一依据，首下写失败必须立刻放弃分块路径 —— 否则一旦崩溃/暂停，
+            // deriveResumeState 会因「无位图表、但有文件」退化为「按文件长度做单连接续传」，
+            // 而分块文件是带空洞的（RandomAccessFile.seek 稀疏写），最终会产出中间零填充的坏文件。
+            if (!writePartmap(partmapFile, chunkCount, chunkDone)) {
+                AppLogger.logError(
+                    "DownloadManager",
+                    "分块下载：位图表写入失败，本次改为单连接顺序下载（该文件不可续传）: $filePath",
+                    null
+                )
+                runCatching { if (outputFile.exists()) outputFile.delete() }
+                downloadFileSingle(taskId, url, filePath, 0L)
+                return
+            }
         } else if (!partmapFile.exists()) {
-            writePartmap(partmapFile, chunkCount, chunkDone)
+            if (!writePartmap(partmapFile, chunkCount, chunkDone)) {
+                AppLogger.log("DownloadManager", "续传位图表重建失败，该文件可能无法跨进程续传: ${partmapFile.name}")
+            }
         }
 
         val chunkSize = totalBytes / chunkCount
@@ -711,120 +861,161 @@ class DownloadManager @Inject constructor(
 
         // P3-1：标记「服务器对分块请求返回 200 忽略 Range」，用于触发整任务回退单连接下载
         val rangeUnsupported = AtomicBoolean(false)
+        // M2：标记「源文件已变化」。与 rangeUnsupported 同理，必须先记录再取消作用域 ——
+        // 直接 throw 会被 coroutineScope 的取消路径吞成 CancellationException。
+        val sourceChanged = AtomicReference<SourceChangedException?>(null)
         try {
             coroutineScope {
-            val csJob = this.coroutineContext[Job]
-            fun takeChunk(): Int = synchronized(queue) { if (queue.isNotEmpty()) queue.removeFirst() else -1 }
-            fun requeueChunk(i: Int) = synchronized(queue) { queue.addLast(i) }
+                val csJob = this.coroutineContext[Job]
+                fun takeChunk(): Int = synchronized(queue) { if (queue.isNotEmpty()) queue.removeFirst() else -1 }
+                fun requeueChunk(i: Int) = synchronized(queue) { queue.addLast(i) }
 
-            val workerCount = chunkCount.coerceAtMost(MAX_REQUESTS_PER_HOST)
-            val workers = (0 until workerCount).map { _ ->
-                launch(Dispatchers.IO) {
-                    while (currentCoroutineContext()[Job]?.isActive == true && !isTaskCancelled(taskId)) {
-                        val idx = takeChunk()
-                        if (idx < 0) break
-                        val attempts = ++chunkAttempts[idx]
-                        val start = idx * chunkSize
-                        val end = if (idx == chunkCount - 1) totalBytes - 1 else start + chunkSize - 1
-                        try {
-                            downloadChunk(taskId, url, outputFile, idx, start, end, chunkDownloaded, chunkCallRefs[idx])
-                            synchronized(lock) { chunkDone[idx] = true }
-                            completedChunks.incrementAndGet()
-                        } catch (ce: CancellationException) {
-                            throw ce
-                        } catch (e: IOException) {
-                            // 任务已取消则停止重试；否则（慢块驱逐/瞬断）重新入队以新连接重试
-                            if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(taskId)) break
-                            if (e is RangeNotSupportedException) {
-                                AppLogger.log("DownloadManager", "分块下载检测到不支持 Range，回退单连接: ${e.message}")
-                                rangeUnsupported.set(true)
-                                synchronized(queue) { queue.clear() }
-                                csJob?.cancel()
-                                return@launch
-                            }
-                            if (attempts >= MAX_CHUNK_ATTEMPTS) {
-                                throw IOException("分块 $idx 重试 $attempts 次仍失败，终止下载", e)
-                            }
-                            chunkDownloaded.set(idx, 0L)
-                            chunkLastBytes.set(idx, 0L)
-                            chunkFirstObserved.set(idx, 0L)
+                val workerCount = chunkCount.coerceAtMost(MAX_REQUESTS_PER_HOST)
+                val workers = (0 until workerCount).map { _ ->
+                    launch(Dispatchers.IO) {
+                        while (currentCoroutineContext()[Job]?.isActive == true && !isTaskCancelled(taskId)) {
+                            val idx = takeChunk()
+                            if (idx < 0) break
+                            // 逐块采样基准必须以「本次连接即将开始」为起点：块被驱逐后可能在队列里等待很久，
+                            // 若沿用等待期的计时，重新取到后第一次采样就会被判成「已持续慢 15s」而立刻驱逐。
+                            // 同时把 lastBytes 对齐到当前进度，避免把「等待期前写入的字节」当成瞬时速率。
+                            chunkLastBytes.set(idx, chunkDownloaded.get(idx))
+                            chunkFirstObserved.set(idx, System.currentTimeMillis())
                             chunkSlowSince.set(idx, 0L)
-                            AppLogger.log("DownloadManager", "分块 $idx 失败/被驱逐，重新入队以新连接重试(第${attempts}次): ${e.message}")
-                            requeueChunk(idx)
+                            val attempts = ++chunkAttempts[idx]
+                            val start = idx * chunkSize
+                            val end = if (idx == chunkCount - 1) totalBytes - 1 else start + chunkSize - 1
+                            try {
+                                downloadChunk(taskId, url, outputFile, idx, start, end, totalBytes, chunkDownloaded, chunkCallRefs[idx])
+                                synchronized(lock) { chunkDone[idx] = true }
+                                completedChunks.incrementAndGet()
+                            } catch (ce: CancellationException) {
+                                throw ce
+                            } catch (e: IOException) {
+                                // 任务已取消则停止重试；否则（慢块驱逐/瞬断）重新入队以新连接重试
+                                if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(taskId)) break
+                                if (e is RangeNotSupportedException) {
+                                    AppLogger.log("DownloadManager", "分块下载检测到不支持 Range，回退单连接: ${e.message}")
+                                    rangeUnsupported.set(true)
+                                    synchronized(queue) { queue.clear() }
+                                    csJob?.cancel()
+                                    return@launch
+                                }
+                                if (e is SourceChangedException) {
+                                    AppLogger.log("DownloadManager", "分块下载发现源文件已变化，终止本次下载: ${e.message}")
+                                    sourceChanged.set(e)
+                                    synchronized(queue) { queue.clear() }
+                                    csJob?.cancel()
+                                    return@launch
+                                }
+                                if (attempts >= MAX_CHUNK_ATTEMPTS) {
+                                    throw IOException("分块 $idx 重试 $attempts 次仍失败，终止下载", e)
+                                }
+                                // O3：**不再清零 chunkDownloaded / chunkLastBytes** —— 重试时 downloadChunk 会
+                                // 从块内已有偏移续传；清零会让已下载字节被重复计数并丢失续传起点。
+                                chunkFirstObserved.set(idx, 0L)
+                                chunkSlowSince.set(idx, 0L)
+                                AppLogger.log("DownloadManager", "分块 $idx 失败/被驱逐，重新入队以新连接续传(第${attempts}次): ${e.message}")
+                                requeueChunk(idx)
+                            }
                         }
                     }
                 }
-            }
 
-            // 慢块监控器。周期性采样逐块吞吐，对持续低于阈值的分块取消其连接、交 worker 重领
-            // （重置慢速计时，重试用新连接）。仅在分块确有活跃连接时驱逐，避免误杀空闲/已完成块。
-            val monitor = launch(Dispatchers.IO) {
-                var prevTime = System.currentTimeMillis()
-                while (completedChunks.get() < chunkCount &&
-                    currentCoroutineContext()[Job]?.isActive == true &&
-                    !isTaskCancelled(taskId)) {   // P2-2：撕销期停止采样
-                    delay(SLOW_SAMPLE_MS)
-                    val now = System.currentTimeMillis()
-                    val dt = (now - prevTime) / 1000.0
-                    prevTime = now
-                    if (dt <= 0) continue
-                    val doneSnapshot = synchronized(lock) { chunkDone.copyOf() }
-                    for (i in 0 until chunkCount) {
-                        if (doneSnapshot[i]) continue
-                        val bytes = chunkDownloaded.get(i)
-                        val rate = ((bytes - chunkLastBytes.get(i)) / dt).toLong()
-                        chunkLastBytes.set(i, bytes)
-                        if (chunkFirstObserved.get(i) == 0L) chunkFirstObserved.set(i, now)
-                        val observedFor = now - chunkFirstObserved.get(i)
-                        val call = chunkCallRefs[i].get()
-                        if (rate < SLOW_THRESHOLD_BPS) {
-                            // 起步宽限期：新块 0 字节阶段不判慢，避免误杀刚建立的连接
-                            if (bytes == 0L && observedFor < SLOW_GRACE_MS) continue
-                            val slowSince = chunkSlowSince.get(i)
-                            if (slowSince == 0L) {
-                                chunkSlowSince.set(i, now)
-                            } else if (now - slowSince >= SLOW_DURATION_MS && call != null) {
-                                AppLogger.log("DownloadManager", "慢块驱逐：chunk $i 速率 ${rate / 1024}KB/s 持续 ${(now - slowSince) / 1000}s，重分配连接")
-                                runCatching { call.cancel() }
+                // M3：慢块阈值不能是绝对常量。单连接实测吞吐会被均分到 chunkCount 条连接上，
+                // 若仍按固定 50KB/s/块 判定，弱网（例如 300KB/s ÷ 8 块 ≈ 37KB/s/块）会把**每条**正常
+                // 连接都判成慢块 → 驱逐 → 重试次数耗尽 → 整个任务失败，与自适应提速的初衷相反。
+                // 改为「实测每块基准速率的 SLOW_RELATIVE_PERCENT%，下不低于 FLOOR、上不超过 CAP」；
+                // 续传场景没有实测值时退化为下限（宁可少驱逐，也不要误杀正常连接）。
+                val perChunkBaseline = if (singleBps > 0) singleBps / chunkCount else 0L
+                val slowThresholdBps = maxOf(
+                    SLOW_THRESHOLD_FLOOR_BPS,
+                    minOf(perChunkBaseline * SLOW_RELATIVE_PERCENT / 100, SLOW_THRESHOLD_CAP_BPS)
+                )
+                AppLogger.log(
+                    "DownloadManager",
+                    "分块下载: chunkCount=$chunkCount, 单连接实测=${singleBps / 1024}KB/s, " +
+                        "慢块阈值=${slowThresholdBps / 1024}KB/s"
+                )
+
+                // 慢块监控器。周期性采样逐块吞吐，对持续低于阈值的分块取消其连接、交 worker 重领
+                // （重置慢速计时，重试用新连接）。仅在分块确有活跃连接时驱逐，避免误杀空闲/已完成块。
+                val monitor = launch(Dispatchers.IO) {
+                    var prevTime = System.currentTimeMillis()
+                    while (completedChunks.get() < chunkCount &&
+                        currentCoroutineContext()[Job]?.isActive == true &&
+                        !isTaskCancelled(taskId)) {   // P2-2：撕销期停止采样
+                        delay(SLOW_SAMPLE_MS)
+                        val now = System.currentTimeMillis()
+                        val dt = (now - prevTime) / 1000.0
+                        prevTime = now
+                        if (dt <= 0) continue
+                        val doneSnapshot = synchronized(lock) { chunkDone.copyOf() }
+                        for (i in 0 until chunkCount) {
+                            if (doneSnapshot[i]) continue
+                            val bytes = chunkDownloaded.get(i)
+                            val rate = ((bytes - chunkLastBytes.get(i)) / dt).toLong()
+                            chunkLastBytes.set(i, bytes)
+                            if (chunkFirstObserved.get(i) == 0L) chunkFirstObserved.set(i, now)
+                            val observedFor = now - chunkFirstObserved.get(i)
+                            val call = chunkCallRefs[i].get()
+                            if (rate < slowThresholdBps) {
+                                // 起步宽限期：新块 0 字节阶段不判慢，避免误杀刚建立的连接
+                                if (bytes == 0L && observedFor < SLOW_GRACE_MS) continue
+                                val slowSince = chunkSlowSince.get(i)
+                                if (slowSince == 0L) {
+                                    chunkSlowSince.set(i, now)
+                                } else if (now - slowSince >= SLOW_DURATION_MS && call != null) {
+                                    AppLogger.log("DownloadManager", "慢块驱逐：chunk $i 速率 ${rate / 1024}KB/s 持续 ${(now - slowSince) / 1000}s，重分配连接")
+                                    runCatching { call.cancel() }
+                                    chunkSlowSince.set(i, 0L)
+                                }
+                            } else {
                                 chunkSlowSince.set(i, 0L)
                             }
-                        } else {
-                            chunkSlowSince.set(i, 0L)
                         }
                     }
                 }
-            }
 
-            // 进度上报 + 位图表节流落盘
-            val reporter = launch(Dispatchers.IO) {
-                var lastBitmapPersist = 0L
-                while (completedChunks.get() < chunkCount &&
-                    currentCoroutineContext()[Job]?.isActive == true &&
-                    !isTaskCancelled(taskId)) {
-                    delay(500)
-                    var sum = 0L
-                    for (i in 0 until chunkCount) sum += chunkDownloaded.get(i)
-                    updateTask(taskId) { it.copy(downloadedBytes = sum, totalBytes = totalBytes) }
-                    val now = System.currentTimeMillis()
-                    synchronized(lock) {
-                        if (now - lastBitmapPersist > PARTMAP_PERSIST_MS) {
-                            lastBitmapPersist = now
-                            writePartmap(partmapFile, chunkCount, chunkDone)
+                // 进度上报 + 位图表节流落盘
+                val reporter = launch(Dispatchers.IO) {
+                    var lastBitmapPersist = 0L
+                    var lastReportedSum = -1L
+                    while (completedChunks.get() < chunkCount &&
+                        currentCoroutineContext()[Job]?.isActive == true &&
+                        !isTaskCancelled(taskId)) {
+                        delay(500)
+                        var sum = 0L
+                        for (i in 0 until chunkCount) sum += chunkDownloaded.get(i)
+                        // O6：字节数没有变化时不必再提交一次状态更新（多任务并发下是无谓的列表重建）。
+                        // 与 M4 的通知节流叠加后，IPC 与重组都被压到「确有变化」的时刻。
+                        if (sum != lastReportedSum) {
+                            lastReportedSum = sum
+                            updateTask(taskId) { it.copy(downloadedBytes = sum, totalBytes = totalBytes) }
+                        }
+                        val now = System.currentTimeMillis()
+                        synchronized(lock) {
+                            if (now - lastBitmapPersist > PARTMAP_PERSIST_MS) {
+                                lastBitmapPersist = now
+                                writePartmap(partmapFile, chunkCount, chunkDone)
+                            }
                         }
                     }
+                    if (outputFile.exists()) {
+                        synchronized(lock) { writePartmap(partmapFile, chunkCount, chunkDone) }
+                    }
                 }
-                if (outputFile.exists()) {
-                    synchronized(lock) { writePartmap(partmapFile, chunkCount, chunkDone) }
-                }
-            }
 
-            workers.forEach { it.join() }
-            monitor.cancel()
-            reporter.cancel()
+                workers.forEach { it.join() }
+                monitor.cancel()
+                reporter.cancel()
             }
         } catch (ce: CancellationException) {
-            if (!rangeUnsupported.get()) throw ce
+            if (!rangeUnsupported.get() && sourceChanged.get() == null) throw ce
         }
+
+        // M2：源文件已变 —— 本函数不再收尾，交由上层丢弃旧进度后整份重下
+        sourceChanged.get()?.let { throw it }
 
         // 已在作用域取消时清空队列并删除位图表，此处用单连接把文件从头写满（FileOutputStream 会截断旧分块数据）。
         if (rangeUnsupported.get()) {
@@ -871,14 +1062,22 @@ class DownloadManager @Inject constructor(
         index: Int,
         start: Long,
         end: Long,
+        totalBytes: Long,
         chunkDownloaded: AtomicLongArray,
         callRef: AtomicReference<Call?>
     ) {
+        val chunkLength = end - start + 1
+        // O3：本块可能已被前一次尝试写入过一部分（被驱逐 / 瞬断后重新入队）。
+        // 从「块内已有字节数」处续传，避免整块从头重来 —— 长块重来的代价极高，
+        // 且让 MAX_CHUNK_ATTEMPTS 不再等价于「整块白下 5 次」。
+        val alreadyWritten = chunkDownloaded.get(index).coerceIn(0L, chunkLength)
+        if (alreadyWritten >= chunkLength) return   // 防御：本块已完整
+        val from = start + alreadyWritten
         val call = client.newCall(
             Request.Builder().url(url)
                 .header("User-Agent", DOWNLOAD_UA)
                 .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
-                .header("Range", "bytes=$start-$end")
+                .header("Range", "bytes=$from-$end")
                 .get().build()
         )
         trackCall(taskId, call)
@@ -893,13 +1092,15 @@ class DownloadManager @Inject constructor(
                 } else if (r.code != 206) {
                     throw IOException("分块 $index 不支持 Range(HTTP ${r.code})，无法安全分块下载")
                 }
+                // M1/M2：核对响应区间与请求区间、总量与本地记录是否一致
+                verifyContentRange(r.header("Content-Range"), index, from, end, totalBytes)
                 val input = r.body.byteStream()
                 input.use { `in` ->
-                    val expected = end - start + 1
+                    val expected = chunkLength
                     val bufSize = chooseBufferSize(expected)
-                    var written = 0L
+                    var written = alreadyWritten
                     RandomAccessFile(outputFile, "rw").use { raf ->
-                        raf.seek(start)
+                        raf.seek(from)
                         val buffer = ByteArray(bufSize)
                         while (true) {
                             if (currentCoroutineContext()[Job]?.isActive != true) break
@@ -926,6 +1127,41 @@ class DownloadManager @Inject constructor(
     }
 
     /**
+     * M1/M2：校验 206 响应的 Content-Range。
+     *
+     * - **起点**必须等于本次请求的起点：中间层/源站可能返回 206 却是别的区间，数据会被写到错误偏移，
+     *   而收尾只校验总长度，会静默产出「能播但花屏/跳帧」的文件，比直接失败更糟；
+     * - **总量**必须与本地持久化的 totalBytes 一致：不一致说明源站文件已变（换源/转码/重传），
+     *   继续按旧位图表续传会把新旧数据拼接，必须抛 [SourceChangedException] 交由上层整份重下。
+     */
+    private fun verifyContentRange(
+        header: String?,
+        index: Int,
+        expectedStart: Long,
+        expectedEnd: Long,
+        totalBytes: Long
+    ) {
+        if (header.isNullOrBlank()) {
+            // RFC 9110 要求 206 必须带 Content-Range；缺失时无法确认对齐，宁可失败重试
+            throw IOException("分块 $index 的 206 响应缺少 Content-Range，无法确认数据区间")
+        }
+        val m = CONTENT_RANGE_REGEX.find(header)
+            ?: throw IOException("分块 $index 的 Content-Range 无法解析: $header")
+        val respStart = m.groupValues[1].toLongOrNull() ?: -1L
+        val respEnd = m.groupValues[2].toLongOrNull() ?: -1L
+        val respTotal = m.groupValues[3].toLongOrNull() ?: 0L
+        if (respStart != expectedStart) {
+            throw IOException("分块 $index 响应区间起点不符：请求 $expectedStart，实际 $respStart（$header）")
+        }
+        if (respEnd in 0 until expectedEnd) {
+            throw IOException("分块 $index 响应区间过短：期望至 $expectedEnd，实际至 $respEnd（$header）")
+        }
+        if (respTotal > 0 && totalBytes > 0 && respTotal != totalBytes) {
+            throw SourceChangedException("源文件大小已变化：本地 $totalBytes，服务端 $respTotal（$header）")
+        }
+    }
+
+    /**
      * 原子地更新单个任务。使用 tasksLock 保护读-改-写操作。
      * P2-3：任务权威存储为 Map，O(1) 按 id 命中，避免每次全量扫描列表。
      */
@@ -944,7 +1180,7 @@ class DownloadManager @Inject constructor(
                 persistTask(newTask)
             }
             // 仅锁定内记录需回调的信息，真正回调移出锁外执行（见下方 D2 说明）。
-            progressUpdate = when (newTask.status) {
+            val candidate = when (newTask.status) {
                 DownloadStatus.DOWNLOADING -> if (newTask.totalBytes > 0) {
                     ProgressUpdate(taskId, newTask.title, (newTask.downloadedBytes * 100 / newTask.totalBytes).toInt(), newTask.status)
                 } else null
@@ -956,6 +1192,16 @@ class DownloadManager @Inject constructor(
                 DownloadStatus.COMPLETED, DownloadStatus.FAILED ->
                     ProgressUpdate(taskId, newTask.title, 100, newTask.status)
                 else -> null
+            }
+            // M4：通知转发节流。分块 reporter 每 500ms 触发一次 updateTask，若每次都转发，
+            // 5 个并发任务即约 10 次/秒的 binder 调用 + 通知重绘，而整数百分比多数并未变化。
+            // 状态切换（含暂停/完成/失败）始终转发，保证通知语义不丢。
+            if (candidate != null) {
+                val last = lastNotifiedPercent[taskId]
+                if (statusChanged || last == null || last != candidate.progress) {
+                    lastNotifiedPercent[taskId] = candidate.progress
+                    progressUpdate = candidate
+                }
             }
         }
         //将跨进程IPC移出 tasksLock，
@@ -1085,6 +1331,10 @@ class DownloadManager @Inject constructor(
         }
         // 走与 persistTask 相同的串行队列，避免 DELETE 与在途 UPSERT 竞争导致任务复活
         persistDelete(taskId)
+        lastNotifiedPercent.remove(taskId)
+        // S1：任务记录已删除，无法再走 updateTask 进度通道；必须显式通知前台服务撤销该任务的
+        // 常驻通知并重算活动集合，否则通知（ongoing 不可划掉）与 dataSync 前台服务会永久残留。
+        forwardRemoveToService(taskId)
         AppLogger.log("DownloadManager", "Download cancelled: $taskId")
     }
 
@@ -1130,7 +1380,7 @@ class DownloadManager @Inject constructor(
         } else {
             taskMap.values.any {
                 it.videoId == videoId && it.status == DownloadStatus.COMPLETED &&
-                (quality.isBlank() || it.quality == quality)
+                        (quality.isBlank() || it.quality == quality)
             }
         }
     }
@@ -1141,10 +1391,10 @@ class DownloadManager @Inject constructor(
         } else {
             taskMap.values.any {
                 it.videoId == videoId &&
-                (quality.isBlank() || it.quality == quality) &&
-                (it.status == DownloadStatus.DOWNLOADING ||
-                 it.status == DownloadStatus.PENDING ||
-                 it.status == DownloadStatus.PAUSED)
+                        (quality.isBlank() || it.quality == quality) &&
+                        (it.status == DownloadStatus.DOWNLOADING ||
+                                it.status == DownloadStatus.PENDING ||
+                                it.status == DownloadStatus.PAUSED)
             }
         }
     }
@@ -1195,13 +1445,38 @@ class DownloadManager @Inject constructor(
         } catch (e: SecurityException) {
             // 忽略转发异常，避免影响下载主流程
         }
-        // 收到终态且已无活动任务时复位标记，允许下次新下载重新走 startForegroundService
-        if (status == DownloadStatus.COMPLETED || status == DownloadStatus.FAILED) {
-            val stillActive = taskMap.values.any {
-                it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
-            }
-            if (!stillActive) downloadServiceStarted.set(false)
+        // 收到终态/暂停且已无活动任务时复位标记，允许下次新下载重新走 startForegroundService。
+        // S2：服务在「无活动任务」时会退出前台并 stopSelf，此处必须复位，否则后续恢复下载会走
+        // startService（服务已不在前台，后台启动会被系统拒绝），导致该次下载完全没有通知。
+        if (status == DownloadStatus.COMPLETED || status == DownloadStatus.FAILED ||
+            status == DownloadStatus.PAUSED
+        ) {
+            if (!hasActiveDownload()) downloadServiceStarted.set(false)
         }
+    }
+
+    /**
+     * S1：通知 DownloadService 撤销某个已被取消/删除任务的通知。
+     *
+     * cancelDownload 会直接删掉任务记录（不再产生任何 updateTask 回调），因此必须走独立通道。
+     * 用 startService 而非 startForegroundService：这只是「清理一个已存在的通知」，不承担前台义务；
+     * 服务未运行时它会立即 stopSelfResult，代价可忽略。
+     */
+    private fun forwardRemoveToService(taskId: Int) {
+        val intent = Intent().apply {
+            setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
+            action = ACTION_REMOVE_TASK
+            putExtra(EXTRA_TASK_ID, taskId)
+        }
+        runCatching { context.startService(intent) }.onFailure { e ->
+            AppLogger.log("DownloadManager", "转发取消通知被系统拒绝（通知可能残留到进程结束）: ${e.message}")
+        }
+        if (!hasActiveDownload()) downloadServiceStarted.set(false)
+    }
+
+    /** 是否还有处于 DOWNLOADING / PENDING 的任务（决定前台服务是否应保持活动）。 */
+    private fun hasActiveDownload(): Boolean = taskMap.values.any {
+        it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
     }
 
     private fun classifyError(e: Throwable): String {
@@ -1246,7 +1521,7 @@ class DownloadManager @Inject constructor(
         val budgeted = effectiveChunkCap()
         val maxBySize = maxOf((totalBytes / CHUNK_SIZE).toInt(), 1)
         return minOf(base, budgeted, MAX_CHUNKS, maxBySize)
-        }
+    }
 
     /**
      * 根据分块大小选择读取/写入缓冲（256KB–1MB）。
@@ -1260,16 +1535,31 @@ class DownloadManager @Inject constructor(
     }
 
 
-    private fun writePartmap(file: File, chunkCount: Int, done: BooleanArray) {
-        runCatching {
-            file.writeText("$chunkCount\n${done.joinToString("") { if (it) "1" else "0" }}")
-        }
+    /**
+     * 写位图表，返回是否成功。
+     *
+     * M7：此前整段包在 runCatching 里且**无任何日志**，落盘失败后调用方无从察觉。
+     * O4：先写同名 .tmp 再 rename 原子替换，避免进程在写入中途被杀留下半截内容
+     * （读侧对短位图是失败安全的，但块数行被截断会误判为「需整份重下」）。
+     */
+    private fun writePartmap(file: File, chunkCount: Int, done: BooleanArray): Boolean {
+        val payload = "$chunkCount\n${done.joinToString("") { if (it) "1" else "0" }}"
+        return runCatching {
+            val tmp = File(file.absolutePath + ".tmp")
+            tmp.writeText(payload)
+            if (file.exists() && !file.delete()) throw IOException("旧位图表删除失败: ${file.name}")
+            if (!tmp.renameTo(file)) throw IOException("位图表重命名失败: ${tmp.name}")
+        }.onFailure { e ->
+            AppLogger.logError("DownloadManager", "位图表写入失败(${file.name}): ${e.message}", e)
+        }.isSuccess
     }
 
     private fun readPartmap(file: File): Pair<Int, BooleanArray?> {
         return runCatching {
             val lines = file.readLines()
             val cc = lines.getOrNull(0)?.toIntOrNull() ?: return@runCatching (0 to null)
+            // 位图表是磁盘上的外部输入：块数行若损坏可能是个极大值，先做上界钳制再分配数组，避免 OOM
+            if (cc <= 0 || cc > MAX_PARTMAP_CHUNKS) return@runCatching (0 to null)
             val bits = lines.getOrNull(1) ?: return@runCatching (0 to null)
             val arr = BooleanArray(cc) { i -> bits.getOrNull(i) == '1' }
             cc to arr
@@ -1279,7 +1569,15 @@ class DownloadManager @Inject constructor(
     private companion object {
         const val MAX_CONCURRENT = 5
         const val PROGRESS_PERSIST_INTERVAL_MS = 3000L
+        // startDownload 的结果码（负数均为「未新建任务」）
+        const val RESULT_INVALID_URL = -1
+        const val RESULT_ALREADY_ACTIVE = -2
+        const val RESULT_ALREADY_COMPLETED = -3
+        // 单个文件名（UTF-8 字节）上限：ext4/大多数文件系统为 255 字节，留出余量
+        const val MAX_FILE_NAME_BYTES = 200
         const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
+        // S1：取消/删除任务的通知通道。必须与 DownloadService.ACTION_REMOVE_TASK 手工保持一致。
+        const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
@@ -1292,8 +1590,13 @@ class DownloadManager @Inject constructor(
         const val PROBE_WINDOW = 512 * 1024          // 吞吐探测窗口 512KB
         const val PARTMAP_SUFFIX = ".partmap"
         const val PARTMAP_PERSIST_MS = 1000L
+        // 位图表块数的合法上界（防损坏文件撑爆数组分配）
+        const val MAX_PARTMAP_CHUNKS = 64
 
-        const val SLOW_THRESHOLD_BPS = 50 * 1024L   // 单块速率低于 50 KB/s 视为慢块
+        // M3：慢块判定 = max(下限, min(实测每块速率 × SLOW_RELATIVE_PERCENT%, 上限))
+        const val SLOW_THRESHOLD_FLOOR_BPS = 16 * 1024L    // 绝对下限：低于此值基本可断定为停滞连接
+        const val SLOW_THRESHOLD_CAP_BPS = 512 * 1024L     // 上限：避免高速链路上阈值过大导致频繁驱逐
+        const val SLOW_RELATIVE_PERCENT = 15L              // 相对判据：低于每块基准速率的 15%
         const val SLOW_SAMPLE_MS = 2000L            // 逐块吞吐采样周期 2s
         const val SLOW_DURATION_MS = 15000L         // 持续低于阈值 15s 才驱逐，避免抖动误杀
         const val SLOW_GRACE_MS = 8000L             // 新块起步宽限期，期间 0 字节不判慢
@@ -1302,6 +1605,8 @@ class DownloadManager @Inject constructor(
         const val BUFFER_SIZE_MEDIUM = 512 * 1024   // ≥8MB 分块用 512KB 缓冲
         const val MAX_CHUNKS = 8
         const val MAX_TOTAL_CONNECTIONS = 8
+        // O2：每个任务至少保留的分块数（避免并发任务多时全部退化为单连接）
+        const val MIN_CHUNKS_PER_TASK = 2
         const val CHUNK_SIZE = 4_000_000L
         const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L
         const val CHUNK_BUFFER_SIZE = 256 * 1024
