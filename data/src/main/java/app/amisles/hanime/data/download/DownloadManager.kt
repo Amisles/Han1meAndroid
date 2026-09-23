@@ -1566,50 +1566,62 @@ class DownloadManager @Inject constructor(
         }.getOrDefault(0 to null)
     }
 
-    private companion object {
-        const val MAX_CONCURRENT = 5
-        const val PROGRESS_PERSIST_INTERVAL_MS = 3000L
-        // startDownload 的结果码（负数均为「未新建任务」）
+    /**
+     * 内部实现参数一律 private；**对外只暴露 [startDownload] 的三个结果码**。
+     *
+     * 说明：Kotlin 每个类只允许一个 companion，无法另建公开 companion 承载结果码，
+     * 因此这里改为「公开 companion + 逐项 private」。若新增常量请务必补 `private`，
+     * 否则会默认变成公开 API。
+     */
+    companion object {
+        private const val MAX_CONCURRENT = 5
+        private const val PROGRESS_PERSIST_INTERVAL_MS = 3000L
+        /**
+         * [startDownload] 的结果码。负数均表示「未新建任务」，供 UI 层区分提示文案：
+         * - [RESULT_INVALID_URL]：直链非法或路径越界；
+         * - [RESULT_ALREADY_ACTIVE]：同一文件已有进行中 / 等待中的任务；
+         * - [RESULT_ALREADY_COMPLETED]：同一文件已下载完成。
+         */
         const val RESULT_INVALID_URL = -1
         const val RESULT_ALREADY_ACTIVE = -2
         const val RESULT_ALREADY_COMPLETED = -3
         // 单个文件名（UTF-8 字节）上限：ext4/大多数文件系统为 255 字节，留出余量
-        const val MAX_FILE_NAME_BYTES = 200
-        const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
+        private const val MAX_FILE_NAME_BYTES = 200
+        private const val DOWNLOAD_SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
         // S1：取消/删除任务的通知通道。必须与 DownloadService.ACTION_REMOVE_TASK 手工保持一致。
-        const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
-        const val EXTRA_TASK_ID = "extra_task_id"
-        const val EXTRA_TITLE = "extra_title"
-        const val EXTRA_PROGRESS = "extra_progress"
-        const val EXTRA_STATUS = "extra_status"
-        const val MAX_REQUESTS_PER_HOST = 16
-        const val MAX_IDLE_CONNECTIONS = 16
-        const val KEEP_ALIVE_SECONDS = 60L
-        const val HIGH_SINGLE_BPS = 8L * 1024 * 1024
-        const val LOW_SINGLE_BPS = 1_500_000L
-        const val PROBE_WINDOW = 512 * 1024          // 吞吐探测窗口 512KB
-        const val PARTMAP_SUFFIX = ".partmap"
-        const val PARTMAP_PERSIST_MS = 1000L
+        private const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
+        private const val EXTRA_TASK_ID = "extra_task_id"
+        private const val EXTRA_TITLE = "extra_title"
+        private const val EXTRA_PROGRESS = "extra_progress"
+        private const val EXTRA_STATUS = "extra_status"
+        private const val MAX_REQUESTS_PER_HOST = 16
+        private const val MAX_IDLE_CONNECTIONS = 16
+        private const val KEEP_ALIVE_SECONDS = 60L
+        private const val HIGH_SINGLE_BPS = 8L * 1024 * 1024
+        private const val LOW_SINGLE_BPS = 1_500_000L
+        private const val PROBE_WINDOW = 512 * 1024          // 吞吐探测窗口 512KB
+        private const val PARTMAP_SUFFIX = ".partmap"
+        private const val PARTMAP_PERSIST_MS = 1000L
         // 位图表块数的合法上界（防损坏文件撑爆数组分配）
-        const val MAX_PARTMAP_CHUNKS = 64
+        private const val MAX_PARTMAP_CHUNKS = 64
 
         // M3：慢块判定 = max(下限, min(实测每块速率 × SLOW_RELATIVE_PERCENT%, 上限))
-        const val SLOW_THRESHOLD_FLOOR_BPS = 16 * 1024L    // 绝对下限：低于此值基本可断定为停滞连接
-        const val SLOW_THRESHOLD_CAP_BPS = 512 * 1024L     // 上限：避免高速链路上阈值过大导致频繁驱逐
-        const val SLOW_RELATIVE_PERCENT = 15L              // 相对判据：低于每块基准速率的 15%
-        const val SLOW_SAMPLE_MS = 2000L            // 逐块吞吐采样周期 2s
-        const val SLOW_DURATION_MS = 15000L         // 持续低于阈值 15s 才驱逐，避免抖动误杀
-        const val SLOW_GRACE_MS = 8000L             // 新块起步宽限期，期间 0 字节不判慢
-        const val MAX_CHUNK_ATTEMPTS = 5            // 单块最大重试/驱逐次数，超限判定整体失败
-        const val BUFFER_SIZE_LARGE = 1_048_576     // ≥16MB 分块用 1MB 缓冲
-        const val BUFFER_SIZE_MEDIUM = 512 * 1024   // ≥8MB 分块用 512KB 缓冲
-        const val MAX_CHUNKS = 8
-        const val MAX_TOTAL_CONNECTIONS = 8
+        private const val SLOW_THRESHOLD_FLOOR_BPS = 16 * 1024L    // 绝对下限：低于此值基本可断定为停滞连接
+        private const val SLOW_THRESHOLD_CAP_BPS = 512 * 1024L     // 上限：避免高速链路上阈值过大导致频繁驱逐
+        private const val SLOW_RELATIVE_PERCENT = 15L              // 相对判据：低于每块基准速率的 15%
+        private const val SLOW_SAMPLE_MS = 2000L            // 逐块吞吐采样周期 2s
+        private const val SLOW_DURATION_MS = 15000L         // 持续低于阈值 15s 才驱逐，避免抖动误杀
+        private const val SLOW_GRACE_MS = 8000L             // 新块起步宽限期，期间 0 字节不判慢
+        private const val MAX_CHUNK_ATTEMPTS = 5            // 单块最大重试/驱逐次数，超限判定整体失败
+        private const val BUFFER_SIZE_LARGE = 1_048_576     // ≥16MB 分块用 1MB 缓冲
+        private const val BUFFER_SIZE_MEDIUM = 512 * 1024   // ≥8MB 分块用 512KB 缓冲
+        private const val MAX_CHUNKS = 8
+        private const val MAX_TOTAL_CONNECTIONS = 8
         // O2：每个任务至少保留的分块数（避免并发任务多时全部退化为单连接）
-        const val MIN_CHUNKS_PER_TASK = 2
-        const val CHUNK_SIZE = 4_000_000L
-        const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L
-        const val CHUNK_BUFFER_SIZE = 256 * 1024
-        const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
+        private const val MIN_CHUNKS_PER_TASK = 2
+        private const val CHUNK_SIZE = 4_000_000L
+        private const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L
+        private const val CHUNK_BUFFER_SIZE = 256 * 1024
+        private const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
     }
 }
