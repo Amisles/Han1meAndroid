@@ -5,9 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.wifi.WifiManager
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.ui.R
@@ -39,6 +42,15 @@ class DownloadService : Service() {
         // D6：每个任务独立通知 id = BASE + taskId，避免并发互相覆盖
         const val NOTIFICATION_ID_BASE = 1000
 
+        /** P2-7：下载期间 CPU / Wi-Fi 锁的标签。 */
+        private const val TRANSFER_LOCK_TAG = "hanime:download"
+
+        /**
+         * P2-7：WakeLock 超时（兜底）。锁设为非引用计数，每次进度回调 acquire 即续期；
+         * 仅当进度长时间完全停滞（超过此值）时才会自动释放，避免异常情况下永久占锁耗电。
+         */
+        private const val TRANSFER_LOCK_TIMEOUT_MS = 10 * 60 * 1000L
+
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
@@ -61,6 +73,61 @@ class DownloadService : Service() {
 
     private val notificationManager by lazy {
         getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    }
+
+    private val powerManager by lazy { getSystemService(Context.POWER_SERVICE) as PowerManager }
+
+    private val wifiManager by lazy {
+        applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+    }
+
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    /**
+     * P2-7：进入「有活动下载」状态时持有 CPU 锁与 Wi-Fi 锁。
+     *
+     * `startForeground` 只保证「进程不被杀 + 通知可见」，并不阻止 CPU 降频与 Wi-Fi 进入省电(PS)模式：
+     * 息屏后无线网卡按 beacon 周期唤醒收包，长视频下载常从数十 Mbps 掉到数百 KB/s 甚至间歇为 0，
+     * 亮屏（或点一下暂停/继续）又立刻回升 —— 与「持续较长时间后偶发自愈」的现象一致。
+     *
+     * 两个锁都设置 `setReferenceCounted(false)`：重复 acquire 只是刷新超时时间，
+     * 不会因忘记配对释放而泄漏（WakeLock 的超时兜底为 [TRANSFER_LOCK_TIMEOUT_MS]，
+     * 由后续每次进度回调续期）。
+     */
+    private fun acquireTransferLocks() {
+        if (wakeLock == null) {
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                TRANSFER_LOCK_TAG
+            ).apply { setReferenceCounted(false) }
+        }
+        runCatching { wakeLock?.acquire(TRANSFER_LOCK_TIMEOUT_MS) }
+        if (wifiLock == null) {
+            wifiLock = runCatching { createWifiLockCompat() }.getOrNull()
+        }
+        runCatching { wifiLock?.acquire() }
+    }
+
+    /**
+     * P2-7：创建 Wi-Fi 锁。
+     *
+     * 注：部分 OEM / 新版系统会将 WifiLock 视为建议（不再强制阻止 PS 模式），
+     * 因此创建或 acquire 失败时静默降级 —— 该锁是「锦上添花」，不应影响下载主流程。
+     * 使用 HIGH_PERF 而非 LOW_LATENCY：前者抑制省电模式（批量下载需要的正是持续吞吐），
+     * 后者面向实时低延迟场景。
+     */
+    @Suppress("DEPRECATION")
+    private fun createWifiLockCompat(): WifiManager.WifiLock? {
+        val wm = wifiManager ?: return null
+        return wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, TRANSFER_LOCK_TAG)
+            ?.apply { setReferenceCounted(false) }
+    }
+
+    /** P2-7：活动下载集合已空时释放锁。幂等，可重复调用。 */
+    private fun releaseTransferLocks() {
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        runCatching { wifiLock?.takeIf { it.isHeld }?.release() }
     }
 
     private fun notificationId(taskId: Int) = NOTIFICATION_ID_BASE + taskId
@@ -91,8 +158,17 @@ class DownloadService : Service() {
             // 默认（含 DOWNLOADING / 无状态）：作为进度通知处理
             else -> handleProgress(taskId, title ?: "", progress, status, startId)
         }
+        // P2-7：活动任务集合已空（完成/失败/暂停/取消后的收尾路径）即释放锁。
+        // 放在这里而非各分支内部：任何分支（含参数异常提前返回）漏放都会被这一次兜住。
+        if (activeTasks.isEmpty()) releaseTransferLocks()
         // START_NOT_STICKY：系统杀死服务后不自动重启（由 DownloadManager 按需重启）
         return START_NOT_STICKY
+    }
+
+    override fun onDestroy() {
+        // P2-7：服务生命周期终点是锁释放的最后一道兜底
+        releaseTransferLocks()
+        super.onDestroy()
     }
 
     /**
@@ -104,6 +180,8 @@ class DownloadService : Service() {
             return
         }
         activeTasks[taskId] = title to progress
+        // P2-7：只要还有在途任务就续期 CPU / Wi-Fi 锁
+        acquireTransferLocks()
         // P2-5：将状态传入，使通知文案区分「下载中 xx%」与「已暂停 xx%」
         val notification = buildProgressNotification(title, progress, status)
         if (!isForegroundStarted) {

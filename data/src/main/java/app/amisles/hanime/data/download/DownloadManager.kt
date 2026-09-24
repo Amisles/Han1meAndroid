@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import okhttp3.Dispatcher
 import okhttp3.ConnectionPool
@@ -43,6 +45,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLongArray
+import java.util.concurrent.atomic.AtomicIntegerArray
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -66,6 +70,29 @@ private class RangeNotSupportedException(message: String) : IOException(message)
 // M2：源文件内容/大小已变化（Content-Range 总量与本地持久化的 totalBytes 不符）。
 // 续传会把旧前缀与新后缀拼在一起，必须由上层丢弃旧进度整份重下。
 private class SourceChangedException(message: String) : IOException(message)
+
+// P0-1：分块路径在本机/当前网络下持续无收益（反复被驱逐，典型场景是 CDN 对单连接限速、
+// 或本机存储持续阻塞），上层据此放弃分块、降级为单连接续传，而不是把任务判失败。
+private class ChunkedInefficientException(message: String) : IOException(message)
+
+/**
+ * 分块 IO 诊断计数。
+ *
+ * 存在的意义：「速度上不去」的三种候选原因（服务端限速 / 本机存储写入受限 / 设备与链路层降速）
+ * 在代码里只能靠「时间花在哪里」区分，因此按采样窗口累计 read / write 的耗时与字节数：
+ * - **读耗时占绝对多数** → 时间花在等网络；
+ * - **每 MB 写耗时很大或出现「慢写」** → 本地写入在阻塞；
+ * 两者都很小却速率很低 → 瓶颈在设备/链路（CPU 降频、Wi-Fi 省电、服务端排队）。
+ * 由 monitor 周期读取并归零；[protocolLogged] 承载「首个响应打印一次协议」的标记。
+ */
+private class ChunkIoStats {
+    val readNanos = AtomicLong(0)
+    val readBytes = AtomicLong(0)
+    val writeNanos = AtomicLong(0)
+    val writeBytes = AtomicLong(0)
+    val slowWrites = AtomicInteger(0)
+    val protocolLogged = AtomicBoolean(false)
+}
 
 // Content-Range: bytes <start>-<end>/<total|*>
 private val CONTENT_RANGE_REGEX = Regex("bytes\\s+(\\d+)-(\\d+)/(\\d+|\\*)")
@@ -96,11 +123,19 @@ class DownloadManager @Inject constructor(
     private val downloadDao: DownloadDao
 ) {
 
-    // 解锁 OkHttp 单主机并发上限，显式配置 16 + 匹配的连接池，并优先 HTTP/2 多路复用。
+    // 认知修正（P1-6）：`maxRequestsPerHost` 只对**异步**调用生效 —— OkHttp 的
+    // Dispatcher.executed() 对同步调用仅执行 runningSyncCalls.add(call)，上限判定只在
+    // promoteAndExecute() 里查 readyAsyncCalls。本项目下载全部使用同步 call.execute()，
+    // 因此该配置**不构成任何并发兜底**；真正的全局上限由 connectionPermits 承担。
+    // 保留该字段只是为了让将来可能出现的异步请求仍受约束。
     private val client = OkHttpClient.Builder()
         .dispatcher(Dispatcher().apply { maxRequestsPerHost = MAX_REQUESTS_PER_HOST })
         .connectionPool(ConnectionPool(maxIdleConnections = MAX_IDLE_CONNECTIONS, keepAliveDuration = KEEP_ALIVE_SECONDS, TimeUnit.SECONDS))
-        .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+        // P1-5：分块 Range 下载强制 HTTP/1.1。服务端支持 h2 时，同一主机的多个分块请求会被复用成
+        // **一条 TCP 连接上的多条流**：一次丢包/RTO 会让所有分块同时归零（TCP 层队头阻塞），
+        // 且部分 CDN 会限制单连接并发流数，与「面板速度整体骤降」的现象一致；
+        // HTTP/1.1 下每块独占一条连接，互不牵连。
+        .protocols(listOf(Protocol.HTTP_1_1))
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
@@ -144,6 +179,28 @@ class DownloadManager @Inject constructor(
     private val downloadServiceStarted = AtomicBoolean(false)
     // M4：各任务最近一次已转发的整数百分比，用于抑制「百分比未变」的重复跨进程通知
     private val lastNotifiedPercent = ConcurrentHashMap<Int, Int>()
+
+    /**
+     * P0-1：本进程内已判定「分块无收益」的文件（按 filePath）。
+     *
+     * 驱逐预算耗尽而降级单连接后记入，使后续暂停/恢复不再重新进入分块路径 ——
+     * 否则会「恢复 → 分块 → 再次驱逐 → 再次降级」，表现为「暂停恢复后短暂回升、随后又掉回去」。
+     * 只记内存不落盘：进程重启后允许再试一次分块，避免一次误判导致永久降级。
+     */
+    private val singleConnectionFiles: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    /**
+     * P1-6：全局连接预算（硬上限）。
+     *
+     * 下载全部走同步 call.execute()，OkHttp Dispatcher 的 maxRequests / maxRequestsPerHost 对其
+     * 完全无效（实证见 [client] 上方注释）。若不自行兜底，「并发任务数 × 每任务分块数」再加驱逐
+     * 重连会把在途 TCP 连接推到十几条以上，在移动链路上互相抢带宽并加剧丢包，可能触发全局
+     * 拥塞塌陷（吞吐骤降数个数量级、恢复极慢）。
+     *
+     * 用 kotlinx 的 Semaphore 而非 java.util.concurrent.Semaphore：acquire 是挂起点，
+     * 协程被取消（暂停/删除任务）时能立即退出，不会把 IO 线程卡在阻塞等待上。
+     */
+    private val connectionPermits = Semaphore(MAX_CONCURRENT_CONNECTIONS)
 
     /**
      * 落盘串行化队列（修复 S10）。
@@ -411,7 +468,19 @@ class DownloadManager @Inject constructor(
                 // 只有「该块区间末尾字节确实落在当前文件长度内」才承认它完成，否则清位重下 ——
                 // 否则会出现「位图说完成、数据不在」→ 收尾校验恒失败 → 永久 FAILED 且无法自愈。
                 // 注意：全部完成且长度达标的位图表在此同样返回（不再删文件重下），由分块流程直接收尾。
-                return 0L to sanitizePartmap(task, file, cc, bitmap)
+                val sanitized = sanitizePartmap(task, file, cc, bitmap)
+                // P0-1：该文件已被判定「分块无收益」（驱逐预算耗尽降级过）→ 直接按连续完成前缀
+                // 做单连接续传（返回 null 位图即走单连接）。不做这个记忆的话，暂停/恢复会重新进入
+                // 分块路径 → 再次驱逐 → 再次降级，表现为「暂停恢复后短暂回升、随后又掉回去」。
+                if (singleConnectionFiles.contains(task.filePath)) {
+                    val prefix = contiguousDoneBytes(sanitized, cc, task.totalBytes)
+                    AppLogger.log(
+                        "DownloadManager",
+                        "该文件已判定分块无收益，继续单连接续传: prefix=$prefix / total=${task.totalBytes}"
+                    )
+                    return prefix to null
+                }
+                return 0L to sanitized
             }
         }
         // 回退：文件级续传（单连接）或整文件重下
@@ -459,6 +528,109 @@ class DownloadManager @Inject constructor(
     private fun chunkEndExclusive(index: Int, chunkCount: Int, totalBytes: Long): Long {
         if (chunkCount <= 0) return 0L
         return if (index == chunkCount - 1) totalBytes else (index + 1) * (totalBytes / chunkCount)
+    }
+
+    /** 向上取整的整数除法（分块数推导用，避免浮点误差）。 */
+    private fun ceilDiv(value: Long, divisor: Long): Long {
+        if (divisor <= 0L) return 0L
+        return (value + divisor - 1L) / divisor
+    }
+
+    /**
+     * P0-1：已完成块的「连续前缀」字节数。
+     *
+     * 降级单连接续传时只能从一段**无空洞**的前缀处接续（单连接是顺序写，起点若落在有空洞的
+     * 位置，空洞会永远保留下来）。因此从 0 号块起逐块累加，遇到第一个未完成块即停止；
+     * 块边界复用 [chunkEndExclusive]，保证与分块布局同源。
+     */
+    private fun contiguousDoneBytes(chunkDone: BooleanArray, chunkCount: Int, totalBytes: Long): Long {
+        var prefix = 0L
+        for (i in 0 until chunkCount) {
+            if (!chunkDone[i]) break
+            prefix = chunkEndExclusive(i, chunkCount, totalBytes)
+        }
+        return prefix
+    }
+
+    /**
+     * P0-1：驱逐后的重连退避。按「已驱逐次数」线性递增并封顶，附加与块序号相关的错峰偏移，
+     * 避免多个块在同一时刻重建连接后又同时被判慢（thundering herd）。
+     */
+    private fun evictionBackoffMs(evictedTimes: Int, chunkIndex: Int): Long {
+        val base = (EVICTION_BACKOFF_BASE_MS * evictedTimes).coerceAtMost(EVICTION_BACKOFF_MAX_MS)
+        val stagger = (chunkIndex % 5) * EVICTION_BACKOFF_STAGGER_MS
+        return base + stagger
+    }
+
+    /**
+     * 全量重建在途分块连接：取消所有活跃连接，由 worker 重新入队并以新连接重试。
+     *
+     * 实测依据（2026-09-23 19:35 日志）：该站直链经 Cloudflare 回源，同一个 range 请求会被限速到
+     * 7~127KB/s（总量 79~254KB/s），但**取消后重新发起同一 range 往往立刻拿到整块高速投递**
+     * （chunk #0 被驱逐后 1.7s 内以 17765KB/s 完成；手动暂停/恢复后 #6/#2 在 1~2s 内以
+     * 6~9.6MB/s 完成）—— 本质是新请求命中了边缘缓存或新的服务端工作进程。
+     * 本函数即「用户手动暂停再恢复」的自动化版本。
+     *
+     * 计数与预算：计入 [globalRebuildCount]（独立上限，避免被高频重连拖入滥用），
+     * **不消耗** `evictionTotal`（那是单块驱逐的预算，用于判断是否降级单连接）；
+     * 但必须递增 `chunkEvictCount`，否则 worker 会把「被主动取消」误判为真实 IO 失败，
+     * 累计 MAX_CHUNK_ATTEMPTS 后把任务判成 FAILED。
+     */
+    private fun rebuildAllChunkConnections(
+        taskId: Int,
+        reason: String,
+        aggregateBps: Long,
+        chunkCount: Int,
+        chunkCallRefs: Array<AtomicReference<Call?>>,
+        chunkEvictCount: AtomicIntegerArray,
+        globalRebuildCount: AtomicInteger
+    ): Int {
+        var rebuilt = 0
+        for (i in 0 until chunkCount) {
+            val call = chunkCallRefs[i].get() ?: continue
+            chunkEvictCount.incrementAndGet(i)
+            runCatching { call.cancel() }
+            rebuilt++
+        }
+        if (rebuilt > 0) {
+            val seq = globalRebuildCount.incrementAndGet()
+            AppLogger.log(
+                "DownloadManager",
+                "全量重建分块连接(t=$taskId): $reason（重建 $rebuilt 条，聚合 ${aggregateBps / 1024}KB/s，第 $seq 次）"
+            )
+        }
+        return rebuilt
+    }
+
+    /**
+     * 诊断日志格式化（读取并归零窗口计数）。判读要点：
+     * 1) 「连接」已打满但「聚合」仍低 → 瓶颈不在连接数（服务端按 IP/按连接限速，或本机存储受限）；
+     * 2) 「读占」接近 100% → 时间几乎全花在等网络；
+     * 3) 「每MB写」偏大或「慢写」不为 0 → 本地写入在阻塞（P0-2 的主因）；
+     * 4) 「最慢块」远低于「最快块」且聚合健康 → 多连接分配不均，属正常，不应驱逐。
+     */
+    private fun formatChunkDiag(
+        taskId: Int,
+        activeCalls: Int,
+        workerCount: Int,
+        aggregateBps: Long,
+        chunkRates: String,
+        io: ChunkIoStats,
+        evictions: Int,
+        watchdogs: Int
+    ): String {
+        val writeNanos = io.writeNanos.getAndSet(0L)
+        val writeBytes = io.writeBytes.getAndSet(0L)
+        val readNanos = io.readNanos.getAndSet(0L)
+        val readBytes = io.readBytes.getAndSet(0L)
+        val slowWrites = io.slowWrites.getAndSet(0)
+        val msPerMb = if (writeBytes > 0) (writeNanos / 1e6) / (writeBytes / 1048576.0) else 0.0
+        val ioNanos = readNanos + writeNanos
+        val readPercent = if (ioNanos > 0) readNanos * 100 / ioNanos else 0L
+        return "诊断[t=$taskId]: 连接=$activeCalls/$workerCount 聚合=${aggregateBps / 1024}KB/s " +
+            "块速率(KB/s)[$chunkRates] 读占=${readPercent}%(读${readBytes / 1024}KB 写${writeBytes / 1024}KB) " +
+            "每MB写=${msPerMb.toInt()}ms 慢写(>${SLOW_WRITE_WARN_MS}ms)=$slowWrites " +
+            "累计驱逐=$evictions 看门狗=$watchdogs"
     }
 
     /**
@@ -585,6 +757,13 @@ class DownloadManager @Inject constructor(
         resumeBytes: Long = 0L,
         resumeChunkMap: BooleanArray? = null
     ) {
+        // P0-1：权威判定 —— 该文件在本进程内已被判定「分块无收益」（驱逐预算耗尽降级过）时，
+        // 一律走单连接，不再进入分块路径。deriveResumeState 给出的是「连续完成前缀」作为续传起点，
+        // 而这里兜住前缀为 0 的边界（否则 resumeBytes=0 会绕过记忆、重新走探针 → 分块 → 再次驱逐）。
+        if (singleConnectionFiles.contains(filePath)) {
+            downloadFileSingle(taskId, url, filePath, resumeBytes)
+            return
+        }
         if (resumeChunkMap != null) {
             val total = taskMap[taskId]?.totalBytes ?: 0L
             if (total > 0) {
@@ -612,10 +791,21 @@ class DownloadManager @Inject constructor(
     /**
      * O3：首下前发一个小窗口 Range 请求，同时完成两件事：
      * 1) 确认服务器支持 206 Range（不支持则上层降级单连接）；
-     * 2) 测量单连接吞吐（字节/秒），作为自适应分块数的依据。
-     * 探测窗口 [0, PROBE_WINDOW) 读后即弃（约 512KB，相对多 MB 视频可忽略；O9 指标闭环后可省）。
+     * 2) 测量单连接**稳态**吞吐（字节/秒），作为自适应并行连接数的依据。
+     * 探测窗口 [0, PROBE_WINDOW) 读后即弃。
+     *
+     * P1-4：口径修正。原实现 (a) t0 取在 call.execute() 之前，把 DNS/TCP/TLS 握手时间也算进吞吐；
+     * (b) 只读 512KB，基本落在服务端 TCP 初始窗口的突发区间内。两者方向相反，但在大带宽下以
+     * 高估为主 —— 实测 10MB/s 会把并行连接数压到 3、把慢块阈值顶到上限（= 峰值速率的 1/20），
+     * 显著抬高误驱逐概率。现改为「丢弃前 PROBE_WARMUP_BYTES 的突发字节，只统计其后窗口」，
+     * 计时起点落在丢弃点，得到稳态速率；并以 PROBE_MAX_DURATION_MS 封顶探测耗时。
      */
     private suspend fun probeSupportAndThroughput(taskId: Int, url: String): ProbeResult? {
+        // P1-6：探测同样占用一条真实连接，纳入全局连接预算
+        return connectionPermits.withPermit { probeSupportAndThroughputInternal(taskId, url) }
+    }
+
+    private suspend fun probeSupportAndThroughputInternal(taskId: Int, url: String): ProbeResult? {
         // O8：改为显式 catch。此前整体包在 runCatching 里，任何挂起点上的取消都会被吞成 null，
         // 使「已取消的任务」继续走单连接重下；当前函数体内虽然没有挂起点，但那是脆弱写法。
         return try {
@@ -636,15 +826,36 @@ class DownloadManager @Inject constructor(
                     val total = r.header("Content-Range")
                         ?.let { Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull() } ?: 0L
                     val input = r.body.byteStream()
-                    val buf = ByteArray(64 * 1024)
+                    val buf = ByteArray(PROBE_READ_BUFFER_SIZE)
                     var read = 0L
+                    var steadyStartAt = 0L
+                    val deadline = t0 + PROBE_MAX_DURATION_MS * 1_000_000
                     while (read < PROBE_WINDOW) {
+                        if (System.nanoTime() >= deadline) break   // 慢链路不为测速卡住
                         val n = input.read(buf)
                         if (n == -1) break
                         read += n
+                        // 首次跨过突发区间时开始计时：此前读到的字节不计入速率分子
+                        if (steadyStartAt == 0L && read >= PROBE_WARMUP_BYTES) steadyStartAt = System.nanoTime()
                     }
-                    val dt = (System.nanoTime() - t0) / 1e9
-                    val bps = if (dt > 0.05) (read / dt).toLong() else 0L
+                    val measuredBytes = if (steadyStartAt != 0L) read - PROBE_WARMUP_BYTES else read
+                    val dt = (if (steadyStartAt != 0L) System.nanoTime() - steadyStartAt
+                        else System.nanoTime() - t0) / 1e9
+                    val bps = if (dt > 0.05 && measuredBytes > 0) (measuredBytes / dt).toLong() else 0L
+                    // 诊断：首段突发速率 vs 稳态速率。两者若相差一个数量级（例如 10MB/s → 1MB/s），
+                    // 可直接确证「服务端先给突发额度、随后限速」这类策略 —— 与「暂停/恢复短暂回升」同源。
+                    val warmupNanos = if (steadyStartAt != 0L) steadyStartAt - t0 else 0L
+                    val warmupBps = if (warmupNanos > 1_000_000L) {
+                        (PROBE_WARMUP_BYTES * 1_000_000_000L) / warmupNanos
+                    } else {
+                        0L
+                    }
+                    AppLogger.log(
+                        "DownloadManager",
+                        "诊断: 探测 读到=${read / 1024}KB 突发段=${warmupBps / 1024}KB/s " +
+                            "稳态段=${bps / 1024}KB/s(窗口${measuredBytes / 1024}KB/${(dt * 1000).toInt()}ms) " +
+                            "总量=$total 网络类型=${getCurrentNetworkClass(context)}"
+                    )
                     ProbeResult(supportsRange = true, totalBytes = total, bps = bps)
                 }
             }
@@ -661,6 +872,13 @@ class DownloadManager @Inject constructor(
      * 复用原有稳定逻辑：支持 Range 续传、失败限次重试、每 500ms 节流更新进度。
      */
     private suspend fun downloadFileSingle(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
+        // P1-6：单连接路径同样占用一条真实连接，整段（建连 + 读完响应体）纳入全局连接预算
+        connectionPermits.withPermit {
+            downloadFileSingleInternal(taskId, url, filePath, resumeBytes)
+        }
+    }
+
+    private suspend fun downloadFileSingleInternal(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
         val requestBuilder = Request.Builder()
             .url(url)
             .header("User-Agent", DOWNLOAD_UA)
@@ -739,7 +957,7 @@ class DownloadManager @Inject constructor(
                 java.io.FileOutputStream(outputFile, false)
             }
 
-            val buffer = ByteArray(chooseBufferSize(totalBytes))
+            val buffer = ByteArray(SINGLE_PATH_BUFFER_SIZE)
             var downloadedBytes = if (isPartial) resumeBytes else 0L
             var lastUpdate = 0L
 
@@ -773,25 +991,40 @@ class DownloadManager @Inject constructor(
                     totalBytes = if (totalBytes > 0) totalBytes else downloadedBytes
                 )
             }
+
+            // 单连接路径写满后清理可能残留的分块位图表：它的块布局与顺序写入的进度无关，
+            // 留着会让 deriveResumeState 在下次续传时按错误的块边界推导出「带空洞的前缀」。
+            if (totalBytes > 0 && downloadedBytes >= totalBytes) {
+                val partmap = File(filePath + PARTMAP_SUFFIX)
+                if (partmap.exists()) runCatching { partmap.delete() }
+            }
         }
     }
 
     /**
-     * P2-2：计算单任务允许的分块数上限，使「并发任务数 × 每任务分块数」
-     * 不超过全局连接数上限 [MAX_TOTAL_CONNECTIONS]，在保留任务内并行与限制总连接间取平衡。
+     * P2-2：计算单任务允许的**并行连接数**上限，使「并发任务数 × 每任务连接数」
+     * 不超过全局软预算 [MAX_TOTAL_CONNECTIONS]，在保留任务内并行与限制总连接间取平衡。
+     *
+     * P1-6：软预算只是启发式，硬上限由 [connectionPermits] 保证 —— 原先注释里
+     * 「仍低于 OkHttp maxRequestsPerHost=16」的说法不成立：该配置对同步 call.execute() 完全无效
+     * （OkHttp 仅对异步调用限流），最坏情况 5×2=10 条连接没有任何上游兜底。
      */
-    private fun effectiveChunkCap(): Int {
+    private fun effectiveParallelismCap(): Int {
         val active = maxOf(activeSlots.get(), 1)
-        // O2：整数除法在任务数接近上限时会把每任务连接数压到 1（5 个任务 → 8/5=1 → chunkCount=1 →
-        // 每个任务都退化为单连接），与「多线程下载」的预期完全相反。这里给每任务一个保底值；
-        // 代价是最坏情况下总连接数略超软预算（5×2=10，仍低于 OkHttp maxRequestsPerHost=16），可接受。
-        return maxOf(MIN_CHUNKS_PER_TASK, MAX_TOTAL_CONNECTIONS / active)
+        // O2：整数除法在任务数接近上限时会把每任务连接数压到 1（5 个任务 → 8/5=1），与
+        // 「多线程下载」的预期相反。这里给每任务一个保底值，超出软预算的部分由全局信号量兜住。
+        return maxOf(MIN_PARALLEL_PER_TASK, MAX_TOTAL_CONNECTIONS / active)
     }
 
     /**
-     * 多线程分块并行下载：分块数首下按网络类型 + 实测吞吐自适应（见 [computeChunkCount]），续传沿用位图表；
-     * 仅对未完成块发起请求（O4）；慢块驱逐（O5）对持续低吞吐块取消连接后由空闲 worker 以新连接重试；
-     * 不再 setLength 预分配以避免空洞（O8）。
+     * 多线程分块并行下载。
+     *
+     * - 块数与并行连接数解耦（P0-3）：块数 = ceil(总量 / [CHUNK_SIZE])（续传沿用位图表的块数），
+     *   并行连接数由 [computeParallelism] 推导。块数足以覆盖整个文件并由队列顺序领取，
+     *   使「同时在写的偏移」集中在一段连续区域内，而不是数块各偏居数百 MB 之外（对闪存等价于随机写）；
+     * - 仅对未完成块发起请求（O4）；
+     * - 慢块驱逐（O5）对持续低吞吐块取消连接后由空闲 worker 以新连接重试；
+     * - 不再 setLength 预分配以避免空洞（O8）。
      */
     private suspend fun downloadFileChunked(
         taskId: Int,
@@ -801,7 +1034,14 @@ class DownloadManager @Inject constructor(
         singleBps: Long = 0L,
         resumeMap: BooleanArray? = null
     ) {
-        val chunkCount = resumeMap?.size ?: computeChunkCount(getCurrentNetworkClass(context), singleBps, totalBytes)
+        // P0-3：块数由「固定块长 CHUNK_SIZE」推导，不再等于并行连接数。
+        // 旧实现按 3~8 块切分，每块长达数百 MB：并行写入的偏移彼此相隔数百 MB（对闪存等价于随机写），
+        // 且任何一块失败/暂停都要重来数百 MB。块长压到十几 MB 后，并发写入窗口只覆盖文件的一段
+        // 连续区域，重试与续传粒度同步变细。
+        // 兼容性：块布局仍由 chunkSize = totalBytes / chunkCount 推导（末块取余数），
+        // 因此旧位图表（chunkCount=3）继续按原布局续传，.partmap 格式无需迁移。
+        val chunkCount = resumeMap?.size
+            ?: ceilDiv(totalBytes, CHUNK_SIZE).coerceIn(1L, MAX_PARTMAP_CHUNKS.toLong()).toInt()
         val outputFile = File(filePath)
         val partmapFile = File(filePath + PARTMAP_SUFFIX)
         // O7：不足 2 块无并行收益，退回单连接；同时清掉可能残留的位图表，避免留下孤儿文件
@@ -857,6 +1097,14 @@ class DownloadManager @Inject constructor(
         val chunkSlowSince = AtomicLongArray(chunkCount)
         val chunkFirstObserved = AtomicLongArray(chunkCount)
         val chunkAttempts = IntArray(chunkCount)
+        // P0-1：驱逐计数与重试计数分离。被监控驱逐不算「失败」，但需要一个总预算，
+        // 超限即判定分块路径无收益并降级单连接（见 MAX_EVICTIONS_PER_TASK）。
+        val chunkEvictCount = AtomicIntegerArray(chunkCount)
+        // 诊断与预算计数：ioStats 供 monitor 判别「时间花在读还是写」，两个计数器供聚合判据与日志
+        val ioStats = ChunkIoStats()
+        val evictionTotal = AtomicInteger(0)
+        val watchdogCount = AtomicInteger(0)
+        val globalRebuildCount = AtomicInteger(0)
         val queue = ArrayDeque<Int>().apply { for (i in 0 until chunkCount) if (!chunkDone[i]) addLast(i) }
 
         // P3-1：标记「服务器对分块请求返回 200 忽略 Range」，用于触发整任务回退单连接下载
@@ -870,7 +1118,9 @@ class DownloadManager @Inject constructor(
                 fun takeChunk(): Int = synchronized(queue) { if (queue.isNotEmpty()) queue.removeFirst() else -1 }
                 fun requeueChunk(i: Int) = synchronized(queue) { queue.addLast(i) }
 
-                val workerCount = chunkCount.coerceAtMost(MAX_REQUESTS_PER_HOST)
+                // P0-3：并行连接数不再等于块数（块数现在可能上百），单独按网络类型 + 实测吞吐推导，
+                // 并受全局软预算与 MAX_PARALLEL_CONNECTIONS 约束。
+                val workerCount = computeParallelism(getCurrentNetworkClass(context), singleBps, chunkCount)
                 val workers = (0 until workerCount).map { _ ->
                     launch(Dispatchers.IO) {
                         while (currentCoroutineContext()[Job]?.isActive == true && !isTaskCancelled(taskId)) {
@@ -882,13 +1132,28 @@ class DownloadManager @Inject constructor(
                             chunkLastBytes.set(idx, chunkDownloaded.get(idx))
                             chunkFirstObserved.set(idx, System.currentTimeMillis())
                             chunkSlowSince.set(idx, 0L)
-                            val attempts = ++chunkAttempts[idx]
+                            // P0-1：取块时快照驱逐计数，失败时据此区分「被监控驱逐」与「真实 IO 失败」
+                            val evictedBefore = chunkEvictCount.get(idx)
                             val start = idx * chunkSize
                             val end = if (idx == chunkCount - 1) totalBytes - 1 else start + chunkSize - 1
                             try {
-                                downloadChunk(taskId, url, outputFile, idx, start, end, totalBytes, chunkDownloaded, chunkCallRefs[idx])
+                                downloadChunk(
+                                    taskId, url, outputFile, idx, start, end,
+                                    totalBytes, chunkDownloaded, chunkCallRefs[idx], ioStats
+                                )
                                 synchronized(lock) { chunkDone[idx] = true }
                                 completedChunks.incrementAndGet()
+                                // 诊断：分块完成耗时与均速。慢块问题的本质是「块的耗时分布」——
+                                // 一个块用 2s 还是 120s 直接决定总时长；这也是判断服务端是否
+                                // 「部分区间快、部分区间慢」（边缘缓存命中 vs 回源）的唯一直接证据。
+                                val blockBytes = end - start + 1
+                                val spentMs = (System.currentTimeMillis() - chunkFirstObserved.get(idx))
+                                    .coerceAtLeast(1L)
+                                AppLogger.log(
+                                    "DownloadManager",
+                                    "分块完成: #$idx ${blockBytes / 1024}KB 用时=${spentMs / 1000}s " +
+                                        "均速=${blockBytes * 1000 / spentMs / 1024}KB/s"
+                                )
                             } catch (ce: CancellationException) {
                                 throw ce
                             } catch (e: IOException) {
@@ -908,40 +1173,79 @@ class DownloadManager @Inject constructor(
                                     csJob?.cancel()
                                     return@launch
                                 }
-                                if (attempts >= MAX_CHUNK_ATTEMPTS) {
-                                    throw IOException("分块 $idx 重试 $attempts 次仍失败，终止下载", e)
+                                // P0-1：区分「慢块监控驱逐」与「真实 IO 失败」。驱逐是监控器的主动决策，
+                                // 不应计入 MAX_CHUNK_ATTEMPTS —— 否则一次本可自愈的卡顿（15s/次 × 5 次 ≈ 75s）
+                                // 会被升级为整任务 FAILED（磁盘数据与位图表仍在，故「继续」还能接上）。
+                                val evictedNow = chunkEvictCount.get(idx)
+                                val evicted = evictedNow > evictedBefore
+                                if (evicted) {
+                                    // 驱逐总预算耗尽：判定分块路径对当前网络/本机存储无收益，
+                                    // 交上层降级为单连接续传（对限速型 CDN，单连接往往反而更快）。
+                                    // 预算是「本任务累计驱逐次数」（跨块），不是单块次数 —— 否则块数一多，
+                                    // 总驱逐量会随块数线性膨胀，而反复重连本身就是新的抖动源。
+                                    if (evictionTotal.get() >= MAX_EVICTIONS_PER_TASK) {
+                                        throw ChunkedInefficientException(
+                                            "分块下载持续无收益（已驱逐 $evictedNow 次），降级单连接续传"
+                                        )
+                                    }
+                                    // 退避后再重连，避免「砍了立刻重连 → 又被判慢」的自激循环
+                                    delay(evictionBackoffMs(evictedNow, idx))
+                                } else {
+                                    val attempts = ++chunkAttempts[idx]
+                                    if (attempts >= MAX_CHUNK_ATTEMPTS) {
+                                        throw IOException("分块 $idx 重试 $attempts 次仍失败，终止下载", e)
+                                    }
                                 }
                                 // O3：**不再清零 chunkDownloaded / chunkLastBytes** —— 重试时 downloadChunk 会
                                 // 从块内已有偏移续传；清零会让已下载字节被重复计数并丢失续传起点。
                                 chunkFirstObserved.set(idx, 0L)
                                 chunkSlowSince.set(idx, 0L)
-                                AppLogger.log("DownloadManager", "分块 $idx 失败/被驱逐，重新入队以新连接续传(第${attempts}次): ${e.message}")
+                                val reason = if (evicted) "被驱逐(第${evictedNow}次)"
+                                    else "IO 失败(第${chunkAttempts[idx]}次)"
+                                AppLogger.log("DownloadManager", "分块 $idx $reason，重新入队以新连接续传: ${e.message}")
                                 requeueChunk(idx)
                             }
                         }
                     }
                 }
 
-                // M3：慢块阈值不能是绝对常量。单连接实测吞吐会被均分到 chunkCount 条连接上，
-                // 若仍按固定 50KB/s/块 判定，弱网（例如 300KB/s ÷ 8 块 ≈ 37KB/s/块）会把**每条**正常
+                // M3：慢块阈值不能是绝对常量。单连接实测吞吐会被均分到各条并行连接上，
+                // 若仍按固定 50KB/s 判定，弱网（例如 300KB/s ÷ 8 条 ≈ 37KB/s/条）会把**每条**正常
                 // 连接都判成慢块 → 驱逐 → 重试次数耗尽 → 整个任务失败，与自适应提速的初衷相反。
-                // 改为「实测每块基准速率的 SLOW_RELATIVE_PERCENT%，下不低于 FLOOR、上不超过 CAP」；
+                // 改为「实测每连接基准速率的 SLOW_RELATIVE_PERCENT%，下不低于 FLOOR、上不超过 CAP」；
                 // 续传场景没有实测值时退化为下限（宁可少驱逐，也不要误杀正常连接）。
-                val perChunkBaseline = if (singleBps > 0) singleBps / chunkCount else 0L
+                // 基准必须是「每条连接」的实测速率，分母取实际并行连接数（workerCount）而非块总数 ——
+                // 块数现在可能上百，拿块数当分母会把阈值压到接近 0，驱逐形同失效（P0-3 后的口径修正）。
+                val perChunkBaseline = if (singleBps > 0) singleBps / workerCount else 0L
                 val slowThresholdBps = maxOf(
                     SLOW_THRESHOLD_FLOOR_BPS,
                     minOf(perChunkBaseline * SLOW_RELATIVE_PERCENT / 100, SLOW_THRESHOLD_CAP_BPS)
                 )
                 AppLogger.log(
                     "DownloadManager",
-                    "分块下载: chunkCount=$chunkCount, 单连接实测=${singleBps / 1024}KB/s, " +
-                        "慢块阈值=${slowThresholdBps / 1024}KB/s"
+                    "分块下载: chunkCount=$chunkCount, 并行连接=$workerCount, " +
+                        "单连接实测=${singleBps / 1024}KB/s, 慢块阈值=${slowThresholdBps / 1024}KB/s"
                 )
 
                 // 慢块监控器。周期性采样逐块吞吐，对持续低于阈值的分块取消其连接、交 worker 重领
                 // （重置慢速计时，重试用新连接）。仅在分块确有活跃连接时驱逐，避免误杀空闲/已完成块。
+                //
+                // P0-2 修正：判慢必须结合**聚合速率**。原实现只看单块速率，在「多连接共享同一瓶颈」
+                // （服务端限速、本机存储写入受限）时，每条连接分到的份额天然偏低 → 全部被判慢 →
+                // 全部驱逐重连 → 连接反复回到慢启动前段，速率长期停在低位。现在：
+                //   · 本窗口零字节的「真停滞」→ 一律允许驱逐（保留自愈能力）；
+                //   · 「在动但慢」→ 仅当聚合速率也不健康时才驱逐。
                 val monitor = launch(Dispatchers.IO) {
                     var prevTime = System.currentTimeMillis()
+                    // 续传恢复时 chunkDownloaded 已预置「已完成块」的字节数，首个窗口必须以它为基准，
+                    // 否则会把历史字节当成这一窗口的增量（实测出现过聚合=40054KB/s 的假峰值）。
+                    var prevTotalBytes = 0L
+                    for (i in 0 until chunkCount) prevTotalBytes += chunkDownloaded.get(i)
+                    // 聚合持续低位计时与上次全量重建时刻（见下方「全量重建」分支）
+                    var aggregateLowSince = 0L
+                    var lastRebuildAt = 0L
+                    // 本任务观测到的最高聚合速率：作为「健康」的相对基准（见下）
+                    var peakAggregateBps = 0L
                     while (completedChunks.get() < chunkCount &&
                         currentCoroutineContext()[Job]?.isActive == true &&
                         !isTaskCancelled(taskId)) {   // P2-2：撕销期停止采样
@@ -951,6 +1255,31 @@ class DownloadManager @Inject constructor(
                         prevTime = now
                         if (dt <= 0) continue
                         val doneSnapshot = synchronized(lock) { chunkDone.copyOf() }
+                        // 聚合速率与在途连接数（判慢与诊断都用）
+                        var totalBytesNow = 0L
+                        var activeCalls = 0
+                        for (i in 0 until chunkCount) {
+                            totalBytesNow += chunkDownloaded.get(i)
+                            if (!doneSnapshot[i] && chunkCallRefs[i].get() != null) activeCalls++
+                        }
+                        val aggregateBps = ((totalBytesNow - prevTotalBytes) / dt).toLong()
+                        prevTotalBytes = totalBytesNow
+                        // P0-2：健康阈值相对化 —— 取「本任务观测峰值 / AGGREGATE_HEALTHY_RATIO」与绝对下限的较大者。
+                        // 实测（19:44 日志）：同一任务内聚合在 21MB/s（全量重建后）与 95KB/s（被限速）之间跳变；
+                        // 若只用固定 256KB/s，则「150~1200KB/s 的长期低位」会被判为健康 —— 结果是
+                        // 50 秒内既不驱逐也不重建，白白错过干预时机（这正是那次的实际情况）。
+                        if (aggregateBps > peakAggregateBps) peakAggregateBps = aggregateBps
+                        val aggregateHealthyBps = maxOf(
+                            AGGREGATE_HEALTHY_FLOOR_BPS,
+                            peakAggregateBps / AGGREGATE_HEALTHY_RATIO,
+                            if (singleBps > 0) singleBps * AGGREGATE_HEALTHY_PERCENT / 100 else 0L
+                        )
+                        val aggregateHealthy = aggregateBps >= aggregateHealthyBps
+                        // 逐块速率明细（只列在途块，最多 DIAG_MAX_CHUNK_RATES 条）：
+                        // 「总量低但每条连接都在动」与「只有一两条在动、其余恒为 0」是完全不同的病因，
+                        // 只看最快/最慢会漏掉后者 —— 而后者正是服务端串行派发数据的最典型特征。
+                        val ratesText = StringBuilder()
+                        var listedRates = 0
                         for (i in 0 until chunkCount) {
                             if (doneSnapshot[i]) continue
                             val bytes = chunkDownloaded.get(i)
@@ -959,14 +1288,38 @@ class DownloadManager @Inject constructor(
                             if (chunkFirstObserved.get(i) == 0L) chunkFirstObserved.set(i, now)
                             val observedFor = now - chunkFirstObserved.get(i)
                             val call = chunkCallRefs[i].get()
+                            if (call != null && listedRates < DIAG_MAX_CHUNK_RATES) {
+                                ratesText.append('#').append(i).append(':').append(rate / 1024).append(' ')
+                                listedRates++
+                            }
                             if (rate < slowThresholdBps) {
-                                // 起步宽限期：新块 0 字节阶段不判慢，避免误杀刚建立的连接
-                                if (bytes == 0L && observedFor < SLOW_GRACE_MS) continue
+                                // P0-1：宽限期按「本次取块时刻」计（observedFor 已在取块时重置），
+                                // **不能**附加 `bytes == 0L` 条件 —— bytes 是块累计字节，被驱逐过的块
+                                // 重连后必然 > 0，等于完全没有宽限：新连接还没跑完 TCP 慢启动就被判慢
+                                // 驱逐，15s 一轮地自我放大成「卡 → 砍 → 重连 → 又卡」的自激循环。
+                                // SLOW_GRACE_MS(15s) + SLOW_DURATION_MS(15s) ⟹ 最早 30s 后才可能驱逐。
+                                if (observedFor < SLOW_GRACE_MS) continue
+                                // P0-2：**聚合健康时不做任何驱逐**。实测（2026-09-23 19:18/19:23 日志）：
+                                // 该站直链经 Cloudflare 回源，8 条连接与 3 条连接都会把总量压到同一个
+                                // ~1MB/s 量级，且任一时刻只有一两条在动 —— 此时「某条连接 0 字节」
+                                // 只是服务端在服务别人，驱逐它只会增加请求数、加重服务端排队。
+                                // 真停滞会在所有连接都停时体现为聚合不健康，届时本判断与零进度看门狗仍生效。
+                                if (aggregateHealthy) {
+                                    chunkSlowSince.set(i, 0L)
+                                    continue
+                                }
                                 val slowSince = chunkSlowSince.get(i)
                                 if (slowSince == 0L) {
                                     chunkSlowSince.set(i, now)
                                 } else if (now - slowSince >= SLOW_DURATION_MS && call != null) {
-                                    AppLogger.log("DownloadManager", "慢块驱逐：chunk $i 速率 ${rate / 1024}KB/s 持续 ${(now - slowSince) / 1000}s，重分配连接")
+                                    // 驱逐计入独立预算（与真实 IO 失败分开统计）
+                                    val evictSeq = chunkEvictCount.incrementAndGet(i)
+                                    evictionTotal.incrementAndGet()
+                                    AppLogger.log(
+                                        "DownloadManager",
+                                        "慢块驱逐：chunk $i 速率 ${rate / 1024}KB/s(聚合 ${aggregateBps / 1024}KB/s) " +
+                                            "持续 ${(now - slowSince) / 1000}s，重分配连接(第 $evictSeq 次)"
+                                    )
                                     runCatching { call.cancel() }
                                     chunkSlowSince.set(i, 0L)
                                 }
@@ -974,29 +1327,88 @@ class DownloadManager @Inject constructor(
                                 chunkSlowSince.set(i, 0L)
                             }
                         }
+                        // P0-2：聚合持续低位 → 全量重建连接（自动化用户手动的「暂停再恢复」）。
+                        // 实测（19:35 日志）：服务端对同一 range 的持续投递只有 7~127KB/s，
+                        // 而重新发起请求能立刻拿到整块高速投递；因此「换一批新请求」比「继续等」有效。
+                        // 三重约束防止变成重连风暴：持续时长、冷却间隔、总次数上限。
+                        if (!aggregateHealthy) {
+                            if (aggregateLowSince == 0L) aggregateLowSince = now
+                        } else {
+                            aggregateLowSince = 0L
+                        }
+                        if (aggregateLowSince != 0L &&
+                            now - aggregateLowSince >= AGGREGATE_LOW_DURATION_MS &&
+                            now - lastRebuildAt >= GLOBAL_REBUILD_COOLDOWN_MS &&
+                            globalRebuildCount.get() < MAX_GLOBAL_REBUILDS_PER_TASK
+                        ) {
+                            lastRebuildAt = now
+                            rebuildAllChunkConnections(
+                                taskId = taskId,
+                                reason = "聚合持续低于阈值 ${(now - aggregateLowSince) / 1000}s",
+                                aggregateBps = aggregateBps,
+                                chunkCount = chunkCount,
+                                chunkCallRefs = chunkCallRefs,
+                                chunkEvictCount = chunkEvictCount,
+                                globalRebuildCount = globalRebuildCount
+                            )
+                        }
+                        if (DIAG_ENABLED) {
+                            AppLogger.log(
+                                "DownloadManager",
+                                formatChunkDiag(
+                                    taskId, activeCalls, workerCount, aggregateBps,
+                                    if (listedRates == 0) "无在途块" else ratesText.toString().trim(),
+                                    ioStats, evictionTotal.get(), watchdogCount.get()
+                                )
+                            )
+                        }
                     }
                 }
 
                 // 进度上报 + 位图表节流落盘
                 val reporter = launch(Dispatchers.IO) {
                     var lastBitmapPersist = 0L
+                    var lastPersistedDone = completedChunks.get()
                     var lastReportedSum = -1L
+                    // P2-9：零进度看门狗用的「上次确有字节增长的时刻」
+                    var lastProgressAt = System.currentTimeMillis()
                     while (completedChunks.get() < chunkCount &&
                         currentCoroutineContext()[Job]?.isActive == true &&
                         !isTaskCancelled(taskId)) {
-                        delay(500)
+                        delay(REPORT_INTERVAL_MS)
                         var sum = 0L
                         for (i in 0 until chunkCount) sum += chunkDownloaded.get(i)
+                        val now = System.currentTimeMillis()
                         // O6：字节数没有变化时不必再提交一次状态更新（多任务并发下是无谓的列表重建）。
                         // 与 M4 的通知节流叠加后，IPC 与重组都被压到「确有变化」的时刻。
                         if (sum != lastReportedSum) {
                             lastReportedSum = sum
+                            lastProgressAt = now
                             updateTask(taskId) { it.copy(downloadedBytes = sum, totalBytes = totalBytes) }
+                        } else if (now - lastProgressAt >= ZERO_PROGRESS_TRIGGER_MS) {
+                            // P2-9：零进度看门狗 —— 整任务连续 ZERO_PROGRESS_TRIGGER_MS 无字节增长时的兜底，
+                            // 与 monitor 的「聚合持续低位」共用同一个全量重建动作。
+                            // 无在途连接时天然不生效（例如所有块都在退避等待中）。
+                            lastProgressAt = now
+                            val watchdogRebuilt = rebuildAllChunkConnections(
+                                taskId = taskId,
+                                reason = "${ZERO_PROGRESS_TRIGGER_MS / 1000}s 无字节增长",
+                                aggregateBps = 0L,
+                                chunkCount = chunkCount,
+                                chunkCallRefs = chunkCallRefs,
+                                chunkEvictCount = chunkEvictCount,
+                                globalRebuildCount = globalRebuildCount
+                            )
+                            if (watchdogRebuilt > 0) watchdogCount.incrementAndGet()
                         }
-                        val now = System.currentTimeMillis()
                         synchronized(lock) {
-                            if (now - lastBitmapPersist > PARTMAP_PERSIST_MS) {
+                            val done = completedChunks.get()
+                            // P2-8：周期由 1s 放宽到 PARTMAP_PERSIST_MS(5s)，但**有块完成时立即落盘**。
+                            // 每秒 write+delete+rename 是一组三次元数据事务，在写回饱和时与数据写抢 IO，
+                            // 反过来放大 P0-2 的阻塞；而块边界才是「丢进度导致重下代价变大」的时刻。
+                            if (done != lastPersistedDone || now - lastBitmapPersist > PARTMAP_PERSIST_MS) {
                                 lastBitmapPersist = now
+                                lastPersistedDone = done
                                 writePartmap(partmapFile, chunkCount, chunkDone)
                             }
                         }
@@ -1012,6 +1424,22 @@ class DownloadManager @Inject constructor(
             }
         } catch (ce: CancellationException) {
             if (!rangeUnsupported.get() && sourceChanged.get() == null) throw ce
+        } catch (inefficient: ChunkedInefficientException) {
+            // P0-1：不让「驱逐预算耗尽」升级为任务失败 —— 保留位图表，改用单连接从
+            // 「已完成块的连续前缀」处续传（对限速型 CDN，单连接往往反而比多分块更快）。
+            AppLogger.log("DownloadManager", "分块下载降级单连接续传: ${inefficient.message}")
+            // P0-1：记住「该文件分块无收益」，使后续暂停/恢复直接走单连接（见 deriveResumeState），
+            // 否则会「恢复 → 分块 → 再次驱逐 → 再次降级」周期性震荡。
+            singleConnectionFiles.add(filePath)
+            if (isTaskCancelled(taskId)) return
+            val contiguous = contiguousDoneBytes(chunkDone, chunkCount, totalBytes)
+            downloadFileSingle(taskId, url, filePath, contiguous)
+            // 单连接写满后位图表已无意义（其分块布局与单连接续传冲突），完整落盘时清理
+            val fullLength = runCatching { outputFile.length() }.getOrDefault(0L)
+            if (partmapFile.exists() && fullLength >= totalBytes) {
+                runCatching { partmapFile.delete() }
+            }
+            return
         }
 
         // M2：源文件已变 —— 本函数不再收尾，交由上层丢弃旧进度后整份重下
@@ -1064,7 +1492,29 @@ class DownloadManager @Inject constructor(
         end: Long,
         totalBytes: Long,
         chunkDownloaded: AtomicLongArray,
-        callRef: AtomicReference<Call?>
+        callRef: AtomicReference<Call?>,
+        io: ChunkIoStats
+    ) {
+        // P1-6：一条分块请求 = 一条真实连接，整段（建连 + 读完响应体）纳入全局连接预算
+        connectionPermits.withPermit {
+            downloadChunkInternal(
+                taskId, url, outputFile, index, start, end,
+                totalBytes, chunkDownloaded, callRef, io
+            )
+        }
+    }
+
+    private suspend fun downloadChunkInternal(
+        taskId: Int,
+        url: String,
+        outputFile: File,
+        index: Int,
+        start: Long,
+        end: Long,
+        totalBytes: Long,
+        chunkDownloaded: AtomicLongArray,
+        callRef: AtomicReference<Call?>,
+        io: ChunkIoStats
     ) {
         val chunkLength = end - start + 1
         // O3：本块可能已被前一次尝试写入过一部分（被驱逐 / 瞬断后重新入队）。
@@ -1094,22 +1544,43 @@ class DownloadManager @Inject constructor(
                 }
                 // M1/M2：核对响应区间与请求区间、总量与本地记录是否一致
                 verifyContentRange(r.header("Content-Range"), index, from, end, totalBytes)
+                // 诊断：首次响应打印协议与服务器标识 —— 用于确认 HTTP/1.1 已生效（h2 会让所有分块
+                // 共用一条 TCP 连接、共命运），并识别中间的 CDN 层。
+                if (io.protocolLogged.compareAndSet(false, true)) {
+                    val serverHeader = r.header("Server")
+                    val rangesHeader = r.header("Accept-Ranges")
+                    AppLogger.log(
+                        "DownloadManager",
+                        "诊断: 分块响应 协议=${r.protocol} Server=$serverHeader " +
+                            "Accept-Ranges=$rangesHeader 首块长度=$chunkLength 总量=$totalBytes"
+                    )
+                }
                 val input = r.body.byteStream()
                 input.use { `in` ->
                     val expected = chunkLength
-                    val bufSize = chooseBufferSize(expected)
                     var written = alreadyWritten
                     RandomAccessFile(outputFile, "rw").use { raf ->
                         raf.seek(from)
-                        val buffer = ByteArray(bufSize)
+                        val buffer = ByteArray(CHUNK_PATH_BUFFER_SIZE)
                         while (true) {
                             if (currentCoroutineContext()[Job]?.isActive != true) break
+                            // 诊断埋点：分别累计「等网络」与「写磁盘」的耗时，用于判别瓶颈位置
+                            val readStartedAt = System.nanoTime()
                             val bytesRead = `in`.read(buffer)
+                            io.readNanos.addAndGet(System.nanoTime() - readStartedAt)
                             if (bytesRead == -1) break
+                            io.readBytes.addAndGet(bytesRead.toLong())
                             // 直接写入会越过 end 覆盖「下一个分块」的区域，造成跨块数据错乱。
                             val toWrite = minOf(bytesRead.toLong(), expected - written).toInt()
                             if (toWrite > 0) {
+                                val writeStartedAt = System.nanoTime()
                                 raf.write(buffer, 0, toWrite)
+                                val writeNanos = System.nanoTime() - writeStartedAt
+                                io.writeNanos.addAndGet(writeNanos)
+                                io.writeBytes.addAndGet(toWrite.toLong())
+                                if (writeNanos >= SLOW_WRITE_WARN_MS * 1_000_000L) {
+                                    io.slowWrites.incrementAndGet()
+                                }
                                 written += toWrite
                                 chunkDownloaded.addAndGet(index, toWrite.toLong())
                             }
@@ -1501,13 +1972,16 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * O3：根据网络类型 + 实测单连接吞吐 + 全局连接预算，决定首下分块数。
+     * O3：根据网络类型 + 实测单连接吞吐 + 全局连接预算，决定**并行连接数**。
+     *
+     * P0-3：本函数原本同时决定「分块数」，导致 3~8 个块各偏居文件一端（每块数百 MB）；
+     * 现在块数由固定块长 [CHUNK_SIZE] 单独推导（见 downloadFileChunked），本函数只负责并行度。
      * - Wi-Fi 基准 8、移动 4、其它 2；
      * - 单连接已高速（低 RTT 饱和）→ 降到 ≤3，省握手/调度开销；
-     * - 单连接低速（高 RTT/限速）→ 保持较多分块以提速；
-     * - 受全局连接预算（MAX_TOTAL_CONNECTIONS / 实际任务数）与最小分块尺寸约束。
+     * - 单连接低速（高 RTT/限速）→ 保持较多连接以提速；
+     * - 受全局软预算（MAX_TOTAL_CONNECTIONS / 实际任务数）、[MAX_PARALLEL_CONNECTIONS] 与块数约束。
      */
-    private fun computeChunkCount(netClass: NetworkClass, singleBps: Long, totalBytes: Long): Int {
+    private fun computeParallelism(netClass: NetworkClass, singleBps: Long, chunkCount: Int): Int {
         var base = when (netClass) {
             NetworkClass.WIFI -> 8
             NetworkClass.CELLULAR -> 4
@@ -1516,24 +1990,11 @@ class DownloadManager @Inject constructor(
         if (singleBps >= HIGH_SINGLE_BPS) {
             base = minOf(base, 3)
         } else if (singleBps in 1..LOW_SINGLE_BPS) {
-            base = minOf(maxOf(base, 4), MAX_CHUNKS)
+            base = minOf(maxOf(base, 4), MAX_PARALLEL_CONNECTIONS)
         }
-        val budgeted = effectiveChunkCap()
-        val maxBySize = maxOf((totalBytes / CHUNK_SIZE).toInt(), 1)
-        return minOf(base, budgeted, MAX_CHUNKS, maxBySize)
+        return minOf(base, effectiveParallelismCap(), MAX_PARALLEL_CONNECTIONS, chunkCount)
+            .coerceAtLeast(1)
     }
-
-    /**
-     * 根据分块大小选择读取/写入缓冲（256KB–1MB）。
-     */
-    private fun chooseBufferSize(chunkBytes: Long): Int {
-        return when {
-            chunkBytes >= 16 * 1024 * 1024L -> BUFFER_SIZE_LARGE   // ≥16MB 块用 1MB 缓冲
-            chunkBytes >= 8 * 1024 * 1024L -> BUFFER_SIZE_MEDIUM   // ≥8MB 块用 512KB 缓冲
-            else -> CHUNK_BUFFER_SIZE                              // 默认 256KB
-        }
-    }
-
 
     /**
      * 写位图表，返回是否成功。
@@ -1599,11 +2060,17 @@ class DownloadManager @Inject constructor(
         private const val KEEP_ALIVE_SECONDS = 60L
         private const val HIGH_SINGLE_BPS = 8L * 1024 * 1024
         private const val LOW_SINGLE_BPS = 1_500_000L
-        private const val PROBE_WINDOW = 512 * 1024          // 吞吐探测窗口 512KB
+        // P1-4：探测窗口取 2MB 以跨出服务端 TCP 初始突发区间；只统计丢弃前 PROBE_WARMUP_BYTES
+        // 之后的字节，并用 PROBE_MAX_DURATION_MS 封顶耗时（慢链路不为「测速」先卡住数秒）。
+        private const val PROBE_WINDOW = 2 * 1024 * 1024
+        private const val PROBE_WARMUP_BYTES = 512 * 1024
+        private const val PROBE_READ_BUFFER_SIZE = 64 * 1024
+        private const val PROBE_MAX_DURATION_MS = 3000L
         private const val PARTMAP_SUFFIX = ".partmap"
-        private const val PARTMAP_PERSIST_MS = 1000L
-        // 位图表块数的合法上界（防损坏文件撑爆数组分配）
-        private const val MAX_PARTMAP_CHUNKS = 64
+        // P2-8：由 1s 放宽到 5s（块完成时仍强制落盘，见 reporter）
+        private const val PARTMAP_PERSIST_MS = 5000L
+        // 位图表块数的合法上界（防损坏文件撑爆数组分配），同时作为分块总数上限
+        private const val MAX_PARTMAP_CHUNKS = 4096
 
         // M3：慢块判定 = max(下限, min(实测每块速率 × SLOW_RELATIVE_PERCENT%, 上限))
         private const val SLOW_THRESHOLD_FLOOR_BPS = 16 * 1024L    // 绝对下限：低于此值基本可断定为停滞连接
@@ -1611,17 +2078,57 @@ class DownloadManager @Inject constructor(
         private const val SLOW_RELATIVE_PERCENT = 15L              // 相对判据：低于每块基准速率的 15%
         private const val SLOW_SAMPLE_MS = 2000L            // 逐块吞吐采样周期 2s
         private const val SLOW_DURATION_MS = 15000L         // 持续低于阈值 15s 才驱逐，避免抖动误杀
-        private const val SLOW_GRACE_MS = 8000L             // 新块起步宽限期，期间 0 字节不判慢
-        private const val MAX_CHUNK_ATTEMPTS = 5            // 单块最大重试/驱逐次数，超限判定整体失败
-        private const val BUFFER_SIZE_LARGE = 1_048_576     // ≥16MB 分块用 1MB 缓冲
-        private const val BUFFER_SIZE_MEDIUM = 512 * 1024   // ≥8MB 分块用 512KB 缓冲
-        private const val MAX_CHUNKS = 8
-        private const val MAX_TOTAL_CONNECTIONS = 8
-        // O2：每个任务至少保留的分块数（避免并发任务多时全部退化为单连接）
-        private const val MIN_CHUNKS_PER_TASK = 2
-        private const val CHUNK_SIZE = 4_000_000L
+        // P0-1：宽限期按「本次连接取块时刻」计（不再要求 bytes == 0），否则被驱逐过的块重连后
+        // 毫无宽限；15s 宽限 + 15s 持续判慢 ⟹ 最早 30s 后才可能驱逐，足以覆盖 TCP 慢启动。
+        private const val SLOW_GRACE_MS = 15000L
+        private const val MAX_CHUNK_ATTEMPTS = 5            // 单块最大「真实 IO 失败」次数（驱逐不计入）
+        // P0-1：驱逐总预算。超限即判定分块路径无收益，降级单连接续传（不再判任务失败）。
+        // 但实测本类服务端的快路径是「按请求」可用的（重建后 21MB/s，单连接探测却只有 0KB/s），
+        // 单连接反而只剩 KB/s 级 —— 因此该预算只作为「防止病态服务器下无限重连」的兜底，取值放宽。
+        private const val MAX_EVICTIONS_PER_TASK = 50
+        private const val EVICTION_BACKOFF_BASE_MS = 800L   // 驱逐后重连退避基数（按次数线性递增）
+        private const val EVICTION_BACKOFF_MAX_MS = 4000L   // 退避上限
+        private const val EVICTION_BACKOFF_STAGGER_MS = 150L// 按块序号错峰，避免数块同时重连
+        private const val REPORT_INTERVAL_MS = 500L         // 进度上报周期
+        private const val ZERO_PROGRESS_TRIGGER_MS = 30000L // P2-9：整任务零进度看门狗触发阈值
+        // 诊断开关：定位「速度上不去」期间保持 true（日志量约 0.5 行/秒），收敛后可置 false
+        private const val DIAG_ENABLED = true
+        // 单次 write 超过此耗时即计一次「慢写」（用于判别本地写入阻塞）
+        private const val SLOW_WRITE_WARN_MS = 300L
+        // 诊断里逐块速率最多列出多少条（单任务并行度上限为 8，正常不会截断）
+        private const val DIAG_MAX_CHUNK_RATES = 8
+        // 聚合持续低于健康阈值多久，触发一次「全量重建连接」（自动化用户手动的「暂停再恢复」）。
+        // 实测重建后约 3s 即恢复满速，故取 10s；实际周期由冷却时间决定。
+        private const val AGGREGATE_LOW_DURATION_MS = 10000L
+        // 两次全量重建之间的最小间隔：实测「换一批新请求」有效，但不能变成重连风暴
+        private const val GLOBAL_REBUILD_COOLDOWN_MS = 15000L
+        // 单个任务全量重建的次数上限。实测该动作有效（95KB/s → 21MB/s），故放宽；
+        // 仍保留上限，以防服务端为「与请求无关的硬配额」时做无效重连。
+        private const val MAX_GLOBAL_REBUILDS_PER_TASK = 12
+        // 聚合健康判据：聚合速率仍在此之上即认为「瓶颈不在连接数」，此时不驱逐「在动但慢」的连接。
+        // 多连接共享同一瓶颈（服务端限速 / 本机存储写入受限）时，每个连接分到的份额本来就低，
+        // 此时驱逐重连毫无收益，只会把连接反复打回慢启动。
+        private const val AGGREGATE_HEALTHY_FLOOR_BPS = 256 * 1024L
+        private const val AGGREGATE_HEALTHY_PERCENT = 30L
+        // 相对判据：低于「本任务观测峰值速率」的 1/4 即视为不健康（触发全量重建 / 允许逐块驱逐）。
+        // 实测峰值 21MB/s、低位 95KB/s，两者相差两个数量级，1/4 这道线能干净地分开二者。
+        private const val AGGREGATE_HEALTHY_RATIO = 4L
+        // P0-2：单次 write 越大，写回节流下的阻塞窗口越长（阻塞期间读线程停止读 socket，
+        // 接收窗口归零并触发发送端 idle-restart，把本地卡顿放大成数十秒的网络低速）。
+        // 分块路径 128KB、单连接路径 256KB；实测 1MB 缓冲在长视频上反而更慢。
+        private const val CHUNK_PATH_BUFFER_SIZE = 128 * 1024
+        private const val SINGLE_PATH_BUFFER_SIZE = 256 * 1024
+        // P0-3：真正的分块粒度。块数 = ceil(总量 / CHUNK_SIZE)，与并行连接数解耦。
+        // 必须是 Long：ceilDiv(value: Long, divisor: Long) 无隐式类型提升。
+        private const val CHUNK_SIZE = 16 * 1024 * 1024L
         private const val MIN_CHUNK_TOTAL_BYTES = 12_000_000L
-        private const val CHUNK_BUFFER_SIZE = 256 * 1024
+        private const val MAX_PARALLEL_CONNECTIONS = 8      // 单任务并行连接数上限
+        private const val MAX_TOTAL_CONNECTIONS = 8         // 全局软预算（多任务时按任务数摊分）
+        // O2：每个任务至少保留的并行连接数（避免并发任务多时全部退化为单连接）
+        private const val MIN_PARALLEL_PER_TASK = 2
+        // P1-6：全局连接硬上限（信号量许可数）。OkHttp 的 Dispatcher 对同步 call.execute()
+        // 不做任何限流，必须自建预算；取略高于软预算以容纳在途重连与探测。
+        private const val MAX_CONCURRENT_CONNECTIONS = 12
         private const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
     }
 }
