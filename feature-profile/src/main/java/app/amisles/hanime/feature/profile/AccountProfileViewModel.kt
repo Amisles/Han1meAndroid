@@ -4,24 +4,20 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * 账户资料页的视图状态。
- * - Idle：初始/未操作
- * - Loading：提交更新中
- * - Success：更新成功
- * - Error：更新失败（附错误信息）
- */
+/** 账户资料页的视图状态：Idle 初始 / Loading 提交中 / Success 成功 / Error 失败（附信息）。 */
 sealed interface AccountUpdateState {
     data object Idle : AccountUpdateState
     data object Loading : AccountUpdateState
@@ -62,22 +58,30 @@ class AccountProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            when (val result = repository.getAccountProfile()) {
-                is AppResult.Success -> {
-                    val profile = result.data
-                    _name.value = profile.name
-                    _email.value = profile.email
-                    csrfToken = profile.csrfToken
-                    _isLoading.value = false
+            try {
+                when (val result = repository.getAccountProfile()) {
+                    is AppResult.Success -> {
+                        val profile = result.data
+                        _name.value = profile.name
+                        _email.value = profile.email
+                        csrfToken = profile.csrfToken
+                    }
+                    is AppResult.Error -> {
+                        // 加载失败必须清空令牌：否则重试会带着空/过期令牌提交，服务端返回 419/403
+                        csrfToken = ""
+                        _error.value = result.message
+                    }
+                    else -> {}
                 }
-                is AppResult.Error -> {
-                    // 加载失败必须清空令牌：否则重试提交会带着空/过期令牌发出去，
-                    // 服务端只会返回 419/403，用户看到的失败原因与真实原因无关（审查 P3）
-                    csrfToken = ""
-                    _error.value = result.message
-                    _isLoading.value = false
-                }
-                else -> _isLoading.value = false
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 解析等运行期异常若逃逸出 viewModelScope 会直接崩溃，且会跳过加载态复位
+                AppLogger.e("AccountProfileViewModel", "加载账户资料失败: ${e.message}", e)
+                csrfToken = ""
+                _error.value = e.message ?: context.getString(R.string.common_load_failed)
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -102,14 +106,24 @@ class AccountProfileViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _updateState.value = AccountUpdateState.Loading
-            when (val result = repository.updateAccountProfile(_name.value, _email.value, csrfToken)) {
-                is AppResult.Success -> {
-                    _updateState.value = AccountUpdateState.Success
+            try {
+                when (val result = repository.updateAccountProfile(_name.value, _email.value, csrfToken)) {
+                    is AppResult.Success -> {
+                        _updateState.value = AccountUpdateState.Success
+                    }
+                    is AppResult.Error -> {
+                        _updateState.value = AccountUpdateState.Error(result.message)
+                    }
+                    else -> _updateState.value = AccountUpdateState.Idle
                 }
-                is AppResult.Error -> {
-                    _updateState.value = AccountUpdateState.Error(result.message)
-                }
-                else -> _updateState.value = AccountUpdateState.Idle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 否则 _updateState 会永久停留在 Loading，提交按钮一直转圈
+                AppLogger.e("AccountProfileViewModel", "更新账户资料失败: ${e.message}", e)
+                _updateState.value = AccountUpdateState.Error(
+                    e.message ?: context.getString(R.string.common_load_failed)
+                )
             }
         }
     }

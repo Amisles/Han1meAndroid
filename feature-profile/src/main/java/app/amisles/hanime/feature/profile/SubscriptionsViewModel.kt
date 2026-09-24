@@ -7,6 +7,7 @@ import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscribedArtist
 import app.amisles.hanime.core.ui.R
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +52,8 @@ class SubscriptionsViewModel @Inject constructor(
                 val result = networkService.fetchSubscriptionsPage(query)
                 _artists.value = result.artists
                 _videos.value = result.videos
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _error.value = e.message ?: context.getString(R.string.common_load_failed)
             } finally {

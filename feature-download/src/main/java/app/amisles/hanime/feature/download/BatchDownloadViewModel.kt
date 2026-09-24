@@ -55,29 +55,31 @@ class BatchDownloadViewModel @Inject constructor(
     private val _state = MutableStateFlow(BatchDownloadState())
     val state: StateFlow<BatchDownloadState> = _state.asStateFlow()
 
-    // 搜索世代：每次 searchAuthor 递增。进行中的 loadMore 用它识别自己是否已被新一轮搜索取代，
-    // 从而丢弃旧作者的下一页 / 失败信息（审查 W11，与详情页的响应隔离同一类问题）
+    // 搜索世代：每次 searchAuthor 递增，进行中的 loadMore 据此识别自己是否已被新一轮搜索取代
     private var searchGeneration = 0
 
     init {
         // 观察下载任务变化，自动更新视频列表中的下载状态
         viewModelScope.launch {
-            downloadManager.tasks.collect { tasks ->
-                syncDownloadStatuses(tasks)
+            try {
+                downloadManager.tasks.collect { tasks ->
+                    syncDownloadStatuses(tasks)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 状态同步异常不应让批量下载页崩溃
+                AppLogger.e("BatchDownloadViewModel", "同步下载状态失败: ${e.message}", e)
             }
         }
     }
 
     /**
-     * 根据下载任务状态同步更新视频列表。
-     * 当下载完成或失败时，自动更新对应视频项的状态并清理 downloadingVideoIds。
-     *
-     * tasks 的发射频率跟随下载进度（可达每秒数次），因此这里先用 url 建一次索引，
-     * 取代此前「每个视频的每个画质都去 tasks 里 find 一遍」的
-     * O(视频数 × 画质数 × 任务数) 嵌套遍历（审查 W5）。
+     * 根据下载任务状态同步更新视频列表：完成 / 失败时更新对应视频项并清理 downloadingVideoIds。
+     * tasks 发射频率跟随下载进度（可达每秒数次），故先用 url 建索引避免嵌套遍历。
      */
     private fun syncDownloadStatuses(tasks: List<DownloadTask>) {
-        // 保留「同一 url 取首个任务」的原有语义
+        // 同一 url 取首个任务
         val taskByUrl = HashMap<String, DownloadTask>(tasks.size)
         tasks.forEach { task -> taskByUrl.putIfAbsent(task.url, task) }
 
@@ -86,7 +88,7 @@ class BatchDownloadViewModel @Inject constructor(
 
             var changed = false
             val updatedVideos = currentState.videos.map { video ->
-                // 通过下载URL精确匹配任务
+                // 通过下载 URL 精确匹配任务
                 val task = video.qualities.firstNotNullOfOrNull { quality -> taskByUrl[quality.downloadUrl] }
                 if (task == null) {
                     video
@@ -207,7 +209,7 @@ class BatchDownloadViewModel @Inject constructor(
                 // 协程取消必须原样抛出，否则会被当作普通失败并把页面卡在错误态
                 throw e
             } catch (e: Exception) {
-                // 此前只捕 IOException，站点改版 / 解析等运行期异常会逃逸出 viewModelScope 直接崩溃
+                // 捕获宽泛异常：站点改版 / 解析等运行期异常若逃逸出 viewModelScope 会直接崩溃
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
                 _state.update { it.copy(
                     isSearching = false,
@@ -223,8 +225,7 @@ class BatchDownloadViewModel @Inject constructor(
             return
         }
 
-        // 绑定发起时的搜索世代与作者：加载过程中用户可能重新搜索另一位作者，
-        // 此时旧作者的下一页 / 失败信息必须整批丢弃（审查 W11）
+        // 绑定发起时的搜索世代与作者：加载中若用户重新搜索，旧作者的下一页 / 失败信息须整批丢弃
         val generation = searchGeneration
         val requestAuthorId = currentState.authorId
 
@@ -275,8 +276,7 @@ class BatchDownloadViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    // G12：此前 result == null 时只走空分支，isLoadMore 永远不复位，
-                    // 加载按钮停在 loading 态，且 loadMore() 开头的 isLoadMore 守卫会让分页彻底失效
+                    // 空结果也必须复位 isLoadMore，否则加载按钮停在 loading 态、分页彻底失效
                     AppLogger.e("BatchDownloadViewModel", "加载更多失败: 第 $nextPage 页返回空结果")
                     _state.update { current ->
                         if (searchGeneration != generation) {
@@ -327,12 +327,12 @@ class BatchDownloadViewModel @Inject constructor(
 
     fun toggleAllSelection() {
         _state.update { currentState ->
-            // 仅对可选择的视频（非已下载、非下载中）进行全选/取消全选
+            // 仅对可选择的视频（非已下载、非下载中）全选 / 取消全选
             val selectableVideos = currentState.videos.filter { !it.isDownloaded && !it.isDownloading }
             val allSelectableSelected = selectableVideos.all { it.isSelected }
             val updatedVideos = currentState.videos.map { video ->
                 if (video.isDownloaded || video.isDownloading) {
-                    video // 保持已下载/下载中视频的选中状态不变
+                    video // 保持已下载 / 下载中视频的选中状态不变
                 } else {
                     video.copy(isSelected = !allSelectableSelected)
                 }
@@ -405,12 +405,12 @@ class BatchDownloadViewModel @Inject constructor(
                                 currentState.copy(videos = updatedVideos)
                             }
 
-                            // 仅记录条数，不打印直链：downloadUrl 可绕过登录/防盗链，属敏感凭据
+                            // 仅记录条数，不打印直链：downloadUrl 属敏感凭据
                             AppLogger.d("BatchDownloadViewModel", "已获取画质 ${video.videoId}: ${qualities.size} 项")
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
-                            // 此前只捕 IOException，其余异常会经 awaitAll() 抛回并取消整轮加载
+                            // 捕获宽泛异常：否则会经 awaitAll() 抛回并取消整轮加载
                             AppLogger.e("BatchDownloadViewModel", "获取画质失败: ${video.videoId}", e)
                             // 标记加载失败
                             _state.update { currentState ->
@@ -451,7 +451,7 @@ class BatchDownloadViewModel @Inject constructor(
             return
         }
 
-        // 被跳过视频UI反馈
+        // 被跳过视频的 UI 反馈
         val skippedCount = selectedVideos.size - downloadableVideos.size
         val message = if (skippedCount > 0) {
             context.getString(R.string.batch_skipped_no_quality, skippedCount)
@@ -466,8 +466,7 @@ class BatchDownloadViewModel @Inject constructor(
             )
         }
 
-        // O5：startDownload 内部会做目录解析、canonicalPath 校验等磁盘 I/O；批量选中几十个视频时
-        // 在主线程连续执行会卡顿。改到 IO 线程（下载任务本身仍是异步的，界面状态已在上方同步更新）。
+        // startDownload 内部含目录解析、canonicalPath 校验等磁盘 I/O，改到 IO 线程避免批量时卡顿
         viewModelScope.launch(Dispatchers.IO) {
             selectedVideos.forEach { video ->
                 try {
@@ -477,7 +476,7 @@ class BatchDownloadViewModel @Inject constructor(
                         null
                     }
 
-                    // 画质为空时跳过下载（videoUrl是网页URL不是视频直链）
+                    // 画质为空时跳过下载（videoUrl 是网页 URL 而非视频直链）
                     if (quality == null) {
                         AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
                     } else {
@@ -490,7 +489,12 @@ class BatchDownloadViewModel @Inject constructor(
                         )
                     }
 
-                } catch (e: IndexOutOfBoundsException) {
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 捕获宽泛异常：startDownload 内含目录解析 / canonicalPath / File 操作，
+                    // 可能抛 SecurityException、IOException、IllegalArgumentException 等；
+                    // 未捕获时会逃逸出 viewModelScope 直接崩溃，且单个视频失败会中断整批
                     AppLogger.e("BatchDownloadViewModel", "添加下载失败: ${video.title}", e)
                 }
             }

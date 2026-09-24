@@ -181,20 +181,24 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchHomePageWithBaseUrl()
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(homePageParser.parse(result.html, result.baseUrl))
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getHomeData: ${e.message}", e)
             AppResult.error(e.message ?: "加载首页失败", e)
         }
     }
 
-    /**
-     * 流式加载首页
-     */
+    /** 流式加载首页 */
     fun getHomeDataStream(): Flow<HomeDataEvent> = flow {
         try {
             val result = networkService.fetchHomePageWithBaseUrl()
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             emitAll(homePageParser.parseStreaming(result.html, result.baseUrl))
+        } catch (e: CancellationException) {
+            // 收集方取消时必须原样抛出：Exception 是 CancellationException 的父类，
+            // 若在此吞掉，取消无法上抛，页面销毁后仍会向 UI 派发 Error 事件
+            throw e
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getHomeDataStream: ${e.message}", e)
             emit(HomeDataEvent.Error(e.message ?: "加载首页失败"))
@@ -206,7 +210,9 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parse(result.html, result.baseUrl))
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in searchVideos: ${e.message}", e)
             AppResult.error(e.message ?: "搜索失败", e)
         }
@@ -217,7 +223,9 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page, tags, broad, date, duration)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parseWithPagination(result.html, result.baseUrl))
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in searchVideosWithPagination: ${e.message}", e)
             AppResult.error(e.message ?: "搜索失败", e)
         }
@@ -230,14 +238,16 @@ class HanimeRepository @Inject constructor(
             val detail = watchPageParser.parse(result.html, result.baseUrl)
                 ?: return AppResult.error("无法解析视频详情页")
             AppResult.success(detail)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getVideoDetail: ${e.message}", e)
             AppResult.error(e.message ?: "加载视频详情失败", e)
         }
     }
 
     /**
-     * 流式加载视频详情：在 IO 调度器上取回整页 HTML 后，将其交给解析器的流式解析，
+     * 流式加载视频详情：在 IO 调度器上取回整页 HTML 后交给解析器的流式解析，
      * 按「主信息 → 播放列表 → 相关视频」顺序 emit [VideoDetailEvent]，供 ViewModel 增量刷新 UI。
      * 网络或解析失败统一转换为 [VideoDetailEvent.Error] 事件。
      */
@@ -246,6 +256,8 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
             AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             emitAll(watchPageParser.parseStreaming(result.html, result.baseUrl))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getVideoDetailStream: ${e.message}", e)
             emit(VideoDetailEvent.Error(e.message ?: "加载视频详情失败"))
@@ -257,7 +269,9 @@ class HanimeRepository @Inject constructor(
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
             AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(downloadPageParser.parse(result.html, result.baseUrl))
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getDownloadQualities: ${e.message}", e)
             AppResult.error(e.message ?: "获取下载画质失败", e)
         }
@@ -268,7 +282,9 @@ class HanimeRepository @Inject constructor(
             val json = networkService.fetchComments(videoId)
             AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
             AppResult.success(commentParser.parse(json))
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getComments: ${e.message}", e)
             AppResult.error(e.message ?: "加载评论失败", e)
         }
@@ -279,18 +295,19 @@ class HanimeRepository @Inject constructor(
             val json = networkService.fetchReplies(commentId)
             AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
             AppResult.success(commentParser.parseReplies(json))
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getReplies: ${e.message}", e)
             AppResult.error(e.message ?: "加载回复失败", e)
         }
     }
 
     /**
-     * 发表视频评论。
+     * 发送视频评论，@return Pair(新评论对象, 新评论总数)
      *
      * @param commentCount 当前评论数（取自 VideoDetail.commentCount）
-     * @param csrfToken CSRF Token（取自 VideoDetail.csrfToken）
-     * @return Pair(新评论对象, 新评论总数)
+     * @param csrfToken 取自 VideoDetail.csrfToken
      */
     suspend fun postComment(
         videoId: String,
@@ -316,20 +333,21 @@ class HanimeRepository @Inject constructor(
             val parsed = commentParser.parsePostedComment(json)
                 ?: return AppResult.error("评论发表成功但解析失败")
             AppResult.success(parsed)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in postComment: ${e.message}", e)
             AppResult.error(e.message ?: "发表评论失败", e)
         }
     }
 
     /**
-     * 切换评论点赞状态（点赞 / 取消点赞）。
-     * 官网接口：POST /commentLike，凭 like-comment-status 区分点赞与取消。
+     * 切换评论点赞状态（POST /commentLike，凭 like-comment-status 区分点赞与取消）。
      *
      * @param commentId 评论 ID（foreign_id）
-     * @param currentLikeStatus 用户当前点赞状态：0=未点赞，1=已点赞（作为 like-comment-status 上传）
-     * @param likeCount 评论当前点赞数（作为 comment-likes-count / comment-likes-sum 上传）
-     * @param csrfToken CSRF Token（从 VideoDetail.csrfToken 获取）
+     * @param currentLikeStatus 0=未点赞，1=已点赞（作为 like-comment-status 上传）
+     * @param likeCount 当前点赞数（作为 comment-likes-count / comment-likes-sum 上传）
+     * @param csrfToken 取自 VideoDetail.csrfToken
      */
     suspend fun toggleCommentLike(
         commentId: String,
@@ -352,19 +370,20 @@ class HanimeRepository @Inject constructor(
                 csrfToken = csrfToken
             )
             AppResult.success(Unit)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in toggleCommentLike: ${e.message}", e)
             AppResult.error(e.message ?: "评论点赞失败", e)
         }
     }
 
     /**
-     * 发表评论回复。
-     * 官网接口：POST /replyComment，凭 reply-comment-id 定位父评论。
+     * 发表评论回复（POST /replyComment，凭 reply-comment-id 定位父评论）。
      *
      * @param commentId 被回复的评论 ID（reply-comment-id）
      * @param replyText 回复内容（回复其他回复时已带 "@用户名 " 前缀）
-     * @param csrfToken CSRF Token（取自 VideoDetail.csrfToken）
+     * @param csrfToken 取自 VideoDetail.csrfToken
      */
     suspend fun replyComment(
         commentId: String,
@@ -387,19 +406,20 @@ class HanimeRepository @Inject constructor(
             val parsed = commentParser.parsePostedReply(json)
                 ?: return AppResult.error("回复发表成功但解析失败")
             AppResult.success(parsed)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in replyComment: ${e.message}", e)
             AppResult.error(e.message ?: "回复评论失败", e)
         }
     }
 
     /**
-     * 订阅 / 取消订阅作者。
-     * 官网接口：POST /subscribe，凭 subscribe-status 区分订阅与取消（""=订阅，"1"=取消）。
+     * 订阅 / 取消订阅作者（POST /subscribe，凭 subscribe-status 区分：""=订阅，"1"=取消）。
      *
      * @param artistId 被订阅作者的数字 ID（取自 VideoDetail.subscribeArtistId）
      * @param willSubscribe true=订阅，false=取消订阅
-     * @param csrfToken CSRF Token（取自 VideoDetail.csrfToken）
+     * @param csrfToken 取自 VideoDetail.csrfToken
      * @return 订阅结果（新状态 + 回传 CSRF Token）
      */
     suspend fun toggleSubscribe(
@@ -432,7 +452,9 @@ class HanimeRepository @Inject constructor(
             val parsed = subscribeParser.parse(json)
                 ?: return AppResult.error("订阅操作失败")
             AppResult.success(parsed)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             Log.i("SubscribeDebug", "!!! toggleSubscribe IOException: ${e.message}")
             AppLogger.logError("HanimeRepository", "Error in toggleSubscribe: ${e.message}", e)
             AppResult.error(e.message ?: "订阅操作失败", e)
@@ -440,8 +462,8 @@ class HanimeRepository @Inject constructor(
     }
 
     /**
-     * 拉取账户资料（用户名称 + 电邮 + CSRF Token）。
-     * 官网接口：GET /user/{id}/edit，由 [AccountProfileParser] 解析表单当前值。
+     * 拉取账户资料（用户名称 + 电邮 + CSRF Token），GET /user/{id}/edit，
+     * 由 [AccountProfileParser] 解析表单当前值。
      */
     suspend fun getAccountProfile(): AppResult<AccountProfile> {
         return try {
@@ -453,15 +475,16 @@ class HanimeRepository @Inject constructor(
             val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
                 ?: return AppResult.error("无法解析账户资料页")
             AppResult.success(profile)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getAccountProfile: ${e.message}", e)
             AppResult.error(e.message ?: "加载账户资料失败", e)
         }
     }
 
     /**
-     * 更新账户个人档案（用户名称 + 电邮）。
-     * 官网接口：POST /user/{id}，凭 type=profile 区分「更改密码」分支。
+     * 更新账户个人档案（用户名称 + 电邮），POST /user/{id}，凭 type=profile 区分「更改密码」分支。
      *
      * @param csrfToken 账户资料页解析出的 CSRF Token
      */
@@ -488,7 +511,9 @@ class HanimeRepository @Inject constructor(
             } else {
                 AppResult.error("更新失败（HTTP $code）")
             }
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in updateAccountProfile: ${e.message}", e)
             AppResult.error(e.message ?: "更新账户资料失败", e)
         }

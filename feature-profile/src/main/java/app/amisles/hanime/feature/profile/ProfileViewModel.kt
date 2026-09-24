@@ -6,6 +6,7 @@ import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,8 +48,15 @@ class ProfileViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                repository.logout()
+            try {
+                withContext(Dispatchers.IO) {
+                    repository.logout()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Preferences 未初始化等异常不应让登出流程崩溃
+                AppLogger.e("ProfileViewModel", "登出失败: ${e.message}", e)
             }
         }
     }
@@ -67,6 +75,8 @@ class ProfileViewModel @Inject constructor(
                     downloadManager.getCompletedDownloadCount()
                 }
                 AppLogger.d("ProfileViewModel", "Counts loaded: watch=${_watchCount.value}, fav=${_favoriteCount.value}, dl=${_downloadCount.value}")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("ProfileViewModel", "Error loading counts: ${e.message}", e)
             }
