@@ -1,16 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 数据提取规则；如需自定义备份与设备迁移范围，取消下方注释并参见官方文档。 -->
+<!--
+  数据提取规则（Android 12+ 的 cloud-backup 与 device-transfer）。
+
+  排除项说明：
+  - hanime_app_prefs.xml：由 EncryptedSharedPreferences 加密，解密依赖本机 Android Keystore
+    主密钥，该密钥不会随云备份或设备迁移转移。两种通道得到的都是无法解密的密文，故两端都排除，
+    避免「恢复后偏好损坏并触发清空重建」。
+  - hanime_app.log / .1 / .2：日志中含带时效签名的视频直链与用户搜索词，不应外泄。
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <!--
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="hanime_app_prefs.xml" />
+        <exclude domain="file" path="hanime_app.log" />
+        <exclude domain="file" path="hanime_app.log.1" />
+        <exclude domain="file" path="hanime_app.log.2" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="hanime_app_prefs.xml" />
+        <exclude domain="file" path="hanime_app.log" />
+        <exclude domain="file" path="hanime_app.log.1" />
+        <exclude domain="file" path="hanime_app.log.2" />
     </device-transfer>
-    -->
 </data-extraction-rules>

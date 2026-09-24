@@ -10,6 +10,8 @@ import app.amisles.hanime.domain.model.DownloadEntity
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.extension.redactUrlForLog
+import app.amisles.hanime.data.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineStart
@@ -44,7 +46,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
@@ -157,7 +159,10 @@ class DownloadManager @Inject constructor(
     var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
 
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
-    private val taskCalls = ConcurrentHashMap<Int, MutableList<Call>>()
+    // 在途 Call 跟踪。用 ConcurrentLinkedQueue 而非 CopyOnWriteArrayList：后者每次 add 都复制
+    // 整个底层数组，而分块路径每块、每次重连都会 trackCall，累积过程为 O(n²)；且已完成的 Call
+    // 不主动移除，单个大文件任务可堆积上千个已关闭对象（块数上限 MAX_PARTMAP_CHUNKS = 4096）。
+    private val taskCalls = ConcurrentHashMap<Int, ConcurrentLinkedQueue<Call>>()
     private val taskCancelFlags = ConcurrentHashMap<Int, AtomicBoolean>()
     private val taskIdCounter = AtomicInteger(0)
     private val scopeJob = SupervisorJob()
@@ -351,7 +356,8 @@ class DownloadManager @Inject constructor(
         videoId: String = ""
     ): Int {
         if (url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) {
-            AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"$url\" (title=$title, videoId=$videoId)")
+            // 脱敏：直链带时效签名，落盘后等同于泄露访问凭据
+            AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"${url.redactUrlForLog()}\" (title=$title, videoId=$videoId)")
             return RESULT_INVALID_URL
         }
         val dir = resolveDownloadDir()
@@ -1384,7 +1390,7 @@ class DownloadManager @Inject constructor(
 
         // 已在作用域取消时清空队列并删除位图表，此处用单连接把文件从头写满（FileOutputStream 会截断旧分块数据）。
         if (rangeUnsupported.get()) {
-            AppLogger.log("DownloadManager", "降级单连接下载: taskId=$taskId, url=$url")
+            AppLogger.log("DownloadManager", "降级单连接下载: taskId=$taskId, url=${url.redactUrlForLog()}")
             if (partmapFile.exists()) partmapFile.delete()
             downloadFileSingle(taskId, url, filePath, 0L)
             return
@@ -1528,7 +1534,8 @@ class DownloadManager @Inject constructor(
                 }
             }
         } finally {
-            callRef.set(null)   // 连接结束后清空引用（成功/失败/被驱逐）
+            callRef.set(null)          // 连接结束后清空引用（成功/失败/被驱逐）
+            untrackCall(taskId, call)  // 连接已结束，移出在途列表，避免无界增长
         }
     }
 
@@ -1614,10 +1621,21 @@ class DownloadManager @Inject constructor(
         }
     }
     private fun trackCall(taskId: Int, call: Call) {
-        taskCalls.computeIfAbsent(taskId) { CopyOnWriteArrayList<Call>() }.add(call)
+        taskCalls.computeIfAbsent(taskId) { ConcurrentLinkedQueue() }.add(call)
         if (taskCancelFlags[taskId]?.get() == true) {
             runCatching { call.cancel() }
         }
+    }
+
+    /**
+     * 连接结束后解除跟踪，使 [taskCalls] 只保留「在途连接」。
+     *
+     * 分块路径每块、每次重连都会 [trackCall]，不在此移除会让列表随块数与重试次数无界增长
+     * （块数上限 4096），既占内存又使 cancelTaskCalls 的遍历开销随历史累积量放大。
+     * 探测与单连接路径每个任务最多各产生 1~2 个 Call，随任务结束统一清理，故不单独解除。
+     */
+    private fun untrackCall(taskId: Int, call: Call) {
+        taskCalls[taskId]?.remove(call)
     }
 
     private fun cancelTaskCalls(taskId: Int) {
@@ -2043,8 +2061,9 @@ class DownloadManager @Inject constructor(
         private const val EVICTION_BACKOFF_STAGGER_MS = 150L// 按块序号错峰，避免数块同时重连
         private const val REPORT_INTERVAL_MS = 500L         // 进度上报周期
         private const val ZERO_PROGRESS_TRIGGER_MS = 30000L // 整任务零进度看门狗触发阈值
-        // 诊断开关：定位「速度上不去」期间保持 true（日志量约 0.5 行/秒），收敛后可置 false
-        private const val DIAG_ENABLED = true
+        // 诊断开关：仅 debug 包启用。诊断日志约 0.5 行/秒且会写入应用日志文件，
+        // release 常开会持续占用主线程 IO、增加耗电，并让日志更快触及轮转上限。
+        private val DIAG_ENABLED = BuildConfig.DEBUG
         // 单次 write 超过此耗时即计一次「慢写」（用于判别本地写入阻塞）
         private const val SLOW_WRITE_WARN_MS = 300L
         // 诊断里逐块速率最多列出多少条（单任务并行度上限为 8，正常不会截断）

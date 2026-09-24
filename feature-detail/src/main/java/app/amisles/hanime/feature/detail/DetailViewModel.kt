@@ -13,6 +13,7 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.common.result.AppResult
 import app.amisles.hanime.core.ui.R
@@ -138,7 +139,7 @@ class DetailViewModel @Inject constructor(
     private var detailLoadJob: Job? = null
 
     fun loadVideoDetail(videoUrl: String) {
-        AppLogger.d("DetailViewModel", "loadVideoDetail called, url: $videoUrl")
+        AppLogger.d("DetailViewModel", "loadVideoDetail called, url: ${videoUrl.redactUrlForLog()}")
         _isLoading.value = true
         _error.value = null
 

@@ -62,6 +62,19 @@ object Preferences {
 
     private lateinit var sp: android.content.SharedPreferences
 
+    /**
+     * 加密存储是否可用。
+     *
+     * 不可用时回退明文存储，但**不再持久化任何会话凭据**（见 [saveLogin] / [saveCloudFlareCookie]）：
+     * 明文落盘的登录 Cookie 可被同设备上任意应用或 root 读取，其代价高于「每次启动需重新登录」。
+     */
+    @Volatile
+    private var secureStorageAvailable = true
+
+    /** init 幂等标记：Application.attachBaseContext 与 onCreate 都会调用，只允许真正初始化一次。 */
+    @Volatile
+    private var initialized = false
+
     private val _loginStateFlow = MutableStateFlow(false)
     val loginStateFlow: StateFlow<Boolean> = _loginStateFlow.asStateFlow()
 
@@ -107,9 +120,30 @@ object Preferences {
     private val _searchLayoutModeFlow = MutableStateFlow<SearchLayoutMode?>(null)
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
 
+    /**
+     * 初始化偏好存储。幂等，可安全重复调用。
+     *
+     * 调用点：`HanimeApplication.attachBaseContext`（最早，Application 级语言包装需要读到持久化语言）
+     * 与 `HanimeApplication.onCreate`（兜底）。刻意不做异步化 —— Activity 的 attachBaseContext 需要
+     * 同步拿到语言/主题，异步初始化会让首帧用错语言与主题。
+     */
+    @Synchronized
     fun init(context: Context) {
-        // 在 attachBaseContext 阶段 applicationContext 为 null，直接使用传入的 context
-        sp = provideSecurePreferences(context)
+        if (initialized) return
+        // 先保证 sp 一定被赋值：任何异常都不能让后续访问落到 lateinit 未初始化崩溃上
+        sp = runCatching { provideSecurePreferences(context) }.getOrElse { e ->
+            AppLogger.logError("Preferences", "偏好存储初始化失败: ${e.message}", e)
+            // 用传入的 context 兜底：attachBaseContext 阶段 applicationContext 尚为 null
+            plainFallback(context)
+        }
+        runCatching { readPersistedValues() }.onFailure { e ->
+            AppLogger.logError("Preferences", "读取已保存偏好失败，沿用默认值: ${e.message}", e)
+        }
+        initialized = true
+    }
+
+    /** 把持久化值读入各 StateFlow。与 [init] 分离以便统一兜底。 */
+    private fun readPersistedValues() {
         _loginStateFlow.value = sp.getBoolean(SP_ALREADY_LOGIN, false)
         _loginCookieFlow.value = CookieString(sp.getString(SP_LOGIN_COOKIE, "").orEmpty())
         _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())
@@ -137,15 +171,17 @@ object Preferences {
     /**
      * 提供加密的 SharedPreferences（AndroidX Security）。
      * - 首次从明文旧文件迁移：读取旧值 → 删除旧文件 → 写入加密文件，避免明文会话残留。
-     * - Android Keystore 不可用（极端设备）时回退明文存储并告警，保证可用性优先。
+     * - Android Keystore 不可用（极端设备）时回退明文存储，但不再落盘会话凭据。
+     * - 换机恢复后旧密文无法解密时清空重建，而不是把加密文件当明文读写。
      */
     private fun provideSecurePreferences(context: Context): SharedPreferences {
-        val appCtx = context.applicationContext
+        // Application.attachBaseContext 阶段 applicationContext 仍为 null，直接使用传入的 context
+        val appCtx = context.applicationContext ?: context
         val masterKey = runCatching {
             MasterKey.Builder(appCtx)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
-        }.getOrNull() ?: return fallbackPlain(appCtx)
+        }.getOrNull() ?: return plainFallback(context)
 
         val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
         // 仅当旧文件确为明文格式才迁移，否则会误读加密文件为 null 并覆盖已保存数据
@@ -161,7 +197,7 @@ object Preferences {
             val appLang = legacy.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN).orEmpty()
             val themeMode = legacy.getString(SP_THEME_MODE, ThemeMode.SYSTEM.name).orEmpty()
             appCtx.deleteSharedPreferences(NAME)
-            val enc = createEncrypted(appCtx, masterKey) ?: return fallbackPlain(appCtx)
+            val enc = createEncrypted(appCtx, masterKey) ?: return plainFallback(context)
             enc.edit {
                 putBoolean(SP_ALREADY_LOGIN, alreadyLogin)
                 putString(SP_LOGIN_COOKIE, loginCookie)
@@ -175,7 +211,43 @@ object Preferences {
             AppLogger.log("Preferences", "已将明文偏好迁移至 EncryptedSharedPreferences")
             return enc
         }
-        return createEncrypted(appCtx, masterKey) ?: fallbackPlain(appCtx)
+
+        createEncrypted(appCtx, masterKey)?.let { return it }
+
+        // 创建失败：最常见原因是「换机恢复 / 应用数据回滚后本机 Keystore 主密钥已变」，旧密文
+        // 无法解密。此时若直接以明文模式打开同一文件，会得到一个「加密文件被当作明文读写」的
+        // 混合体：既读不到旧值，随后写入的明文又会永久污染该文件（下次仍创建失败）。故先清空重建。
+        AppLogger.logError(
+            "Preferences",
+            "加密存储创建失败（常见于换机恢复后 Keystore 主密钥不匹配），清空旧偏好后重建，需重新登录"
+        )
+        appCtx.deleteSharedPreferences(NAME)
+        return createEncrypted(appCtx, masterKey) ?: plainFallback(context)
+    }
+
+    private fun createEncrypted(context: Context, masterKey: MasterKey): SharedPreferences? = runCatching {
+        EncryptedSharedPreferences.create(
+            context,
+            NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrNull()
+
+    /**
+     * 回退明文存储（Android Keystore 不可用，或加密存储反复创建失败）。
+     *
+     * 置位 [secureStorageAvailable] = false，此后 [saveLogin] / [saveCloudFlareCookie] 不再把
+     * 会话凭据落盘，只在内存中保留，避免明文存储造成凭据泄露。
+     */
+    private fun plainFallback(context: Context): SharedPreferences {
+        secureStorageAvailable = false
+        AppLogger.logError(
+            "Preferences",
+            "加密存储不可用，回退明文存储；登录态将仅保留在内存中，不会落盘"
+        )
+        return context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
     }
 
     /**
@@ -189,24 +261,6 @@ object Preferences {
             || legacy.contains(SP_THEME_MODE)
             || legacy.contains(SP_ALREADY_LOGIN)
             || legacy.contains(SP_BASE_URL)
-    }
-
-    private fun createEncrypted(context: Context, masterKey: MasterKey): SharedPreferences? = runCatching {
-        EncryptedSharedPreferences.create(
-            context,
-            NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }.getOrNull()
-
-    private fun fallbackPlain(context: Context): SharedPreferences {
-        AppLogger.logError(
-            "Preferences",
-            "EncryptedSharedPreferences 不可用，回退明文存储（登录 Cookie 将以明文保存，存在泄露风险）"
-        )
-        return context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
     }
 
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
@@ -287,13 +341,26 @@ object Preferences {
         return "https://$host"
     }
 
+    /**
+     * 保存登录态。
+     *
+     * 加密存储不可用时**不落盘**：明文存储中的登录 Cookie 可被同设备上任意应用或 root 读取，
+     * 代价高于「本次会话有效、重启后需重新登录」。此时登录态只在内存中保留。
+     */
     fun saveLogin(cookieString: String, userId: String? = null) {
         val safeCookie = cookieString.take(8192)
         val id = userId ?: extractUserId(safeCookie)
-        sp.edit {
-            putBoolean(SP_ALREADY_LOGIN, true)
-            putString(SP_LOGIN_COOKIE, safeCookie)
-            putString(SP_SAVED_USER_ID, id)
+        if (secureStorageAvailable) {
+            sp.edit {
+                putBoolean(SP_ALREADY_LOGIN, true)
+                putString(SP_LOGIN_COOKIE, safeCookie)
+                putString(SP_SAVED_USER_ID, id)
+            }
+        } else {
+            AppLogger.logError(
+                "Preferences",
+                "加密存储不可用，登录凭据仅保留在内存中（不落盘），重启后需重新登录"
+            )
         }
         _loginStateFlow.value = true
         _loginCookieFlow.value = CookieString(safeCookie)
@@ -307,13 +374,22 @@ object Preferences {
     fun saveUserId(id: String) {
         val clean = id.trim()
         if (clean.isBlank()) return
+        // 纯数字用户标识不属于凭据，无论存储是否加密都落盘，避免界面在重启后丢失展示信息
         sp.edit { putString(SP_SAVED_USER_ID, clean) }
         _savedUserIdFlow.value = clean
     }
 
+    /** 保存 Cloudflare 校验 Cookie。加密存储不可用时同样不落盘（同 [saveLogin]）。 */
     fun saveCloudFlareCookie(cookieString: String) {
         val safe = cookieString.take(8192)
-        sp.edit { putString(SP_CF_COOKIE, safe) }
+        if (secureStorageAvailable) {
+            sp.edit { putString(SP_CF_COOKIE, safe) }
+        } else {
+            AppLogger.logError(
+                "Preferences",
+                "加密存储不可用，Cloudflare Cookie 仅保留在内存中（不落盘）"
+            )
+        }
         _cloudFlareCookieFlow.value = CookieString(safe)
     }
 

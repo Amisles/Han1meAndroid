@@ -19,6 +19,7 @@ import app.amisles.hanime.domain.model.PlaylistDetail
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.common.extension.maskEmail
 import app.amisles.hanime.core.common.extension.maskSecret
+import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -85,7 +86,8 @@ class NetworkService @Inject constructor(
         get() = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
 
     private fun buildRequest(url: String): Request {
-        AppLogger.log("NetworkService", "Building request for URL: $url")
+        // 脱敏：query 可能含用户搜索词或带签名的直链参数，不得落盘
+        AppLogger.log("NetworkService", "Building request for URL: ${url.redactUrlForLog()}")
         return Request.Builder()
             .url(url)
             .header("User-Agent", uaString)
@@ -229,9 +231,9 @@ class NetworkService @Inject constructor(
     }
 
     suspend fun fetchWatchPageWithBaseUrl(videoUrl: String): FetchResult {
-        AppLogger.log("NetworkService", "fetchWatchPageWithBaseUrl called, videoUrl: $videoUrl")
+        AppLogger.log("NetworkService", "fetchWatchPageWithBaseUrl called, videoUrl: ${videoUrl.redactUrlForLog()}")
         val url = if (videoUrl.startsWith("http")) videoUrl else "${getCurrentBaseUrl()}$videoUrl"
-        AppLogger.log("NetworkService", "Full URL: $url")
+        AppLogger.log("NetworkService", "Full URL: ${url.redactUrlForLog()}")
         val html = executeRequest(buildRequest(url))
         val baseUrl = "https://${HOST_REGEX.find(url)?.groupValues?.get(1) ?: Preferences.DEFAULT_BASE_URL.removePrefix("https://")}"
         return FetchResult(html, baseUrl)
@@ -247,7 +249,7 @@ class NetworkService @Inject constructor(
     }
 
     suspend fun fetchAuthorPage(authorPageUrl: String): AuthorPageData {
-        AppLogger.log("NetworkService", "fetchAuthorPage called, url: $authorPageUrl")
+        AppLogger.log("NetworkService", "fetchAuthorPage called, url: ${authorPageUrl.redactUrlForLog()}")
         return withContext(Dispatchers.IO) {
             val html = executeRequest(buildRequest(authorPageUrl))
             authorPageParser.parse(html, authorPageUrl)
@@ -259,7 +261,7 @@ class NetworkService @Inject constructor(
      * 流式拉取作者主页
      */
     fun fetchAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent> {
-        AppLogger.log("NetworkService", "fetchAuthorPageStream called, url: $authorPageUrl")
+        AppLogger.log("NetworkService", "fetchAuthorPageStream called, url: ${authorPageUrl.redactUrlForLog()}")
         return flow {
             val html = executeRequest(buildRequest(authorPageUrl))
             emitAll(authorPageParser.parseStreaming(html, authorPageUrl))
@@ -282,7 +284,7 @@ class NetworkService @Inject constructor(
                 val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
                 "$baseUrl/subscriptions?query=$encoded"
             }
-            Log.i("SubscriptionsDebug", ">>> GET $url")
+            Log.i("SubscriptionsDebug", ">>> GET ${url.redactUrlForLog()}")
             val html = executeRequest(buildRequest(url))
             // 仅记录长度：完整响应体包含用户订阅的作者与影片，不得落日志
             Log.i("SubscriptionsDebug", "<<< Response length: ${html.length} chars")
@@ -298,7 +300,7 @@ class NetworkService @Inject constructor(
         return withContext(Dispatchers.IO) {
             val baseUrl = getCurrentBaseUrl()
             val url = "$baseUrl/user/$userId/edit"
-            Log.i("AccountDebug", ">>> GET $url")
+            Log.i("AccountDebug", ">>> GET ${url.redactUrlForLog()}")
             val html = executeRequest(buildRequest(url))
             FetchResult(html, baseUrl)
         }
@@ -349,7 +351,7 @@ class NetworkService @Inject constructor(
     }
 
     suspend fun fetchVideoListPage(url: String): List<HanimeVideo> {
-        AppLogger.log("NetworkService", "fetchVideoListPage called, url: $url")
+        AppLogger.log("NetworkService", "fetchVideoListPage called, url: ${url.redactUrlForLog()}")
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(url))
@@ -364,7 +366,7 @@ class NetworkService @Inject constructor(
     }
 
     suspend fun fetchPlaylistListPage(url: String): List<PlaylistSummary> {
-        AppLogger.log("NetworkService", "fetchPlaylistListPage called, url: $url")
+        AppLogger.log("NetworkService", "fetchPlaylistListPage called, url: ${url.redactUrlForLog()}")
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(url))
@@ -378,7 +380,7 @@ class NetworkService @Inject constructor(
     }
 
     suspend fun fetchPlaylistDetailPage(url: String): PlaylistDetail? {
-        AppLogger.log("NetworkService", "fetchPlaylistDetailPage called, url: $url")
+        AppLogger.log("NetworkService", "fetchPlaylistDetailPage called, url: ${url.redactUrlForLog()}")
         return withContext(Dispatchers.IO) {
             try {
                 val html = executeRequest(buildRequest(url))
@@ -401,7 +403,7 @@ class NetworkService @Inject constructor(
                 } else {
                     "$baseUrl/user/$authorId/uploaded"
                 }
-                AppLogger.log("NetworkService", "Fetching user video list from: $url")
+                AppLogger.log("NetworkService", "Fetching user video list from: ${url.redactUrlForLog()}")
                 val html = executeRequest(buildRequest(url))
                 authorPageParser.parseUserVideoList(html, url)
             } catch (e: IOException) {
@@ -420,7 +422,7 @@ class NetworkService @Inject constructor(
         return withContext(Dispatchers.IO) {
             val baseUrl = getCurrentBaseUrl()
             val url = "$baseUrl/loadComment?id=$videoId&type=video&content=comment-tablink"
-            AppLogger.log("NetworkService", "Fetching comments from: $url")
+            AppLogger.log("NetworkService", "Fetching comments from: ${url.redactUrlForLog()}")
             executeRequest(buildRequest(url))
         }
     }
@@ -434,7 +436,7 @@ class NetworkService @Inject constructor(
         return withContext(Dispatchers.IO) {
             val baseUrl = getCurrentBaseUrl()
             val url = "$baseUrl/loadReplies?id=$commentId"
-            AppLogger.log("NetworkService", "Fetching replies from: $url")
+            AppLogger.log("NetworkService", "Fetching replies from: ${url.redactUrlForLog()}")
             executeRequest(buildRequest(url))
         }
     }

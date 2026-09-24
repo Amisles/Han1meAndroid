@@ -93,6 +93,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        (application as? HanimeApplication)?.applyLanguage(Preferences.appLanguage)
+
         setContent {
             val themeMode by Preferences.themeModeFlow.collectAsStateWithLifecycle()
             val darkTheme = when (themeMode) {

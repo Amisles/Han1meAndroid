@@ -58,6 +58,9 @@ class BatchDownloadViewModel @Inject constructor(
     // 搜索世代：每次 searchAuthor 递增，进行中的 loadMore 据此识别自己是否已被新一轮搜索取代
     private var searchGeneration = 0
 
+    @Volatile
+    private var batchInitInProgress = false
+
     init {
         // 观察下载任务变化，自动更新视频列表中的下载状态
         viewModelScope.launch {
@@ -75,45 +78,65 @@ class BatchDownloadViewModel @Inject constructor(
     }
 
     /**
-     * 根据下载任务状态同步更新视频列表：完成 / 失败时更新对应视频项并清理 downloadingVideoIds。
-     * tasks 发射频率跟随下载进度（可达每秒数次），故先用 url 建索引避免嵌套遍历。
+     * 按 videoId 聚合下载任务。
+     *
+     * 不能按 url 匹配：downloadUrl 是带时效签名的 CDN 直链，重新拉取画质页会得到不同 url，
+     * 与已存在任务的 url 必然不相等，导致漏配。
+     */
+    private fun indexTasksByVideoId(tasks: List<DownloadTask>): Map<String, List<DownloadTask>> =
+        tasks.filter { it.videoId.isNotBlank() }.groupBy { it.videoId }
+
+    /**
+     * 是否「下载中」。仅 DOWNLOADING / PENDING 计入；PAUSED 不计入，使已暂停的视频仍可在本页
+     * 重新选中加入队列以恢复下载。
+     */
+    private fun List<DownloadTask>.hasActiveDownload(): Boolean = any {
+        it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+    }
+
+    /**
+     * 单个视频的（已下载, 下载中）判定。加载初始态与后续同步共用，避免两处谓词不一致导致
+     * 首次同步后界面状态跳变。
+     */
+    private fun resolveVideoFlags(
+        videoId: String,
+        tasksByVideoId: Map<String, List<DownloadTask>>
+    ): Pair<Boolean, Boolean> {
+        val videoTasks = tasksByVideoId[videoId].orEmpty()
+        return videoTasks.any { it.status == DownloadStatus.COMPLETED } to videoTasks.hasActiveDownload()
+    }
+
+    /**
+     * 根据下载任务状态同步更新视频列表与 downloadingVideoIds。
+     *
+     * 判定键统一为 videoId，且与 [searchAuthor] / [loadMore] 的初始判定使用同一套逻辑，
+     * 避免首次同步后状态跳变。tasks 发射频率跟随下载进度（可达每秒数次），故先建索引避免嵌套遍历。
      */
     private fun syncDownloadStatuses(tasks: List<DownloadTask>) {
-        // 同一 url 取首个任务
-        val taskByUrl = HashMap<String, DownloadTask>(tasks.size)
-        tasks.forEach { task -> taskByUrl.putIfAbsent(task.url, task) }
+        if (batchInitInProgress) return
+
+        val tasksByVideoId = indexTasksByVideoId(tasks)
 
         _state.update { currentState ->
-            if (currentState.videos.isEmpty()) return@update currentState
+            if (currentState.videos.isEmpty() && currentState.downloadingVideoIds.isEmpty()) {
+                return@update currentState
+            }
 
             var changed = false
             val updatedVideos = currentState.videos.map { video ->
-                // 通过下载 URL 精确匹配任务
-                val task = video.qualities.firstNotNullOfOrNull { quality -> taskByUrl[quality.downloadUrl] }
-                if (task == null) {
+                val (isDownloaded, isDownloading) = resolveVideoFlags(video.videoId, tasksByVideoId)
+                if (video.isDownloaded == isDownloaded && video.isDownloading == isDownloading) {
+                    // 状态未变时复用原对象，避免下游无意义重组
                     video
                 } else {
-                    val isDownloaded = task.status == DownloadStatus.COMPLETED
-                    val isDownloading = task.status == DownloadStatus.DOWNLOADING ||
-                            task.status == DownloadStatus.PENDING
-                    if (video.isDownloaded == isDownloaded && video.isDownloading == isDownloading) {
-                        // 状态未变时复用原对象，避免下游无意义重组
-                        video
-                    } else {
-                        changed = true
-                        video.copy(isDownloaded = isDownloaded, isDownloading = isDownloading)
-                    }
+                    changed = true
+                    video.copy(isDownloaded = isDownloaded, isDownloading = isDownloading)
                 }
             }
 
-            // 从 downloadingVideoIds 中移除已完成或失败的任务
-            val videoById = updatedVideos.associateBy { it.videoId }
-            val newDownloadingIds = currentState.downloadingVideoIds.filterNot { id ->
-                val video = videoById[id]
-                val task = video?.qualities
-                    ?.firstNotNullOfOrNull { quality -> taskByUrl[quality.downloadUrl] }
-                task != null && (task.status == DownloadStatus.COMPLETED || task.status == DownloadStatus.FAILED)
-            }.toSet()
+            val newDownloadingIds = currentState.downloadingVideoIds
+                .filter { tasksByVideoId[it].orEmpty().hasActiveDownload() }
+                .toSet()
 
             if (!changed && newDownloadingIds == currentState.downloadingVideoIds) {
                 currentState
@@ -149,7 +172,10 @@ class BatchDownloadViewModel @Inject constructor(
                     error = null,
                     videos = emptyList(),
                     authorName = "",
-                    authorId = ""
+                    authorId = "",
+                    selectedCount = 0,
+                    downloadingVideoIds = emptySet(),
+                    isDownloading = false
                 )
             }
 
@@ -174,9 +200,9 @@ class BatchDownloadViewModel @Inject constructor(
                     return@launch
                 }
 
+                val tasksByVideoId = indexTasksByVideoId(downloadManager.tasks.value)
                 val batchVideos = result.videos.distinctBy { it.id }.map { video ->
-                    val downloaded = downloadManager.isVideoDownloaded(video.id)
-                    val downloading = downloadManager.isVideoDownloading(video.id)
+                    val (downloaded, downloading) = resolveVideoFlags(video.id, tasksByVideoId)
                     BatchVideoItem(
                         videoId = video.id,
                         title = video.title,
@@ -241,9 +267,9 @@ class BatchDownloadViewModel @Inject constructor(
                 }
 
                 if (result != null) {
+                    val tasksByVideoId = indexTasksByVideoId(downloadManager.tasks.value)
                     val newBatchVideos = result.videos.map { video ->
-                        val downloaded = downloadManager.isVideoDownloaded(video.id)
-                        val downloading = downloadManager.isVideoDownloading(video.id)
+                        val (downloaded, downloading) = resolveVideoFlags(video.id, tasksByVideoId)
                         BatchVideoItem(
                             videoId = video.id,
                             title = video.title,
@@ -458,6 +484,8 @@ class BatchDownloadViewModel @Inject constructor(
         } else {
             context.getString(R.string.batch_download_added, downloadableVideos.size)
         }
+        // 先屏蔽同步收敛，再置位「下载中」，避免两者之间被 syncDownloadStatuses 误判为已结束
+        batchInitInProgress = true
         _state.update {
             it.copy(
                 isDownloading = true,
@@ -468,35 +496,43 @@ class BatchDownloadViewModel @Inject constructor(
 
         // startDownload 内部含目录解析、canonicalPath 校验等磁盘 I/O，改到 IO 线程避免批量时卡顿
         viewModelScope.launch(Dispatchers.IO) {
-            selectedVideos.forEach { video ->
-                try {
-                    val quality = if (video.qualities.isNotEmpty() && video.selectedQualityIndex < video.qualities.size) {
-                        video.qualities[video.selectedQualityIndex]
-                    } else {
-                        null
-                    }
+            try {
+                selectedVideos.forEach { video ->
+                    try {
+                        val quality = if (video.qualities.isNotEmpty() && video.selectedQualityIndex < video.qualities.size) {
+                            video.qualities[video.selectedQualityIndex]
+                        } else {
+                            null
+                        }
 
-                    // 画质为空时跳过下载（videoUrl 是网页 URL 而非视频直链）
-                    if (quality == null) {
-                        AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
-                    } else {
-                        downloadManager.startDownload(
-                            title = video.title,
-                            quality = quality.quality,
-                            url = quality.downloadUrl,
-                            thumbnailUrl = video.thumbnailUrl,
-                            videoId = video.videoId
-                        )
-                    }
+                        // 画质为空时跳过下载（videoUrl 是网页 URL 而非视频直链）
+                        if (quality == null) {
+                            AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
+                        } else {
+                            val code = downloadManager.startDownload(
+                                title = video.title,
+                                quality = quality.quality,
+                                url = quality.downloadUrl,
+                                thumbnailUrl = video.thumbnailUrl,
+                                videoId = video.videoId
+                            )
+                            if (code < 0) {
+                                AppLogger.w(
+                                    "BatchDownloadViewModel",
+                                    "未创建下载任务(code=$code): ${video.title}"
+                                )
+                            }
+                        }
 
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // 捕获宽泛异常：startDownload 内含目录解析 / canonicalPath / File 操作，
-                    // 可能抛 SecurityException、IOException、IllegalArgumentException 等；
-                    // 未捕获时会逃逸出 viewModelScope 直接崩溃，且单个视频失败会中断整批
-                    AppLogger.e("BatchDownloadViewModel", "添加下载失败: ${video.title}", e)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        AppLogger.e("BatchDownloadViewModel", "添加下载失败: ${video.title}", e)
+                    }
                 }
+            } finally {
+                batchInitInProgress = false
+                syncDownloadStatuses(downloadManager.tasks.value)
             }
         }
     }

@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 自动备份规则；如需自定义备份范围，取消下方注释并参见官方文档。 -->
-<full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
+<!--
+  自动备份规则（Android 11 及以下的 fullBackupContent）。
+
+  排除项说明：
+  - hanime_app_prefs.xml：由 EncryptedSharedPreferences 加密，其解密依赖本机 Android Keystore
+    主密钥，而主密钥不会随备份迁移。换机恢复只会得到一份无法解密的密文，反而触发「清空重建」
+    并丢失登录态，因此直接排除。
+  - hanime_app.log / .1 / .2：日志中含带时效签名的视频直链与用户搜索词，不应随云备份外泄。
 -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="hanime_app_prefs.xml" />
+    <exclude domain="file" path="hanime_app.log" />
+    <exclude domain="file" path="hanime_app.log.1" />
+    <exclude domain="file" path="hanime_app.log.2" />
 </full-backup-content>
