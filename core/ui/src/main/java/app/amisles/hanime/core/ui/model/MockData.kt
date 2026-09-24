@@ -42,9 +42,8 @@ val gradients = listOf(
 
 val emojis = listOf("🎬", "🎥", "📹", "🎞️", "📽️", "📀", "💿", "🎮")
 
-// label：服务端使用的简体标识（匹配首页分区标题与深链接参数，不用于界面展示）
-// displayRes：界面展示的翻译资源
-// apiValue：搜索接口实际使用的参数（部分分类与展示名不同，如里番→裏番）
+// label：服务端简体标识（匹配首页分区标题与深链接参数，不用于界面展示）
+// displayRes：界面展示的翻译资源；apiValue：搜索接口实际使用的参数（部分与展示名不同，如里番→裏番）
 data class Category(
     val label: String,
     val displayRes: Int,
@@ -64,8 +63,7 @@ val categories = listOf(
     Category("新番预告", R.string.category_new_preview, "新番預告")
 )
 
-// 首页分区标题：服务器返回简体标识，按资源翻译展示（与 search_sort_* 对应）
-// 用于 HomeScreen 把服务端标题渲染为对应语言，深链接仍传原始 section.title
+// 首页分区标题：服务端返回简体标识，按资源翻译展示，深链接仍传原始 section.title
 val homeSectionTitleResMap = mapOf(
     "最新上市" to R.string.search_sort_new_release,
     "最新上传" to R.string.search_sort_new_upload,

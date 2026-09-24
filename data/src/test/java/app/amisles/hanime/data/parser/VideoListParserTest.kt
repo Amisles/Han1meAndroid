@@ -94,8 +94,8 @@ class VideoListParserTest {
         assertEquals("3", videos[2].id)
     }
 
-    // 「里番 / 泡面番」搜索结果页使用的简化卡片：无 .video-item-container，
-    // 链接在卡片外层的 <a> 上，标题是 .home-rows-videos-title。
+    // 「里番 / 泡面番」搜索结果页使用的简化卡片：无 .video-item-container，链接在外层 <a>，
+    // 标题是 .home-rows-videos-title
     private val simpleSearchCardsHtml = """
         <div class="home-rows-videos-wrapper" style="white-space: normal;">
             <a style="text-decoration: none;" href="https://www.hanime2.one/watch?v=407947">

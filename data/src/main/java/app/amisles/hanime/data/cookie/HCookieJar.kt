@@ -8,16 +8,15 @@ import okhttp3.HttpUrl
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 全局 Cookie 管理器（object 单例）
- * 特性：
+ * 全局 Cookie 管理器（object 单例）。
  * - 从 Set-Cookie 响应头解析并存储 Cookie
  * - 为请求自动注入已存储的 Cookie + Preferences 中持久化的登录态/Cloudflare Cookie
  * - 过期 Cookie 在请求时自动清理
- * - 线程安全：使用 ConcurrentHashMap + 同步块保护读写
+ * - 线程安全：ConcurrentHashMap + 同步块保护读写
  */
 object HCookieJar : CookieJar {
 
-    // 使用 ConcurrentHashMap 替代 HashMap，避免并发读写抛出 ConcurrentModificationException
+    // 用 ConcurrentHashMap 替代 HashMap，避免并发读写抛出 ConcurrentModificationException
     private val cookieMap: ConcurrentHashMap<String, MutableList<Cookie>> = ConcurrentHashMap()
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
@@ -30,7 +29,7 @@ object HCookieJar : CookieJar {
             synchronized(storedCookies) {
                 val now = System.currentTimeMillis()
                 val validCookies = storedCookies.filter { it.expiresAt > now }
-                // 如果有过期 Cookie，更新存储（移除已过期的条目）
+                // 有过期 Cookie 时更新存储（移除已过期条目）
                 if (validCookies.size != storedCookies.size) {
                     if (validCookies.isEmpty()) {
                         cookieMap.remove(host)
@@ -55,7 +54,7 @@ object HCookieJar : CookieJar {
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         val host = url.host
 
-        // 使用 putIfAbsent 保证并发下创建列表的原子性，避免 getOrPut 的竞态条件
+        // putIfAbsent 保证并发下创建列表的原子性，避免 getOrPut 的竞态条件
         val existing = cookieMap[host]
         val list = if (existing != null) {
             existing
@@ -82,9 +81,7 @@ object HCookieJar : CookieJar {
         cookieMap.clear()
     }
 
-    /**
-     * 判断请求 host 是否属于当前 baseUrl 域名（含子域），用于限定登录态 Cookie 的注入范围。
-     */
+    /** 判断请求 host 是否属于当前 baseUrl 域名（含子域），用于限定登录态 Cookie 的注入范围。 */
     private fun isBaseUrlHost(host: String): Boolean {
         val baseHost = runCatching {
             android.net.Uri.parse(Preferences.baseUrl).host?.lowercase()

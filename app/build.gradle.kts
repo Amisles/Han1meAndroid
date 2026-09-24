@@ -69,15 +69,12 @@ kotlin {
 }
 
 dependencies {
-    // Core modules
     implementation(project(":core:common"))
     implementation(project(":core:ui"))
 
-    // Data module
     implementation(project(":data"))
     implementation(project(":domain:model"))
     
-    // Feature modules
     implementation(project(":feature-home"))
     implementation(project(":feature-search"))
     implementation(project(":feature-detail"))
@@ -100,29 +97,24 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.navigation.compose)
 
-    // Third-party
     implementation(libs.jsoup)
     implementation(libs.okhttp)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
-    // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.common)
 
-    // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

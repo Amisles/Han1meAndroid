@@ -654,7 +654,7 @@ private fun ErrorBanner(
         ) {
             Text(
                 text = message,
-                // errorContainer 背景上的前景色应为 onErrorContainer，用 error 对比度不足（审查 O9）
+                // errorContainer 背景上的前景色应为 onErrorContainer，用 error 对比度不足
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.weight(1f)
             )

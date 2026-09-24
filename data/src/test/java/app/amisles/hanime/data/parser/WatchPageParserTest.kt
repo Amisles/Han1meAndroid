@@ -87,7 +87,7 @@ class WatchPageParserTest {
 
     @Test
     fun `parse with bracket at end keeps original`() {
-        // closingBracket == rawTitle.length - 1 means ']' is last char, no substring
+        // closingBracket == rawTitle.length - 1 表示 ']' 是最后一个字符，不截取子串
         val html = """
             <html><body>
                 <video id="player" src="https://cdn.example.com/v.mp4"/>

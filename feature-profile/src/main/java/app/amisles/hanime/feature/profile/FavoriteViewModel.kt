@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.common.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +36,8 @@ class FavoriteViewModel @Inject constructor(
                     repository.getAllFavorites()
                 }
                 _favorites.value = favorites
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("FavoriteViewModel", "Error loading favorites: ${e.message}", e)
                 _favorites.value = emptyList()
@@ -53,6 +56,8 @@ class FavoriteViewModel @Inject constructor(
                     repository.removeFavorite(videoId)
                 }
                 loadFavorites()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }
@@ -66,10 +71,12 @@ class FavoriteViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    // 单条 SQL 批量删除，避免逐条事务（审查 P6）
+                    // 单条 SQL 批量删除，避免逐条事务
                     repository.removeFavorites(videoIds)
                 }
                 loadFavorites()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("FavoriteViewModel", "Error removing favorites: ${e.message}", e)
             }

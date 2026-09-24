@@ -24,14 +24,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * 进程级 ExoPlayer 工厂。
- *
- * 针对详情页裸 ExoPlayer「加载慢、反复卡顿且不可恢复」的问题做多处理：
- * 1. SimpleCache 磁盘缓存 —— 再次进入同一视频秒开；卡顿后播放器可从本地缓存补数据，避免无限转圈。
- * 2. 浏览器 User-Agent 的 HTTP 数据源 —— 部分 CDN 会对默认 UA（ExoPlayer/...）做单连接限速，
- *    伪装成 Chrome Mobile 可绕过，拉到与 Edge 同档的带宽。
-     * 3. 网络感知的 LoadControl —— 按 Wi-Fi / 移动数据 / 弱网动态切换缓冲区间（见 §5）。
-     * 4. 视频反防盗链 Referer —— 直链请求经 [VideoAntiHotlink] 注入官网 Referer，绕过视频 CDN 的 Referer 防盗链（仅接受官网域名 Referer，否则 403）。
+ * 进程级 ExoPlayer 工厂。针对详情页裸 ExoPlayer「加载慢、反复卡顿且不可恢复」做多处理：
+ * 1. SimpleCache 磁盘缓存 —— 再次进入同一视频秒开；卡顿后可从本地缓存补数据。
+ * 2. 浏览器 User-Agent 的 HTTP 数据源 —— 绕过部分 CDN 对默认 UA 的单连接限速。
+ * 3. 网络感知的 LoadControl —— 按 Wi-Fi / 移动数据 / 弱网动态切换缓冲区间。
+ * 4. 视频反防盗链 Referer —— 直链请求经 [VideoAntiHotlink] 注入官网 Referer，绕过 CDN 的 Referer 防盗链。
  *
  * SimpleCache 必须是进程级单例（同一缓存目录不能被实例化两次），故用 AtomicReference 缓存。
  */
@@ -42,13 +39,13 @@ object ExoPlayerFactory {
     private const val BROWSER_UA =
         "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
-    // 磁盘缓存上限：512MB，按 LRU 自动淘汰最久未用的片段。
+    // 磁盘缓存上限 512MB，按 LRU 淘汰最久未用的片段。
     private const val CACHE_MAX_BYTES = 512L * 1024 * 1024
 
     private val cacheRef = AtomicReference<SimpleCache?>(null)
 
-    // 预热作用域：仅用于 Application 启动期在 IO 线程构建 SimpleCache（见 prewarmCache）。
-    // 对象级作用域，刻意不提供取消点：构建好的 SimpleCache 需在整个进程生命周期内复用（审查 O18）。
+    // 预热作用域：仅在 Application 启动期于 IO 线程构建 SimpleCache。
+    // 刻意不提供取消点：构建好的实例需在整个进程生命周期内复用。
     private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Synchronized
@@ -71,11 +68,8 @@ object ExoPlayerFactory {
 
     /**
      * 后台预热 SimpleCache，避免首次进入详情页在组合期（主线程）同步执行
-     * StandaloneDatabaseProvider 初始化与缓存目录扫描带来的首开卡顿（播放器审查 P2-7）。
-     *
-     * 典型路径下缓存会在用户导航到详情页之前于 IO 线程构建完成；
-     * 若仍属冷启动（预热尚未完成即打开详情页），[getCache] 会回退到主线程同步构建，
-     * [getCache] 的 @Synchronized 保证两种路径下都只会真实构建一次，不会重复实例化。
+     * StandaloneDatabaseProvider 初始化与目录扫描带来的首开卡顿。
+     * 冷启动时 [getCache] 会回退到主线程同步构建，其 @Synchronized 保证只真实构建一次。
      */
     fun prewarmCache(context: Context) {
         warmupScope.launch {
@@ -87,16 +81,12 @@ object ExoPlayerFactory {
         }
     }
 
-    /**
-     * 网络类型分类，用于动态缓冲策略（播放器审查 §5）。
-     */
+    /** 网络类型分类，用于动态缓冲策略。 */
     enum class NetworkClass { WIFI, CELLULAR, OTHER }
 
-    /**
-     * 读取当前网络类型。无权限/异常时回退 [NetworkClass.OTHER]。
-     */
+    /** 读取当前网络类型；无权限 / 异常时回退 [NetworkClass.OTHER]。 */
     fun getCurrentNetworkClass(context: Context): NetworkClass {
-        // minSdk 为 API 30，可直接使用 NetworkCapabilities（API 21+），无需已废弃的 ConnectivityManager.TYPE_* 与 activeNetworkInfo
+        // minSdk 为 API 30，可直接使用 NetworkCapabilities，无需已废弃的 ConnectivityManager.TYPE_* 与 activeNetworkInfo
         val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return NetworkClass.OTHER
         val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return NetworkClass.OTHER
@@ -111,9 +101,8 @@ object ExoPlayerFactory {
 
     /**
      * 依据当前网络类型构建 LoadControl：
-     * - Wi-Fi：大缓冲（30/90s），更稳；
-     * - 移动数据：中小缓冲（15/45s），省流量、更快起播；
-     * - 其它/弱网：更小缓冲（10/30s）且起播缓冲降到 1.5s，加速首帧。
+     * Wi-Fi 大缓冲（30/90s）更稳；移动数据中小缓冲（15/45s）省流量、更快起播；
+     * 其它 / 弱网更小缓冲（10/30s）且起播缓冲降到 1.5s。
      */
     fun buildLoadControlForNetwork(context: Context): DefaultLoadControl {
         val builder = DefaultLoadControl.Builder().setPrioritizeTimeOverSizeThresholds(true)
@@ -125,15 +114,12 @@ object ExoPlayerFactory {
     }
 
     /**
-     * 构建视频直链的上游 HTTP 数据源工厂，统一注入反 CDN 限速/防盗链策略：
+     * 构建视频直链的上游 HTTP 数据源工厂，统一注入反 CDN 限速 / 防盗链策略：
      * - 浏览器 UA（[BROWSER_UA]）：绕过部分 CDN 对 ExoPlayer 默认 UA 的单连接限速。
-     * - Referer = 设置页「官网网址」（[VideoAntiHotlink.referer]）：绕过视频 CDN 的 Referer 防盗链，
-     *   直链仅接受来自官网域名的 Referer，否则返回 403 导致播放失败。
-     * - 允许跨协议重定向（[DefaultHttpDataSource.Factory.setAllowCrossProtocolRedirects]）：
-     *   部分直链会做 http→https 跳转，禁止后会直接播放失败（审查 O17）。代价是自定义请求头（Referer）
-     *   会随重定向发往跳转目标主机；该跳转由我方请求的 CDN 下发，且头内只有官网地址、不含凭据，故接受。
-     *   若后续要收紧为同协议重定向，需回归验证直链播放是否仍可用。
-     * [connectTimeoutMs]/[readTimeoutMs] 由调用方按场景（预缓存/正片）传入，沿用既有超时策略。
+     * - Referer = 官网网址（[VideoAntiHotlink.referer]）：绕过 CDN 的 Referer 防盗链，否则返回 403。
+     * - 允许跨协议重定向：部分直链会做 http→https 跳转，禁止后会直接播放失败。
+     *   代价是自定义请求头（Referer）会随重定向发往跳转目标主机；头内只有官网地址、不含凭据，故接受。
+     * [connectTimeoutMs]/[readTimeoutMs] 由调用方按场景（预缓存 / 正片）传入。
      */
     private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int): DefaultHttpDataSource.Factory {
         return DefaultHttpDataSource.Factory()
@@ -147,10 +133,10 @@ object ExoPlayerFactory {
     fun buildVideoPlayer(context: Context): ExoPlayer {
         val cache = getCache(context)
 
-        // 上游直连数据源：浏览器 UA + 跨协议重定向（部分直链会 http→https 跳转）+ 适度超时 + 官网 Referer 防盗链。
+        // 上游直连数据源：浏览器 UA + 跨协议重定向 + 适度超时 + 官网 Referer 防盗链
         val upstreamFactory = buildUpstreamFactory(15_000, 15_000)
 
-        // 缓存数据源包住直连：先读缓存，未命中再走网络并回写；缓存写入异常时回退直连，不中断播放。
+        // 缓存数据源包住直连：先读缓存，未命中再走网络并回写；缓存写入异常时回退直连，不中断播放
         val cacheDataSourceFactory = CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(upstreamFactory)
@@ -158,7 +144,7 @@ object ExoPlayerFactory {
 
         val mediaSourceFactory = DefaultMediaSourceFactory(cacheDataSourceFactory)
 
-        // 缓冲：按网络类型动态选择（Wi-Fi 大缓冲更稳，移动/弱网更省流更快起播）。
+        // 缓冲按网络类型动态选择
         val loadControl = buildLoadControlForNetwork(context)
 
         return ExoPlayer.Builder(context.applicationContext)
@@ -172,16 +158,11 @@ object ExoPlayerFactory {
     }
 
     /**
-     * 构建**本地文件**播放器（播放已下载视频用）。
-     *
-     * 与 [buildVideoPlayer] 的三点差异：
-     * 1. 数据源换成 [DefaultDataSource]：它按 URI scheme 分派 —— `file:` / `content:` 走本地读取，
+     * 构建本地文件播放器（播放已下载视频用）。与 [buildVideoPlayer] 的差异：
+     * 1. 数据源换成 [DefaultDataSource]：按 URI scheme 分派，`file:` / `content:` 走本地读取，
      *    只有 `http(s):` 才回落到带反限速 UA / 防盗链 Referer 的上游数据源。
-     *    原链路的上游是 `DefaultHttpDataSource`，只认 http(s)，喂 `file://` 会直接打开失败。
-     * 2. 不挂 SimpleCache：文件本来就在磁盘上，再叠一层 512MB 缓存只会把同一份数据重复落盘。
-     * 3. `playWhenReady = true`：用户是点「播放」进来的，应当直接起播，不必再点一次中央播放键。
-     *
-     * 其余（网络感知 LoadControl、上游请求头、超时）与在线播放保持一致。
+     * 2. 不挂 SimpleCache：文件本就在磁盘上，再叠一层缓存只会重复落盘。
+     * 3. `playWhenReady = true`：用户点「播放」进来，应直接起播。
      */
     fun buildLocalVideoPlayer(context: Context): ExoPlayer {
         val dataSourceFactory = DefaultDataSource.Factory(

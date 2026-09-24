@@ -32,10 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-/**
- * 详情页骨架屏：加载时模拟详情页布局的占位。
- * 手机单列与平板分栏共用 [DetailSkeletonBody] 的详情占位内容，仅外层容器不同。
- */
+/** 详情页骨架屏：加载时模拟详情页布局的占位；手机单列与平板分栏共用 [DetailSkeletonBody]。 */
 @Composable
 internal fun DetailSkeletonScreen() {
     val transition = rememberInfiniteTransition(label = "detail-skeleton-shimmer")
@@ -122,10 +119,7 @@ internal fun DetailSkeletonScreen() {
     }
 }
 
-/**
- * 平板分栏骨架屏：左侧 3/4 视频区占位（垂直居中），右侧 1/4 详情占位。
- * 用于平板设备进入详情页的加载期，区别于手机样式的单列骨架。
- */
+/** 平板分栏骨架屏：左侧 3/4 视频区占位（垂直居中），右侧 1/4 详情占位。 */
 @Composable
 internal fun TabletDetailSkeleton() {
     val transition = rememberInfiniteTransition(label = "tablet-detail-skeleton-shimmer")
@@ -173,10 +167,7 @@ internal fun TabletDetailSkeleton() {
     }
 }
 
-/**
- * 两个骨架屏共用的详情占位内容：标题 / 作者 / 元信息 / 操作按钮 / 标签行。
- * [alpha] 为闪烁动画的当前透明度。
- */
+/** 两个骨架屏共用的详情占位内容：标题 / 作者 / 元信息 / 操作按钮 / 标签行。 */
 @Composable
 private fun DetailSkeletonBody(
     alpha: Float,

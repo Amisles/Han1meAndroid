@@ -33,25 +33,16 @@ import app.amisles.hanime.feature.detail.components.VideoPlayer
 import java.io.File
 
 /**
- * 本地视频播放页：播放「下载页」里已下载到本机的文件，不再依赖任何外部播放器应用。
+ * 本地视频播放页：播放已下载到本机的文件，不依赖任何外部播放器应用。
  *
- * 播放器内部布局完全复用详情页的 [VideoPlayer]（控件、手势、倍速菜单、画中画等），因此
- * **手机横屏自动全屏**与**点全屏按钮进入横屏全屏**两项行为与详情页逐字一致 —— 二者都由
- * VideoPlayer 内部实现（方向监听 + `LaunchedEffect(isFullscreen, activity, deviceTilt)`），
- * 本页只需持有 `isFullscreen` 状态并把它转成回调。
+ * 播放器布局复用详情页的 [VideoPlayer]（控件、手势、倍速菜单、画中画等），故横屏自动全屏与
+ * 点按钮全屏两项行为与详情页一致——本页只需持有 `isFullscreen` 状态并转成回调。
  *
- * 与详情页的差异：
- * - 播放器占满整屏并垂直居中（详情页是长列表中的一项）。
- * - 无连播：`onPlaybackEnded` 不做事。连播开关仍读写**全局偏好**，与详情页同源，避免出现
- *   「开关拨不动」或「各页各说各话」。
- * - 平板不启用「横屏自动全屏」（沿用详情页的取舍：平板横持属常态握持会误触发），
- *   但全屏按钮在平板上照常可用。
+ * 与详情页的差异：播放器占满整屏并垂直居中；无连播（连播开关仍读写全局偏好，与详情页同源）；
+ * 平板不启用「横屏自动全屏」（横持属常态握持会误触发），但全屏按钮照常可用。
  *
- * 页面为**沉浸式**：本页不预留底部导航栏与系统栏内边距（由 NavHost 对该路由跳过内距），
- * 因此播放器是相对**整块屏幕**垂直居中；左上角的返回按钮以**叠加**方式绘制，不占布局高度，
- * 不会把播放器挤离中心。
- *
- * 文件不存在时（例如被系统清理或在文件管理器里删掉）不会起播，直接给出占位提示。
+ * 页面为沉浸式：不预留底部导航栏与系统栏内边距，播放器相对整屏居中，返回按钮以叠加方式绘制。
+ * 文件不存在时（被清理或删除）不起播，直接给出占位提示。
  */
 @Composable
 fun LocalPlayerScreen(
@@ -111,7 +102,7 @@ fun LocalPlayerScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            // 文件不存在（被系统清理或在文件管理器里删掉）：给出明确原因，而不是笼统的「加载失败」
+            // 文件不存在：给出明确原因，而不是笼统的「加载失败」
             Text(
                 text = stringResource(R.string.download_file_not_exist),
                 color = Color.White.copy(alpha = 0.7f),
@@ -120,13 +111,9 @@ fun LocalPlayerScreen(
             )
         }
 
-        // 返回按钮叠在左上角（写在播放器之后，即绘制在其上层）。刻意用叠加而不是顶栏：
-        // 顶栏会占据布局高度，把播放器从屏幕正中心挤下去。
-        //
-        // 全屏时隐藏：全屏下画面已铺满整屏，且此时直接返回会把 Activity 留在横屏锁定态 ——
-        // VideoPlayer 只在 isFullscreen 翻回 false 时才把 requestedOrientation 恢复为进入前的值，
-        // 而 popBackStack 会让本页来不及恢复就被销毁。全屏请先点播放器自带的「退出全屏」，
-        // 退出后本按钮即出现。
+        // 返回按钮叠在左上角（写在播放器之后，绘制在其上层），用叠加而非顶栏以免把播放器挤离中心。
+        // 全屏时隐藏：此时直接返回会把 Activity 留在横屏锁定态（VideoPlayer 只在 isFullscreen 翻回
+        // false 时才恢复方向，而 popBackStack 会让本页来不及恢复），故全屏请先点播放器自带的「退出全屏」。
         if (!isPlayerFullscreen) {
             DetailBackButton(
                 onBackClick = onBackClick,

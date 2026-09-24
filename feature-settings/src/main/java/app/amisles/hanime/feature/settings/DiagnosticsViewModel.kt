@@ -10,26 +10,20 @@ import app.amisles.hanime.data.remote.NetworkDiagnostics
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * 诊断页 UI 状态
- */
+/** 诊断页 UI 状态。 */
 sealed class DiagnosticsUiState {
-    /** 初始空闲态 */
+    /** 初始空闲态。 */
     object Idle : DiagnosticsUiState()
-    /**
-     * 诊断进行中。
-     *
-     * 不携带「已完成项」：`NetworkDiagnostics.runAll()` 是一次性返回整批结果，增量结果从未真正产生，
-     * 留着字段只会让数据的微小变化也触发跨状态动画（审查 G4）。
-     */
+    /** 诊断进行中；`NetworkDiagnostics.runAll()` 一次性返回整批结果，故不携带增量字段。 */
     data object Running : DiagnosticsUiState()
-    /** 诊断完成 */
+    /** 诊断完成。 */
     data class Done(val results: List<DiagnosticResult>) : DiagnosticsUiState()
 }
 
@@ -50,6 +44,8 @@ class DiagnosticsViewModel @Inject constructor(
             try {
                 val results = diagnostics.runAll()
                 _uiState.value = DiagnosticsUiState.Done(results)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("DiagnosticsViewModel", "诊断异常: ${e.message}", e)
                 _uiState.value = DiagnosticsUiState.Done(

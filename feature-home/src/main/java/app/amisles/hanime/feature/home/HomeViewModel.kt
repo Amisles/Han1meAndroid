@@ -38,8 +38,7 @@ class HomeViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
-    // 首页数据在 VM 创建时即加载（不放到 UI 的 LaunchedEffect）：
-    // 首页是启动页，越早发起请求首屏越快；VM 由导航图持有，重建即重新拉取（审查 O19）。
+    // 首页数据在 VM 创建时即加载（不放到 UI 的 LaunchedEffect）：首页是启动页，越早请求首屏越快
     init {
         loadHomeData()
     }
@@ -66,7 +65,7 @@ class HomeViewModel @Inject constructor(
                     when (event) {
                         is HomeDataEvent.Banner -> _banner.value = event.banner
                         is HomeDataEvent.Section -> {
-                            // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块（审查 H4）
+                            // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块
                             _sections.value = _sections.value
                                 .filterNot { it.title == event.section.title } + event.section
                         }

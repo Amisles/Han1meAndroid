@@ -26,10 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 可展开的多行标签布局。
- *
- * 标签按流式排列，默认最多显示 [maxLines] 行；超过时在最下方居中显示一个展开/收起按钮，
- * 点击后展示全部标签。收起后恢复为最多 [maxLines] 行。
+ * 可展开的多行标签布局：标签流式排列，默认最多 [maxLines] 行；超出时在底部居中显示展开 / 收起按钮。
  */
 @Composable
 internal fun ExpandableTags(
@@ -93,7 +90,7 @@ internal fun ExpandableTags(
             val height: Int
         )
 
-        // 完整流式排布（不含 toggle）
+        // 完整流式排布标签（不含 toggle）
         val allRows = mutableListOf<TagRow>()
         var currentRow = mutableListOf<Placeable>()
         var currentWidth = 0
@@ -144,7 +141,7 @@ internal fun ExpandableTags(
         val displayRows: MutableList<TagRow> = when {
             !needsToggle -> allRows
             !expanded -> {
-                // 折叠：仅显示前两行，toggle 置于第 maxLines 行（第二行）末尾
+                // 折叠：仅显示前 maxLines 行，toggle 置于最后一行末尾
                 val firstRows = allRows.take(maxLines).toMutableList()
                 firstRows[firstRows.lastIndex] = appendToggleToRow(firstRows.last())
                 firstRows

@@ -132,9 +132,7 @@ fun SubscriptionsScreen(
                                 onClick = { viewModel.selectArtist("") }
                             )
                         }
-                        // key 必须唯一：同名作者会让 LazyRow 抛
-                        // IllegalArgumentException: Key "x" was already used（审查 P5）；
-                        // SubscribedArtist 没有 ID，故用「名字 + 位次」保证唯一
+                        // key 必须唯一：SubscribedArtist 没有 ID，故用「名字 + 位次」保证唯一
                         itemsIndexed(artists, key = { index, artist -> "${artist.name}#$index" }) { _, artist ->
                             ArtistChip(
                                 name = artist.name,

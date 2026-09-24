@@ -9,7 +9,7 @@ object VideoAntiHotlink {
 
     /**
      * 当前应注入的 Referer 值（设置页官网网址，结尾带 "/"）。
-     * 读取失败（如偏好未初始化）时回退到 [Preferences.DEFAULT_BASE_URL]。
+     * 读取失败时回退到 [Preferences.DEFAULT_BASE_URL]。
      */
     val referer: String
         get() = runCatching { Preferences.baseUrl }

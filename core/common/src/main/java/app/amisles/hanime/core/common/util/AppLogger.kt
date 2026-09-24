@@ -10,9 +10,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * 统一日志工具，写入 filesDir/hanime_app.log。
- */
+/** 统一日志工具，写入 filesDir/hanime_app.log。 */
 object AppLogger {
 
     private const val LOG_TAG = "AppLogger"
@@ -96,8 +94,7 @@ object AppLogger {
                     sb.append(file.readText())
                     if (sb.length >= MAX_READ_CHARS) break
                 }
-                // 轮转已保证总量上限（MAX_FILE_SIZE × (MAX_BACKUP_FILES + 1)），
-                // 此处再截一次尾部，防止诊断页加载超大文本阻塞主线程。
+                // 轮转已保证总量上限，此处截尾防止诊断页加载超大文本阻塞主线程
                 if (sb.length > MAX_READ_CHARS) sb.delete(0, sb.length - MAX_READ_CHARS)
                 if (sb.isEmpty()) "Log is empty" else sb.toString()
             } catch (e: IOException) {

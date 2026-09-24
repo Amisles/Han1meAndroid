@@ -35,13 +35,11 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
 /**
- * 当前镜像站不支持登录时显示的统一提示弹窗。
+ * 镜像站不支持登录时的统一提示弹窗。
+ * 仅官方域名可登录，其余镜像站的登录接口会返回「站点维护中」；本弹窗在用户触发需登录功能时统一拦截提示。
  *
- * 仅官方域名（hanime1.me / hanimeone.me）可登录，其余镜像站登录接口会返回“站点维护中”。
- * 该弹窗在用户触发需要登录的功能（登录按钮、评论输入等）时统一拦截并提示。
- *
- * @param onGoToSettings 点击“前往设置”回调，由调用方负责跳转到设置页修改 baseUrl
- * @param onDismiss 点击“我知道了”或外部区域关闭弹窗
+ * @param onGoToSettings 点击「前往设置」回调，由调用方跳转设置页修改 baseUrl
+ * @param onDismiss 点击「我知道了」或外部区域关闭弹窗
  */
 @Composable
 fun LoginUnsupportedDialog(
@@ -127,12 +125,10 @@ fun LoginUnsupportedDialog(
 }
 
 /**
- * 不支持登录时在登录页顶部显示的提示横幅。
+ * 不支持登录时在登录页顶部显示的常驻提示横幅。
+ * 与 [LoginUnsupportedDialog] 的区别是不拦截操作、始终可见；baseUrl 切回官方域名后自动消失。
  *
- * 与 [LoginUnsupportedDialog] 不同，横幅为常驻提示，告知用户当前镜像站无法登录，
- * 点击“前往设置”可跳转修改 baseUrl。当 baseUrl 切换回官方域名后横幅自动消失。
- *
- * @param onGoToSettings 点击“前往设置”回调
+ * @param onGoToSettings 点击「前往设置」回调
  */
 @Composable
 fun LoginUnsupportedBanner(

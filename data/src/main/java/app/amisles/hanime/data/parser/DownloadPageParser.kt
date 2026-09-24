@@ -48,7 +48,7 @@ class DownloadPageParser @Inject constructor() {
                 val fileSize = cells.getOrNull(3)?.text()?.trim() ?: "N/A"
 
                 val downloadLink = cells.getOrNull(cells.size - 1)?.selectFirst("a[data-url]")
-                // A1：空 data-url 视为无效画质直接跳过，避免空直链传入 Request.url("") 抛异常产生幽灵任务
+                // 空 data-url 视为无效画质直接跳过，避免空直链传入 Request.url("") 抛异常产生幽灵任务
                 val downloadUrl = downloadLink?.attr("data-url")?.trim()?.takeIf { it.isNotBlank() } ?: continue
 
                 val resolution = Regex("\\((\\d+p)\\)").find(qualityText)?.groupValues?.get(1)

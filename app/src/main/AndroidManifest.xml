@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- P2-7：下载期间持有 CPU 锁与 Wi-Fi 锁，避免息屏后 Wi-Fi 进入省电模式导致长视频下载降速 -->
+    <!-- 下载期间持有 CPU 锁与 Wi-Fi 锁，避免息屏后 Wi-Fi 进入省电模式导致长视频下载降速 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 

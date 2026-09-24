@@ -221,8 +221,7 @@ class DownloadPageParserTest {
             </body></html>
         """.trimIndent()
         val qualities = parser.parse(html, baseUrl)
-        // 空 data-url 视为无效直链，与缺失 data-url 一样跳过（避免将空 URL 传入
-        // Request.url("") 产生异常或幽灵任务）；仅保留带有效直链的行
+        // 空 data-url 视为无效直链，与缺失 data-url 一样跳过（避免空 URL 产生幽灵任务）；仅保留有效行
         assertEquals(1, qualities.size)
         assertEquals("https://dl.example.com/720", qualities[0].downloadUrl)
     }

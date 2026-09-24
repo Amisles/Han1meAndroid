@@ -29,9 +29,8 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.VideoDetail
 
 /**
- * 「简介」标签页内容：标题、作者行（头像 + 订阅按钮）、发布日期 / 体积、
- * 可展开的简介正文、操作按钮行（下载 / 收藏 / 分享）与标签。
- * 下载与分享的具体动作由调用方处理（需要页面级 context / 状态）。
+ * 「简介」标签页内容：标题、作者行（头像 + 订阅按钮）、发布日期 / 体积、可展开的简介正文、
+ * 操作按钮行（下载 / 收藏 / 分享）与标签。下载与分享的具体动作由调用方处理。
  */
 @Composable
 internal fun DetailIntroSection(

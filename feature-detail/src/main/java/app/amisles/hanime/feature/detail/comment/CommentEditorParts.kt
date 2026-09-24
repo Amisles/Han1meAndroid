@@ -23,11 +23,8 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
 /**
- * 评论与回复共用的输入行：多行输入框 + 发送按钮。
- *
- * 两处原本各自内联了完全相同的 Row（输入框配置、发送态转圈、按钮着色），
- * 这里抽成单一组件；输入内容仍由调用方持有，发送后的清空也由调用方在 [onSend] 里完成，
- * 因此两者的交互行为与抽取前完全一致。
+ * 评论与回复共用的输入行：多行输入框 + 发送按钮。输入内容由调用方持有，
+ * 发送后的清空也由调用方在 [onSend] 里完成。
  */
 @Composable
 internal fun CommentEditorRow(

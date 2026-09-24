@@ -28,9 +28,7 @@ import app.amisles.hanime.feature.detail.util.videoEmoji
 import app.amisles.hanime.feature.detail.util.videoGradient
 
 /**
- * 相关推荐列表项：左侧缩略图 + 右侧标题/作者/数据行。
- * 作者名可点击进入搜索；卡片整体可点击播放。
- * 占位配色按视频 id 稳定散列，与拆分前逐次计算的取值完全一致。
+ * 相关推荐列表项：左侧缩略图 + 右侧标题 / 作者 / 数据行；作者名可点击进入搜索，卡片整体可点击播放。
  */
 @Composable
 internal fun DetailRelatedVideoCard(

@@ -12,15 +12,11 @@ import javax.inject.Singleton
 class VideoListParser @Inject constructor() {
 
     /**
-     * 解析页面中的视频列表，兼容两种卡片结构。
-     *
-     * 站点存在两套卡片：
+     * 解析页面中的视频列表，兼容两种卡片结构：
      * 1. 常规卡片 `.video-item-container`（内含 .video-link / .title / .main-thumb / .stats-container）；
-     * 2. **简化卡片** `.home-rows-videos-div`（里番 / 泡面番 等搜索结果页使用）——
-     *    不含 .video-item-container，若只按常规选择器解析会得到空列表，
-     *    表现为「浏览器打开链接有结果，App 内搜索却为空」。
-     *
-     * 两类都解析并按 videoId 去重（保留首次出现、保持顺序），避免同一视频重复出现。
+     * 2. 简化卡片 `.home-rows-videos-div`（里番 / 泡面番 等搜索结果页使用），不含
+     *    .video-item-container，若只按常规选择器解析会得到空列表。
+     * 两类都解析并按 videoId 去重（保留首次出现、保持顺序）。
      */
     fun parseVideoList(doc: Document, baseUrl: String): List<HanimeVideo> {
         val videos = LinkedHashMap<String, HanimeVideo>()
@@ -37,12 +33,10 @@ class VideoListParser @Inject constructor() {
     }
 
     /**
-     * 解析简化卡片（.home-rows-videos-div），与常规卡片的结构差异：
-     * - 视频链接在卡片**外层**的 `<a>` 上，而非内部的 .video-link；
-     * - 标题是 .home-rows-videos-title，而非 .title / .video-title；
-     * - 没有 .duration / .stats-container / .subtitle，这些字段留空。
-     *
-     * 链接同时兼容「卡片内部有 <a>」与「<a> 是卡片的直接父级」两种形态。
+     * 解析简化卡片（.home-rows-videos-div），与常规卡片的差异：
+     * 视频链接在外层 `<a>` 上（而非内部 .video-link）、标题是 .home-rows-videos-title、
+     * 无 .duration / .stats-container / .subtitle（留空）。
+     * 链接兼容「卡片内部有 <a>」与「<a> 是卡片的直接父级」两种形态。
      */
     fun parseSimpleVideoCard(card: Element, baseUrl: String): HanimeVideo? {
         return try {

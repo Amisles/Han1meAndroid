@@ -5,14 +5,11 @@ import okhttp3.Interceptor
 import okhttp3.Response
 
 /**
- * 入口拦截器
+ * 入口拦截器。
  *
- * 镜像站（hanime1.me / hanimeone.me 之外的域名）的根路径 `/` 是一个门页，
- * 永远返回 500 + “继续访问”按钮页；真正的首页内容位于 `/enter`。
- * `/search`、`/watch`、`/login` 等其他路径则正常可访问。
- *
- * 因此对非官方域名的根路径请求，直接重写为 `/enter`，无需探测、无需 cookie。
- * 官方域名保持原样。
+ * 镜像站（非官方域名）的根路径 `/` 是门页，永远返回 500 + “继续访问”按钮页，真正的首页内容
+ * 位于 `/enter`；`/search`、`/watch`、`/login` 等路径正常可访问。因此对非官方域名的根路径请求
+ * 直接重写为 `/enter`，官方域名保持原样。
  */
 class EntryInterceptor(
     private val officialDomains: List<String> = DEFAULT_OFFICIAL_DOMAINS

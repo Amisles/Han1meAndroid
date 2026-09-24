@@ -50,9 +50,7 @@ class WatchPageParser @Inject constructor(
         }
     }
 
-    /**
-     * 流式解析
-     */
+    /** 流式解析 */
     fun parseStreaming(html: String, baseUrl: String): Flow<VideoDetailEvent> = flow {
         try {
             val doc: Document = Jsoup.parse(html, baseUrl)
@@ -71,7 +69,7 @@ class WatchPageParser @Inject constructor(
     }
 
     /**
-     * 抽取主信息（标题/播放器/封面/标签/作者/订阅态/CSRF 等），相关视频与播放列表置空，
+     * 抽取主信息（标题/播放器/封面/标签/作者/订阅态/CSRF 等），相关视频与播放列表置空。
      */
     private fun parseMain(doc: Document, html: String, baseUrl: String): VideoDetail {
         val videoTag: Element? = doc.selectFirst("video#player")
@@ -105,17 +103,15 @@ class WatchPageParser @Inject constructor(
         val tagElements = doc.select(".video-tags-wrapper .single-video-tag")
         val seenTags = mutableSetOf<String>()
         for (tagDiv in tagElements) {
-            // 剔除官网「添加 / 移除标签」功能按钮：
-            // 这类按钮所在的 div 带 data-toggle="modal" / data-target="#signUpModal"，
-            // 且内含 material-icons 图标（add / remove），其 <a> 没有有效的搜索链接。
+            // 剔除官网「添加 / 移除标签」功能按钮：其 div 带 data-toggle / data-target="#signUpModal"，
+            // 且内含 material-icons 图标，<a> 没有有效的搜索链接
             val isActionButton = tagDiv.hasAttr("data-toggle") ||
                 tagDiv.attr("data-target").contains("signUpModal", ignoreCase = true)
             if (isActionButton) continue
             if (tagDiv.selectFirst("span.material-icons, span.material-icons-sharp, span.material-icons-outlined") != null) continue
 
             val link = tagDiv.selectFirst("a") ?: continue
-            // 兜底：若 <a> 带有链接但不指向搜索（/search?query=），则不是标签，跳过；
-            // 正常标签必为 /search 链接，功能按钮的 <a> 无 href（已被上方过滤）。
+            // 兜底：<a> 带链接但不指向 /search 则不是标签；功能按钮的 <a> 无 href（已被上方过滤）
             val href = link.attr("abs:href").ifEmpty { link.attr("href") }
             if (href.isNotEmpty() && !href.contains("/search", ignoreCase = true)) continue
 
@@ -207,14 +203,9 @@ class WatchPageParser @Inject constructor(
     /**
      * 从详情页 HTML 中解析当前登录用户的数字 ID。
      *
-     * 官网的评论/点赞接口需要携带当前用户 ID（comment-user-id / comment-like-user-id），
-     * 该值并不在登录 Cookie 中，而是随已登录会话在页面内渲染：
-     *  - 评论表单的隐藏域 <input name="comment-user-id" value="...">
-     *  - 点赞表单的隐藏域 <input name="comment-like-user-id" value="...">
-     *  - <meta name="user-id" content="...">
-     *  - JS 全局变量（如 window.userId = 123 或 {userId:123}）
-     *
-     * 按优先级尝试多种常见位置，命中即返回其数字值；均未命中返回空字符串。
+     * 评论/点赞接口需携带当前用户 ID（comment-user-id / comment-like-user-id），该值不在登录
+     * Cookie 中，而是随已登录会话在页面内渲染。按优先级尝试 meta、隐藏 input、data-user-id、
+     * JS 全局变量等位置，命中即返回其数字值；均未命中返回空字符串。
      */
     private fun parseCurrentUserId(doc: Document, html: String): String {
         fun String?.toNumericId(): String? {
@@ -257,17 +248,11 @@ class WatchPageParser @Inject constructor(
     }
 
     /**
-     * 从详情页解析订阅作者表单字段。
+     * 从详情页解析订阅作者表单字段（#video-subscribe-form 内的隐藏 input：
+     * subscribe-artist-id、subscribe-user-id、subscribe-status）。
      *
-     * 官网订阅表单位于 #video-subscribe-form（外层容器 #video-subscribe-form-wrapper），
-     * 内含隐藏 input：
-     *  - subscribe-artist-id：被订阅作者的数字 ID
-     *  - subscribe-user-id：当前登录用户的数字 ID
-     *  - subscribe-status：当前订阅状态（"" = 未订阅，"1" = 已订阅）
-     *
-     * 兜底策略：
-     *  - 表单缺失时，artistId 从 authorPageUrl 的 /user/{id} 提取；userId 回退 currentUserId。
-     *  - subscribe-status 缺失时记为 ""（未订阅）。
+     * 兜底：表单缺失时 artistId 从 authorPageUrl 的 /user/{id} 提取、userId 回退 currentUserId；
+     * subscribe-status 缺失时记为 ""（未订阅）。
      *
      * @return Triple(artistId, userId, status)
      */

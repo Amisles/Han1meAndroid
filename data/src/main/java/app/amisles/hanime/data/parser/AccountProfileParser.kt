@@ -10,13 +10,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 账户资料编辑页解析器（官网 /user/{id}/edit）。
+ * 账户资料编辑页解析器（/user/{id}/edit）。
  *
- * 页面结构（来自账号资料.html）：
- *  - `<meta name="csrf-token" content="...">`：CSRF Token，更新档案时随表单提交。
- *  - 「编辑个人档案」表单：`input[name=name]`（用户名称）与 `input[name=email]`（电邮地址），
- *    其 value 即为当前已保存值，用于回填输入框。
- *  - 另含「更改密码」表单（type=password），本次不解析、不在客户端实现。
+ * - `<meta name="csrf-token">`：CSRF Token，更新档案时随表单提交。
+ * - 「编辑个人档案」表单：`input[name=name]`（用户名称）与 `input[name=email]`（电邮地址），
+ *   value 即当前已保存值，用于回填输入框。
+ * - 另含「更改密码」表单（type=password），不解析。
  */
 @Singleton
 class AccountProfileParser @Inject constructor() {

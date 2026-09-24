@@ -87,10 +87,8 @@ val allCategory = Category("", R.string.search_all, "")
 val filterTypes = listOf(allCategory) + categories
 
 /**
- * 排序选项。
- *
- * [labelRes] 用于界面展示；[label] 与 [apiValue] 都只是**匹配键**（站点简中 / 繁中两套用词），
- * 用于把导航传入的 `initialSort` 映射到具体选项，不参与展示（审查 G8）。
+ * 排序选项。[label] 与 [apiValue] 只是匹配键（站点简中 / 繁中两套用词），
+ * 用于把导航传入的 `initialSort` 映射到具体选项；[labelRes] 才用于界面展示。
  */
 data class SortOption(val label: String, val labelRes: Int, val apiValue: String)
 
@@ -134,8 +132,7 @@ fun SearchScreen(
     val localQuery = remember { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
-    // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，
-    // 避免下拉里宣称一个实际并未生效的排序值
+    // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，避免下拉宣称一个未生效的值
     val selectedSort = remember { mutableStateOf<SortOption?>(null) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showTagSheet by remember { mutableStateOf(false) }
@@ -147,8 +144,7 @@ fun SearchScreen(
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
 
-    // 布局模式：用户显式选择优先；从未选择过时按宽度档位取默认（Compact 列表 / 平板网格），
-    // 这样手机与平板的既有体验都不变，一旦点过切换就完全以用户选择为准（已落盘）
+    // 布局模式：用户显式选择优先；从未选择过时按宽度档位取默认（Compact 列表 / 平板网格）
     val sizeInfo = currentWindowSizeInfo()
     val savedLayoutMode by Preferences.searchLayoutModeFlow.collectAsStateWithLifecycle()
     val isGridMode = (savedLayoutMode ?: if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
@@ -196,7 +192,7 @@ fun SearchScreen(
             }
             if (match != null) {
                 selectedFilter.value = match
-                // setGenre 在值变化时会自行触发一次搜索，此处不再重复调用（审查 S2）
+                // setGenre 在值变化时会自行触发搜索，此处不再重复调用
                 viewModel.setGenre(match.apiValue)
             }
         }
@@ -204,13 +200,13 @@ fun SearchScreen(
 
     androidx.compose.runtime.LaunchedEffect(initialSort) {
         if (!initialSort.isNullOrBlank()) {
-            // Match by label (e.g. "最新上市") or apiValue (e.g. "最新上傳")
+            // 按 label（如 "最新上市"）或 apiValue（如 "最新上傳"）匹配
             val match = sortOptions.firstOrNull {
                 it.label == initialSort || it.apiValue == initialSort
             }
             if (match != null) {
                 selectedSort.value = match
-                // setSort 在值变化时会自行触发一次搜索，此处不再重复调用（审查 S2）
+                // setSort 在值变化时会自行触发搜索，此处不再重复调用
                 viewModel.setSort(match.apiValue)
             }
         }
@@ -310,7 +306,7 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 15.dp)
             ) {
-                // 一键清除全部筛选：仅在确有筛选生效时出现（分类的「全部分类」只重置分类，不承担此职责）
+                // 一键清除全部筛选：仅在确有筛选生效时出现
                 if (hasActiveFilter) {
                     item(key = "clear_filters_chip") {
                         Box(
@@ -318,7 +314,7 @@ fun SearchScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable {
-                                    // 同步 UI 本地态后再让 ViewModel 一次性清空并只发一次请求
+                                    // 先同步 UI 本地态，再让 ViewModel 一次性清空并只发一次请求
                                     selectedTags.value = emptySet()
                                     broadLocal.value = false
                                     selectedFilter.value = allCategory
@@ -334,7 +330,7 @@ fun SearchScreen(
                         }
                     }
                 }
-                // 筛选入口组：点击打开底部选择面板，带下拉箭头以区别于右侧「分类」单选 chip
+                // 筛选入口组：点击打开底部选择面板，带下拉箭头
                 item(key = "tag_filter_chip") {
                     val count = tagsValue.size
                     FilterEntryChip(
@@ -369,7 +365,7 @@ fun SearchScreen(
                         onClick = { showDurationSheet = true }
                     )
                 }
-                // 组间分隔线：左侧是「筛选入口」，右侧是「分类」单选，避免被读成同一组
+                // 组间分隔线：分开「筛选入口」与「分类」单选
                 item(key = "filter_group_divider") {
                     Box(
                         modifier = Modifier
@@ -477,7 +473,7 @@ fun SearchScreen(
                     }
                 }
 
-                // 布局模式切换：右对齐，与排序下拉同一行；写入即视为用户已显式选择，之后不再回退默认值
+                // 布局模式切换：右对齐，与排序下拉同一行；写入即视为用户已显式选择
                 Spacer(modifier = Modifier.weight(1f))
                 LayoutModeToggle(
                     isGrid = isGridMode,
@@ -490,8 +486,7 @@ fun SearchScreen(
             }
         }
 
-        // 已有结果在屏时重新搜索：只在顶部显示细进度条、保留旧列表，
-        // 不再把结果区整块换成空 spinner（易被误读为「结果没了」）
+        // 已有结果在屏时重新搜索：只在顶部显示细进度条、保留旧列表，避免结果区闪成空 spinner
         if (isLoading && videos.isNotEmpty()) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
@@ -572,7 +567,7 @@ fun SearchScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            // 删除按钮，保证足够的点击区域
+                            // 删除按钮：留足点击区域
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
@@ -626,9 +621,7 @@ fun SearchScreen(
                 )
             }
         } else if (isGridMode) {
-            // 网格模式：列数按「实测可用宽度」算（BoxWithConstraints 拿到的已含 ResponsiveContent 限宽），
-            // 而不是只看宽度档位 —— 横屏手机（约 800dp）因此得到 4 列而非 3 列，
-            // 分屏 / 折叠屏这种「档位没变但可用宽度变了」的窗口也能正确响应
+            // 网格列数按「实测可用宽度」算而非只看宽度档位，横屏手机 / 分屏 / 折叠屏都能正确响应
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val columns = remember(maxWidth) { gridColumnsFor(maxWidth) }
                 LazyVerticalGrid(
@@ -649,7 +642,7 @@ fun SearchScreen(
                         )
                     }
 
-                    // 网格的页脚需要横跨整行，故显式指定 span
+                    // 网格页脚需横跨整行，故显式指定 span
                     if (isLoadingMore) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             SearchLoadMoreIndicator()
@@ -727,11 +720,8 @@ fun SearchScreen(
 }
 
 /**
- * 网格列数：按「实测可用宽度」算，而不是只看宽度档位。
- *
- * 取 `floor((W + G) / (T + G))` 后夹在 [2, 5]，让卡片宽度始终落在目标值附近：
- * 手机竖屏（约 330dp 可用）2 列、横屏手机（约 770dp）4 列、平板（约 1050dp）5 列。
- * 下限必须夹到 2 —— `GridCells.Adaptive` 在 330dp 下只会算出 1 列，手机上就退化成单列了。
+ * 网格列数：按实测可用宽度算，取 `floor((W + G) / (T + G))` 后夹在 [2, 5]。
+ * 下限必须夹到 2——`GridCells.Adaptive` 在 330dp 下只会算出 1 列。
  */
 private fun gridColumnsFor(availableWidth: Dp): Int {
     val width = availableWidth.value
@@ -769,10 +759,8 @@ private fun SearchNoMoreHint() {
 }
 
 /**
- * 标签选择底部面板（自绘，不依赖 ModalBottomSheet，规避额外依赖与构建风险）。
- *
- * 仅维护一份本地选择态，[onApply] 时才把最终结果回传给 ViewModel；
- * 关闭（点遮罩 / 关闭按钮 / 应用）均不会自动发起请求，由调用方统一提交。
+ * 标签选择底部面板（自绘，不依赖 ModalBottomSheet）。仅维护一份本地选择态，
+ * [onApply] 时才把最终结果回传给 ViewModel；关闭不会自动发起请求，由调用方统一提交。
  */
 @Composable
 private fun TagFilterSheet(
@@ -858,7 +846,7 @@ private fun TagFilterSheet(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
 
-            // 标签网格（可滚动）：类目标题横跨整行，其后为该类目下的标签 chips
+            // 标签网格（可滚动）：类目标题横跨整行
             LazyVerticalGrid(
                 columns = GridCells.Fixed(chipCols),
                 modifier = Modifier
@@ -948,10 +936,7 @@ private fun TagFilterSheet(
     }
 }
 
-/**
- * 筛选入口 chip（标签 / 日期 / 时长共用）：统一外观，并在文字右侧固定带一个下拉箭头，
- * 提示「点击会打开选择面板」，与右侧点一下就选中的「分类」chip 区分开。
- */
+/** 筛选入口 chip（标签 / 日期 / 时长共用）：文字右侧固定带下拉箭头，与点一下就选中的「分类」chip 区分。 */
 @Composable
 private fun FilterEntryChip(
     label: String,
@@ -982,10 +967,10 @@ private fun FilterEntryChip(
     }
 }
 
-/** 官网 date 参数中代表「不限定」的原值；同时用作年 / 月下拉首项的哨兵值。 */
+/** 官网 date 参数中代表「不限定」的原值，同时用作年 / 月下拉首项的哨兵值。 */
 private const val DATE_ALL = "全部"
 
-/** 发布日期快捷选项：[dataValue] 为官网原值（直接作为 date 参数），[labelRes] 仅用于界面展示。 */
+/** 发布日期快捷选项：[dataValue] 为官网原值（直接作为 date 参数），[labelRes] 仅用于展示。 */
 private data class DateOption(val dataValue: String, @StringRes val labelRes: Int)
 
 private val dateQuickOptions = listOf(
@@ -999,10 +984,8 @@ private val dateQuickOptions = listOf(
 )
 
 /**
- * 年份下拉：首项「全部」表示不限定年份。
- *
- * **取值必须是官网原值**（`2026 年`）—— 它既要用于回显比较，也会直接拼进 date 参数，
- * 因此不参与本地化；界面展示另由 [yearDisplay] 按各语言的格式串渲染。
+ * 年份下拉：首项「全部」表示不限定年份。取值必须是官网原值（如 `2026 年`）——既要用于回显比较，
+ * 也会直接拼进 date 参数，故不参与本地化；展示由 [yearDisplay] 按各语言格式串渲染。
  */
 private val dateYearOptions: List<String> = listOf(DATE_ALL) + (2026 downTo 1990).map { "$it 年" }
 
@@ -1010,8 +993,8 @@ private val dateYearOptions: List<String> = listOf(DATE_ALL) + (2026 downTo 1990
 private val dateMonthOptions: List<String> = listOf(DATE_ALL) + (1..12).map { "$it 月" }
 
 /**
- * 筛选 chip 展示文案：命中快捷项取本地化 label；年 / 月自定义值按本地化格式重组 ——
- * value 本身是官网原值（`2026 年` / `3 月`），直接展示会把繁体措辞带进其它语言的界面。
+ * 筛选 chip 展示文案：命中快捷项取本地化 label；年 / 月自定义值按本地化格式重组，
+ * 避免把官网原值的繁体措辞带进其它语言的界面。
  */
 @Composable
 private fun dateChipLabel(value: String): String {
@@ -1026,13 +1009,8 @@ private fun dateChipLabel(value: String): String {
 }
 
 /**
- * 由「年 / 月」下拉值合成官网 date 参数。
- *
- * 快捷项直接使用官网原值；自定义年月时按 `YYYY 年 M 月` 拼接（仅年 → `YYYY 年`，仅月 → `M 月`，
- * 两者皆「全部」→ 空串 = 全部）。
- *
- * 注意：该拼接格式依据官网下拉选项文案（值为 `2026 年` / `3 月`）推断，尚未与官网 JS 逐字核对；
- * 若实测与官网不一致，请以官网实际请求为准调整此处。
+ * 由「年 / 月」下拉值合成官网 date 参数：仅年 → `YYYY 年`，仅月 → `M 月`，两者皆「全部」→ 空串。
+ * 拼接格式依据官网下拉选项文案推断，尚未与官网 JS 逐字核对，实测不一致时以官网请求为准。
  */
 private fun buildDateValue(year: String, month: String): String {
     val y = if (year == DATE_ALL) "" else year
@@ -1051,10 +1029,7 @@ private fun dateYearOf(value: String): String =
 private fun dateMonthOf(value: String): String =
     DATE_MONTH_REGEX.find(value)?.let { it.groupValues[1] + " 月" } ?: DATE_ALL
 
-/**
- * 年份下拉的展示文案。值为官网原值（`2026 年`）时只取数字部分，由各语言的
- * `search_date_year_format` 决定是否补「年」后缀（英文为裸数字 `2026`，日文为 `2026年`）。
- */
+/** 年份下拉展示文案：官网原值只取数字部分，由各语言的 `search_date_year_format` 决定是否补「年」。 */
 @Composable
 private fun yearDisplay(value: String): String =
     if (value == DATE_ALL) {
@@ -1063,10 +1038,7 @@ private fun yearDisplay(value: String): String =
         stringResource(R.string.search_date_year_format, value.removeSuffix(" 年").trim())
     }
 
-/**
- * 月份下拉的展示文案。值形如 `3 月`（官网原值）时按序号取本地化月份名
- * （英文 January…December，日文 1月…12月）；官网 date 参数仍用原值，不受展示影响。
- */
+/** 月份下拉展示文案：官网原值（`3 月`）按序号取本地化月份名；官网 date 参数仍用原值。 */
 @Composable
 private fun monthDisplay(value: String): String {
     if (value == DATE_ALL) return stringResource(R.string.search_filter_all)
@@ -1075,10 +1047,8 @@ private fun monthDisplay(value: String): String {
 }
 
 /**
- * 发布日期选择底部面板（自绘，风格与 [TagFilterSheet] 一致，不引入 ModalBottomSheet 依赖）。
- *
- * 交互：快捷项与「年 / 月」互斥 —— 点选任一快捷项即清空年月；改动年月即取消快捷项选择。
- * 「取消」不产生任何副作用；[onApply] 时回传最终 date 值（空串 = 全部），由调用方统一提交搜索。
+ * 发布日期选择底部面板（自绘，风格与 [TagFilterSheet] 一致）。快捷项与「年 / 月」互斥：
+ * 点选快捷项即清空年月，改动年月即取消快捷项。[onApply] 回传最终 date 值（空串 = 全部）。
  */
 @Composable
 private fun DateFilterSheet(
@@ -1315,7 +1285,7 @@ private fun DateDropdown(
     }
 }
 
-/** 时长选项：[dataValue] 为官网原值（直接作为 duration 参数），[labelRes] 仅用于界面展示。 */
+/** 时长选项：[dataValue] 为官网原值（直接作为 duration 参数），[labelRes] 仅用于展示。 */
 private data class DurationOption(val dataValue: String, @StringRes val labelRes: Int)
 
 private val durationOptions = listOf(
@@ -1330,17 +1300,12 @@ private val durationOptions = listOf(
     DurationOption("0 - 20 分鐘", R.string.search_duration_0_20m)
 )
 
-/** 筛选 chip 展示文案：命中选项取本地化 label，否则原样展示。 */
+/** 筛选 chip 文案：命中选项取本地化 label，否则原样展示。 */
 @Composable
 private fun durationChipLabel(value: String): String =
     durationOptions.firstOrNull { it.dataValue == value }?.let { stringResource(it.labelRes) } ?: value
 
-/**
- * 时长选择底部面板（自绘，风格与 [TagFilterSheet] / [DateFilterSheet] 一致）。
- *
- * 单项选择；「取消」不产生任何副作用，[onApply] 时回传最终 duration 值（空串 = 全部），
- * 由调用方统一提交搜索。
- */
+/** 时长选择底部面板（自绘）；[onApply] 回传最终值（空串 = 全部），由调用方提交搜索。 */
 @Composable
 private fun DurationFilterSheet(
     initialDuration: String,

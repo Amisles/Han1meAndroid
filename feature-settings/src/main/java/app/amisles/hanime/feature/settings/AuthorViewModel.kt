@@ -36,7 +36,7 @@ class AuthorViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
-    // G15：若 Videos/Playlists 事件先于 Profile 到达，先缓冲，待 Profile 到达时合并，避免被静默丢弃。
+    // 若 Videos/Playlists 事件先于 Profile 到达，先缓冲，待 Profile 到达时合并，避免被静默丢弃。
     private var pendingVideos: List<HanimeVideo>? = null
     private var pendingPlaylists: List<PlaylistSummary>? = null
 

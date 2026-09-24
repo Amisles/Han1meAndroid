@@ -32,9 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
-/**
- * 详情页操作按钮：图标在上、文字在下，避免长文本（英文 Unfavorite / 日语お気に入り解除等）换行。
- */
+/** 详情页操作按钮：图标在上、文字在下，避免长文本（英文 Unfavorite / 日语お気に入り解除等）换行。 */
 @Composable
 internal fun DetailActionButton(
     icon: ImageVector,
@@ -70,12 +68,7 @@ internal fun DetailActionButton(
     }
 }
 
-/**
- * 订阅作者按钮：横向胶囊样式（图标 + 文字），置于作者名右侧。
- * - 未订阅：实心 primary 胶囊 + 订阅
- * - 已订阅：surfaceVariant 胶囊 + 已订阅
- * - 请求中：显示环形进度，禁止点击
- */
+/** 订阅作者按钮：横向胶囊（图标 + 文字）；未订阅为实心 primary，已订阅为 surfaceVariant，请求中显示环形进度。 */
 @Composable
 internal fun SubscribeButton(
     isSubscribed: Boolean,

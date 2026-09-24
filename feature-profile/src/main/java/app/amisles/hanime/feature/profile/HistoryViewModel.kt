@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,8 @@ class HistoryViewModel @Inject constructor(
                 }
                 _history.value = history
                 AppLogger.d("HistoryViewModel", "Got ${history.size} history items")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("HistoryViewModel", "Error loading history: ${e.message}", e)
                 _history.value = emptyList()
@@ -55,6 +58,8 @@ class HistoryViewModel @Inject constructor(
                     repository.removeWatchHistory(videoId)
                 }
                 loadHistory()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("HistoryViewModel", "Error removing history: ${e.message}", e)
             }
@@ -68,10 +73,12 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    // 单条 SQL 批量删除，避免逐条事务（审查 P6）
+                    // 单条 SQL 批量删除，避免逐条事务
                     repository.removeWatchHistories(videoIds)
                 }
                 loadHistory()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("HistoryViewModel", "Error removing histories: ${e.message}", e)
             }
@@ -87,6 +94,8 @@ class HistoryViewModel @Inject constructor(
                     repository.clearWatchHistory()
                 }
                 loadHistory()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e("HistoryViewModel", "Error clearing history: ${e.message}", e)
             }

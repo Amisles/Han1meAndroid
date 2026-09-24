@@ -76,10 +76,8 @@ enum class DownloadSort {
 
 /**
  * 筛选 / 排序用的稳定键。
- *
- * 下载进度会让 tasks 每秒产生多个新列表；若直接以 tasks 为 key 排序，等于每秒重排整表。
- * 这里只把「筛选与排序真正依赖的字段」抽成不可变键，进度以外的字段没变时排序结果即可复用
- * （审查 W6）。
+ * tasks 每秒会因进度产生多个新列表；抽出「筛选与排序真正依赖的字段」作不可变键，
+ * 进度以外的字段没变时即可复用排序结果，避免每秒重排整表。
  */
 private data class TaskOrderKey(
     val id: Int,
@@ -107,9 +105,8 @@ fun DownloadScreen(
     val pausedTasks = tasks.filter { it.status == DownloadStatus.PAUSED }
     val failedTasks = tasks.filter { it.status == DownloadStatus.FAILED }
 
-    // 筛选 + 排序后的可见任务。
-    // 分两步：先取「排序/筛选依据」的稳定键，再按 id 映射回最新的 Task 对象。
-    // 这样进度更新（tasks 每秒变化多次）不会触发整表重排，而界面上的进度仍是实时的（审查 W6）。
+    // 筛选 + 排序后的可见任务：先取排序/筛选依据的稳定键，再按 id 映射回最新 Task 对象，
+    // 这样进度更新不会触发整表重排，而界面进度仍是实时的
     val taskOrderKeys = remember(tasks, downloadSort) {
         tasks.map { task ->
             TaskOrderKey(
@@ -774,8 +771,7 @@ fun DownloadTaskItem(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // S3 起 quality 统一为官网画质全称（可能较长，如「1080p 高清」），
-                // 限制两行 + 省略号并居中，避免撑破 80x60 的缩略图位
+                // quality 为官网画质全称（可能较长），限制两行 + 省略号并居中，避免撑破缩略图位
                 Text(
                     text = task.quality,
                     fontSize = 11.sp,
@@ -861,7 +857,7 @@ fun DownloadTaskItem(
                     color = HanimeDanger,
                     modifier = Modifier.padding(top = 3.dp)
                 )
-                // C3：展示细分失败原因（如网络超时、HTTP 4xx/5xx）
+                // 展示细分失败原因（如网络超时、HTTP 4xx/5xx）
                 if (task.errorMessage.isNotBlank()) {
                     Text(
                         text = task.errorMessage,

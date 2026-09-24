@@ -32,10 +32,7 @@ import app.amisles.hanime.feature.detail.components.DetailPlaylistVideos
 import app.amisles.hanime.feature.detail.components.DetailRelatedVideoCard
 import app.amisles.hanime.feature.detail.components.DetailTabBar
 
-/**
- * 详情页「其余组件」（Tab 条 / 简介 / 播放集合 / 相关推荐 / 评论）所需的只读状态。
- * 原本散落在 DetailScreen 组合内的局部变量，随 detailRestItems 一起抽取后集中传递。
- */
+/** 详情页「其余组件」（Tab 条 / 简介 / 播放集合 / 相关推荐 / 评论）所需的只读状态。 */
 internal data class DetailRestState(
     // 0 = 简介（除评论外的全部信息），1 = 评论
     val selectedTab: Int,
@@ -59,10 +56,7 @@ internal data class DetailRestState(
     val replyError: String?
 )
 
-/**
- * 「其余组件」的用户交互回调。评论 tab 的懒加载判断等依赖页面级状态的逻辑
- * 由 DetailScreen 实现后传入，组件层只负责触发。
- */
+/** 「其余组件」的交互回调；依赖页面级状态的判断由 DetailScreen 实现后传入，组件层只负责触发。 */
 internal data class DetailRestActions(
     val onTabSelected: (Int) -> Unit,
     val onToggleDescription: () -> Unit,
@@ -87,9 +81,7 @@ internal data class DetailRestActions(
     val onNavigateToLogin: () -> Unit
 )
 
-/**
- * 详情页「其余组件」：手机单列与平板右栏共用的 LazyColumn 内容。
- */
+/** 详情页「其余组件」：手机单列与平板右栏共用的 LazyColumn 内容。 */
 internal fun LazyListScope.detailRestItems(
     detail: VideoDetail,
     state: DetailRestState,
@@ -101,7 +93,7 @@ internal fun LazyListScope.detailRestItems(
     }
 
     if (state.selectedTab == 0) {
-        // 与搜索结果一致：先按 id 去重再作为 Lazy key，避免站点返回重复条目时 key 冲突崩溃（审查 O3）
+        // 先按 id 去重再作为 Lazy key，避免站点返回重复条目时 key 冲突崩溃
         items(detail.relatedVideos.distinctBy { it.id }, key = { it.id }) { video ->
             DetailRelatedRow(
                 video = video,
@@ -121,9 +113,7 @@ internal fun LazyListScope.detailRestItems(
 /** 左右滑动切页的触发阈值 */
 private val DetailTabSwipeThreshold = 60.dp
 
-/**
- * 「简介 / 评论」左右滑动切页手势。
- */
+/** 「简介 / 评论」左右滑动切页手势。 */
 private fun Modifier.detailTabSwipe(
     currentTab: Int,
     thresholdPx: Float,
@@ -146,8 +136,8 @@ private fun Modifier.detailTabSwipe(
 }
 
 /**
- * 相关推荐单条：卡片本体 + 外层的左右滑动切页手势。
- * 手势加在外层是为了让「简介」页的滑动区域覆盖到相关推荐（该区块不参与滑动动效，见 [detailRestItems]）。
+ * 相关推荐单条：卡片本体 + 外层的左右滑动切页手势。手势加在外层，
+ * 是为了让「简介」页的滑动区域覆盖到相关推荐。
  */
 @Composable
 private fun DetailRelatedRow(
@@ -180,7 +170,7 @@ internal fun DetailTabBlock(
     actions: DetailRestActions
 ) {
     val density = LocalDensity.current
-    // 切页阈值：抽屉手势用 120dp，这里内容在列表内部，取 60dp 更跟手
+    // 切页阈值取 60dp 比抽屉手势（120dp）更跟手
     val swipeThresholdPx = remember(density) { with(density) { DetailTabSwipeThreshold.toPx() } }
 
     Column(
@@ -252,9 +242,7 @@ private fun DetailIntroPage(
     }
 }
 
-/**
- * 「评论」页：评论输入框 + 加载中 / 错误 / 空 / 列表状态。
- */
+/** 「评论」页：评论输入框 + 加载中 / 错误 / 空 / 列表状态。 */
 @Composable
 private fun DetailCommentsPage(
     state: DetailRestState,

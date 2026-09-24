@@ -12,14 +12,9 @@ import javax.inject.Singleton
 /**
  * 订阅作者接口响应解析器。
  *
- * 官网 /subscribe 返回 JSON：
- * {
- *   "subscribeBtn": "<更新后的订阅表单 HTML>",
- *   "csrf_token": "..."
- * }
- *
- * 新订阅状态从 subscribeBtn 内的 input[name="subscribe-status"] 解析（"" = 未订阅，"1" = 已订阅），
- * 与服务端渲染逻辑一致；csrf_token 回传新的 CSRF Token 供后续请求刷新。
+ * /subscribe 返回 JSON：subscribeBtn（更新后的订阅表单 HTML）与 csrf_token。
+ * 新订阅状态从 subscribeBtn 内的 input[name="subscribe-status"] 解析（"" = 未订阅，"1" = 已订阅）；
+ * csrf_token 回传新的 CSRF Token 供后续请求刷新。
  */
 @Singleton
 class SubscribeParser @Inject constructor() {

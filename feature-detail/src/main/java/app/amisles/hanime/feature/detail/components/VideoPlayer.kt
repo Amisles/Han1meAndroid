@@ -121,36 +121,21 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-/**
- * 设备当前的物理朝向。
- *
- * 角度由 [OrientationEventListener] 给出：以设备自然方向（竖屏、顶部朝上）为 0°、随顺时针旋转增大，
- * 90° 附近为设备左侧朝上（即顶部朝右），270° 附近为设备右侧朝上（即顶部朝左）。
- *
- * 角度 → 屏幕方向常量的对应（依据 androidx.camera `RotationProvider` 的角度→Surface 旋转表，
- * 以及 `ROTATION_90`↔`LANDSCAPE`、`ROTATION_270`↔`REVERSE_LANDSCAPE` 的约定）：
- * 顶部朝右对应 `SCREEN_ORIENTATION_REVERSE_LANDSCAPE`，顶部朝左对应 `SCREEN_ORIENTATION_LANDSCAPE`。
- * 两者不要写反，否则全屏会**持续**上下颠倒（而非只抖一下）。
- */
+/** 设备物理朝向，用于全屏时锁到正确的横屏一侧（角度→方向常量勿写反，否则全屏持续上下颠倒）。 */
 private enum class DeviceTilt(val landscapeOrientation: Int?) {
-    /** 竖持（正竖或倒竖）。 */
+    /** 竖持。 */
     PORTRAIT(null),
 
-    /** 横置、设备顶部朝左。 */
+    /** 横置、顶部朝左。 */
     TOP_TO_LEFT(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE),
 
-    /** 横置、设备顶部朝右。 */
+    /** 横置、顶部朝右。 */
     TOP_TO_RIGHT(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
 
-    /** 是否横置（两个横屏方向之一）。 */
     val isLandscape: Boolean get() = landscapeOrientation != null
 }
 
-/**
- * 把 [OrientationEventListener] 的角度归类为具体物理朝向。
- *
- * 45° 附近的临界区（设备近乎平放或斜持）返回 null，交由后续回调判定，避免角度抖动引发反复切换。
- */
+/** 把 [OrientationEventListener] 角度归类为物理朝向；临界区（近乎平放/斜持）返回 null 待后续判定，避免抖动。 */
 private fun classifyDeviceTilt(orientation: Int): DeviceTilt? = when (orientation) {
     in 55..125 -> DeviceTilt.TOP_TO_RIGHT
     in 235..305 -> DeviceTilt.TOP_TO_LEFT
@@ -159,13 +144,7 @@ private fun classifyDeviceTilt(orientation: Int): DeviceTilt? = when (orientatio
     else -> null
 }
 
-/**
- * 是否为任一「锁定横屏」的方向常量。
- *
- * 全屏是本应用唯一会锁屏幕方向的地方；若快照 [Activity.requestedOrientation] 时恰好
- * 取到这些值（例如在全屏中跳转下一条视频、新旧页面组合与销毁顺序不定），说明该值
- * 来源于全屏本身，不能作为退出全屏的恢复目标，否则退出后页面会永远停在横屏。
- */
+/** 是否为「锁定横屏」方向常量；全屏是本应用唯一锁方向处，快照到这些值不能作为退出全屏的恢复目标。 */
 private val Int.isLandscapeOrientation: Boolean
     get() = this == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
@@ -202,10 +181,10 @@ private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 可交互进度条（时间文本 + 滑块）。轨道按三层亮度同时展示「已播放 / 已缓冲 / 未缓冲」。
+ * 可交互进度条（时间文本 + 滑块）。轨道按三层亮度展示「已播放 / 已缓冲 / 未缓冲」。
  * 进度轮询下沉到本组合内部，仅重排自身、不触发外层 VideoPlayer 重排。
  *
- * @param onSeekInteract 用户点击 / 拖动时回调，外层据此判定本次触摸落在控件上、不做「切换控件显隐」。
+ * @param onSeekInteract 用户点击 / 拖动时回调，外层据此判定触摸落在控件上、不切换控件显隐。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -216,7 +195,7 @@ private fun PlaybackProgressBar(
 ) {
     var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var duration by remember { mutableLongStateOf(exoPlayer.duration) }
-    // 已缓冲位置（毫秒）：用于在轨道上画「已缓冲」段，与手指拖动无关，始终刷新
+    // 已缓冲位置（毫秒）：画「已缓冲」段，与拖动无关，始终刷新
     var bufferedPosition by remember { mutableLongStateOf(exoPlayer.bufferedPosition) }
     var isDragging by remember { mutableStateOf(false) }
 
@@ -289,7 +268,7 @@ private fun PlaybackProgressBar(
                         .clip(RoundedCornerShape(1.dp))
                         .background(Color.White.copy(alpha = 0.3f))
                 ) {
-                    // 已缓冲（含已播放部分）：压在已播放段之下，向右拖拽时可预览可跳范围
+                    // 已缓冲（含已播放部分）：压在已播放段之下，拖拽时可预览可跳范围
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(bufferedFraction)
@@ -311,10 +290,8 @@ private fun PlaybackProgressBar(
 }
 
 /**
- * 控件隐藏时贴在播放器最底部的简易进度条：同时展示「已播放 / 已缓冲」两段进度，
- * 不接受交互（不加 clickable，点击穿透到外层手势等同于点击空白区域唤回控件）。
- * 三层亮度与可交互进度条一致：25% = 未缓冲，55% = 已缓冲未播放，100% = 已播放。
- * 轮询仅在自身显示在组合中时运行，控件显示时无额外开销。
+ * 控件隐藏时贴在播放器最底部的简易进度条：展示「已播放 / 已缓冲」两段进度，不接受交互
+ * （点击穿透到外层手势，等同点击空白唤回控件）。三层亮度：25% = 未缓冲，55% = 已缓冲，100% = 已播放。
  */
 @Composable
 private fun MiniPlaybackProgress(
@@ -390,8 +367,7 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    // 退出全屏时恢复的屏幕方向。若快照到的本身就是横屏锁定值（全屏中跳转下一条视频时
-    // 新旧页面的组合/销毁顺序不定），则回退为 UNSPECIFIED，避免退出全屏后页面停在横屏
+    // 退出全屏时恢复的屏幕方向；若快照到横屏锁定值则回退 UNSPECIFIED，避免退出全屏后停在横屏
     val initialOrientation = remember(activity) {
         activity?.requestedOrientation?.takeUnless { it.isLandscapeOrientation }
             ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -442,8 +418,7 @@ fun VideoPlayer(
     // 画中画状态
     var isInPip by remember { mutableStateOf(false) }
 
-    // 设备当前物理朝向（由下方 OrientationEventListener 维护，null = 尚未确定）。
-    // 只用于决定全屏时锁到哪一侧横屏，不参与业务逻辑。
+    // 设备当前物理朝向（由下方 OrientationEventListener 维护，null = 尚未确定），仅用于全屏锁横屏一侧
     var deviceTilt by remember { mutableStateOf<DeviceTilt?>(null) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
@@ -460,11 +435,11 @@ fun VideoPlayer(
     var rebufferCount by remember { mutableStateOf(0) }
     var autoSwitched by remember { mutableStateOf(false) }
     var stableTicks by remember { mutableStateOf(0) }
-    // 上一次播放状态：用于区分「首次起播 / 换源引发的缓冲」与「播放中重新缓冲」
+    // 上一次播放状态：用于区分「首次起播 / 换源的缓冲」与「播放中重新缓冲」
     var lastPlaybackState by remember { mutableStateOf(Player.STATE_IDLE) }
-    // 播放失败：非空即进入可重试的失败态（不再用 isReady 冒充就绪）
+    // 播放失败：非空即进入可重试的失败态
     var playbackError by remember { mutableStateOf<PlaybackException?>(null) }
-    // 用 ref 持有最新值，避免 remember 的 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
+    // 用 ref 持有最新值，避免 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
     val sourcesRef = rememberUpdatedState(sortedSources)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
     val isLoopPlaybackRef = rememberUpdatedState(isLoopPlayback)
@@ -491,14 +466,12 @@ fun VideoPlayer(
         onQualityChanged(source.resolution)
     }
 
-    /**
-     * 失败态重试：清除错误后重新 prepare 当前媒体项，并尽量回到原播放位置。
-     */
+    /** 失败态重试：清除错误后重新 prepare 当前媒体项，并尽量回到原播放位置。 */
     fun retryPlayback() {
         val position = exoPlayer.currentPosition
         playbackError = null
         isBuffering = true
-        // 媒体项被清空（极端路径）时按当前源重建，否则直接重新 prepare
+        // 媒体项被清空（极端路径）时按当前源重建
         if (exoPlayer.mediaItemCount == 0 && currentSourceUrl.isNotBlank()) {
             exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(currentSourceUrl)))
         }
@@ -515,12 +488,9 @@ fun VideoPlayer(
                 isBuffering = playbackState == Player.STATE_BUFFERING
                 when (playbackState) {
                     Player.STATE_BUFFERING -> {
-                        // 仅「从 READY 掉回 BUFFERING 且用户意图播放」才算一次 rebuffer。
-                        // 不能用 isPlaying 判定：ExoPlayer 进入缓冲会先回调 onIsPlayingChanged(false)，
-                        // 随后才回调 STATE_BUFFERING，以它为条件会让计数恒为 0、整套 ABR 失效。
-                        // 首次起播（IDLE→BUFFERING）与换画质（isSwitchingQuality）均不计入。
-                        // 取舍：播放中拖拽进度造成的短暂缓冲也会计入，可能触发一次降档，
-                        // 但降档后可经下方稳定升档路径恢复，影响可接受。
+                        // 仅「从 READY 掉回 BUFFERING 且用户意图播放」算一次 rebuffer。
+                        // 不能用 isPlaying 判定：ExoPlayer 进入缓冲会先回调 onIsPlayingChanged(false) 再回调
+                        // STATE_BUFFERING，以它为条件会让计数恒为 0。首次起播与换画质均不计入。
                         val isRebuffer = previousState == Player.STATE_READY &&
                             exoPlayer.playWhenReady && !isSwitchingQuality
                         if (isRebuffer && !autoSwitched) {
@@ -550,9 +520,8 @@ fun VideoPlayer(
                             }
                             initialSeekAppliedRef.value = true
                         }
-                        // 不调用 setForegroundMode(true)：它的语义是「为后台播放保活」，
-                        // 本应用没有播放用的前台服务（只有下载用的 DownloadService），可见播放器并不需要它，
-                        // 反而会让超长视频在后台继续放音且没有通知可依。后台继续观看由画中画承担（审查 D7）。
+                        // 不调用 setForegroundMode(true)：其语义是「为后台播放保活」，本应用没有播放用的
+                        // 前台服务，可见播放器并不需要它。后台继续观看由画中画承担。
                         // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
                         if (autoSwitched) {
                             stableTicks++
@@ -568,9 +537,8 @@ fun VideoPlayer(
                         }
                     }
                     Player.STATE_ENDED -> {
-                        // 播放结束：通知外层（如触发下一集自动播放）。
-                        // 循环播放时必须跳过：ExoPlayer 已在 repeatMode=REPEAT_MODE_ONE 下自行从头重播，
-                        // 此时若仍走「结束」流程，连播会切到下一集、非连播则停在结束画面（黑屏），循环被打断。
+                        // 循环播放时必须跳过：ExoPlayer 已在 repeatMode=REPEAT_MODE_ONE 下自行重播，
+                        // 若仍走「结束」流程会切到下一集或停在结束画面，循环被打断
                         if (!isLoopPlaybackRef.value) onPlaybackEndedRef.value.invoke()
                     }
                 }
@@ -589,8 +557,7 @@ fun VideoPlayer(
                 super.onPlayerError(error)
                 isBuffering = false
                 isSwitchingQuality = false
-                // 保留错误用于渲染可重试的失败态。此前把 isReady 置 true 会让中央播放按钮
-                // 呈现为「可播放」，用户反复点击无反应，也看不到任何失败原因。
+                // 保留错误用于渲染可重试的失败态；把 isReady 置 true 会让播放按钮显示为可播放却不响应
                 playbackError = error
             }
         }
@@ -607,8 +574,7 @@ fun VideoPlayer(
     }
 
     // 循环播放：由 player.repeatMode 实现，偏好变化即时下发。
-    // 切集 / 换画质复用同一播放器实例，repeatMode 会保留，故以 isLoopPlayback 为键重新下发，
-    // 避免「退出页面再进入」后开关状态与实际行为不一致。
+    // 切集 / 换画质复用同一播放器实例，repeatMode 会保留，故以 isLoopPlayback 为键重新下发
     LaunchedEffect(isLoopPlayback) {
         exoPlayer.repeatMode =
             if (isLoopPlayback) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
@@ -737,8 +703,8 @@ fun VideoPlayer(
     }
 
     /**
-     * 标记「本次触摸落在播放器控件上」。外层手势在抬起时读取该标记：为真则跳过「切换控件显隐」，
-     * 使点击控件只执行控件自身逻辑。隐藏途径由此收敛为两种——点击空白区域，或空闲超时。
+     * 标记「本次触摸落在播放器控件上」。外层手势在抬起时读取：为真则跳过「切换控件显隐」，
+     * 使点击控件只执行控件自身逻辑。隐藏途径由此收敛为点击空白或空闲超时两种。
      */
     fun markControlTap() {
         isControlTap = true
@@ -754,14 +720,10 @@ fun VideoPlayer(
     }
 
     // ── 全屏与旋屏 ───────────────────────────────────────────────────────────
-    // 全屏：隐藏系统栏并把方向锁到横屏，退出时复位。
-    //
-    // 方向优先用我们自己监听到的物理朝向（deviceTilt）锁到**具体一侧**，而不是只丢一个
-    // SENSOR_LANDSCAPE 让系统去猜：系统「自动旋转」关闭时它自己的方向传感器是停用的，
-    // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧、待传感器就绪后再翻回来 —— 对外表现就是
-    // 「点全屏 / 自动全屏的瞬间画面上下颠倒，随后才转正」。我们自己的 OrientationEventListener
-    // 不受系统自动旋转开关影响，所以直接把正确的一侧告诉系统即可。只有朝向尚未确定、或设备
-    // 本就竖持（此时不存在「正确的一侧」）时，才回退到 SENSOR_LANDSCAPE。
+    // 全屏：隐藏系统栏并把方向锁到横屏，退出时复位。方向优先用监听到的物理朝向（deviceTilt）锁到
+    // 具体一侧，而非丢一个 SENSOR_LANDSCAPE 让系统猜——系统「自动旋转」关闭时其方向传感器停用，
+    // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧再翻回来（表现为点全屏瞬间画面上下颠倒再转正）。
+    // 只有朝向未确定或设备本就竖持时才回退 SENSOR_LANDSCAPE。
     LaunchedEffect(isFullscreen, activity, deviceTilt) {
         if (activity != null) {
             val window = activity.window
@@ -774,13 +736,12 @@ fun VideoPlayer(
                 if (target != null) {
                     try { activity.requestedOrientation = target } catch (_: Exception) {}
                 } else if (!activity.requestedOrientation.isLandscapeOrientation) {
-                    // 朝向未知、或设备本就竖持（此时不存在「正确的一侧」）：交给系统的横屏传感器选一个
+                    // 朝向未知或设备竖持（不存在「正确的一侧」）：交给系统的横屏传感器选一个
                     try {
                         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                     } catch (_: Exception) {}
                 }
-                // 其余情况：已锁在横屏、此刻却判到竖屏 —— 多半是左右横置翻转（180°）途经竖屏，
-                // 保持当前方向不动，等去抖确认后由横屏自动全屏逻辑退出全屏
+                // 其余情况：已锁横屏却判到竖屏，多半是左右横置翻转途经竖屏，保持方向不动，待去抖后退出全屏
             } else {
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = initialBarsBehavior
@@ -791,7 +752,7 @@ fun VideoPlayer(
 
     // ── 横屏自动全屏 ─────────────────────────────────────────────────────────
     // 设备由竖转横时自动进入全屏，由横转竖时自动退出（平板分栏由调用方关闭该行为）。
-    // 用 ref 持有最新的状态与回调，避免 Effect 闭包捕获到陈旧的 isFullscreen / 回调。
+    // 用 ref 持有最新状态与回调，避免 Effect 闭包捕获到陈旧的 isFullscreen / 回调。
     val orientationFlipRef = rememberUpdatedState { landscape: Boolean ->
         if (autoFullscreenEnabled && !isInPip) {
             if (landscape && !isFullscreen) onFullscreenToggle(true)
@@ -800,22 +761,20 @@ fun VideoPlayer(
     }
 
     // 监听器始终注册（不随 autoFullscreenEnabled 走）：平板虽不自动全屏，但手动点全屏时同样
-    // 需要 deviceTilt 才能锁到正确的一侧。是否触发自动全屏由上面的 ref 内部判断。
+    // 需要 deviceTilt 才能锁到正确一侧，是否触发自动全屏由上面的 ref 内部判断。
     DisposableEffect(activity) {
         val act = activity ?: return@DisposableEffect onDispose {}
-        // 上一次「已生效」的方向（null = 尚未登记），仅在真正翻转时才上报；不参与组合，用局部变量即可
+        // 上一次已生效的方向（null = 尚未登记），仅在真正翻转时上报
         var lastLandscape: Boolean? = null
-        // 竖屏的待确认次数：左右横置互相翻转要旋转 180°、途中必然途经竖屏，而全屏时
-        // SENSOR_LANDSCAPE 不会让画面经过竖屏；若一次判到竖屏就退出，会出现
-        // 「退出全屏又立刻重新进入」的抖动，故竖屏需连续两次判定才生效
+        // 竖屏待确认次数：左右横置互翻必经竖屏，而全屏时 SENSOR_LANDSCAPE 不会让画面经过竖屏，
+        // 若一次判到竖屏就退出会「退出全屏又立刻重进」，故竖屏需连续两次判定才生效
         var portraitStreak = 0
         val listener = object : OrientationEventListener(act) {
             override fun onOrientationChanged(orientation: Int) {
                 if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) return
                 // 临界区返回 null：维持原判定，等角度稳定后再判
                 val tilt = classifyDeviceTilt(orientation) ?: return
-                // 物理朝向始终同步（左右翻转也要更新，供全屏锁方向用）；
-                // 重复写入同一个枚举值不会触发重组
+                // 物理朝向始终同步（左右翻转也要更新，供全屏锁方向用）；重复写入同一枚举值不触发重组
                 deviceTilt = tilt
                 val landscape = tilt.isLandscape
                 val previous = lastLandscape
@@ -829,8 +788,7 @@ fun VideoPlayer(
                 }
                 portraitStreak = 0
                 lastLandscape = landscape
-                // 首次回调只用于登记当前朝向：起始即竖屏说明无需动作，
-                // 但起始即横屏（横持手机进入详情页）仍应自动进入全屏
+                // 首次回调只用于登记当前朝向：起始竖屏无需动作，但起始横屏（横持手机进入详情页）仍应自动全屏
                 if (previous == null && !landscape) return
                 orientationFlipRef.value(landscape)
             }
@@ -841,21 +799,14 @@ fun VideoPlayer(
 
     // ── 画中画 ───────────────────────────────────────────────────────────────
     // 全屏播放中按 Home/概览键自动进入画中画（API 26+）；退出 PiP 时复位 isInPip。
-    //
-    // 必须观察 **Activity** 的生命周期，不能观察 LocalLifecycleOwner：在 Compose Navigation 中
-    // LocalLifecycleOwner 指向当前目的地对应的 NavBackStackEntry，任何一次应用内导航（例如连播
-    // 自动切到下一集）都会让旧目的地由 RESUMED 退到 STARTED 并派发 ON_PAUSE，被误判为
-    // 「用户离开 App」，于是全屏播放器会突然缩成画中画。只有 Activity 的 ON_PAUSE 才等价于离开 App。
-    //
-    // isFullscreen / isPlaying 一律经 ref 取最新值：观察者只在 activity 变化时重建，若直接闭包捕获
-    // 会固化成陈旧快照（例如视频播完后 isPlaying 名义上已为 false，观察者却仍读到 true）而误触发。
+    // 必须观察 Activity 的生命周期而非 LocalLifecycleOwner：后者的 ON_PAUSE 会在任何应用内导航
+    // 时派发（如连播切下一集），会被误判为「用户离开 App」而错误缩成画中画。
+    // isFullscreen / isPlaying 一律经 ref 取最新值，否则观察者会固化成陈旧快照而误触发。
     val isFullscreenRef = rememberUpdatedState(isFullscreen)
     val isPlayingRef = rememberUpdatedState(isPlaying)
     DisposableEffect(activity) {
         val act = activity ?: return@DisposableEffect onDispose {}
-        // android.app.Activity 自身并没有 lifecycle —— LifecycleOwner 是 androidx 的接口，由
-        // ComponentActivity 实现（本应用唯一的 Activity 即 MainActivity : ComponentActivity），
-        // 故安全向下转型后即可观察 Activity 的真实生命周期。
+        // Activity 本身没有 lifecycle；LifecycleOwner 由 ComponentActivity 实现，安全向下转型后即可观察
         val owner = act as? LifecycleOwner ?: return@DisposableEffect onDispose {}
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -905,7 +856,7 @@ fun VideoPlayer(
                 if (playerPos != pos) playerPos = pos
             }
             // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击；
-            // 以指针数为唯一真相源，避免多检测器竞争与状态卡死。
+            // 以指针数为唯一真相源，避免多检测器竞争与状态卡死
             .pointerInput(Unit) {
                 while (true) {
                     awaitPointerEventScope {
@@ -928,7 +879,6 @@ fun VideoPlayer(
                         var preBoostSpeed = 1f
                         // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发 2x
                         var longPressJob: Job? = null
-
                         while (true) {
                             val event = awaitPointerEvent()
                             val presses = event.changes.filter { it.pressed }
@@ -943,7 +893,7 @@ fun VideoPlayer(
                                     gestureHint = null
                                     break
                                 }
-                                // 普通抬起（未触发长按）：取消尚未到期的定时器，确保快速点击绝不误加速
+                                // 普通抬起：取消尚未到期的定时器，确保快速点击绝不误加速
                                 longPressJob?.cancel()
                                 if (!moved && !isZoom) {
                                     // 视为一次点击
@@ -961,7 +911,7 @@ fun VideoPlayer(
                                     } else {
                                         lastTapTime = now
                                         if (isControlTap) {
-                                            // 单击落在控件上：交由控件自身的 onClick 处理，手势不切换控制栏显隐、也不关闭菜单
+                                            // 单击落在控件上：交由控件自身处理，手势不切换控制栏显隐、不关菜单
                                             isControlTap = false
                                             lastTapTime = 0L
                                         } else {
@@ -1016,8 +966,8 @@ fun VideoPlayer(
                                     initialized = true
                                     longPressFired = false
                                     preBoostSpeed = playbackSpeedRef.value
-                                    // 每次手势开始都清空「落在控件上」标记：控件的 onClick 要到抬起时才置位，
-                                    // 若上一次手势因轻微移动没走到判定分支，残留的标记会吞掉下一次空白点击
+                                    // 每次手势开始都清空「落在控件上」标记：控件 onClick 要到抬起才置位，
+                                    // 若上次手势残留该标记会吞掉下一次空白点击
                                     isControlTap = false
                                     // 手势开始即重置自动隐藏倒计时
                                     controlsActivityRef.value = controlsActivityRef.value + 1
@@ -1117,8 +1067,8 @@ fun VideoPlayer(
                 animationSpec = tween(durationMillis = 250),
                 label = "posterAlpha"
             )
-            // 淡出完成后不再参与组合：alpha 恒为 0 的整屏位图没有保留必要（审查 O14）。
-            // showPoster 只在 posterUrl 变化时才置回 true，因此不会出现「需要海报却已移除」的情况。
+            // 淡出完成后不再参与组合：alpha 恒为 0 的整屏位图无保留必要。
+            // showPoster 只在 posterUrl 变化时置回 true，故不会出现「需要海报却已移除」。
             if (posterAlpha > 0f) {
                 AsyncImage(
                     model = posterUrl,
@@ -1190,8 +1140,7 @@ fun VideoPlayer(
                         .padding(top = 12.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .clickable {
-                            // 与播放器内既有控件一致：标记本次点击落在控件上，
-                            // 避免同一击又被外层手势当作空白点击而切换控制栏显隐
+                            // 与播放器内既有控件一致：标记点击落在控件上，避免同一击又被外层手势当作空白点击
                             markControlTap()
                             retryPlayback()
                         }

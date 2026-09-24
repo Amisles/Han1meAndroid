@@ -2,7 +2,7 @@ package app.amisles.hanime.data.parser
 
 object ParserUtils {
 
-    // O3：删除恒等映射（key == value 的 replace 为无操作，纯属浪费），仅保留真正需要繁→简转换的项
+    // 仅保留真正需要繁→简转换的项（恒等映射无操作，纯属浪费）
     val traditionalToSimplified = mapOf(
         "最新上傳" to "最新上传",
         "他們在看" to "他们在看",

@@ -22,10 +22,8 @@ val HanimeTextSecondaryLight = Color(0xFF666666)
 
 /**
  * 危险 / 破坏性操作的强调色（删除、清空、失败状态）。
- *
- * 不直接用 `MaterialTheme.colorScheme.error`：本应用主题把 error 映射成 primary（同一支红），
- * 直接复用会让「删除」与「管理 / 重试」等主色文字变成同色，破坏破坏性操作的视觉区分度。
- * 提取成语义常量只为消除散落各处的 `Color(0xFFFF6B6B)` 字面量（审查 O4）。
+ * 不复用 MaterialTheme.colorScheme.error：本主题把 error 映射成 primary（同一支红），
+ * 复用会让「删除」与「管理 / 重试」同色，破坏破坏性操作的视觉区分度。
  */
 val HanimeDanger = Color(0xFFFF6B6B)
 

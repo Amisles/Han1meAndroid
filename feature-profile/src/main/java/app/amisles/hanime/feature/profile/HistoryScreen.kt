@@ -206,7 +206,7 @@ fun HistoryScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位（审查 P7）
+                // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位
                 items(history, key = { it.id }) { video ->
                     val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
                     val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }

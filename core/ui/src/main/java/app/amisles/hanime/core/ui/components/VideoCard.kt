@@ -28,7 +28,6 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 
-
 /** 由视频 id 稳定地取一个下标，用于给占位图挑选渐变与 emoji；同模块的卡片组件共用。 */
 internal fun stableIndex(key: String, size: Int): Int {
     if (size <= 0) return 0
@@ -112,10 +111,7 @@ fun VideoCard(
     }
 }
 
-/**
- * 紧凑列表行：整宽卡片，左侧小缩略图 + 右侧多行信息。
- * 风格对齐视频详情页「相关视频」区块，信息密度高于横滑大卡片。
- */
+/** 紧凑列表行：整宽卡片，左侧小缩略图 + 右侧多行信息，信息密度高于横滑大卡片。 */
 @Composable
 fun VideoListItem(
     video: HanimeVideo,

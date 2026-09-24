@@ -70,11 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 data class LanguageOption(val code: String, val label: String)
 
-/**
- * 语言选项：(语言代码, 展示文案资源 id)。
- * 返回资源 id 而不是已解析字符串，避免「@Composable 函数返回数据列表」这种易被误当作纯函数调用的形态
- * （审查 G6 / O21）。
- */
+/** 语言选项：(语言代码, 展示文案资源 id)；返回资源 id 而非已解析字符串，便于在 Composable 内解析。 */
 private fun languageOptionRes(): List<Pair<String, Int>> = listOf(
     Preferences.LANGUAGE_ZH_CN to R.string.settings_language_zh_cn,
     Preferences.LANGUAGE_ZH_TW to R.string.settings_language_zh_tw,
@@ -177,8 +173,7 @@ private fun <T> SettingsDropdownCard(
 /**
  * 文件夹浏览器允许向上浏览到的根目录。
  *
- * 下载目录只可能落在「主外部存储」或「应用自身的文件目录」下，因此把上溯限制在这些根之内，
- * 避免用户一路浏览到 / 或 /data 这类与功能无关的位置（审查 G2）。
+ * 下载目录只可能落在「主外部存储」或「应用自身的文件目录」下，因此把上溯限制在这些根之内。
  */
 @Suppress("DEPRECATION") // 仅用 getExternalStorageDirectory 取根路径，不用于读写
 private fun pickerRoots(context: Context): List<File> = buildList {
@@ -187,9 +182,7 @@ private fun pickerRoots(context: Context): List<File> = buildList {
     add(context.filesDir)
 }.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
 
-/**
- * [current] 是否还能向上走：其父目录必须仍位于某个允许的根之内（含根本身）。
- */
+/** [current] 是否还能向上走：其父目录必须仍位于某个允许的根之内（含根本身）。 */
 private fun canNavigateUp(current: File, roots: List<File>): Boolean {
     val parent = current.parentFile ?: return false
     val parentPath = runCatching { parent.canonicalPath }.getOrNull() ?: return false
@@ -676,7 +669,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    // G6：成功/失败 Toast 由 SettingsViewModel 经 events 通道在删除完成后发送
+                    // 成功/失败 Toast 由 SettingsViewModel 经 events 通道在删除完成后发送
                     viewModel.clearAppCache()
                     showClearCacheDialog = false
                 }) {
@@ -725,7 +718,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    // 此前无条件提示「已更新」，非法输入被静默清洗成默认地址后用户无从得知（审查 G1）
+                    // 非法输入会被清洗成默认地址，据返回值提示用户真实结果
                     val applied = viewModel.setBaseUrl(baseUrlInput)
                     showBaseUrlDialog = false
                     Toast.makeText(

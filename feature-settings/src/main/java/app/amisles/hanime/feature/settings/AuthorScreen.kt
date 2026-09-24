@@ -69,7 +69,7 @@ fun AuthorScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
-    // 先落到局部不可变变量：委托属性在两次读取之间可能变化，同时便于智能转换（审查 O22）
+    // 先落到局部不可变变量：委托属性在两次读取之间可能变化，同时便于智能转换
     val loadedAuthorData = authorData
 
     LaunchedEffect(authorPageUrl) {
@@ -300,9 +300,7 @@ private fun PlaylistSummaryCard(
     }
 }
 
-/**
- * 作者页骨架屏：加载时模拟作者页布局的占位
- */
+/** 作者页骨架屏：加载时模拟作者页布局的占位。 */
 @Composable
 private fun AuthorSkeletonScreen() {
     val transition = rememberInfiniteTransition(label = "author-skeleton-shimmer")

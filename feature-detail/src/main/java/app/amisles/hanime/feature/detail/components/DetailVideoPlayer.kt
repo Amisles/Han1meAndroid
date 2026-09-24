@@ -24,11 +24,11 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
 
 /**
- * 详情页播放器：把两处（平板左半屏 / 手机单列）重复的 VideoPlayer 调用收拢为一处。
- * 画质、倍速、连播等偏好统一落盘到 Preferences，行为与拆分前完全一致。
+ * 详情页播放器：把平板左半屏与手机单列两处重复的 VideoPlayer 调用收拢为一处，
+ * 画质 / 倍速 / 连播等偏好统一落盘到 Preferences。
  *
- * [autoFullscreenEnabled] 默认 true（手机单列）：设备转向横屏时自动进入全屏、转回竖屏自动退出。
- * 平板分栏左半屏已是放大播放器且横持属常态握持，由调用方传 false 关闭，避免误触发。
+ * [autoFullscreenEnabled] 默认 true（手机单列）：转横屏自动全屏、转回竖屏自动退出；
+ * 平板分栏由调用方传 false 关闭，避免常态横持误触发。
  */
 @Composable
 internal fun DetailVideoPlayer(
@@ -42,7 +42,7 @@ internal fun DetailVideoPlayer(
     autoFullscreenEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    // 循环播放偏好：与连播不同，循环完全由播放器自身完成，外层无需感知，故在此就地读取
+    // 循环播放完全由播放器自身完成，外层无需感知，故就地读取
     val loopPlayback by Preferences.loopPlaybackFlow.collectAsStateWithLifecycle()
 
     VideoPlayer(
@@ -65,10 +65,7 @@ internal fun DetailVideoPlayer(
     )
 }
 
-/**
- * 视频不可用时的占位文案：分栏布局填充整块、单列布局固定 225dp 高。
- * [hasError] 为真显示「加载失败」，否则显示「暂无视频」。
- */
+/** 视频不可用时的占位文案：分栏布局填充整块、单列布局固定 225dp 高；[hasError] 为真显示「加载失败」。 */
 @Composable
 internal fun VideoUnavailableHint(
     hasError: Boolean,
@@ -83,10 +80,7 @@ internal fun VideoUnavailableHint(
     }
 }
 
-/**
- * 详情页返回按钮。分栏布局用白色图标浮在播放器左上角，单列布局用 onBackground 图标，
- * 故 tint 与整条 modifier 链都由调用方提供，保持原有尺寸与内边距。
- */
+/** 详情页返回按钮；分栏布局用白色图标浮在播放器左上角，单列用 onBackground，故 tint 与 modifier 由调用方提供。 */
 @Composable
 internal fun DetailBackButton(
     onBackClick: () -> Unit,

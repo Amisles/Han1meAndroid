@@ -30,9 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
-/**
- * 回复列表：加载中、错误、列表三态
- */
+/** 回复列表：加载中、错误、列表三态。 */
 @Composable
 internal fun ReplyList(
     replies: List<app.amisles.hanime.domain.model.Reply>?,
@@ -97,8 +95,7 @@ internal fun ReplyList(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(0.5.dp)
-                                    // 白色半透明分隔线在浅色主题（surface 近似白）下完全不可见，
-                                    // 改用主题的 outlineVariant，深浅色主题都能看到（审查 O5）
+                                    // 用主题的 outlineVariant，深浅色主题都能看到（白色半透明线在浅色主题下不可见）
                                     .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                             )
                         }
@@ -109,9 +106,7 @@ internal fun ReplyList(
     }
 }
 
-/**
- * 单条回复
- */
+/** 单条回复。 */
 @Composable
 internal fun ReplyItem(
     reply: app.amisles.hanime.domain.model.Reply,
@@ -154,7 +149,7 @@ internal fun ReplyItem(
                 )
             }
 
-            // 如果是回复其他回复，显示 "回复 @用户名" 前缀
+            // 回复其他回复时显示 "回复 @用户名" 前缀
             val replyToUser = reply.replyTo
             if (replyToUser != null) {
                 Text(
@@ -195,7 +190,6 @@ internal fun ReplyItem(
                     )
                 }
 
-                // 回复这条回复
                 Text(
                     text = stringResource(R.string.comment_reply),
                     fontSize = 11.sp,

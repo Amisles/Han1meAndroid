@@ -83,7 +83,7 @@ fun HanimeTheme(
         else -> HanimeLightColorScheme
     }
 
-    // Disable ripple effects globally for all clickable components
+    // 全局禁用点击组件的涟漪效果
     CompositionLocalProvider(LocalRippleConfiguration provides null) {
         ProvideWindowSizeInfo {
             MaterialTheme(

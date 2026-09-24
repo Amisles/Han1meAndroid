@@ -32,9 +32,7 @@ import app.amisles.hanime.domain.model.PlaylistInfo
 import app.amisles.hanime.feature.detail.util.videoEmoji
 import app.amisles.hanime.feature.detail.util.videoGradient
 
-/**
- * 播放集合头部：集合名、作者（可点击）与集数。
- */
+/** 播放集合头部：集合名、作者（可点击）与集数。 */
 @Composable
 internal fun DetailPlaylistHeader(
     playlist: PlaylistInfo,
@@ -94,9 +92,7 @@ internal fun DetailPlaylistHeader(
     }
 }
 
-/**
- * 播放集合横向视频列表：按视频 id 稳定散列取占位配色。
- */
+/** 播放集合横向视频列表：按视频 id 稳定散列取占位配色。 */
 @Composable
 internal fun DetailPlaylistVideos(
     playlist: PlaylistInfo,

@@ -62,9 +62,7 @@ import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import kotlinx.coroutines.launch
 
-/**
- * 每个首页分区在纵向列表里展示的视频条数（紧凑列表行，替代原横滑大卡片）
- */
+/** 每个首页分区在纵向列表里展示的视频条数。 */
 private const val HOME_SECTION_VISIBLE_COUNT = 6
 
 @Composable
@@ -133,8 +131,7 @@ fun HomeScreenContent(
             sections.forEach { section ->
                 map[section.title] = idx // 标题 item 的索引
                 idx += 1 // 标题
-                // 视频区在手机是「每条一个 item」、在平板是「每行一个 item」：
-                // 索引必须与下方渲染分支严格一致，否则平板点分类会定位到错误位次（审查 H2）
+                // 视频区手机是「每条一个 item」、平板是「每行一个 item」，索引必须与下方渲染分支严格一致
                 val visibleCount = section.videos.take(HOME_SECTION_VISIBLE_COUNT).size
                 idx += if (isCompactWidth) {
                     visibleCount
@@ -151,7 +148,7 @@ fun HomeScreenContent(
     }
 
     PullToRefreshBox(
-        // 与真实加载状态联动：此前恒为 false，下拉后指示器立即消失（审查 H1）
+        // 与真实加载状态联动
         isRefreshing = isLoading,
         onRefresh = onRefresh,
         state = pullState,
@@ -161,7 +158,7 @@ fun HomeScreenContent(
             .statusBarsPadding()
     ) {
         ResponsiveContent {
-        // 状态栏内边距已由外层 PullToRefreshBox 提供，这里不再叠加，否则顶部留白翻倍（审查 H3）
+        // 状态栏内边距已由外层 PullToRefreshBox 提供，这里不再叠加，否则顶部留白翻倍
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -295,12 +292,10 @@ fun HomeScreenContent(
     }
 }
 
-/**
- * 首页骨架屏：在加载时模拟首页布局的占位
- */
+/** 首页骨架屏：加载时模拟首页布局的占位。 */
 @Composable
 private fun HomeSkeletonScreen() {
-    // 闪烁动画：alpha 在 0.3f 到 0.6f 之间循环，时长 1000ms
+    // 闪烁动画：alpha 在 0.3f ~ 0.6f 循环，时长 1000ms
     val transition = rememberInfiniteTransition(label = "skeleton-shimmer")
     val alpha by transition.animateFloat(
         initialValue = 0.3f,
@@ -317,7 +312,7 @@ private fun HomeSkeletonScreen() {
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Banner 骨架占位：260dp 高度，全宽，圆角
+        // Banner 骨架占位
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -327,7 +322,7 @@ private fun HomeSkeletonScreen() {
                 .alpha(alpha)
         )
 
-        // 区块骨架（共 3 个），与内容布局一致：标题 + 紧凑列表行
+        // 区块骨架（共 3 个）：标题 + 紧凑列表行
         repeat(3) {
             // 区块标题骨架
             Box(
@@ -350,10 +345,7 @@ private fun HomeSkeletonScreen() {
     }
 }
 
-/**
- * 骨架视频列表行：整宽紧凑行，左缩略图（120x90）+ 右两行文字占位，
- * 与内容区的 VideoListItem 布局一致。
- */
+/** 骨架视频列表行：整宽紧凑行，左缩略图（120x90）+ 右两行文字占位，与内容区 VideoListItem 布局一致。 */
 @Composable
 private fun SkeletonVideoRow(alpha: Float) {
     Row(

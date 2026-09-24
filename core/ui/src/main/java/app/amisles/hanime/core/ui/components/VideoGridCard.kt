@@ -23,14 +23,8 @@ import app.amisles.hanime.domain.model.HanimeVideo
 
 /**
  * 网格卡：竖向排布，供搜索结果等网格布局使用。
- *
- * 与 [VideoCard] 的差异：
- * - 缩略图 16:9（视频原生比例，全站视频卡片统一为该比例）；
- * - **时长、点赞率、播放量下沉为缩略图角标**（复用 [VideoThumbnail] 已有的角标能力），
- *   正文区只留「标题 + 作者」两行 —— 网格里卡片等高、扫读更快，也顺带修掉了
- *   「简化卡没有 duration 时，正文那行只剩两个没有语境的裸数字」的问题。
- *
- * 标题固定占两行（minLines = maxLines = 2），避免长短标题导致同一行卡片高度参差。
+ * 与 [VideoCard] 的差异是时长 / 点赞率 / 播放量下沉为缩略图角标，正文区只留「标题 + 作者」两行；
+ * 标题固定占两行（minLines = maxLines = 2），避免长短标题导致同行卡片高度参差。
  */
 @Composable
 fun VideoGridCard(

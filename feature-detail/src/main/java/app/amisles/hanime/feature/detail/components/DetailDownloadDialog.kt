@@ -26,9 +26,7 @@ import app.amisles.hanime.domain.model.DownloadQuality
 
 /**
  * 下载画质选择弹窗：加载中 / 无资源 / 画质列表三种状态。
- *
- * 选中画质后的「发起下载 + 关闭弹窗 + 提示」交由调用方在 [onQualitySelected] 中处理，
- * 以便复用页面级的 SnackbarHostState。
+ * 选中后的「发起下载 + 关闭弹窗 + 提示」由调用方在 [onQualitySelected] 中处理，以复用页面级 SnackbarHostState。
  */
 @Composable
 internal fun DetailDownloadDialog(

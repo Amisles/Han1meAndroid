@@ -45,8 +45,8 @@ object Preferences {
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
-    // 基址校验：只接受 https + 形如域名/IP 的 host（可带端口），拒绝任意字符串。
-    // 视频防盗链 Referer 与登录 Cookie 都会发往该地址，放开 http 会让它们在网络中以明文传输。
+    // 基址校验：只接受 https + 形如域名/IP 的 host（可带端口）。视频防盗链 Referer 与登录 Cookie
+    // 都会发往该地址，放开 http 会让它们在网络中以明文传输。
     private val HTTPS_PREFIX = Regex("^https://([^/]+)", RegexOption.IGNORE_CASE)
     private val HOST_PATTERN = Regex(
         "^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*(:\\d{1,5})?$"
@@ -54,7 +54,6 @@ object Preferences {
 
     // 支持登录的官方域名（其余镜像站登录接口返回“站点维护中”）
     private val LOGIN_SUPPORTED_DOMAINS = setOf("hanime1.me", "hanimeone.me")
-
     const val LANGUAGE_ZH_CN = "zh-CN"
     const val LANGUAGE_ZH_TW = "zh-TW"
     const val LANGUAGE_EN = "en"
@@ -96,7 +95,7 @@ object Preferences {
     private val _autoPlayNextFlow = MutableStateFlow(true)
     val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
-    // 循环播放：默认关闭。开启后当前视频播完自动从头重播（由 player.repeatMode 实现），不再进入结束态
+    // 循环播放：开启后当前视频播完自动从头重播（由 player.repeatMode 实现）
     private val _loopPlaybackFlow = MutableStateFlow(false)
     val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
 
@@ -116,9 +115,9 @@ object Preferences {
         _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())
         _savedUserIdFlow.value = sp.getString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
-        // 清洗历史存储的 baseUrl（可能含 /enter 等路径），回写以保证后续拼接正确
+        // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
+        // 清洗失败时回退默认地址
         val rawBaseUrl = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
-        // 历史值可能含路径（如 /enter）或为 http：清洗失败时回退默认地址，避免带着明文地址继续用
         val safeBaseUrl = sanitizeBaseUrl(rawBaseUrl) ?: DEFAULT_BASE_URL
         if (safeBaseUrl != rawBaseUrl) {
             sp.edit { putString(SP_BASE_URL, safeBaseUrl) }
@@ -136,9 +135,9 @@ object Preferences {
     }
 
     /**
-     * 提供加密的 SharedPreferences 实例（AndroidX Security）。
+     * 提供加密的 SharedPreferences（AndroidX Security）。
      * - 首次从明文旧文件迁移：读取旧值 → 删除旧文件 → 写入加密文件，避免明文会话残留。
-     * - 若 Android Keystore 不可用（极端设备），回退到明文存储并告警，保证可用性优先。
+     * - Android Keystore 不可用（极端设备）时回退明文存储并告警，保证可用性优先。
      */
     private fun provideSecurePreferences(context: Context): SharedPreferences {
         val appCtx = context.applicationContext
@@ -149,7 +148,7 @@ object Preferences {
         }.getOrNull() ?: return fallbackPlain(appCtx)
 
         val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
-        // 仅当旧文件确为明文格式（含可读明文键）才迁移；否则直接走加密存储，避免每次启动误读加密文件为 null 并覆盖已保存数据。
+        // 仅当旧文件确为明文格式才迁移，否则会误读加密文件为 null 并覆盖已保存数据
         if (legacyFile.exists() && isLegacyPlaintextPrefs(appCtx)) {
             // 读取明文旧值（此时旧文件尚在），随后删除再创建加密文件
             val legacy = appCtx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -180,9 +179,9 @@ object Preferences {
     }
 
     /**
-     * 判断 shared_prefs/$NAME.xml 是否为升级前的“明文旧格式”偏好文件。
-     * 加密存储的键是密文，用明文 SharedPreferences 读取时无法命中已知键，因此以此区分
-     * “待迁移的旧明文文件”与“已加密的文件”，避免迁移逻辑每次启动都误触发并覆盖已保存数据。
+     * 判断 shared_prefs/$NAME.xml 是否为升级前的明文旧格式：加密存储的键是密文，用明文
+     * SharedPreferences 读取时无法命中已知键，据此区分「待迁移的旧明文文件」与「已加密的文件」，
+     * 避免迁移逻辑每次启动都误触发并覆盖已保存数据。
      */
     private fun isLegacyPlaintextPrefs(context: Context): Boolean {
         val legacy = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -224,14 +223,12 @@ object Preferences {
 
     /**
      * 当前 baseUrl 是否为支持登录的官方域名（hanime1.me / hanimeone.me）。
-     * 镜像站登录接口会返回“站点维护中”，需在 UI 层提前拦截并提示用户。
+     * 镜像站登录接口会返回“站点维护中”，需在 UI 层提前拦截。
      */
     val isLoginSupported: Boolean
         get() = isLoginSupportedHost(baseUrl)
 
-    /**
-     * 登录支持状态的反应式 Flow，baseUrl 变化时自动更新。
-     */
+    /** 登录支持状态的反应式 Flow，baseUrl 变化时自动更新。 */
     val loginSupportedFlow: StateFlow<Boolean> = _baseUrlFlow
         .map { isLoginSupportedHost(it) }
         .stateIn(preferencesScope, SharingStarted.Eagerly, isLoginSupportedHost(_baseUrlFlow.value))
@@ -257,16 +254,16 @@ object Preferences {
     }
 
     fun setThemeMode(mode: ThemeMode) {
-        // commit=true：主题选择是用户关键偏好，需同步落盘，避免进程被立即杀死时 apply() 异步写未落地而丢失。
+        // commit=true：主题是关键偏好，需同步落盘，避免进程被杀死时 apply() 异步写未落地而丢失
         sp.edit(commit = true) { putString(SP_THEME_MODE, mode.name) }
         _themeModeFlow.value = mode
     }
 
     /**
-     * 设置站点基址。留空表示恢复默认地址（与设置页提示一致）。
+     * 设置站点基址。留空表示恢复默认地址。
      *
      * @return true 表示输入被接受（可能已规范化为「https:// + host」）；
-     *   false 表示输入非法，此时保持原设置不变，由调用方提示用户（审查 G1）。
+     *   false 表示输入非法，此时保持原设置不变，由调用方提示用户。
      */
     fun setBaseUrl(url: String): Boolean {
         val input = url.ifBlank { DEFAULT_BASE_URL }
@@ -279,8 +276,7 @@ object Preferences {
     /**
      * 规范化为「https:// + host + 可选端口」，去掉路径（如镜像站的 /enter 入口），
      * 确保后续拼接 /search、/watch 等路径时不会产生 /enter/search 这类无效 URL。
-     *
-     * 只接受 https：该地址会承载登录 Cookie 与视频防盗链 Referer（审查 G1）。
+     * 只接受 https：该地址会承载登录 Cookie 与视频防盗链 Referer。
      *
      * @return 规范化后的地址；输入不是合法 https 域名/IP 时返回 null。
      */
@@ -327,27 +323,20 @@ object Preferences {
         _maxDownloadConcurrentFlow.value = safeMax
     }
 
-    /**
-     * 播放倍速偏好（0.25x–2x）。进入播放器时自动应用，切换时写回。
-     */
+    /** 播放倍速偏好（0.25x–2x）。进入播放器时自动应用，切换时写回。 */
     fun setPlaybackSpeed(speed: Float) {
         val safe = speed.coerceIn(0.25f, 2f)
         sp.edit { putFloat(SP_PLAYBACK_SPEED, safe) }
         _playbackSpeedFlow.value = safe
     }
 
-    /**
-     * 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。
-     * 进入播放器时优先选用该画质对应的视频源。
-     */
+    /** 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。 */
     fun setPreferredQuality(resolution: String) {
         sp.edit { putString(SP_PREFERRED_QUALITY, resolution) }
         _preferredQualityFlow.value = resolution
     }
 
-    /**
-     * 连播（下一集自动播放）开关。
-     */
+    /** 连播（下一集自动播放）开关。 */
     fun setAutoPlayNext(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled

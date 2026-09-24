@@ -117,12 +117,11 @@ fun DetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // 续播点（毫秒）：进入时由历史记录计算，传递给 VideoPlayer 在首帧就绪后跳转
+    // 续播点（毫秒）：进入时由历史记录计算，传给 VideoPlayer 在首帧就绪后跳转
     var initialSeekMs by remember { mutableStateOf(0L) }
 
     val exoPlayer = remember {
         ExoPlayerFactory.buildVideoPlayer(context).apply {
-            // 进入即应用已持久化的倍速偏好
             setPlaybackSpeed(Preferences.playbackSpeed)
         }
     }
@@ -136,7 +135,7 @@ fun DetailScreen(
                 detail,
                 Preferences.preferredQuality
             )
-            // 续播：读取已保存进度（有效续播点 >5s），进入即跳转由 VideoPlayer 在首帧就绪后执行
+            // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转
             initialSeekMs = viewModel.getSavedPlaybackPosition(viewModel.videoId)
             exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(preferredUrl)))
             exoPlayer.prepare()
@@ -157,10 +156,8 @@ fun DetailScreen(
         }
     }
 
-    // 进度记忆：每 5 秒检查一次，仅在「页面至少 STARTED 且播放位置确实前进」时落库，
-    // 离场时再保存最终进度并释放。此前只要 playbackState != IDLE 就写库，于是暂停 / 缓冲 /
-    // 切后台 / 熄屏期间位置根本没有变化，却仍每 5 秒触发一次「读历史 + 写历史」两次数据库操作
-    // （审查 D8）。用位置是否推进来判定，既覆盖播放中，也天然跳过上述空转场景。
+    // 进度记忆：每 5 秒检查一次，仅当「页面至少 STARTED 且播放位置确实前进」时落库，离场时保存最终进度。
+    // 以位置是否推进判定，可跳过暂停 / 缓冲 / 切后台 / 熄屏期间的空转写库。
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(exoPlayer, lifecycleOwner) {
         val job = scope.launch {
@@ -219,13 +216,13 @@ fun DetailScreen(
         }
     }
 
-    // 平板且非全屏、已加载内容时采用左右分栏（左播放器 / 右其余组件）；手机与加载/错误态由下方 ResponsiveContent 包裹
+    // 平板且非全屏、已加载内容时采用左右分栏（左播放器 / 右其余组件）
     val sizeInfo = currentWindowSizeInfo()
     // 启用条件：平板 + 非全屏 + 非「错误且未加载」致命态（回落到手机错误页）
     val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
             && !(error != null && videoDetail == null)
 
-    // 评论 tab 的懒加载判断：原 Tab onClick 内的判断逻辑随 detailRestItems 抽取上移至此
+    // 评论 tab 的懒加载判断
     val selectTab: (Int) -> Unit = { tab ->
         selectedTab = tab
         if (tab == 1 && !commentsLoaded && !isLoadingComments) {
@@ -233,7 +230,7 @@ fun DetailScreen(
         }
     }
 
-    // 「其余组件」的状态与回调包：集中传给 detailRestItems（手机单列与平板右栏共用）
+    // 「其余组件」的状态与回调包，供 detailRestItems 使用
     val restState = DetailRestState(
         selectedTab = selectedTab,
         showDescription = showDescription,
@@ -284,7 +281,7 @@ fun DetailScreen(
 
     if (useTabletUI) {
         if (isLoading) {
-            // 平板加载骨架：左 3/4 视频区占位、右 1/4 详情占位
+            // 平板加载骨架
             TabletDetailSkeleton()
         } else {
             Row(
@@ -311,7 +308,7 @@ fun DetailScreen(
                             onFullscreenToggle = { full -> isPlayerFullscreen = full },
                             onPlaybackEnded = { handlePlaybackEnded() },
                             autoPlayNext = autoPlayNext,
-                            // 平板常态横持，自动全屏会误触发；此处仅保留按钮手动进入全屏
+                            // 平板常态横持，自动全屏会误触发，此处仅保留按钮手动进入全屏
                             autoFullscreenEnabled = false,
                             modifier = Modifier
                         )
@@ -404,7 +401,7 @@ fun DetailScreen(
                 showDownloadDialog = false
                 scope.launch {
                     snackbarHostState.showSnackbar(
-                        // M5：区分「已加入 / 已在下载 / 已下载 / 地址无效」，此前一律提示「已添加」
+                        // 区分「已加入 / 已在下载 / 已下载 / 地址无效」
                         message = context.getString(downloadResultMessage(result)),
                         duration = SnackbarDuration.Short
                     )
@@ -444,7 +441,7 @@ fun DetailScreen(
     }
 }
 
-/** M5：把 DownloadManager.startDownload 的结果码映射为提示文案。 */
+/** 把 DownloadManager.startDownload 的结果码映射为提示文案。 */
 private fun downloadResultMessage(result: Int): Int = when (result) {
     DownloadManager.RESULT_INVALID_URL -> R.string.detail_download_invalid_url
     DownloadManager.RESULT_ALREADY_ACTIVE -> R.string.detail_download_in_progress

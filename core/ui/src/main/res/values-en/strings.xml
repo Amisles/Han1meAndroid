@@ -651,7 +651,7 @@
     <string name="about_oss_ksp_desc">Kotlin Symbol Processor (KSP2 architecture; generates code at Room compile time)</string>
     <string name="about_oss_corektx_desc">Kotlin extensions for the Android Framework API</string>
 
-    <!-- C5: 抽取硬编码中文到资源（2026-08-30） -->
+    <!-- 硬编码中文抽取：错误提示 / 通知 / 无障碍描述 / 播放器 -->
     <string name="error_load_detail_failed">Failed to load details</string>
     <string name="error_login_required_reply">Please sign in before replying</string>
     <string name="error_reply_empty">Reply cannot be empty</string>
@@ -679,7 +679,7 @@
     <string name="player_long_press_boost">Long-press to boost 2x</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
-    <!-- G2：四个 feature 模块硬编码中文抽取 -->
+    <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
     <string name="favorite_delete_confirm_message">Delete \"%1$s\"?</string>
     <string name="favorite_batch_count">%1$d favorites</string>
     <string name="login_tab_password">Email</string>

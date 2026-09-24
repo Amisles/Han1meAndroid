@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.model.AuthorPageDataEvent
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.UserVideoListResult
 import app.amisles.hanime.core.common.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.jsoup.Jsoup
@@ -39,7 +40,7 @@ class AuthorPageParser @Inject constructor(
     }
 
     /**
-     * 抽取作者资料头部（不含影片/播放清单列表），供同步 [parse] 与流式 [parseStreaming] 共用。
+     * 抽取作者资料头部（不含影片/播放清单列表），供同步 [parse] 与流式 [parseStreaming] 共用；
      * 列表字段置空，由调用方在后续阶段补齐。
      */
     private fun parseProfile(doc: Document, baseUrl: String): AuthorPageData {
@@ -73,9 +74,7 @@ class AuthorPageParser @Inject constructor(
         )
     }
 
-    /**
-     * 流式解析作者主页
-     */
+    /** 流式解析作者主页 */
     fun parseStreaming(html: String, baseUrl: String): Flow<AuthorPageDataEvent> = flow {
         val doc: Document = Jsoup.parse(html, baseUrl)
         val profile = parseProfile(doc, baseUrl)
@@ -84,6 +83,9 @@ class AuthorPageParser @Inject constructor(
         try {
             val videos = videoListParser.parseSectionVideos(doc, baseUrl, "影片")
             emit(AuthorPageDataEvent.Videos(videos))
+        } catch (e: CancellationException) {
+            // 收集方取消时 emit 会抛 CancellationException，必须原样抛出，否则会被当作解析失败吞掉
+            throw e
         } catch (e: Exception) {
             AppLogger.logError("AuthorPageParser", "Error parsing author videos: ${e.message}", e)
         }
@@ -91,6 +93,8 @@ class AuthorPageParser @Inject constructor(
         try {
             val playlists = playlistParser.parseSectionPlaylists(doc, baseUrl, "播放清单")
             emit(AuthorPageDataEvent.Playlists(playlists))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             AppLogger.logError("AuthorPageParser", "Error parsing author playlists: ${e.message}", e)
         }

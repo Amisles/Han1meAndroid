@@ -34,17 +34,8 @@ class CommentParser @Inject constructor() {
     /**
      * 解析 createComment 接口返回的 JSON。
      *
-     * 官网响应：
-     * {
-     *   "comment_id": 502418,
-     *   "comment_count": 14,
-     *   "single_video_comment": "<单条评论 HTML>"
-     * }
-     *
-     * single_video_comment 的结构与详情页评论列表单条评论相同：
-     * <a><img class="img-circle" src="avatar"></a>
-     * <div class="report-btn-wrapper">...</div>
-     * <div id="comment-like-form-wrapper">...</div>
+     * 响应含 comment_id、comment_count 与 single_video_comment（单条评论 HTML）。
+     * single_video_comment 的结构与详情页评论列表的单条评论相同。
      *
      * @return Pair(新评论对象, 新评论总数)，解析失败时为 null
      */
@@ -152,10 +143,9 @@ class CommentParser @Inject constructor() {
     }
 
     /**
-     * 从点赞/点踩区提取某个图标（thumb_up/thumb_down）之后的数字（点赞/点踩数）。
-     * 仅作为「读取隐藏 input 失败」时的兜底，因为评论列表里 thumb_up 的图标 class
-     * 是 material-icons-sharp（点赞/取消响应片段里才是 material-icons-outlined），
-     * 且可见数字 span 在 0 赞时带 display:none，不可靠。
+     * 从点赞/点踩区提取某个图标（thumb_up/thumb_down）之后的数字。
+     * 仅作为「读取隐藏 input 失败」时的兜底：评论列表里 thumb_up 的图标 class 是
+     * material-icons-sharp，且可见数字 span 在 0 赞时带 display:none，不可靠。
      */
     private fun extractCountAfter(likeWrapper: org.jsoup.nodes.Element, iconText: String): Int {
         // 兼容两种图标 class：material-icons-outlined（响应片段）/ material-icons-sharp（评论列表）
@@ -188,28 +178,22 @@ class CommentParser @Inject constructor() {
     }
 
     /**
-     * 解析评论点赞数。
-     *
-     * 官方评论区返回的每条评论都内嵌隐藏 input `comment-likes-sum` 存真实点赞数，
-     * 这是权威值。评论列表里 thumb_up 的图标 class 为 material-icons-sharp，且其后的
-     * 可见数字 span 在 0 赞时带 display:none，因此必须以隐藏 input 为准，可见 span
-     * 仅作为兜底。
+     * 解析评论点赞数。每条评论内嵌隐藏 input `comment-likes-sum` 存真实点赞数（权威值）；
+     * 可见数字 span 在 0 赞时带 display:none，仅作兜底。
      */
     private fun parseLikeCount(likeWrapper: org.jsoup.nodes.Element): Int {
         // 优先读取隐藏 input（权威值）
         val sumInput = likeWrapper.selectFirst("input[name=comment-likes-sum]")
         sumInput?.attr("value")?.trim()?.toIntOrNull()?.let { return it }
-        // 兜底：图标（material-icons-sharp / material-icons-outlined）后的数字 span
+        // 兜底：图标后的数字 span
         return extractCountAfter(likeWrapper, "thumb_up")
     }
 
     /**
      * 解析当前用户对评论的点赞状态（0=未赞，1=已赞）。
      *
-     * 官方标记位于点赞按钮内的隐藏 input `like-comment-status`：
-     *   值为 "1" → 当前用户已赞；值为 "0" 或空 → 未赞。
-     * （并非 CSS 类 liked/active，原先按类探测永远为 0。）
-     * 重载评论列表时据此还原高亮，保证「点赞→重进页面→再次点击是取消而非重复点赞」。
+     * 官方标记位于点赞按钮内的隐藏 input `like-comment-status`：值为 "1" 表示已赞，否则未赞
+     * （并非 CSS 类 liked/active）。重载评论列表时据此还原高亮，避免重复点赞。
      */
     private fun parseLikeStatus(likeWrapper: org.jsoup.nodes.Element): Int {
         val statusInput = likeWrapper.selectFirst("input[name=like-comment-status]")
@@ -228,31 +212,11 @@ class CommentParser @Inject constructor() {
         return match.value.toIntOrNull() ?: 0
     }
 
-    // ==================== 回复解析 ====================
-
     /**
-     * 解析官网 loadReply 接口返回的 JSON：
-     * {
-     *   "comment_id": "496354",
-     *   "replies": "<HTML 字符串>"
-     * }
+     * 解析官网 loadReply 接口返回的 JSON（含 comment_id 与 replies HTML）。
      *
-     * 回复 HTML 结构（与评论不同）：
-     * <div id="reply-start-{commentId}">
-     *   <div class="report-btn-wrapper">                // 每条回复的主体
-     *     <a><img class="img-circle" src="avatar"></a>  // 头像在 report-btn-wrapper 内部
-     *     <div class="comment-index-text"><a>username&nbsp;<span>time</span></a></div>
-     *     <div class="comment-index-text">@被回复用户名 回复内容</div>  // @部分可能不存在
-     *     <span class="report-btn" data-reportable-id="replyId" data-reportable-type="reply">more_vert</span>
-     *   </div>
-     *   <div style="padding-left: 45px">                 // 点赞区（无 id）
-     *     <span class="material-icons-outlined">thumb_up</span>
-     *     <span>likeCount</span>                         // 可能为 display:none
-     *     <span class="material-icons-outlined">thumb_down</span>
-     *     <span class="comment-reply-btn">回复</span>
-     *   </div>
-     *   ... 下一条回复
-     * </div>
+     * 回复结构与评论不同：回复容器 id 形如 reply-start-{commentId}，每条回复的头像位于
+     * report-btn-wrapper 内部，点赞区是其后的兄弟 div（无 id）。
      */
     fun parseReplies(json: String): List<Reply> {
         if (json.isBlank()) return emptyList()
@@ -273,25 +237,11 @@ class CommentParser @Inject constructor() {
     }
 
     /**
-     * 解析 replyComment 接口返回的 JSON：
-     * {
-     *   "comment_id": <父评论ID>,
-     *   "single_video_comment": "<新回复 HTML>",
-     *   "csrf_token": "..."
-     * }
+     * 解析 replyComment 接口返回的 JSON（含父评论 ID 与新回复 HTML）。
      *
-     * 与 loadReply 返回的回复结构不同，replyComment 的 single_video_comment 没有外层
-     * report-btn-wrapper，而是：
-     * <div style="padding-top: 12px">
-     *   <a><img class="img-circle" src="avatar"></a>
-     *   <div class="comment-index-text"><a>username&nbsp;<span>time</span></a></div>
-     *   <div class="comment-index-text">content</div>
-     * </div>
-     * <div style="padding-left: 45px; ...">
-     *   <form class="comment-like-form" ...>
-     *     <input name="foreign_id" value="<回复ID>">   // 回复点赞用的 foreign_id 即回复 ID
-     *     <input name="comment-likes-sum" value="0">
-     *     ...
+     * 与 loadReply 不同，replyComment 的 single_video_comment 没有外层 report-btn-wrapper，
+     * 头像直接位于内层 div；回复 ID 可取 span.report-btn[data-reportable-id]，
+     * 或点赞表单中作为 foreign_id 的回复 ID。
      *
      * @return 解析出的 Reply，失败为 null
      */
@@ -311,7 +261,6 @@ class CommentParser @Inject constructor() {
             }
             val avatarUrl = img.absUrl("src").ifEmpty { img.attr("src") }
             val aElement = img.parent() ?: return null
-            // 外层 <div style="padding-top: 12px">
             val scope = aElement.parent() ?: return null
 
             // 两个 comment-index-text：第一个"用户名 + 时间"，第二个"内容"
@@ -328,8 +277,7 @@ class CommentParser @Inject constructor() {
             // 解析 @被回复用户名（回复其他回复时内容以 "@用户名 " 开头）
             val (replyTo, content) = parseMention(rawContent)
 
-            // 回复 ID：优先找 span.report-btn[data-reportable-id]（可能存在于完整 HTML），
-            // 否则取点赞表单里的 foreign_id（回复点赞用的 foreign_id 即回复 ID）。
+            // 回复 ID：优先取 span.report-btn[data-reportable-id]，否则取点赞表单里的 foreign_id
             val replyId = doc.selectFirst("span.report-btn[data-reportable-id]")
                 ?.attr("data-reportable-id")?.trim()
                 .takeIf { !it.isNullOrEmpty() }
@@ -429,8 +377,7 @@ class CommentParser @Inject constructor() {
 
     /**
      * 从回复内容中提取 @被回复用户名。
-     * 形如 "@铃 到时候..." → (replyTo="铃", content="到时候...")
-     * 无 @前缀 → (replyTo=null, content=原文)
+     * 形如 "@铃 到时候..." → (replyTo="铃", content="到时候...")；无 @前缀 → (null, 原文)
      */
     private fun parseMention(rawContent: String): Pair<String?, String> {
         if (!rawContent.startsWith("@")) return Pair(null, rawContent)
@@ -446,8 +393,7 @@ class CommentParser @Inject constructor() {
     }
 
     /**
-     * 解析回复的点赞数：thumb_up 图标后的 span 文本。
-     * 回复的点赞区结构与评论略有不同（无 #comment-like-form-wrapper id），但解析方式相同。
+     * 解析回复的点赞数：thumb_up 图标后的 span 文本（点赞区结构略有不同，但解析方式相同）。
      */
     private fun parseReplyLikeCount(likeWrapper: org.jsoup.nodes.Element): Int {
         return extractCountAfter(likeWrapper, "thumb_up")

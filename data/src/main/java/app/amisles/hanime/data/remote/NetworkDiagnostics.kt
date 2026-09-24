@@ -43,10 +43,8 @@ data class DiagnosticResult(
 )
 
 /**
- * 站点可用性诊断器：检测 DNS、超时、证书、镜像 GATE、登录 cookie 有效性等常见问题。
- *
- * 所有检测均在 IO 线程执行，返回 [DiagnosticResult] 列表供 UI 展示。
- * 检测顺序：DNS → 连接 → SSL → 镜像状态 → 登录状态（未登录则跳过）。
+ * 站点可用性诊断器：检测 DNS、连接、证书、镜像 GATE、登录 cookie 有效性等常见问题。
+ * 所有检测在 IO 线程执行，按 DNS → 连接 → SSL → 镜像状态 → 登录状态的顺序返回 [DiagnosticResult]。
  */
 class NetworkDiagnostics {
 
@@ -60,9 +58,7 @@ class NetworkDiagnostics {
         .followRedirects(false)
         .build()
 
-    /**
-     * 运行全部诊断项，返回按检测顺序排列的结果列表。
-     */
+    /** 运行全部诊断项，返回按检测顺序排列的结果列表。 */
     suspend fun runAll(): List<DiagnosticResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<DiagnosticResult>()
         val baseUrl = Preferences.baseUrl
@@ -100,9 +96,7 @@ class NetworkDiagnostics {
         results
     }
 
-    /**
-     * DNS 解析检测：尝试解析域名，失败说明 DNS 被污染或域名错误。
-     */
+    /** DNS 解析检测：尝试解析域名，失败说明 DNS 被污染或域名错误。 */
     private fun checkDns(host: String): DiagnosticResult {
         if (host.isBlank()) {
             return DiagnosticResult(
@@ -147,10 +141,9 @@ class NetworkDiagnostics {
     }
 
     /**
-     * 连接可达性检测：发送 HTTP HEAD 请求，测量响应时间并**按状态码判定成败**。
-     *
-     * 注意：仅建连成功不等于可达。服务端返回 403/429/5xx 时 TCP 连接是通的，
-     * 但内容已被拦截或服务不可用，必须判定为 FAIL，否则诊断页会给出「一切正常」的误导结论。
+     * 连接可达性检测：发送 HTTP HEAD 请求，测量响应时间并按状态码判定成败。
+     * 仅建连成功不等于可达 —— 服务端返回 403/429/5xx 时 TCP 连接是通的，但内容已被拦截
+     * 或服务不可用，必须判定为 FAIL，否则诊断页会给出「一切正常」的误导结论。
      */
     private fun checkConnectivity(baseUrl: String): DiagnosticResult {
         val client = sharedClient
@@ -164,8 +157,7 @@ class NetworkDiagnostics {
             client.newCall(request).execute().use { response ->
                 val latency = System.currentTimeMillis() - start
                 val code = response.code
-                // 3xx：服务端可达并给出了跳转（镜像站的 / → /enter 即属此类），
-                // 记录跳转目标便于用户判断，但不算失败。
+                // 3xx：服务端可达并给出了跳转（镜像站的 / → /enter 即属此类），不算失败
                 val location = response.header("Location")
                 when (code) {
                     in 200..299 -> connectivityResult(
@@ -257,9 +249,7 @@ class NetworkDiagnostics {
         suggestion = suggestion
     )
 
-    /**
-     * SSL 证书检测：仅 HTTPS 地址才检测，验证证书链是否有效。
-     */
+    /** SSL 证书检测：仅 HTTPS 地址才检测，验证证书链是否有效。 */
     private fun checkSslCertificate(baseUrl: String): DiagnosticResult {
         if (!baseUrl.startsWith("https://", ignoreCase = true)) {
             return DiagnosticResult(
@@ -326,10 +316,7 @@ class NetworkDiagnostics {
         }
     }
 
-    /**
-     * 镜像 GATE 状态检测：访问 /enter 路径，验证镜像站是否可用。
-     * 镜像站根路径 / 永远返回 500，真实内容在 /enter。
-     */
+    /** 镜像 GATE 状态检测：访问 /enter，验证镜像站是否可用（镜像站根路径 / 永远返回 500）。 */
     private fun checkMirrorStatus(baseUrl: String): DiagnosticResult {
         val enterUrl = baseUrl.trimEnd('/') + "/enter"
         val client = sharedClient.newBuilder().followRedirects(true).build()
@@ -390,9 +377,8 @@ class NetworkDiagnostics {
     }
 
     /**
-     * 登录状态检测：使用已保存的 cookie 请求 /login 页面，
-     * 如果被重定向到非 /login 页面说明 cookie 有效；如果停留在 /login 说明登录已失效。
-     * 未登录时跳过此检测。
+     * 登录状态检测：用已保存的 cookie 请求 /login，被重定向到非 /login 页面说明 cookie 有效；
+     * 停留在 /login 说明登录已失效。未登录时跳过此检测。
      */
     private fun checkLoginStatus(): DiagnosticResult {
         if (!Preferences.isAlreadyLogin) {

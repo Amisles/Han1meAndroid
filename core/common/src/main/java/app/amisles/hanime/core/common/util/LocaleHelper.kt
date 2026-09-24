@@ -6,17 +6,12 @@ import android.os.Build
 import java.util.Locale
 
 /**
- * 应用语言管理工具
- *
- * 核心原则：无论用户选择什么语言（包括 zh-CN），都必须显式设置 Locale，
- * 以覆盖系统默认语言的影响，保证资源系统选中正确的 values-* 目录。
+ * 应用语言管理工具。
+ * 无论用户选择什么语言（含 zh-CN）都必须显式设置 Locale，以覆盖系统默认语言，保证选中正确的 values-* 目录。
  */
 object LocaleHelper {
 
-    /**
-     * 在 Application.attachBaseContext 和 Activity.attachBaseContext 中都必须调用。
-     * @param lang 语言代码（如 "zh-CN", "zh-TW", "en", "ja"）
-     */
+    /** Application 与 Activity 的 attachBaseContext 中都必须调用。 */
     fun wrapContext(context: Context, lang: String): Context {
         val safeLang = lang.ifBlank { LANGUAGE_ZH_CN }
         val locale = langToLocale(safeLang)
@@ -57,7 +52,7 @@ object LocaleHelper {
             LANGUAGE_ZH_TW -> Locale.TAIWAN
             LANGUAGE_EN -> Locale.ENGLISH
             LANGUAGE_JA -> Locale.JAPANESE
-            else -> Locale.SIMPLIFIED_CHINESE // LANGUAGE_ZH_CN 默认兜底
+            else -> Locale.SIMPLIFIED_CHINESE // 默认兜底
         }
     }
 

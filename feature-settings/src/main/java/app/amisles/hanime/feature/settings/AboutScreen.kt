@@ -66,10 +66,7 @@ data class AppFeature(
     val title: String
 )
 
-/**
- * 功能列表：(图标, 文案资源 id)。由调用方在组合期解析字符串，
- * 避免「@Composable 函数返回数据列表」这种形态（审查 G6 / O21）。
- */
+/** 功能列表：(图标, 文案资源 id)；由调用方在组合期解析字符串。 */
 private fun appFeatureRes(): List<Pair<ImageVector, Int>> = listOf(
     Icons.Filled.Home to R.string.about_feature_1,
     Icons.Filled.Search to R.string.about_feature_2,
@@ -79,12 +76,7 @@ private fun appFeatureRes(): List<Pair<ImageVector, Int>> = listOf(
     Icons.Filled.Settings to R.string.about_feature_6
 )
 
-/**
- * 致谢列表。
- *
- * 版本号需与 `gradle/libs.versions.toml` 手动保持一致：升级依赖时务必同步本表，
- * 否则「关于」页展示的版本会失真（审查 G5）。彻底消除漂移需由 Gradle 生成资源注入，属构建脚本改动。
- */
+/** 致谢列表；版本号需与 `gradle/libs.versions.toml` 手动保持一致，升级依赖时同步本表。 */
 private val openSourceProjects = listOf(
     OpenSourceProject(
         name = "Android Gradle Plugin",
@@ -321,7 +313,7 @@ fun AboutScreen(
                                 .fillMaxWidth()
                                 .height(0.5.dp)
                                 .padding(horizontal = 16.dp)
-                                // 见审查 O5：白色半透明线在浅色主题下不可见
+                                // 白色半透明线在浅色主题下不可见
                                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         )
                         Row(
@@ -428,7 +420,7 @@ fun AboutScreen(
                                         .fillMaxWidth()
                                         .height(0.5.dp)
                                         .padding(horizontal = 16.dp)
-                                        // 见审查 O5：白色半透明线在浅色主题下不可见
+                                        // 白色半透明线在浅色主题下不可见
                                         .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                                 )
                             }

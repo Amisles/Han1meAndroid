@@ -24,10 +24,7 @@ import app.amisles.hanime.core.ui.R
 
 /**
  * 列表 / 网格布局切换：两段式图标，选中段用主题色底标示当前模式。
- *
- * 之所以放在 core:ui 而不是搜索页，是因为 `material-icons-extended` 只在本模块声明了依赖，
- * 搜索页无需为两个图标额外引入图标库；同时这里只暴露布尔状态，不依赖任何业务枚举，
- * 保证它是个纯粹的展示控件。
+ * 放在 core:ui 是因为 material-icons-extended 只在本模块声明依赖，且此处只暴露布尔状态、不依赖业务枚举。
  */
 @Composable
 fun LayoutModeToggle(
@@ -57,10 +54,7 @@ fun LayoutModeToggle(
     }
 }
 
-/**
- * 单个切换段。高度与同页的排序下拉对齐（约 34dp）；
- * 触摸目标小于 48dp 是有意取舍 —— 与排序下拉保持同一视觉节奏。
- */
+/** 单个切换段。高度与同页排序下拉对齐（约 34dp）；触摸目标小于 48dp 是有意取舍。 */
 @Composable
 private fun LayoutModeToggleSegment(
     selected: Boolean,

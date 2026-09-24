@@ -82,18 +82,10 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    /**
-     * 每个 Activity 必须独立包装 Context 才能让切换语言后的资源生效。
-     * Application 级别的 attachBaseContext 仅影响 Application Context，
-     * 不影响 Activity 所持有的 Resources/Configuration。
-     * 当用户在 Settings 切换语言后，Activity 调用 recreate()，
-     * attachBaseContext 会重新读取 SP 并包装新的 Locale。
-     */
+    /** 每个 Activity 需独立包装 Context 才能使切换语言后的资源生效；Application 级别不影响本 Activity 的 Resources。 */
     override fun attachBaseContext(newBase: Context) {
-        // 注意：Preferences 已在 HanimeApplication.onCreate 中以 EncryptedSharedPreferences 初始化，
-        // 此处若再用明文 getSharedPreferences("hanime_app_prefs") 打开同一文件，会与加密存储冲突，
-        // 导致 Preferences 的“明文→加密”迁移每次启动都误触发，把已保存的主题/语言等覆盖为默认值。
-        // 因此直接读取已初始化的 Preferences 中的语言即可（init 先于 Activity.attachBaseContext 执行）。
+        // 必须读取已初始化的 Preferences，不可再用明文 getSharedPreferences 打开同一文件：
+        // 会与 EncryptedSharedPreferences 冲突并反复误触发「明文→加密」迁移，覆盖已存的主题/语言。
         val lang = runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
         super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
     }
@@ -108,7 +100,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            // 根据主题模式动态调整系统栏图标颜色
+            // 依据主题模式动态调整系统栏图标颜色
             SideEffect {
                 val bgArgb = (if (darkTheme) HanimeBackground else HanimeBackgroundLight).toArgb()
                 enableEdgeToEdge(
@@ -199,9 +191,7 @@ fun HanimeApp() {
                     }
                 }
             ) { innerPadding ->
-                // 沉浸式路由（本地播放页）：不预留底部导航栏与系统栏内边距，让页面铺满整屏 ——
-                // 这样页面里「播放器垂直居中」才是相对**整块屏幕**，否则会因内容区被内缩而整体偏上
-                // （偏上量恰为内缩高度的一半）。
+                // 沉浸式路由（本地播放页）不预留底部导航栏与系统栏内边距，使页面的「垂直居中」相对整块屏幕
                 val immersiveRoute = currentRoute.startsWith("localPlayer")
                 NavHost(
                     navController = navController,
@@ -490,7 +480,7 @@ fun HanimeApp() {
                             }
                         )
                     }
-                    // 本地视频播放页（下载页「播放」入口）：普通入栈导航，系统返回即回到下载页
+                    // 本地视频播放页：普通入栈导航，系统返回即回到下载页
                     composable(
                         route = "localPlayer?filePath={filePath}",
                         arguments = listOf(navArgument("filePath") {
@@ -509,7 +499,7 @@ fun HanimeApp() {
         }
 
     // ---- 我的页面抽屉：左侧滑出，覆盖整个 Scaffold（含底部导航）----
-    // C6：抽屉展开时拦截返回键，先收起抽屉而不是直接退出 Activity。
+    // 抽屉展开或关闭动画期间拦截返回键，先收起抽屉而非退出 Activity；
     // 命中条件与遮罩层一致（progress > 0 表示仍在关闭动画中），避免动画期间把返回键漏给系统。
     BackHandler(enabled = profileOpen || progress > 0.001f) {
         profileOpen = false

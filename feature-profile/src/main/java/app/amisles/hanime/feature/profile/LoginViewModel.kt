@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,11 +44,19 @@ class LoginViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.value = UiState.Loading
-            val result = repository.login(cleanEmail, password)
-            when (result) {
-                is AppResult.Success -> _uiState.value = UiState.Success(result.data.length)
-                is AppResult.Error -> _uiState.value = UiState.Error(result.message)
-                is AppResult.Loading -> {}
+            try {
+                val result = repository.login(cleanEmail, password)
+                when (result) {
+                    is AppResult.Success -> _uiState.value = UiState.Success(result.data.length)
+                    is AppResult.Error -> _uiState.value = UiState.Error(result.message)
+                    is AppResult.Loading -> {}
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 否则 _uiState 会永久停留在 Loading，登录按钮一直转圈
+                AppLogger.e("LoginViewModel", "登录失败: ${e.message}", e)
+                _uiState.value = UiState.Error(e.message ?: context.getString(R.string.common_load_failed))
             }
         }
     }
@@ -63,10 +73,18 @@ class LoginViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.value = UiState.Loading
-            val ok = repository.saveLoginCookie(clean)
-            if (ok) {
-                _uiState.value = UiState.Success(clean.length)
-            } else {
+            try {
+                val ok = repository.saveLoginCookie(clean)
+                if (ok) {
+                    _uiState.value = UiState.Success(clean.length)
+                } else {
+                    _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Preferences 未初始化（lateinit）等异常会让 _uiState 永久停留在 Loading
+                AppLogger.e("LoginViewModel", "保存 Cookie 失败: ${e.message}", e)
                 _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
             }
         }

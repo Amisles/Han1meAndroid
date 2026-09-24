@@ -24,9 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
-/**
- * 评论输入栏：未登录时提示点击登录；已登录时显示输入框和发送按钮。
- */
+/** 评论输入栏：未登录时提示点击登录；已登录时显示输入框和发送按钮。 */
 @Composable
 internal fun CommentInputBar(
     isLogin: Boolean,
@@ -37,8 +35,7 @@ internal fun CommentInputBar(
     onNavigateToLogin: () -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
-    // 是否已发出一次提交：只有「提交结束且无错误」才清空输入。
-    // 此前无论成败都立即清空，发布失败（网络 / CSRF / 风控）时用户已输入的长文本无法找回。
+    // 是否已发出一次提交：只有「提交结束且无错误」才清空输入，避免发布失败时丢失已输入内容
     var awaitingResult by remember { mutableStateOf(false) }
 
     LaunchedEffect(isPosting, error) {
@@ -99,9 +96,7 @@ internal fun CommentInputBar(
     }
 }
 
-/**
- * 内联回复输入框：缩进对齐到回复列表，支持 @用户名 预填、发送、取消与错误提示。
- */
+/** 内联回复输入框：缩进对齐到回复列表，支持 @用户名 预填、发送、取消与错误提示。 */
 @Composable
 internal fun ReplyInputBar(
     prefill: String,
@@ -112,7 +107,7 @@ internal fun ReplyInputBar(
     onClearError: () -> Unit
 ) {
     var inputText by remember(prefill) { mutableStateOf(prefill) }
-    // 同评论输入栏：提交失败时保留内容供用户修改后重试
+    // 同评论输入栏：提交失败时保留内容供用户重试
     var awaitingResult by remember(prefill) { mutableStateOf(false) }
 
     LaunchedEffect(isPosting, error) {

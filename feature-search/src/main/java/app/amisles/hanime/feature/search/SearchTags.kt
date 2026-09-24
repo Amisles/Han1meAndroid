@@ -6,12 +6,9 @@ import app.amisles.hanime.core.ui.R
 /**
  * 官网搜索页「内容标签」全集。
  *
- * [SearchTag.value] 是**官网原值**，用于拼 URL 参数 `tags[]=`，**永不翻译**；
+ * [SearchTag.value] 是官网原值，用于拼 URL 参数 `tags[]=`，永不翻译；
  * [SearchTag.labelRes] 才是界面展示名，随语言切换（资源键 = `search_tag_<英文名 slug>`）。
- * 类目名同理走 [SearchTagGroup.categoryRes]。
- *
- * 资源键 = `search_tag_<英文名 slug>`，4 套语言（values / values-en / values-ja / values-zh-rTW）
- * 必须同步维护：新增标签时请一次补齐这 4 个文件，不要只改单一语言。
+ * 类目名同理走 [SearchTagGroup.categoryRes]。新增标签时需同步补齐 4 套语言。
  */
 data class SearchTag(
     val value: String,

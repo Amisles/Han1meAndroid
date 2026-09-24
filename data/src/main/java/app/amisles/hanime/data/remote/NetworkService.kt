@@ -213,11 +213,11 @@ class NetworkService @Inject constructor(
             queryParts += "broad=on"
         }
         if (date.isNotEmpty()) {
-            // 官网「发布日期」筛选，快捷值如 date=過去 24 小時；空串 = 全部，不追加
+            // 官网「发布日期」筛选，快捷值如 date=過去 24 小時；空串 = 全部
             queryParts += "date=" + URLEncoder.encode(date, StandardCharsets.UTF_8)
         }
         if (duration.isNotEmpty()) {
-            // 官网「时长」筛选，取值如 duration=30 分鐘 + / 0 - 20 分鐘；空串 = 全部，不追加
+            // 官网「时长」筛选，取值如 duration=30 分鐘 +；空串 = 全部
             queryParts += "duration=" + URLEncoder.encode(duration, StandardCharsets.UTF_8)
         }
         if (page > 1) {
@@ -270,10 +270,7 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 抓取订阅内容页。
-     * - query 为空：拉取「全部」已订阅作者的视频（官网 https://hanimeone.me/subscriptions）
-     * - query 非空：按作者名筛选，仅显示该作者的视频（官网 https://hanimeone.me/subscriptions?query=<作者名>）
-     * 返回解析后的已订阅作者列表与视频列表。
+     * 抓取订阅内容页。query 为空时拉取全部已订阅作者的视频，非空时按作者名筛选。
      */
     suspend fun fetchSubscriptionsPage(query: String = ""): SubscriptionsContent {
         AppLogger.log("NetworkService", "fetchSubscriptionsPage called, query: $query")
@@ -294,8 +291,7 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 拉取账户资料编辑页（官网 GET /user/{userId}/edit）。
-     * 返回解析所需的 HTML 与 baseUrl 给上层交由 [AccountProfileParser] 解析。
+     * 拉取账户资料编辑页（GET /user/{userId}/edit），返回 HTML 与 baseUrl 交由 [AccountProfileParser] 解析。
      */
     suspend fun fetchAccountEditPage(userId: String): FetchResult {
         AppLogger.log("NetworkService", "fetchAccountEditPage called, userId: $userId")
@@ -309,17 +305,9 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 更新账户个人档案（官网 POST /user/{userId}）。
-     *
-     * 请求体（application/x-www-form-urlencoded，与官网「编辑个人档案」表单一致）：
-     * - _token: CSRF Token
-     * - _method: patch（Laravel 表单伪装 PUT/PATCH）
-     * - type: 固定 "profile"
-     * - name: 用户名称
-     * - email: 电邮地址
-     *
-     * 成功时官网返回 302 重定向回 /user/{userId}/edit（不使用自动跟随重定向的 client，
-     * 以便据此判定成功）。返回 HTTP 状态码供上层判断。
+     * 更新账户个人档案（POST /user/{userId}）。请求体为表单：_token、_method=patch、type=profile、
+     * name、email。成功时官网返回 302（不使用自动跟随重定向的 client，以便据此判定成功）。
+     * 返回 HTTP 状态码供上层判断。
      */
     suspend fun updateAccountProfile(
         userId: String,
@@ -367,9 +355,8 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 authorPageParser.parseVideoListPage(html, url)
             } catch (e: IOException) {
-                // B2：原先在此吞掉异常并返回 emptyList()，导致调用方 ViewModel 的
-                // catch (IOException) 成为永不触发的死代码——网络失败表现为「空白列表」，
-                // 既无错误提示也无重试入口。现记录后原样抛出，交由 ViewModel 转成 _error。
+                // 不可吞掉异常并返回 emptyList()，否则调用方的错误处理成为死代码，
+                // 网络失败会表现为「空白列表」而无错误提示。此处记录后原样抛出。
                 AppLogger.logError("NetworkService", "Failed to fetch video list page: ${e.message}", e)
                 throw e
             }
@@ -383,7 +370,7 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 playlistParser.parseListPage(html, url)
             } catch (e: IOException) {
-                // B2：同上，吞异常会让调用方的错误处理失效，此处改为记录后抛出
+                // 同上，记录后抛出，保留调用方的错误处理
                 AppLogger.logError("NetworkService", "Failed to fetch playlist list page: ${e.message}", e)
                 throw e
             }
@@ -397,7 +384,7 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 playlistParser.parseDetailPage(html, url)
             } catch (e: IOException) {
-                // B2：同上，返回 null 会让「请求失败」与「该列表无内容」无法区分
+                // 同上，返回 null 会让「请求失败」与「该列表无内容」无法区分
                 AppLogger.logError("NetworkService", "Failed to fetch playlist detail page: ${e.message}", e)
                 throw e
             }
@@ -425,10 +412,8 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 拉取视频评论 JSON。
-     *
-     * 官网接口：GET /loadComment?id={videoId}&type=video&content=comment-tablink
-     * 返回 JSON：{"comments": "<HTML>", "content": "comment-tablink"}
+     * 拉取视频评论 JSON（GET /loadComment?id={videoId}&type=video&content=comment-tablink），
+     * 返回 {"comments": "<HTML>", "content": "comment-tablink"}。
      */
     suspend fun fetchComments(videoId: String): String {
         AppLogger.log("NetworkService", "fetchComments called, videoId: $videoId")
@@ -441,10 +426,8 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 拉取评论回复 JSON。
-     *
-     * 官网接口：GET /loadReplies?id={commentId}
-     * 返回 JSON：{"comment_id": "commentId", "replies": "<HTML>"}
+     * 拉取评论回复 JSON（GET /loadReplies?id={commentId}），
+     * 返回 {"comment_id": "commentId", "replies": "<HTML>"}。
      */
     suspend fun fetchReplies(commentId: String): String {
         AppLogger.log("NetworkService", "fetchReplies called, commentId: $commentId")
@@ -457,21 +440,9 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 发表视频评论。
-     *
-     * 官网接口：POST /createComment
-     * Content-Type: application/x-www-form-urlencoded
-     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
-     *
-     * Body 参数：
-     * - _token: CSRF Token
-     * - comment-user-id: 当前登录用户 ID
-     * - comment-type: 固定 "video"
-     * - comment-foreign-id: 视频 ID
-     * - comment-count: 当前评论数
-     * - comment-text: 评论内容
-     *
-     * 返回 JSON：{"comment_id": ..., "comment_count": ..., "single_video_comment": "<HTML>"}
+     * 发表视频评论（POST /createComment，表单 + x-csrf-token + x-requested-with）。
+     * 参数：_token、comment-user-id、comment-type=video、comment-foreign-id、
+     * comment-count、comment-text。
      */
     suspend fun postComment(
         videoId: String,
@@ -518,21 +489,10 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 切换评论点赞状态（点赞 / 取消点赞）。
-     *
-     * 官网接口：POST /commentLike
-     * Content-Type: application/x-www-form-urlencoded
-     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
-     *
-     * Body 参数（与官网 commentLike 表单一致，凭 like-comment-status 区分点赞/取消）：
-     * - _token: CSRF Token
-     * - foreign_type: 固定 "comment"
-     * - foreign_id: 评论 ID
-     * - is_positive: 固定 "1"
-     * - comment-like-user-id: 当前登录用户 ID
-     * - like-comment-status: 用户当前点赞状态（空/0 = 未点赞→本次点赞；"1" = 已点赞→本次取消）
-     * - comment-likes-count / comment-likes-sum: 评论当前点赞数
-     * - unlike-comment-status: 固定 "0"
+     * 切换评论点赞状态（POST /commentLike，表单 + x-csrf-token + x-requested-with）。
+     * 参数：_token、foreign_type=comment、foreign_id、is_positive=1、comment-like-user-id、
+     * like-comment-status（空 = 本次点赞；"1" = 本次取消）、comment-likes-count / comment-likes-sum、
+     * unlike-comment-status=0。
      */
     suspend fun toggleCommentLike(
         commentId: String,
@@ -585,18 +545,8 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 发表评论回复。
-     *
-     * 官网接口：POST /replyComment
-     * Content-Type: application/x-www-form-urlencoded
-     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
-     *
-     * Body 参数：
-     * - _token: CSRF Token
-     * - reply-comment-id: 被回复的评论 ID
-     * - reply-comment-text: 回复内容（回复其他回复时由前端拼上 "@用户名 " 前缀）
-     *
-     * 返回 JSON：{"comment_id": <父评论ID>, "single_video_comment": "<HTML>", "csrf_token": "..."}
+     * 发表评论回复（POST /replyComment，表单 + x-csrf-token + x-requested-with）。
+     * 参数：_token、reply-comment-id、reply-comment-text（回复其他回复时由前端拼上 "@用户名 " 前缀）。
      */
     suspend fun replyComment(
         commentId: String,
@@ -638,19 +588,8 @@ class NetworkService @Inject constructor(
     }
 
     /**
-     * 订阅 / 取消订阅作者。
-     *
-     * 官网接口：POST /subscribe
-     * Content-Type: application/x-www-form-urlencoded
-     * 需要 x-csrf-token header 和 x-requested-with: XMLHttpRequest
-     *
-     * Body 参数（与官网 subscribe 表单一致，凭 subscribe-status 区分订阅/取消）：
-     * - _token: CSRF Token
-     * - subscribe-user-id: 当前登录用户 ID
-     * - subscribe-artist-id: 被订阅作者 ID
-     * - subscribe-status: 空字符串 = 订阅；"1" = 取消订阅
-     *
-     * 返回 JSON：{"subscribeBtn": "<更新后的订阅表单 HTML>", "csrf_token": "..."}
+     * 订阅 / 取消订阅作者（POST /subscribe，表单 + x-csrf-token + x-requested-with）。
+     * 参数：_token、subscribe-user-id、subscribe-artist-id、subscribe-status（空 = 订阅；"1" = 取消订阅）。
      */
     suspend fun toggleSubscribe(
         csrfToken: String,

@@ -29,9 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
-/**
- * 单条评论（含展开/收起回复）
- */
+/** 单条评论（含展开 / 收起回复）。 */
 @Composable
 internal fun CommentItem(
     comment: app.amisles.hanime.domain.model.Comment,
@@ -145,7 +143,7 @@ internal fun CommentItem(
                         )
                     }
 
-                    // 展开/收起回复按钮（放在点赞同一行，红色主题色）
+                    // 展开 / 收起回复按钮（与点赞同一行，用主题色）
                     if (comment.replyCount > 0) {
                         Row(
                             modifier = Modifier
@@ -179,7 +177,7 @@ internal fun CommentItem(
                     }
                 }
 
-                // 内联回复输入框（仅在该评论的回复目标激活时显示）
+                // 内联回复输入框（该评论的回复目标激活时显示）
                 if (isReplying) {
                     ReplyInputBar(
                         prefill = replyPrefill,

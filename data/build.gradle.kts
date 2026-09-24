@@ -37,22 +37,18 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
 
-    // EncryptedSharedPreferences（登录态 Cookie 加密存储）
+    // 登录态 Cookie 加密存储
     implementation(libs.androidx.security.crypto)
-    
-    // Network
+
     implementation(libs.okhttp)
     implementation(libs.jsoup)
-    
-    // Room
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // Test
     testImplementation(libs.junit)
 }

@@ -8,10 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 
-/**
- * 平板（Expanded / Medium 宽度）使用的左侧竖向导航栏，替代手机端的底部导航栏。
- * 复用与 [BottomNav] 相同的 [screens] 条目；NavigationRailItem 内置最小触摸区 ≥ 48dp。
- */
+/** 平板（Expanded / Medium 宽度）左侧竖向导航栏，替代手机端底部导航；复用 [screens] 条目。 */
 @Composable
 fun NavRail(
     currentRoute: String,

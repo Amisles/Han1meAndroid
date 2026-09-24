@@ -23,9 +23,7 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 
-/**
- * 评论区：包含输入框、加载中、错误、空、列表五种状态
- */
+/** 评论区：包含输入框、加载中、错误、空、列表五种状态。 */
 @Composable
 internal fun CommentSection(
     comments: List<app.amisles.hanime.domain.model.Comment>,
@@ -81,8 +79,7 @@ internal fun CommentSection(
                     )
                 }
             }
-            // 仅在没有可展示内容时才整块显示错误页；已有评论时改用顶部轻量提示，
-            // 否则一次刷新失败会把已经读到的评论全部替换掉（信息倒退）
+            // 仅在没有可展示内容时才整块显示错误页；已有评论时改用顶部轻量提示，避免刷新失败覆盖已加载列表
             error != null && comments.isEmpty() -> {
                 KaomojiErrorView(
                     message = error,
@@ -143,9 +140,7 @@ internal fun CommentSection(
     }
 }
 
-/**
- * 已有评论数据时的「刷新失败」提示条：只占一行，提供重试入口，不覆盖已加载的列表。
- */
+/** 已有评论数据时的「刷新失败」提示条：只占一行，提供重试入口，不覆盖已加载的列表。 */
 @Composable
 private fun RefreshFailedBar(message: String, onRetry: () -> Unit) {
     Row(

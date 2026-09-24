@@ -30,7 +30,6 @@ import app.amisles.hanime.core.ui.R
 
 /**
  * 「简介 / 评论」分段选择条：两个等宽标签 + 随选中项滑动的下划线指示器。
- *
  * 评论数据的懒加载判断由调用方在 [onTabSelected] 中处理，此处只负责选中态与样式。
  */
 @Composable

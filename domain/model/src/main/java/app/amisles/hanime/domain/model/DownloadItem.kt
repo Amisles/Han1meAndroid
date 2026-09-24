@@ -21,9 +21,9 @@ data class DownloadTask(
     val status: DownloadStatus = DownloadStatus.PENDING,
     val filePath: String = "",
     val thumbnailUrl: String = "",
-    // F2：所属视频 id，去重/状态判定以 videoId 为准（CDN 直链不含 id 时旧逻辑误判）
+    // 所属视频 id，去重 / 状态判定以 videoId 为准
     val videoId: String = "",
-    // C3：失败原因细分，供 UI 展示（进程重启后保留）
+    // 失败原因细分，供 UI 展示（进程重启后保留）
     val errorMessage: String = ""
 )
 

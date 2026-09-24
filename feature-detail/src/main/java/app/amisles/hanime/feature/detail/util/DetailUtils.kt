@@ -8,9 +8,7 @@ import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.domain.model.VideoDetail
 
-/**
- * 根据持久化画质偏好挑选初始播放源：偏好非空且存在对应分辨率时使用，否则回退默认源。
- */
+/** 根据持久化画质偏好挑选初始播放源：偏好非空且存在对应分辨率时使用，否则回退默认源。 */
 internal fun pickInitialSourceUrl(detail: VideoDetail, preferredQuality: String): String {
     if (preferredQuality.isNotBlank()) {
         val matched = detail.videoSources.firstOrNull { it.resolution == preferredQuality }
@@ -19,9 +17,7 @@ internal fun pickInitialSourceUrl(detail: VideoDetail, preferredQuality: String)
     return detail.defaultSourceUrl
 }
 
-/**
- * 调用系统分享面板分享视频（标题 + 链接）。
- */
+/** 调用系统分享面板分享视频（标题 + 链接）。 */
 internal fun shareVideo(context: Context, title: String, url: String) {
     val shareText = if (url.isNotEmpty()) "$title\n$url" else title
     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -31,13 +27,11 @@ internal fun shareVideo(context: Context, title: String, url: String) {
     }
     val chooser = Intent.createChooser(intent, context.getString(R.string.cd_share_video))
     chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    // 极端裁剪的 ROM 上可能不存在任何可处理 ACTION_SEND 的应用：避免直接抛 ActivityNotFoundException（审查 O1）
+    // 极端裁剪的 ROM 上可能不存在任何可处理 ACTION_SEND 的应用，用 runCatching 避免抛 ActivityNotFoundException
     runCatching { context.startActivity(chooser) }
 }
 
-/**
- * 视频卡片占位配色：按视频 id 稳定散列取渐变与 emoji，保证同一视频每次进入配色一致。
- */
+/** 视频卡片占位配色：按视频 id 稳定散列取渐变与 emoji，保证同一视频每次进入配色一致。 */
 internal fun videoGradient(id: String): Pair<Color, Color> =
     gradients.getOrElse(id.hashCode() % gradients.size) { gradients[0] }
 

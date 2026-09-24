@@ -43,9 +43,7 @@ class HomePageParser @Inject constructor(private val videoListParser: VideoListP
         return sections
     }
 
-    /**
-     * 流式解析
-     */
+    /** 流式解析 */
     fun parseStreaming(html: String, baseUrl: String): Flow<HomeDataEvent> = flow {
         val doc: Document = Jsoup.parse(html, baseUrl)
         emit(HomeDataEvent.Banner(parseBanner(doc)))

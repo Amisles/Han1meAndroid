@@ -17,18 +17,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
-/**
- * 窗口宽度分级（遵循 Material 断点）：
- * - Compact  : < 600dp  （手机）
- * - Medium   : 600–839dp（小平板 / 横屏手机）
- * - Expanded : ≥ 840dp  （平板 / 桌面）
- */
+/** 窗口宽度分级（Material 断点）：Compact < 600dp，Medium 600–839dp，Expanded ≥ 840dp。 */
 enum class WindowWidthSizeClass { Compact, Medium, Expanded }
 
-/**
- * 当前窗口的响应式信息。由 [rememberWindowSizeInfo] 计算并通过 CompositionLocal 下发，
- * 各页面可用 [currentWindowSizeInfo] 读取，无需层层透传参数。
- */
+/** 当前窗口的响应式信息，由 [rememberWindowSizeInfo] 计算并经 CompositionLocal 下发。 */
 data class WindowSizeInfo(
     val widthDp: Int,
     val heightDp: Int,
@@ -45,7 +37,7 @@ data class WindowSizeInfo(
             WindowWidthSizeClass.Expanded -> 4
         }
 
-    /** 内容最大宽度：Compact 不限制，平板居中并限宽避免元素被拉伸过大 */
+    /** 内容最大宽度：Compact 不限制，平板限宽避免元素被拉伸过大 */
     val contentMaxWidth: Dp
         get() = when (widthClass) {
             WindowWidthSizeClass.Compact -> Dp.Unspecified
@@ -89,10 +81,7 @@ fun computeWindowSizeInfo(widthDp: Int, heightDp: Int): WindowSizeInfo {
 @Composable
 fun currentWindowSizeInfo(): WindowSizeInfo = LocalWindowSizeInfo.current
 
-/**
- * 在作用域内提供窗口尺寸信息，供所有页面通过 [currentWindowSizeInfo] 读取。
- * 应置于 MaterialTheme 外层（app 的 HanimeTheme 内部已调用）。
- */
+/** 在作用域内提供窗口尺寸信息；应置于 MaterialTheme 外层（app 的 HanimeTheme 内部已调用）。 */
 @Composable
 fun ProvideWindowSizeInfo(content: @Composable () -> Unit) {
     val sizeInfo = rememberWindowSizeInfo()
@@ -101,11 +90,7 @@ fun ProvideWindowSizeInfo(content: @Composable () -> Unit) {
     }
 }
 
-/**
- * 响应式内容容器：将内容限制到 [WindowSizeInfo.contentMaxWidth] 并水平居中，
- * 解决大屏下内容被过度拉伸、控件空旷的问题。Compact 下等价于整宽，不改变手机布局。
- * 各页面只需把根布局包一层即可，页面内部已有的水平 padding 继续保留。
- */
+/** 响应式内容容器：按 [WindowSizeInfo.contentMaxWidth] 限宽并水平居中，解决大屏内容被过度拉伸；Compact 下等价于整宽。 */
 @Composable
 fun ResponsiveContent(
     modifier: Modifier = Modifier,
