@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: ["main", "develop"]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,9 +14,6 @@ concurrency:
 
 permissions:
   contents: read
-
-env:
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
 
 jobs:
   build-and-test:
@@ -33,40 +31,23 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Cache Android SDK
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.ANDROID_HOME }}
-          key: android-sdk-${{ runner.os }}-api36
-          restore-keys: |
-            android-sdk-${{ runner.os }}-
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
 
       - name: Install SDK packages
         run: |
-          # 优先稳定渠道安装 compileSdk 对应的 platform 与 build-tools；失败时显式报错并退出
-          sdkmanager "platforms;android-36" "build-tools;35.0.0" || {
-            echo "::error::稳定渠道安装 android-36 失败，尝试 canary 渠道"
-            sdkmanager --channel=3 "platforms;android-36" "build-tools;35.0.0" || {
-              echo "::error::稳定与 canary 渠道均无法安装 android-36，请确认该 SDK 已发布"
-              exit 1
-            }
-          }
-          # 自动接受所有 SDK 许可（避免交互卡住）
-          yes | sdkmanager --licenses || true
+          sdkmanager --install "platforms;android-36" "build-tools;35.0.0"
 
-      - name: Set up Gradle (with cache)
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
+          validate-wrappers: true
           cache-cleanup: on-success
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
       - name: Run unit tests & build debug APK
-        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest assembleDebug --stacktrace
 
       - name: Upload reports on failure
         if: failure()
