@@ -9,7 +9,6 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
-// 从根目录 keystore.properties 读取签名信息
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -25,7 +24,7 @@ android {
         minSdk = 30
         targetSdk = 36
         versionCode = 12
-        versionName = "1.4.2"
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -96,8 +95,6 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.navigation.compose)
 
-    // 仅保留 PlaylistDetailScreen 实际使用的 coil（AsyncImage + OkHttp 网络取图）。
-    // jsoup / okhttp / media3 / room 在 :app 源码中零引用，均由 :data 与 :feature-detail 自行声明。
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
