@@ -8,5 +8,6 @@
     -->
     <style name="Theme.Hanime" parent="Theme.Hanime.Base">
         <item name="android:windowSplashScreenBackground">@color/hanime_window_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_transparent</item>
     </style>
 </resources>

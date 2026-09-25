@@ -59,6 +59,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -758,6 +759,15 @@ private fun SearchNoMoreHint() {
     )
 }
 
+/** 标签格文本最多两行；所有格子统一为「两行行高 + 上下内边距」的固定高度，保证网格齐整。 */
+private const val TAG_CELL_MAX_LINES = 2
+
+/** 标签格文本行高（也用于推算格子固定高度）。 */
+private val TAG_CELL_LINE_HEIGHT = 15.sp
+
+/** 标签格上下内边距合计（8dp × 2）。 */
+private val TAG_CELL_VERTICAL_PADDING = 16.dp
+
 /**
  * 标签选择底部面板（自绘，不依赖 ModalBottomSheet）。仅维护一份本地选择态，
  * [onApply] 时才把最终结果回传给 ViewModel；关闭不会自动发起请求，由调用方统一提交。
@@ -773,6 +783,10 @@ private fun TagFilterSheet(
     val broad = remember { mutableStateOf(initialBroad) }
     val sizeInfo = currentWindowSizeInfo()
     val chipCols = if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) 3 else 5
+    // 格子固定高度从行高（sp）换算成 dp，随系统字体缩放同步放大：任何语言 / 字号下都等高且不裁切
+    val tagCellHeight = with(LocalDensity.current) {
+        (TAG_CELL_LINE_HEIGHT * TAG_CELL_MAX_LINES).toDp() + TAG_CELL_VERTICAL_PADDING
+    }
 
     Box(
         modifier = Modifier
@@ -872,6 +886,7 @@ private fun TagFilterSheet(
                         val isSelected = selected.value.contains(tag.value)
                         Box(
                             modifier = Modifier
+                                .height(tagCellHeight)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable {
@@ -881,11 +896,15 @@ private fun TagFilterSheet(
                                         selected.value + tag.value
                                     }
                                 }
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                                .padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = stringResource(tag.labelRes),
                                 fontSize = 12.sp,
+                                lineHeight = TAG_CELL_LINE_HEIGHT,
+                                maxLines = TAG_CELL_MAX_LINES,
+                                overflow = TextOverflow.Ellipsis,
                                 fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                                 textAlign = TextAlign.Center,
