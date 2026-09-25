@@ -142,31 +142,43 @@ object Preferences {
         initialized = true
     }
 
-    /** 把持久化值读入各 StateFlow。与 [init] 分离以便统一兜底。 */
+    /** 把持久化值读入各 StateFlow */
     private fun readPersistedValues() {
-        _loginStateFlow.value = sp.getBoolean(SP_ALREADY_LOGIN, false)
-        _loginCookieFlow.value = CookieString(sp.getString(SP_LOGIN_COOKIE, "").orEmpty())
-        _cloudFlareCookieFlow.value = CookieString(sp.getString(SP_CF_COOKIE, "").orEmpty())
-        _savedUserIdFlow.value = sp.getString(SP_SAVED_USER_ID, "").orEmpty()
-        _maxDownloadConcurrentFlow.value = sp.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
+        _loginStateFlow.value = readBoolean(SP_ALREADY_LOGIN, false)
+        _loginCookieFlow.value = CookieString(readString(SP_LOGIN_COOKIE, "").orEmpty())
+        _cloudFlareCookieFlow.value = CookieString(readString(SP_CF_COOKIE, "").orEmpty())
+        _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
+        _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
         // 清洗失败时回退默认地址
-        val rawBaseUrl = sp.getString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
+        val rawBaseUrl = readString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
         val safeBaseUrl = sanitizeBaseUrl(rawBaseUrl) ?: DEFAULT_BASE_URL
         if (safeBaseUrl != rawBaseUrl) {
-            sp.edit { putString(SP_BASE_URL, safeBaseUrl) }
+            runCatching { sp.edit { putString(SP_BASE_URL, safeBaseUrl) } }
         }
         _baseUrlFlow.value = safeBaseUrl
-        _appLanguageFlow.value = sp.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
-        _themeModeFlow.value = ThemeMode.fromName(sp.getString(SP_THEME_MODE, null))
-        _playbackSpeedFlow.value = sp.getFloat(SP_PLAYBACK_SPEED, 1f)
-        _preferredQualityFlow.value = sp.getString(SP_PREFERRED_QUALITY, "").orEmpty()
-        _autoPlayNextFlow.value = sp.getBoolean(SP_AUTO_PLAY_NEXT, true)
-        _loopPlaybackFlow.value = sp.getBoolean(SP_LOOP_PLAYBACK, false)
-        _downloadStoragePathFlow.value = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
+        _appLanguageFlow.value = readString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
+        _themeModeFlow.value = ThemeMode.fromName(readString(SP_THEME_MODE, null))
+        _playbackSpeedFlow.value = readFloat(SP_PLAYBACK_SPEED, 1f)
+        _preferredQualityFlow.value = readString(SP_PREFERRED_QUALITY, "").orEmpty()
+        _autoPlayNextFlow.value = readBoolean(SP_AUTO_PLAY_NEXT, true)
+        _loopPlaybackFlow.value = readBoolean(SP_LOOP_PLAYBACK, false)
+        _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
-        _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(sp.getString(SP_SEARCH_LAYOUT_MODE, null))
+        _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
     }
+
+    private fun readBoolean(key: String, default: Boolean): Boolean =
+        runCatching { sp.getBoolean(key, default) }.getOrDefault(default)
+
+    private fun readInt(key: String, default: Int): Int =
+        runCatching { sp.getInt(key, default) }.getOrDefault(default)
+
+    private fun readFloat(key: String, default: Float): Float =
+        runCatching { sp.getFloat(key, default) }.getOrDefault(default)
+
+    private fun readString(key: String, default: String?): String? =
+        runCatching { sp.getString(key, default) }.getOrDefault(default)
 
     /**
      * 提供加密的 SharedPreferences（AndroidX Security）。
@@ -212,11 +224,29 @@ object Preferences {
             return enc
         }
 
-        createEncrypted(appCtx, masterKey)?.let { return it }
+        createEncrypted(appCtx, masterKey)?.let { enc ->
+            val size = runCatching { enc.all.size }.getOrDefault(-1)
+            AppLogger.log("Preferences", "加密存储已就绪，条目数=$size")
+            return enc
+        }
 
-        // 创建失败：最常见原因是「换机恢复 / 应用数据回滚后本机 Keystore 主密钥已变」，旧密文
-        // 无法解密。此时若直接以明文模式打开同一文件，会得到一个「加密文件被当作明文读写」的
-        // 混合体：既读不到旧值，随后写入的明文又会永久污染该文件（下次仍创建失败）。故先清空重建。
+        // 创建失败有两种截然不同的原因，必须区分：
+        // 1) 换机恢复后 Keystore 主密钥不匹配 —— 旧密文确实读不出来，清空重建是正确恢复；
+        // 2) 传入的 Context 尚不可用（如 Application.attachBaseContext 阶段）—— 数据本身完好，
+        //    此时清空重建会把用户的全部配置抹成默认值，且每次启动重复发生。
+        // 因此先验证能否访问偏好文件：访问不了说明是原因 2，绝不删除。
+        val prefsAccessible = runCatching {
+            appCtx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            true
+        }.getOrDefault(false)
+        if (!prefsAccessible) {
+            AppLogger.logError(
+                "Preferences",
+                "加密存储创建失败且无法访问偏好文件（多为 Context 尚未就绪），为避免丢失配置，本次不清空重建"
+            )
+            return plainFallback(context)
+        }
+
         AppLogger.logError(
             "Preferences",
             "加密存储创建失败（常见于换机恢复后 Keystore 主密钥不匹配），清空旧偏好后重建，需重新登录"

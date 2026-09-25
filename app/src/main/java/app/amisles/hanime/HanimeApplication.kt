@@ -31,22 +31,25 @@ class HanimeApplication : Application() {
     @Volatile
     private var appliedLanguage: String? = null
 
+    /**
+     * 只记录原始 base context，供 [applyLanguage] 重新包装。
+     *
+     * **此处不能初始化 Preferences**：attachBaseContext 阶段 Application 尚未 attach 完成，
+     * `context.applicationContext` 为 null、且传入的 base context 也不足以让
+     * `EncryptedSharedPreferences.create` 正常工作。曾在此调用 init，导致加密存储创建失败 →
+     * 触发「清空旧偏好后重建」→ 每次启动都会把用户配置抹成默认值。
+     */
     override fun attachBaseContext(newBase: Context) {
         rawBaseContext = newBase
-        // 必须在此处初始化 Preferences：只有读到持久化语言才能正确包装 Resources。
-        // 此时 applicationContext 仍为 null，Preferences 内部已按传入 context 兜底。
-        // init 幂等，onCreate 中的调用为兜底。
-        runCatching { Preferences.init(newBase) }
-        val lang = persistedLanguage()
-        super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
-        appliedLanguage = lang
+        super.attachBaseContext(newBase)
     }
 
     /**
-     * 刷新 Application 级 Resources 的语言。
+     * 应用 Application 级语言。语言包装不通过 attachBaseContext 完成，而是由
+     * [getResources] / [getAssets] 覆盖生效，因此可以在 Preferences 初始化之后调用。
      *
-     * Application 的 attachBaseContext 每个进程只执行一次，因此设置页切换语言后（仅重建 Activity）
-     * 需要显式刷新，否则 ViewModel 层文案要等到进程重启才会跟随。
+     * 初始调用来自 [onCreate]（进程启动），语言切换后由 MainActivity 重建时再次调用
+     * （Application 的 attachBaseContext 每进程只执行一次）。
      */
     fun applyLanguage(lang: String) {
         val base = rawBaseContext ?: return
@@ -71,8 +74,8 @@ class HanimeApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Preferences 已在 attachBaseContext 初始化，此处仅作幂等兜底
         Preferences.init(this)
+        applyLanguage(persistedLanguage())
         AppLogger.init(this)
         ExoPlayerFactory.prewarmCache(this)
     }
