@@ -21,6 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
+    env:
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      CMDLINE_TOOLS_VERSION: "11076708" # 对应 cmdline-tools 11.0 官方稳定版
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,16 +35,28 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Setup Android SDK environment
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 11076708
+      - name: Download & setup Android cmdline-tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip -O cmdline-tools.zip
+          
+          unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null
 
       - name: Install Android SDK components
-        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          sdkmanager --install \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "platform-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
