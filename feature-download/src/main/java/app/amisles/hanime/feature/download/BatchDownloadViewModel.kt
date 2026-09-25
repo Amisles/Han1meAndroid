@@ -15,9 +15,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -29,7 +32,6 @@ import javax.inject.Inject
 
 data class BatchDownloadState(
     val authorIdInput: String = "",
-    val isLoading: Boolean = false,
     val isSearching: Boolean = false,
     val isLoadMore: Boolean = false,
     val error: String? = null,
@@ -41,8 +43,7 @@ data class BatchDownloadState(
     val hasNextPage: Boolean = false,
     val selectedCount: Int = 0,
     val isDownloading: Boolean = false,
-    val downloadingVideoIds: Set<String> = emptySet(),
-    val downloadMessage: String? = null
+    val downloadingVideoIds: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -54,6 +55,16 @@ class BatchDownloadViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow(BatchDownloadState())
     val state: StateFlow<BatchDownloadState> = _state.asStateFlow()
+
+    /**
+     * 一次性提示事件（Snackbar）。
+     *
+     * 用 Channel 而非 State 承载：State 基于值去重，连续两次内容相同的提示（如两次「已添加 N 个
+     * 下载任务」且 N 相同）会因值未变化而不再触发收集，第二次提示被静默吞掉；且配置变更后重新
+     * 收集非空 State 会重复弹出同一提示。Channel + receiveAsFlow 保证每条事件恰好消费一次。
+     */
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    val messages: Flow<String> = _messages.receiveAsFlow()
 
     // 搜索世代：每次 searchAuthor 递增，进行中的 loadMore 据此识别自己是否已被新一轮搜索取代
     private var searchGeneration = 0
@@ -462,7 +473,7 @@ class BatchDownloadViewModel @Inject constructor(
         }
 
         if (selectedVideos.isEmpty()) {
-            _state.update { it.copy(downloadMessage = context.getString(R.string.batch_no_videos)) }
+            _messages.trySend(context.getString(R.string.batch_no_videos))
             return
         }
 
@@ -473,7 +484,7 @@ class BatchDownloadViewModel @Inject constructor(
         val downloadingIds = downloadableVideos.map { it.videoId }.toSet()
 
         if (downloadingIds.isEmpty()) {
-            _state.update { it.copy(downloadMessage = context.getString(R.string.batch_qualities_not_loaded)) }
+            _messages.trySend(context.getString(R.string.batch_qualities_not_loaded))
             return
         }
 
@@ -484,13 +495,13 @@ class BatchDownloadViewModel @Inject constructor(
         } else {
             context.getString(R.string.batch_download_added, downloadableVideos.size)
         }
+        _messages.trySend(message)
         // 先屏蔽同步收敛，再置位「下载中」，避免两者之间被 syncDownloadStatuses 误判为已结束
         batchInitInProgress = true
         _state.update {
             it.copy(
                 isDownloading = true,
-                downloadingVideoIds = downloadingIds,
-                downloadMessage = message
+                downloadingVideoIds = downloadingIds
             )
         }
 
@@ -539,9 +550,5 @@ class BatchDownloadViewModel @Inject constructor(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
-    }
-
-    fun clearDownloadMessage() {
-        _state.update { it.copy(downloadMessage = null) }
     }
 }

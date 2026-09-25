@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.profile
 
+import android.content.Intent
 import android.net.Uri
 import android.webkit.CookieManager
 import android.net.http.SslError
@@ -64,6 +65,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import app.amisles.hanime.core.common.extension.redactUrlForLog
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedBanner
 import app.amisles.hanime.data.preferences.Preferences
@@ -74,10 +77,28 @@ private val LOGIN_URLS = listOf("https://hanime1.me/login", "https://hanimeone.m
 /** 官方域名（含子域）：登录流程只允许发生在这两个域下。 */
 private val OFFICIAL_HOSTS = listOf("hanime1.me", "hanimeone.me")
 
+/**
+ * 允许在登录 WebView 内加载的域名（含子域）。
+ *
+ * - 官方域名：登录流程只发生在这两个域下（见 [LOGIN_URLS]）；
+ * - Cloudflare：人机校验（Turnstile / 挑战页）需在其域名下加载与跳转。
+ *
+ * 其余域名一律不在本 WebView 内加载：该 WebView 持有登录 Cookie 且开启了 JS 与第三方
+ * Cookie，让任意站点在其中渲染会放大钓鱼与凭据泄露面。改用系统浏览器打开，不阻断用户操作。
+ */
+private val WEBVIEW_ALLOWED_HOSTS =
+    OFFICIAL_HOSTS + listOf("cloudflare.com", "cloudflarechallenge.com")
+
 /** 是否为官方域名（含子域）；用解析出的 host 精确比较，避免被查询参数等位置伪造命中。 */
 private fun isOfficialHost(url: String): Boolean {
     val host = runCatching { Uri.parse(url).host }.getOrNull() ?: return false
     return OFFICIAL_HOSTS.any { host == it || host.endsWith(".$it") }
+}
+
+/** 是否允许在登录 WebView 内加载该 URL。 */
+private fun isAllowedInWebView(url: String): Boolean {
+    val host = runCatching { Uri.parse(url).host?.lowercase() }.getOrNull() ?: return false
+    return WEBVIEW_ALLOWED_HOSTS.any { host == it || host.endsWith(".$it") }
 }
 
 private fun isLoginPage(url: String): Boolean =
@@ -377,8 +398,23 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         ): Boolean {
                             val url = request.url.toString()
                             reportLoginIfCompleted(url, cookieManager.getCookie(url))
-                            // 放行导航：登录成功与否交由 isLoginCompleted 判断，外层会导航走并销毁本 WebView
-                            return super.shouldOverrideUrlLoading(view, request)
+                            if (isAllowedInWebView(url)) return false
+                            // 非白名单域名不在本 WebView 内加载：该 WebView 持有登录 Cookie，
+                            // 让任意站点在其中渲染会放大钓鱼与凭据泄露面。改用系统浏览器，不阻断用户。
+                            AppLogger.w(
+                                "LoginScreen",
+                                "拦截非白名单导航，改用系统浏览器: ${url.redactUrlForLog()}"
+                            )
+                            runCatching {
+                                ctx.startActivity(
+                                    Intent(Intent.ACTION_VIEW, request.url).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                )
+                            }.onFailure { e ->
+                                AppLogger.w("LoginScreen", "打开系统浏览器失败: ${e.message}")
+                            }
+                            return true
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
@@ -408,10 +444,10 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         settings.setSupportZoom(false)
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
-                        // 保留 MIXED_CONTENT_COMPATIBILITY_MODE：登录页需加载 http 子资源才能完整渲染；
-                        // 风险由「仅用于官方域名登录页 + 已关闭文件/内容访问 + 拒绝证书错误」收敛。
-                        settings.mixedContentMode =
-                            WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                        // 禁止混合内容：登录页为 HTTPS，若允许加载 http 子资源（尤其脚本），
+                        // 中间人可注入脚本并以登录页源读取表单内容。若线上确因 http 子资源
+                        // 导致渲染异常，再评估放宽为 MIXED_CONTENT_COMPATIBILITY_MODE。
+                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         settings.javaScriptCanOpenWindowsAutomatically = false
                         settings.userAgentString =
                             "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"

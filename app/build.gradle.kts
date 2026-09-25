@@ -81,7 +81,6 @@ dependencies {
     implementation(project(":feature-download"))
     implementation(project(":feature-profile"))
     implementation(project(":feature-settings"))
-    implementation(libs.androidx.compose.foundation.layout)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -97,19 +96,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.navigation.compose)
 
-    implementation(libs.jsoup)
-    implementation(libs.okhttp)
+    // 仅保留 PlaylistDetailScreen 实际使用的 coil（AsyncImage + OkHttp 网络取图）。
+    // jsoup / okhttp / media3 / room 在 :app 源码中零引用，均由 :data 与 :feature-detail 自行声明。
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
-
-    implementation(libs.androidx.media3.exoplayer)
-    implementation(libs.androidx.media3.exoplayer.hls)
-    implementation(libs.androidx.media3.ui)
-    implementation(libs.androidx.media3.common)
-
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

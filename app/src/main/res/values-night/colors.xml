@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 窗口背景（深色）。取值与 core/ui 的 HanimeBackground 一致。 -->
+    <color name="hanime_window_background">#FF141414</color>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 12+ 启动画面。
+
+      windowSplashScreenBackground 默认取 ?android:colorBackground 而非 windowBackground，
+      不显式指定则深色模式下启动画面仍是浅色。此处复用窗口背景色即可（含 values-night 变体）。
+    -->
+    <style name="Theme.Hanime" parent="Theme.Hanime.Base">
+        <item name="android:windowSplashScreenBackground">@color/hanime_window_background</item>
+    </style>
+</resources>

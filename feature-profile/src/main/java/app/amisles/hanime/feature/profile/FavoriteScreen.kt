@@ -195,7 +195,7 @@ fun FavoriteScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(favorites) { video ->
+                items(favorites, key = { it.id }) { video ->
                     val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
                     val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
                     val isSelected = video.id in selectedIds

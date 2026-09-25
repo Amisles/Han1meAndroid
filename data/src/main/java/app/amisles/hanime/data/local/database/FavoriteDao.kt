@@ -1,16 +1,15 @@
 package app.amisles.hanime.data.local.database
 
-import app.amisles.hanime.domain.model.FavoriteVideo
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
 
 @Dao
 interface FavoriteDao {
     @Query("SELECT * FROM favorites ORDER BY createdAt DESC")
-    suspend fun getAllFavorites(): List<FavoriteVideo>
+    suspend fun getAllFavorites(): List<FavoriteVideoEntity>
 
     @Query("SELECT EXISTS(SELECT * FROM favorites WHERE id = :videoId)")
     suspend fun isFavorite(videoId: String): Boolean
@@ -19,10 +18,7 @@ interface FavoriteDao {
     // 而仓储层仅记录异常，导致界面乐观置位「已收藏」但数据库未写入。
     // 与 WatchHistoryDao / SearchHistoryDao / DownloadDao 保持一致。
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun addFavorite(favoriteVideo: FavoriteVideo)
-
-    @Delete
-    suspend fun removeFavorite(favoriteVideo: FavoriteVideo)
+    suspend fun addFavorite(favoriteVideo: FavoriteVideoEntity)
 
     @Query("DELETE FROM favorites WHERE id = :videoId")
     suspend fun removeFavoriteById(videoId: String)
@@ -30,9 +26,6 @@ interface FavoriteDao {
     // 批量删除走单条 SQL：调用方已保证 ids 非空（空集合会生成非法 SQL，见仓储层守卫）
     @Query("DELETE FROM favorites WHERE id IN (:videoIds)")
     suspend fun removeFavoritesByIds(videoIds: List<String>)
-
-    @Query("SELECT * FROM favorites WHERE id = :videoId")
-    suspend fun getFavoriteById(videoId: String): FavoriteVideo?
 
     @Query("SELECT COUNT(*) FROM favorites")
     suspend fun getFavoriteCount(): Int

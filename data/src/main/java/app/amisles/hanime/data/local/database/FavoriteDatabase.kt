@@ -4,13 +4,13 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import app.amisles.hanime.domain.model.DownloadEntity
-import app.amisles.hanime.domain.model.FavoriteVideo
-import app.amisles.hanime.domain.model.SearchHistoryEntity
-import app.amisles.hanime.domain.model.WatchHistory
+import app.amisles.hanime.data.local.entity.DownloadEntity
+import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
+import app.amisles.hanime.data.local.entity.SearchHistoryEntity
+import app.amisles.hanime.data.local.entity.WatchHistoryEntity
 
 @Database(
-    entities = [FavoriteVideo::class, WatchHistory::class, DownloadEntity::class, SearchHistoryEntity::class],
+    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class],
     version = 6,
     exportSchema = true
 )

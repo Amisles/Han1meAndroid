@@ -4,6 +4,9 @@ import android.database.SQLException
 import android.util.Log
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
+import app.amisles.hanime.data.local.entity.SearchHistoryEntity
+import app.amisles.hanime.data.local.entity.toDomain
+import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.AccountProfileParser
@@ -36,6 +39,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,7 +61,7 @@ class HanimeRepository @Inject constructor(
 
     suspend fun addFavorite(video: FavoriteVideo) {
         try {
-            favoriteDao.addFavorite(video)
+            favoriteDao.addFavorite(video.toEntity())
             AppLogger.log("HanimeRepository", "Favorite added successfully")
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding favorite: ${e.message}", e)
@@ -97,7 +101,7 @@ class HanimeRepository @Inject constructor(
 
     suspend fun getAllFavorites(): List<FavoriteVideo> {
         return try {
-            val favorites = favoriteDao.getAllFavorites()
+            val favorites = favoriteDao.getAllFavorites().map { it.toDomain() }
             AppLogger.log("HanimeRepository", "Got ${favorites.size} favorites")
             favorites
         } catch (e: SQLException) {
@@ -117,7 +121,7 @@ class HanimeRepository @Inject constructor(
 
     suspend fun addWatchHistory(history: WatchHistory) {
         try {
-            watchHistoryDao.addWatchHistory(history)
+            watchHistoryDao.addWatchHistory(history.toEntity())
             AppLogger.log("HanimeRepository", "Watch history added successfully")
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding watch history: ${e.message}", e)
@@ -126,7 +130,7 @@ class HanimeRepository @Inject constructor(
 
     suspend fun getWatchHistory(videoId: String): WatchHistory? {
         return try {
-            watchHistoryDao.getWatchHistoryById(videoId)
+            watchHistoryDao.getWatchHistoryById(videoId)?.toDomain()
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error getting watch history: ${e.message}", e)
             null
@@ -134,7 +138,7 @@ class HanimeRepository @Inject constructor(
     }
 
     fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>> {
-        return watchHistoryDao.getAllWatchHistory()
+        return watchHistoryDao.getAllWatchHistory().map { list -> list.map { it.toDomain() } }
     }
 
     suspend fun removeWatchHistory(videoId: String) {
@@ -593,15 +597,16 @@ class HanimeRepository @Inject constructor(
         Preferences.logout()
     }
 
-    fun getSearchHistory(): kotlinx.coroutines.flow.Flow<List<app.amisles.hanime.domain.model.SearchHistoryEntity>> {
-        return searchHistoryDao.getAllHistory()
+    /** 搜索历史关键词（按时间倒序，最多 20 条）。只暴露字符串，避免持久化实体泄漏到上层。 */
+    fun getSearchHistory(): Flow<List<String>> {
+        return searchHistoryDao.getAllHistory().map { list -> list.map { it.query } }
     }
 
     suspend fun addSearchHistory(query: String) {
         if (query.isBlank()) return
         try {
             searchHistoryDao.addSearch(
-                app.amisles.hanime.domain.model.SearchHistoryEntity(
+                SearchHistoryEntity(
                     query = query.trim(),
                     searchedAt = System.currentTimeMillis()
                 )

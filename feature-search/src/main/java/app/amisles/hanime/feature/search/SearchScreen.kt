@@ -538,7 +538,7 @@ fun SearchScreen(
                         .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)),
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    itemsIndexed(searchHistory) { index, historyQuery ->
+                    itemsIndexed(searchHistory, key = { _, q -> q }) { index, historyQuery ->
                         // 单条历史项：搜索图标 + 关键词 + 删除按钮
                         Row(
                             modifier = Modifier

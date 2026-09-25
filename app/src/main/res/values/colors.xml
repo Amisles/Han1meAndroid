@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- 窗口背景（浅色）。取值与 core/ui 的 HanimeBackgroundLight 一致，
+         使 Compose 首帧之前由窗口背景绘制的阶段不出现色差。 -->
+    <color name="hanime_window_background">#FFFAFAFA</color>
 </resources>

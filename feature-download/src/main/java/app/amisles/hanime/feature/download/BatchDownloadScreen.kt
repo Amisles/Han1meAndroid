@@ -81,10 +81,10 @@ fun BatchDownloadScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.downloadMessage) {
-        state.downloadMessage?.let {
-            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
-            viewModel.clearDownloadMessage()
+    // 一次性提示事件：用 Unit 作为 key，避免随状态变化重启收集；每条事件恰好消费一次
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { message ->
+            snackbarHostState.showSnackbar(message = message, duration = SnackbarDuration.Short)
         }
     }
 

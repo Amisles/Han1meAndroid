@@ -322,7 +322,7 @@ fun DownloadScreen(
                             }
                         )
                     }
-                    items(downloadingTasks) { task ->
+                    items(downloadingTasks, key = { it.id }) { task ->
                         DownloadTaskItem(
                             task = task,
                             isSelectionMode = isSelectionMode,
@@ -356,7 +356,7 @@ fun DownloadScreen(
                             }
                         )
                     }
-                    items(pausedTasks) { task ->
+                    items(pausedTasks, key = { it.id }) { task ->
                         DownloadTaskItem(
                             task = task,
                             isSelectionMode = isSelectionMode,
@@ -390,7 +390,7 @@ fun DownloadScreen(
                             }
                         )
                     }
-                    items(failedTasks) { task ->
+                    items(failedTasks, key = { it.id }) { task ->
                         DownloadTaskItem(
                             task = task,
                             isSelectionMode = isSelectionMode,
@@ -424,7 +424,7 @@ fun DownloadScreen(
                             }
                         )
                     }
-                    items(completedTasks) { task ->
+                    items(completedTasks, key = { it.id }) { task ->
                         DownloadTaskItem(
                             task = task,
                             isSelectionMode = isSelectionMode,
@@ -464,7 +464,7 @@ fun DownloadScreen(
                             }
                         }
                     } else {
-                        items(visibleTasks) { task ->
+                        items(visibleTasks, key = { it.id }) { task ->
                             DownloadTaskItem(
                                 task = task,
                                 isSelectionMode = isSelectionMode,

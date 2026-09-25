@@ -656,7 +656,11 @@ fun VideoPlayer(
     }
 
     fun seekForward() {
-        exoPlayer.seekTo((exoPlayer.currentPosition + 15000).coerceAtMost(exoPlayer.duration))
+        val target = exoPlayer.currentPosition + 15000
+        val duration = exoPlayer.duration
+        // 时长未知时 duration 返回 C.TIME_UNSET（负值），直接 coerceAtMost 会把目标值钳成负数，
+        // 再被 seekTo 归零 —— 表现为「快进 15s 却跳回开头」。故仅在时长有效时做上限钳制。
+        exoPlayer.seekTo(if (duration > 0L) target.coerceAtMost(duration) else target)
     }
 
     fun toggleMute() {

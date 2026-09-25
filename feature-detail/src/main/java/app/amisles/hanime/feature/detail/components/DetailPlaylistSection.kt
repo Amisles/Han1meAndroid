@@ -102,7 +102,7 @@ internal fun DetailPlaylistVideos(
         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(playlist.videos) { video ->
+        items(playlist.videos, key = { it.id }) { video ->
             val gradient = videoGradient(video.id)
             val emoji = videoEmoji(video.id)
 

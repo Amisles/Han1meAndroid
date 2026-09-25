@@ -14,6 +14,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,34 +106,41 @@ internal fun CommentSection(
                     RefreshFailedBar(message = error, onRetry = onRetry)
                 }
                 comments.forEach { comment ->
-                    CommentItem(
-                        comment = comment,
-                        replies = repliesCache[comment.id],
-                        isLoadingReplies = loadingReplies.contains(comment.id),
-                        repliesError = repliesError[comment.id],
-                        onLoadReplies = onLoadReplies,
-                        isExpanded = expandedReplies.contains(comment.id),
-                        onToggleExpand = { onToggleExpand(comment.id) },
-                        onToggleLike = onToggleLike,
-                        isLiking = likingComments.contains(comment.id),
-                        isLogin = isLogin,
-                        onNavigateToLogin = onNavigateToLogin,
-                        onReply = { replyToUsername -> onStartReply(comment.id, replyToUsername) },
-                        isReplying = activeReplyCommentId == comment.id,
-                        replyPrefill = replyPrefill,
-                        isPostingReply = isPostingReply,
-                        replyError = replyError,
-                        onSendReply = onSendReply,
-                        onCancelReply = onCancelReply,
-                        onClearReplyError = onClearReplyError
-                    )
-                    Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .padding(horizontal = 15.dp)
-                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-                    )
+                    // 显式 key 绑定评论 id：CommentItem 内部的回复输入内容是按组合位置 remember 的，
+                    // 新评论插入列表头部后各条位置整体后移，输入内容会错配到别的评论上。
+                    // 注：本列表嵌在外层 LazyColumn 的单个 item 内，不能改为嵌套 LazyColumn
+                    // （同向嵌套滚动会因无限高度约束崩溃）；完全虚拟化需把评论提升为外层 item，
+                    // 与当前「简介/评论」AnimatedContent 切页结构冲突，属结构性改动。
+                    key(comment.id) {
+                        CommentItem(
+                            comment = comment,
+                            replies = repliesCache[comment.id],
+                            isLoadingReplies = loadingReplies.contains(comment.id),
+                            repliesError = repliesError[comment.id],
+                            onLoadReplies = onLoadReplies,
+                            isExpanded = expandedReplies.contains(comment.id),
+                            onToggleExpand = { onToggleExpand(comment.id) },
+                            onToggleLike = onToggleLike,
+                            isLiking = likingComments.contains(comment.id),
+                            isLogin = isLogin,
+                            onNavigateToLogin = onNavigateToLogin,
+                            onReply = { replyToUsername -> onStartReply(comment.id, replyToUsername) },
+                            isReplying = activeReplyCommentId == comment.id,
+                            replyPrefill = replyPrefill,
+                            isPostingReply = isPostingReply,
+                            replyError = replyError,
+                            onSendReply = onSendReply,
+                            onCancelReply = onCancelReply,
+                            onClearReplyError = onClearReplyError
+                        )
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(0.5.dp)
+                                .padding(horizontal = 15.dp)
+                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }

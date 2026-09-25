@@ -6,7 +6,7 @@ import android.net.NetworkCapabilities
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.VideoAntiHotlink
-import app.amisles.hanime.domain.model.DownloadEntity
+import app.amisles.hanime.data.local.entity.DownloadEntity
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger

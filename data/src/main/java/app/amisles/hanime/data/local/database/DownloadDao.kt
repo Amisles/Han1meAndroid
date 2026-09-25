@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import app.amisles.hanime.domain.model.DownloadEntity
+import app.amisles.hanime.data.local.entity.DownloadEntity
 
 @Dao
 interface DownloadDao {

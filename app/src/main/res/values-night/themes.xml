@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式：父主题切到深色 Material，避免未覆盖属性回退到浅色默认值 -->
+    <style name="Theme.Hanime.Base" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/hanime_window_background</item>
+    </style>
+</resources>

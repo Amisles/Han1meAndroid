@@ -80,8 +80,8 @@ class SearchViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                repository.getSearchHistory().collect { entities ->
-                    _searchHistory.value = entities.map { it.query }
+                repository.getSearchHistory().collect { queries ->
+                    _searchHistory.value = queries
                 }
             } catch (e: CancellationException) {
                 throw e

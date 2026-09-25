@@ -188,7 +188,7 @@ private fun AuthorContent(
                     contentPadding = PaddingValues(horizontal = 15.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(authorData.videos) { video ->
+                    items(authorData.videos, key = { it.id }) { video ->
                         VideoCard(
                             video = video,
                             onClick = { onVideoClick(video.videoUrl) },
@@ -217,7 +217,7 @@ private fun AuthorContent(
                     }
                 }
             }
-            items(authorData.playlists) { playlist ->
+            items(authorData.playlists, key = { it.playlistUrl }) { playlist ->
                 PlaylistSummaryCard(
                     playlist = playlist,
                     onClick = { onPlaylistClick(playlist.playlistUrl) }

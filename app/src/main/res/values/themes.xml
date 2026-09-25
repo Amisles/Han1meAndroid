@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      应用主题。
 
-    <style name="Theme.Hanime" parent="android:Theme.Material.Light.NoActionBar" />
+      窗口背景必须显式指定：Compose 首帧之前由窗口背景负责绘制，不指定会沿用父主题的浅色
+      背景，深色模式下冷启动出现白闪。
+
+      拆出 Base 样式是为了让深色模式只覆盖父主题：Theme.Hanime.Base 在 values-night 中被
+      替换为深色 Material 主题，Theme.Hanime 通过父引用自动跟随，无需在两个目录重复声明。
+    -->
+    <style name="Theme.Hanime.Base" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/hanime_window_background</item>
+    </style>
+
+    <style name="Theme.Hanime" parent="Theme.Hanime.Base" />
 </resources>

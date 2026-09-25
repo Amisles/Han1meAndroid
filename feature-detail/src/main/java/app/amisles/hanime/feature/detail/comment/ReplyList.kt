@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,20 +85,24 @@ internal fun ReplyList(
             replies != null -> {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     replies.forEachIndexed { index, reply ->
-                        ReplyItem(
-                            reply = reply,
-                            onReply = {
-                                if (isLogin) onReplyToReply(reply.username) else onNavigateToLogin()
-                            }
-                        )
-                        if (index < replies.size - 1) {
-                            Spacer(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(0.5.dp)
-                                    // 用主题的 outlineVariant，深浅色主题都能看到（白色半透明线在浅色主题下不可见）
-                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        // 显式 key 绑定回复 id：乐观追加的临时回复（local_<时间戳>）与服务端返回项
+                        // 替换时，按位置复用组合会让条目状态错位到别的回复上
+                        key(reply.id) {
+                            ReplyItem(
+                                reply = reply,
+                                onReply = {
+                                    if (isLogin) onReplyToReply(reply.username) else onNavigateToLogin()
+                                }
                             )
+                            if (index < replies.size - 1) {
+                                Spacer(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(0.5.dp)
+                                        // 用主题的 outlineVariant，深浅色主题都能看到（白色半透明线在浅色主题下不可见）
+                                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                                )
+                            }
                         }
                     }
                 }

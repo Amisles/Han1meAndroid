@@ -26,10 +26,12 @@
 # ===========================================
 
 # Room 实体类：Room 运行时反射读写字段，字段名与数据库列名绑定，不可混淆
--keep class app.amisles.hanime.domain.model.FavoriteVideo { *; }
--keep class app.amisles.hanime.domain.model.WatchHistory { *; }
--keep class app.amisles.hanime.domain.model.DownloadEntity { *; }
--keep class app.amisles.hanime.domain.model.SearchHistoryEntity { *; }
+# Room 实体：建表 / 建索引与游标映射依赖反射，字段名被混淆会让已安装应用的升级直接崩溃。
+# 实体已从 domain 迁入 data（M-18），此处按新包名保留；表名与列名未变，故不影响已有迁移。
+-keep class app.amisles.hanime.data.local.entity.FavoriteVideoEntity { *; }
+-keep class app.amisles.hanime.data.local.entity.WatchHistoryEntity { *; }
+-keep class app.amisles.hanime.data.local.entity.DownloadEntity { *; }
+-keep class app.amisles.hanime.data.local.entity.SearchHistoryEntity { *; }
 
 # Room 数据库类：Room.databaseBuilder 通过 ::class.java 绑定生成的 _Impl 类
 -keep class app.amisles.hanime.data.local.database.FavoriteDatabase { *; }

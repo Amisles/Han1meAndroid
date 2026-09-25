@@ -493,7 +493,7 @@ fun AboutScreen(
                 )
             }
 
-            items(openSourceProjects) { project ->
+            items(openSourceProjects, key = { it.name }) { project ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

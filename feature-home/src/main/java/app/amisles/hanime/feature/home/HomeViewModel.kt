@@ -65,9 +65,14 @@ class HomeViewModel @Inject constructor(
                     when (event) {
                         is HomeDataEvent.Banner -> _banner.value = event.banner
                         is HomeDataEvent.Section -> {
+                            // 分区内按 videoUrl 去重：HomeScreen 以 videoUrl 作为 LazyColumn 的 key，
+                            // 站点重复输出同一条视频会触发「key 已被使用」异常导致崩溃
+                            val section = event.section.copy(
+                                videos = event.section.videos.distinctBy { it.videoUrl }
+                            )
                             // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块
                             _sections.value = _sections.value
-                                .filterNot { it.title == event.section.title } + event.section
+                                .filterNot { it.title == section.title } + section
                         }
                         is HomeDataEvent.Error -> _error.value = event.message
                     }

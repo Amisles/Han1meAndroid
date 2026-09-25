@@ -1,8 +1,5 @@
 package app.amisles.hanime.domain.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
 data class DownloadQuality(
     val quality: String,
     val resolution: String,
@@ -34,26 +31,3 @@ enum class DownloadStatus {
     COMPLETED,
     FAILED
 }
-
-@Entity(tableName = "download_tasks")
-data class DownloadEntity(
-    @PrimaryKey
-    val id: Int,
-    val title: String,
-    val quality: String,
-    val url: String,
-    val totalBytes: Long,
-    val downloadedBytes: Long,
-    val status: String,
-    val filePath: String,
-    val thumbnailUrl: String = "",
-    val videoId: String = "",
-    val errorMessage: String = ""
-)
-
-@Entity(tableName = "search_history")
-data class SearchHistoryEntity(
-    @PrimaryKey
-    val query: String,
-    val searchedAt: Long
-)

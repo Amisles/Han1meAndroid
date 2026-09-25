@@ -191,7 +191,7 @@ private fun ResultsList(results: List<DiagnosticResult>) {
         ),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(results) { result ->
+        items(results, key = { it.type }) { result ->
             DiagnosticCard(result)
         }
     }

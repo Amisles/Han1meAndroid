@@ -51,7 +51,8 @@ class SubscriptionsViewModel @Inject constructor(
             try {
                 val result = networkService.fetchSubscriptionsPage(query)
                 _artists.value = result.artists
-                _videos.value = result.videos
+                // 去重：SubscriptionsScreen 以 id 作为 LazyColumn 的 key，重复会触发 key 冲突异常
+                _videos.value = result.videos.distinctBy { it.id }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
