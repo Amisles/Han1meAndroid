@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
@@ -31,30 +31,36 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses > /dev/null || true
+      - name: Setup Android SDK environment
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
 
-      - name: Install SDK packages
-        run: |
-          sdkmanager --install "platforms;android-36" "build-tools;35.0.0"
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null
+
+      - name: Install Android SDK components
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           validate-wrappers: true
-          cache-cleanup: on-success
+          gradle-home-cache-cleanup: true
 
       - name: Run unit tests & build debug APK
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleDebug --stacktrace
 
-      - name: Upload reports on failure
+      - name: Upload build & test reports (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-and-test-reports
           path: |
-            **/build/reports/**
-            **/build/test-results/**
+            app/build/reports/
+            app/build/test-results/
           retention-days: 7
