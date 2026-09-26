@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -131,12 +132,28 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
+private fun String.baseRoute(): String = substringBefore('?')
+
+/** 切换底部导航 / 导航栏的 Tab */
+private fun NavController.navigateToTab(route: String) {
+    if (currentDestination?.route?.baseRoute() == route) return
+    if (!popBackStack(route, inclusive = false)) {
+        navigate(route) {
+            launchSingleTop = true
+        }
+    }
+}
+
 @Composable
 fun HanimeApp() {
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+    // 必须取「基础路由」而非 destination.route 原值：带参目的地的 destination.route 返回的是
+    // 完整路由模板（如 "search?keyword={keyword}&genre={genre}&sort={sort}"），而底部导航 /
+    // 导航栏传入的是短路由 "search"，两者永不相等，会让 Tab 的「已在当前页则不动」守卫失效。
+    val currentRoute = navBackStackEntry?.destination?.route?.baseRoute() ?: "home"
 
     val showBottomBar = !currentRoute.startsWith("detail") &&
         currentRoute != "about" &&
@@ -166,15 +183,7 @@ fun HanimeApp() {
             if (showBottomBar && useRail) {
                 NavRail(
                     currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        if (currentRoute != route) {
-                            if (!navController.popBackStack(route, inclusive = false)) {
-                                navController.navigate(route) {
-                                    launchSingleTop = true
-                                }
-                            }
-                        }
-                    }
+                    onNavigate = { route -> navController.navigateToTab(route) }
                 )
             }
             Scaffold(
@@ -186,15 +195,7 @@ fun HanimeApp() {
                     if (showBottomBar && !useRail) {
                         BottomNav(
                             currentRoute = currentRoute,
-                            onNavigate = { route ->
-                                if (currentRoute != route) {
-                                    if (!navController.popBackStack(route, inclusive = false)) {
-                                        navController.navigate(route) {
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                }
-                            }
+                            onNavigate = { route -> navController.navigateToTab(route) }
                         )
                     }
                 }
@@ -297,15 +298,6 @@ fun HanimeApp() {
                     }
                     composable("download") {
                         DownloadScreen(
-                            onNavigate = { route ->
-                                navController.navigate(route) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
                             onPlayLocalVideo = { filePath ->
                                 navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
                             }
