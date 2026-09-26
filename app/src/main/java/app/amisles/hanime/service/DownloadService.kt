@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import app.amisles.hanime.MainActivity
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadStatus
 import java.util.concurrent.ConcurrentHashMap
@@ -30,6 +31,9 @@ class DownloadService : Service() {
         const val CHANNEL_ID = "download_channel"
         // 每个任务独立通知 id = BASE + taskId，避免并发互相覆盖
         const val NOTIFICATION_ID_BASE = 1000
+
+        /** 尚未绑定到具体任务（taskId 非法）时的前台占位通知 id，与 BASE + taskId 不冲突。 */
+        private const val NOTIFICATION_ID_PLACEHOLDER = NOTIFICATION_ID_BASE - 1
 
         /** 下载期间 CPU / Wi-Fi 锁的标签。 */
         private const val TRANSFER_LOCK_TAG = "hanime:download"
@@ -119,6 +123,17 @@ class DownloadService : Service() {
         val status = statusStr?.let { runCatching { DownloadStatus.valueOf(it) }.getOrNull() }
         val action = intent?.action
 
+        ensureForeground(taskId, title ?: "", progress, status)
+
+        if (taskId < 0) {
+            // 非法 taskId：已占位进入前台以履约，随即撤销并停止服务。
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            isForegroundStarted = false
+            foregroundTaskId = -1
+            stopSelfResult(startId)
+            return START_NOT_STICKY
+        }
+
         when {
             // 取消/删除任务 —— 该 Intent 不带 EXTRA_STATUS，必须置于状态分支之前，否则会被当作进度更新
             action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
@@ -133,6 +148,24 @@ class DownloadService : Service() {
         // 活动任务集合已空即释放锁；统一放在此处，任何分支提前返回漏放都会被兜住
         if (activeTasks.isEmpty()) releaseTransferLocks()
         return START_NOT_STICKY
+    }
+
+    private fun ensureForeground(taskId: Int, title: String, progress: Int, status: DownloadStatus?) {
+        if (isForegroundStarted) return
+        val id = if (taskId >= 0) notificationId(taskId) else NOTIFICATION_ID_PLACEHOLDER
+        runCatching {
+            startForeground(
+                id,
+                buildProgressNotification(title, progress, status),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        }.onSuccess {
+            isForegroundStarted = true
+            foregroundTaskId = if (taskId >= 0) taskId else -1
+        }.onFailure { e ->
+            AppLogger.log("DownloadService", "进入前台被系统拒绝，主动停止服务以撤销契约: ${e.message}")
+            runCatching { stopSelf() }
+        }
     }
 
     override fun onDestroy() {
@@ -193,14 +226,14 @@ class DownloadService : Service() {
         } else if (next != null) {
             foregroundTaskId = next
             val (t, p) = activeTasks[next]!!
-            if (taskId >= 0) {
-                notificationManager.notify(notificationId(taskId), terminalNotification)
-            }
             startForeground(
                 notificationId(next),
                 buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
+            if (taskId >= 0) {
+                notificationManager.notify(notificationId(taskId), terminalNotification)
+            }
         } else {
             // 前台仍是其它任务：仅发刚结束任务的普通完成/失败通知
             if (taskId >= 0) {
@@ -232,12 +265,12 @@ class DownloadService : Service() {
             val next = activeTasks.keys.first()
             foregroundTaskId = next
             val (t, p) = activeTasks[next]!!
-            notificationManager.notify(notificationId(taskId), notification)
             startForeground(
                 notificationId(next),
                 buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
+            notificationManager.notify(notificationId(taskId), notification)
         } else {
             notificationManager.notify(notificationId(taskId), notification)
         }
