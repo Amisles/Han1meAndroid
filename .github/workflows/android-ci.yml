@@ -54,8 +54,8 @@ jobs:
       - name: Install Android SDK components
         run: |
           sdkmanager --install \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
             "platform-tools"
 
       - name: Set up Gradle

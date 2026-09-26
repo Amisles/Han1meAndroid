@@ -17,7 +17,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "app.amisles.hanime"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.amisles.hanime"
