@@ -435,6 +435,8 @@
     <string name="download_retry_all">すべて再試行</string>
     <string name="download_retry_all_toast">失敗タスク %1$d 件を再試行しました</string>
     <string name="download_filter_empty">現在のフィルターに一致するタスクはありません</string>
+    <string name="download_search_placeholder">ファイル名で検索</string>
+    <string name="download_search_empty">一致するファイル名がありません</string>
     <string name="download_delete_title">削除の確認</string>
     <string name="download_delete_message">このダウンロードタスクを削除しますか？</string>
     <string name="download_delete_message_multiple">選択した %1$d 件のダウンロードタスクを削除しますか？</string>

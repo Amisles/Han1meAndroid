@@ -435,6 +435,8 @@
     <string name="download_retry_all">重試全部</string>
     <string name="download_retry_all_toast">已重試 %1$d 個失敗任務</string>
     <string name="download_filter_empty">目前篩選條件下沒有任務</string>
+    <string name="download_search_placeholder">搜尋檔案名稱</string>
+    <string name="download_search_empty">沒有符合的檔案名稱</string>
     <string name="download_delete_title">確認刪除</string>
     <string name="download_delete_message">確定要刪除這個下載任務嗎？</string>
     <string name="download_delete_message_multiple">確定刪除選取的 %1$d 個下載任務嗎？</string>

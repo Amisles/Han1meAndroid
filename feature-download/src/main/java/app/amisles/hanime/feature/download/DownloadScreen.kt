@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,10 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -30,6 +34,8 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,10 +51,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,7 +73,6 @@ import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.components.Header
 import coil3.compose.AsyncImage
 
 enum class DownloadFilter {
@@ -87,9 +96,68 @@ private data class TaskOrderKey(
     val progress: Float
 )
 
+/**
+ * 下载页文件名搜索框。
+ *
+ * 样式与搜索页 SearchScreen 的搜索框逐项对齐：24dp 圆角并裁剪、surface 容器色、
+ * 聚焦时 primary 描边、15sp 正文、右侧 ✕ 清除、输入法回车键为「搜索」。
+ * 唯一差异是 singleLine —— 表头高度需固定，长文件名不应把表头撑高。
+ */
+@Composable
+private fun DownloadSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = {
+            Text(
+                text = stringResource(R.string.download_search_placeholder),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // 提示文案必须单行省略：否则搜索框被压窄时它会折行，把表头撑高
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        modifier = modifier.clip(RoundedCornerShape(24.dp)),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            // 本地过滤随输入实时生效，回车仅收起键盘
+            onSearch = { keyboardController?.hide() }
+        ),
+        shape = RoundedCornerShape(24.dp),
+        textStyle = TextStyle(
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 15.sp
+        ),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+        ),
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                Text(
+                    text = "✕",
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { onQueryChange("") }
+                )
+            }
+        }
+    )
+}
+
 @Composable
 fun DownloadScreen(
-    onNavigate: (String) -> Unit = {},
     // 点「播放」：交给上层跳转到应用内的本地播放页，不再走外部播放器 Intent
     onPlayLocalVideo: (String) -> Unit = {}
 ) {
@@ -99,6 +167,8 @@ fun DownloadScreen(
     var downloadFilter by remember { mutableStateOf(DownloadFilter.ALL) }
     var downloadSort by remember { mutableStateOf(DownloadSort.ADDED) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    // 文件名搜索关键词：纯本地过滤已下载任务，输入即生效，不触发任何网络请求
+    var nameQuery by remember { mutableStateOf("") }
 
     val downloadingTasks = tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
     val completedTasks = tasks.filter { it.status == DownloadStatus.COMPLETED }
@@ -123,8 +193,8 @@ fun DownloadScreen(
             )
         }
     }
-    val orderedTaskIds = remember(taskOrderKeys, downloadFilter, downloadSort) {
-        val base = when (downloadFilter) {
+    val orderedTaskIds = remember(taskOrderKeys, downloadFilter, downloadSort, nameQuery) {
+        val byStatus = when (downloadFilter) {
             DownloadFilter.ALL -> taskOrderKeys
             DownloadFilter.DOWNLOADING -> taskOrderKeys.filter {
                 it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
@@ -132,6 +202,13 @@ fun DownloadScreen(
             DownloadFilter.COMPLETED -> taskOrderKeys.filter { it.status == DownloadStatus.COMPLETED }
             DownloadFilter.FAILED -> taskOrderKeys.filter { it.status == DownloadStatus.FAILED }
             DownloadFilter.PAUSED -> taskOrderKeys.filter { it.status == DownloadStatus.PAUSED }
+        }
+        // 文件名搜索：按子串匹配且忽略大小写；关键词为空白时不参与过滤
+        val keyword = nameQuery.trim()
+        val base = if (keyword.isEmpty()) {
+            byStatus
+        } else {
+            byStatus.filter { it.title.contains(keyword, ignoreCase = true) }
         }
         when (downloadSort) {
             DownloadSort.ADDED -> base.sortedByDescending { it.id }
@@ -142,7 +219,10 @@ fun DownloadScreen(
     }
     val tasksById = tasks.associateBy { it.id }
     val visibleTasks = orderedTaskIds.mapNotNull { tasksById[it] }
-    val useGroupedView = downloadFilter == DownloadFilter.ALL && downloadSort == DownloadSort.ADDED
+    // 搜索态必须退化为扁平列表：分组视图按状态整段渲染原始列表，不经过关键词过滤
+    val useGroupedView = downloadFilter == DownloadFilter.ALL &&
+        downloadSort == DownloadSort.ADDED &&
+        nameQuery.isBlank()
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
@@ -167,49 +247,76 @@ fun DownloadScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        Row(
+        // 标题与搜索框同行。英文 "Download Manager"、日文 "ダウンロード管理" 这类长标题在
+        // 大字号下会几乎吃满整行，把搜索框压到极窄 —— 其提示文案随之折行，表头被撑高。
+        // 因此给标题设「最多占内容区一半」的上限（超出走省略号），剩余宽度全部让给搜索框；
+        // 标题与提示文案都限单行省略，表头高度便不再随语言与字号变化。
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 15.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                // 原先此处的 padding 与 Header 组件内部的 padding 叠加成了 30/20，
+                // 现收敛为单层：顶部 12dp 与搜索页表头对齐，底部收到 2dp 以缩短与下方内容的间距
+                .padding(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 2.dp)
         ) {
-            if (isSelectionMode) {
-                IconButton(
-                    onClick = { isSelectionMode = false },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.common_cancel),
-                        tint = MaterialTheme.colorScheme.onBackground,
+            // 常规字号下英文标题约 150dp，不足一半宽度，此上限不生效；只有标题确实要吃掉
+            // 半行以上（大字号 / 窄屏）时才截断，保证搜索框始终拿到一半以上的宽度
+            val titleMaxWidth = maxWidth * 0.5f
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSelectionMode) {
+                    IconButton(
+                        onClick = { isSelectionMode = false },
                         modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_cancel),
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.search_selected_count, selectedIds.size),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(R.string.common_select_all),
+                        fontSize = 14.sp,
+                        color = if (selectedIds.containsAll(selectableIds)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable {
+                                selectedIds = if (selectedIds.containsAll(selectableIds)) {
+                                    emptySet()
+                                } else {
+                                    selectableIds
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.download_title),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = titleMaxWidth)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    DownloadSearchField(
+                        query = nameQuery,
+                        onQueryChange = { nameQuery = it },
+                        modifier = Modifier.weight(1f)
                     )
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.search_selected_count, selectedIds.size),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.common_select_all),
-                    fontSize = 14.sp,
-                    color = if (selectedIds.containsAll(selectableIds)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clickable {
-                            selectedIds = if (selectedIds.containsAll(selectableIds)) {
-                                emptySet()
-                            } else {
-                                selectableIds
-                            }
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            } else {
-                Header(title = stringResource(R.string.download_title), onSearchNavigate = { onNavigate("search") })
             }
         }
 
@@ -219,7 +326,7 @@ fun DownloadScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 DownloadFilter.entries.forEach { filter ->
@@ -457,7 +564,13 @@ fun DownloadScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = stringResource(R.string.download_filter_empty),
+                                    text = stringResource(
+                                        if (nameQuery.isBlank()) {
+                                            R.string.download_filter_empty
+                                        } else {
+                                            R.string.download_search_empty
+                                        }
+                                    ),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

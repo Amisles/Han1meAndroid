@@ -435,6 +435,8 @@
     <string name="download_retry_all">Retry all</string>
     <string name="download_retry_all_toast">Retried %1$d failed tasks</string>
     <string name="download_filter_empty">No tasks match the current filter</string>
+    <string name="download_search_placeholder">Search file name</string>
+    <string name="download_search_empty">No matching file names</string>
     <string name="download_delete_title">Confirm Delete</string>
     <string name="download_delete_message">Are you sure you want to delete this download task?</string>
     <string name="download_delete_message_multiple">Delete the selected %1$d download task(s)?</string>
@@ -445,7 +447,7 @@
     <string name="download_notification_failed">Download failed</string>
     <string name="download_notification_progress">Downloading %1$d%%</string>
     <string name="download_notification_paused">Paused %1$d%%</string>
-    <string name="download_title">Download Manager</string>
+    <string name="download_title">Download</string>
     <string name="download_pause">Pause</string>
     <string name="download_resume">Resume</string>
     <string name="download_choose_player">Choose player</string>
