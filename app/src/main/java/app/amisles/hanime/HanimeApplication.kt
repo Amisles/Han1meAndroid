@@ -8,10 +8,13 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.feature.detail.ExoPlayerFactory
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.request.crossfade
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class HanimeApplication : Application() {
+class HanimeApplication : Application(), SingletonImageLoader.Factory {
 
     /**
      * 语言包装后的 Context。
@@ -68,6 +71,11 @@ class HanimeApplication : Application() {
 
     override fun getAssets(): AssetManager =
         localizedContext?.assets ?: super.getAssets()
+
+    override fun newImageLoader(context: Context): ImageLoader =
+        ImageLoader.Builder(context)
+            .crossfade(true)
+            .build()
 
     private fun persistedLanguage(): String =
         runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)

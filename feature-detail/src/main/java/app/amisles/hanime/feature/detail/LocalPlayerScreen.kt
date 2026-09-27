@@ -1,6 +1,8 @@
 package app.amisles.hanime.feature.detail
 
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.data.preferences.Preferences
@@ -55,27 +58,40 @@ fun LocalPlayerScreen(
     val sizeInfo = currentWindowSizeInfo()
     var isPlayerFullscreen by remember { mutableStateOf(false) }
 
-    val exoPlayer = remember {
-        ExoPlayerFactory.buildLocalVideoPlayer(context).apply {
-            // 沿用详情页持久化的倍速偏好
-            setPlaybackSpeed(Preferences.playbackSpeed)
+    // 与详情页同理：不能在组合期同步构建播放器，否则整段构建压在页面首帧上
+    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+    // release() 是阻塞调用，延后一帧执行以避开离场帧
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    LaunchedEffect(Unit) {
+        exoPlayer = ExoPlayerFactory.buildLocalVideoPlayer(context).apply {
+            // 沿用详情页持久化的倍速偏好；读 StateFlow 缓存值，避免同步解密
+            setPlaybackSpeed(Preferences.playbackSpeedFlow.value)
         }
     }
 
     val fileExists = remember(filePath) { !filePath.isNullOrEmpty() && File(filePath).exists() }
 
-    // 装载本地文件。playWhenReady 已在工厂里置 true，这里显式 play() 只是兜底
-    LaunchedEffect(filePath, fileExists) {
+    // 装载本地文件。playWhenReady 已在工厂里置 true，这里显式 play() 只是兜底。
+    // 以 exoPlayer 为键：播放器异步就绪，就绪后必须重新装载一次。
+    LaunchedEffect(filePath, fileExists, exoPlayer) {
         val path = filePath
-        if (fileExists && !path.isNullOrEmpty()) {
-            exoPlayer.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
-            exoPlayer.prepare()
-            exoPlayer.play()
+        val player = exoPlayer
+        if (player != null && fileExists && !path.isNullOrEmpty()) {
+            player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
+            player.prepare()
+            player.play()
         }
     }
 
     DisposableEffect(exoPlayer) {
-        onDispose { exoPlayer.release() }
+        val player = exoPlayer
+        if (player == null) {
+            // 播放器尚未就绪：无可释放。此分支同时保证 DisposableEffect 一定有返回值。
+            onDispose { }
+        } else {
+            onDispose { mainHandler.post { player.release() } }
+        }
     }
 
     // 全屏时返回键先退出全屏，而不是直接退出本页（与详情页同一处理）
@@ -86,22 +102,7 @@ fun LocalPlayerScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        if (fileExists) {
-            VideoPlayer(
-                exoPlayer = exoPlayer,
-                initialSourceUrl = filePath.orEmpty(),
-                isFullscreen = isPlayerFullscreen,
-                onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },
-                onQualityChanged = { Preferences.setPreferredQuality(it) },
-                autoPlayNext = autoPlayNext,
-                onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
-                isLoopPlayback = loopPlayback,
-                onLoopPlaybackChanged = { Preferences.setLoopPlayback(it) },
-                autoFullscreenEnabled = !sizeInfo.isTablet,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        } else {
+        if (!fileExists) {
             // 文件不存在：给出明确原因，而不是笼统的「加载失败」
             Text(
                 text = stringResource(R.string.download_file_not_exist),
@@ -109,6 +110,25 @@ fun LocalPlayerScreen(
                 fontSize = 14.sp,
                 modifier = Modifier.align(Alignment.Center)
             )
+        } else {
+            val player = exoPlayer
+            // 播放器仍在后台构建时留空：外层已是黑底，不显示错误提示以免误报
+            if (player != null) {
+                VideoPlayer(
+                    exoPlayer = player,
+                    initialSourceUrl = filePath.orEmpty(),
+                    isFullscreen = isPlayerFullscreen,
+                    onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                    onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },
+                    onQualityChanged = { Preferences.setPreferredQuality(it) },
+                    autoPlayNext = autoPlayNext,
+                    onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                    isLoopPlayback = loopPlayback,
+                    onLoopPlaybackChanged = { Preferences.setLoopPlayback(it) },
+                    autoFullscreenEnabled = !sizeInfo.isTablet,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
 
         // 返回按钮叠在左上角（写在播放器之后，绘制在其上层），用叠加而非顶栏以免把播放器挤离中心。

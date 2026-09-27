@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -79,12 +80,14 @@ fun HomeScreen(
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val banner by viewModel.banner.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
     HomeScreenContent(
         sections = sections,
         banner = banner,
         isLoading = isLoading,
+        isRefreshing = isRefreshing,
         error = error,
         onRefresh = { viewModel.loadHomeData() },
         onVideoClick = onVideoClick,
@@ -102,6 +105,7 @@ fun HomeScreenContent(
     sections: List<HomeSection>,
     banner: HanimeBanner?,
     isLoading: Boolean,
+    isRefreshing: Boolean = false,
     error: String? = null,
     onRefresh: () -> Unit = {},
     onVideoClick: (String) -> Unit = {},
@@ -148,8 +152,8 @@ fun HomeScreenContent(
     }
 
     PullToRefreshBox(
-        // 与真实加载状态联动
-        isRefreshing = isLoading,
+        // 只响应刷新态：首屏加载由内容区的骨架屏表达，两者不再共用一个标志位
+        isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         state = pullState,
         modifier = Modifier
@@ -206,6 +210,38 @@ fun HomeScreenContent(
                 )
             }
         } else {
+            if (error != null && sections.isNotEmpty()) {
+                item(key = "home-refresh-error") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 15.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .clickable { onRefresh() }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = error.orEmpty(),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = stringResource(R.string.common_retry),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    }
+                }
+            }
+
             banner?.let {
                 item(key = "home-banner") {
                     Banner(

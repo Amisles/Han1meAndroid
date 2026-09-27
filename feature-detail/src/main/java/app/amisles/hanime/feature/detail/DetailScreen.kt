@@ -1,6 +1,8 @@
 package app.amisles.hanime.feature.detail
 
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -38,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
@@ -120,35 +123,43 @@ fun DetailScreen(
     // 续播点（毫秒）：进入时由历史记录计算，传给 VideoPlayer 在首帧就绪后跳转
     var initialSeekMs by remember { mutableStateOf(0L) }
 
-    val exoPlayer = remember {
-        ExoPlayerFactory.buildVideoPlayer(context).apply {
-            setPlaybackSpeed(Preferences.playbackSpeed)
+    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    LaunchedEffect(Unit) {
+        val deps = ExoPlayerFactory.prepareVideoPlayerDeps(context)
+        exoPlayer = ExoPlayerFactory.buildVideoPlayer(context, deps).apply {
+            // 读 StateFlow 缓存值，避免在首帧路径上再触发一次加密存储解密
+            setPlaybackSpeed(Preferences.playbackSpeedFlow.value)
         }
     }
 
-    // 进入即加载：优先用持久化画质偏好的源，并读取已保存进度用于续播
-    LaunchedEffect(videoDetail?.defaultSourceUrl) {
+    LaunchedEffect(videoDetail?.defaultSourceUrl, exoPlayer) {
         val detail = videoDetail
+        val player = exoPlayer
         val url = detail?.defaultSourceUrl
-        if (!url.isNullOrEmpty()) {
+        if (player != null && !url.isNullOrEmpty()) {
             val preferredUrl = pickInitialSourceUrl(
                 detail,
-                Preferences.preferredQuality
+                Preferences.preferredQualityFlow.value
             )
             // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转
             initialSeekMs = viewModel.getSavedPlaybackPosition(viewModel.videoId)
-            exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(preferredUrl)))
-            exoPlayer.prepare()
+            player.setMediaItem(MediaItem.fromUri(Uri.parse(preferredUrl)))
+            player.prepare()
         }
     }
 
     // 播放结束处理：保存进度；若开启连播则自动播放下一集（相关影片首条有效直链）
     fun handlePlaybackEnded() {
-        val pos = exoPlayer.currentPosition
+        val player = exoPlayer ?: return
+        val pos = player.currentPosition
         if (pos > 0) {
-            viewModel.savePlaybackProgress(pos, exoPlayer.duration)
+            viewModel.savePlaybackProgress(pos, player.duration)
         }
-        if (Preferences.autoPlayNext) {
+        // 复用已收集的 StateFlow 值，避免同步读加密存储
+        if (autoPlayNext) {
             val next = videoDetail?.relatedVideos?.firstOrNull { it.videoUrl.isNotBlank() }
             if (next != null) {
                 onVideoClick(next.videoUrl)
@@ -159,26 +170,36 @@ fun DetailScreen(
     // 进度记忆：每 5 秒检查一次，仅当「页面至少 STARTED 且播放位置确实前进」时落库，离场时保存最终进度。
     // 以位置是否推进判定，可跳过暂停 / 缓冲 / 切后台 / 熄屏期间的空转写库。
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(exoPlayer, lifecycleOwner) {
-        val job = scope.launch {
-            var lastSavedPosition = -1L
-            while (true) {
-                delay(5000)
-                val position = exoPlayer.currentPosition
-                val visible = lifecycleOwner.lifecycle.currentState
-                    .isAtLeast(Lifecycle.State.STARTED)
-                if (visible && position > 0 && position != lastSavedPosition) {
-                    viewModel.savePlaybackProgress(position, exoPlayer.duration)
-                    lastSavedPosition = position
+    val activePlayer = exoPlayer
+    DisposableEffect(activePlayer, lifecycleOwner) {
+        val player = activePlayer
+        if (player == null) {
+            // 播放器尚未就绪：无需订阅进度落库。此分支同时保证 DisposableEffect 一定有返回值。
+            onDispose { }
+        } else {
+            val job = scope.launch {
+                var lastSavedPosition = -1L
+                while (true) {
+                    delay(5000)
+                    val position = player.currentPosition
+                    val visible = lifecycleOwner.lifecycle.currentState
+                        .isAtLeast(Lifecycle.State.STARTED)
+                    if (visible && position > 0 && position != lastSavedPosition) {
+                        viewModel.savePlaybackProgress(position, player.duration)
+                        lastSavedPosition = position
+                    }
                 }
             }
-        }
-        onDispose {
-            job.cancel()
-            if (exoPlayer.currentPosition > 0) {
-                viewModel.savePlaybackProgress(exoPlayer.currentPosition, exoPlayer.duration)
+            onDispose {
+                job.cancel()
+                val position = player.currentPosition
+                val duration = player.duration
+                if (position > 0) {
+                    viewModel.savePlaybackProgress(position, duration)
+                }
+                // 延后一帧再释放：与目标页面的播放器构建错开，避免同帧叠加两次阻塞开销
+                mainHandler.post { player.release() }
             }
-            exoPlayer.release()
         }
     }
 
@@ -299,9 +320,18 @@ fun DetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     val detail = videoDetail
-                    if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
+                    val player = exoPlayer
+                    if (detail == null || detail.defaultSourceUrl.isEmpty()) {
+                        VideoUnavailableHint(
+                            hasError = error != null,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (player == null) {
+                        // 播放器仍在后台构建：保持黑底占位，不能走「无法播放」分支否则会误报
+                        Box(modifier = Modifier.fillMaxSize())
+                    } else {
                         DetailVideoPlayer(
-                            exoPlayer = exoPlayer,
+                            exoPlayer = player,
                             detail = detail,
                             initialPositionMs = initialSeekMs,
                             isFullscreen = false,
@@ -311,11 +341,6 @@ fun DetailScreen(
                             // 平板常态横持，自动全屏会误触发，此处仅保留按钮手动进入全屏
                             autoFullscreenEnabled = false,
                             modifier = Modifier
-                        )
-                    } else {
-                        VideoUnavailableHint(
-                            hasError = error != null,
-                            modifier = Modifier.fillMaxSize()
                         )
                     }
                     // 返回按钮覆盖在播放器左上角
@@ -363,9 +388,26 @@ fun DetailScreen(
 
                     item(key = "video_player") {
                         val detail = videoDetail
-                        if (detail != null && detail.defaultSourceUrl.isNotEmpty()) {
+                        val player = exoPlayer
+                        if (detail == null || detail.defaultSourceUrl.isEmpty()) {
+                            VideoUnavailableHint(
+                                hasError = error != null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(225.dp)
+                                    .background(Color.Black)
+                            )
+                        } else if (player == null) {
+                            // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(225.dp)
+                                    .background(Color.Black)
+                            )
+                        } else {
                             DetailVideoPlayer(
-                                exoPlayer = exoPlayer,
+                                exoPlayer = player,
                                 detail = detail,
                                 initialPositionMs = initialSeekMs,
                                 isFullscreen = isPlayerFullscreen,
@@ -373,14 +415,6 @@ fun DetailScreen(
                                 onPlaybackEnded = { handlePlaybackEnded() },
                                 autoPlayNext = autoPlayNext,
                                 modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
-                            )
-                        } else {
-                            VideoUnavailableHint(
-                                hasError = error != null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(225.dp)
-                                    .background(Color.Black)
                             )
                         }
                     }

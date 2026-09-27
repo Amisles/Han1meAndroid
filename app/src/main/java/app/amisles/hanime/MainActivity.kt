@@ -9,11 +9,16 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -30,10 +35,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -132,6 +139,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** 路由转场进场时长（毫秒）。首帧成本下移后，短促淡入即可掩盖残余开销。 */
+private const val TRANSITION_DURATION_MS = 220
+
+/** 退场时长略短于进场：让目标页更快接管画面，减少两页同时绘制的帧数。 */
+private const val TRANSITION_EXIT_DURATION_MS = 160
+
 /** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 private fun String.baseRoute(): String = substringBefore('?')
 
@@ -192,7 +205,15 @@ fun HanimeApp() {
                     .weight(1f),
                 containerColor = MaterialTheme.colorScheme.background,
                 bottomBar = {
-                    if (showBottomBar && !useRail) {
+                    // 用 AnimatedVisibility 而非条件渲染：底部栏瞬时消失会让 NavHost 的
+                    // 内容内边距在同一帧由 ~80dp 突变为 0，与目标页首帧叠加成一次明显掉帧。
+                    AnimatedVisibility(
+                        visible = showBottomBar && !useRail,
+                        enter = slideInVertically(animationSpec = tween(TRANSITION_DURATION_MS)) { it } +
+                            fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)),
+                        exit = slideOutVertically(animationSpec = tween(TRANSITION_EXIT_DURATION_MS)) { it } +
+                            fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS))
+                    ) {
                         BottomNav(
                             currentRoute = currentRoute,
                             onNavigate = { route -> navController.navigateToTab(route) }
@@ -212,10 +233,26 @@ fun HanimeApp() {
                             .navigationBarsPadding()
                             .padding(bottom = innerPadding.calculateBottomPadding())
                     },
-                    enterTransition = { EnterTransition.None },
-                    exitTransition = { ExitTransition.None },
-                    popEnterTransition = { EnterTransition.None },
-                    popExitTransition = { ExitTransition.None }
+                    enterTransition = {
+                        fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)) +
+                            slideInHorizontally(
+                                animationSpec = tween(TRANSITION_DURATION_MS),
+                                initialOffsetX = { it / 10 }
+                            )
+                    },
+                    exitTransition = {
+                        fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS))
+                    },
+                    popEnterTransition = {
+                        fadeIn(animationSpec = tween(TRANSITION_DURATION_MS))
+                    },
+                    popExitTransition = {
+                        fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS)) +
+                            slideOutHorizontally(
+                                animationSpec = tween(TRANSITION_DURATION_MS),
+                                targetOffsetX = { it / 10 }
+                            )
+                    }
                 ) {
                     composable("home") {
                         HomeScreen(
@@ -246,7 +283,7 @@ fun HanimeApp() {
                                     restoreState = true
                                 } },
                             onAuthorClick = { author ->
-                                navController.navigate("search?keyword=${Uri.encode(author)}") },
+                                navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true } },
                             onViewMore = { sectionTitle ->
                                 val sortMatch = sortOptions.firstOrNull { it.label == sectionTitle }
                                 val categoryMatch = categories.firstOrNull { it.label == sectionTitle }
@@ -292,7 +329,7 @@ fun HanimeApp() {
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                             onAuthorClick = { author ->
-                                navController.navigate("search?keyword=${Uri.encode(author)}")
+                                navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true }
                             }
                         )
                     }
@@ -468,9 +505,9 @@ fun HanimeApp() {
                             onVideoClick = { newVideoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
                             onTagClick = { tag ->
-                                navController.navigate("search?keyword=${Uri.encode(tag)}") },
+                                navController.navigate("search?keyword=${Uri.encode(tag)}") { launchSingleTop = true } },
                             onAuthorClick = { author ->
-                                navController.navigate("search?keyword=${Uri.encode(author)}") },
+                                navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true } },
                             onAuthorPageClick = { authorPageUrl ->
                                 navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}") },
                             onNavigateToLogin = {
@@ -499,18 +536,20 @@ fun HanimeApp() {
         }
 
     // ---- 我的页面抽屉：左侧滑出，覆盖整个 Scaffold（含底部导航）----
+    val showOverlay by remember { derivedStateOf { profileOpen || progress > 0.001f } }
+
     // 抽屉展开或关闭动画期间拦截返回键，先收起抽屉而非退出 Activity；
     // 命中条件与遮罩层一致（progress > 0 表示仍在关闭动画中），避免动画期间把返回键漏给系统。
-    BackHandler(enabled = profileOpen || progress > 0.001f) {
+    BackHandler(enabled = showOverlay) {
         profileOpen = false
     }
 
-    val showOverlay = profileOpen || progress > 0.001f
     if (showOverlay) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f * progress))
+                // 在绘制 lambda 内读 progress：只失效绘制阶段，既不触发重组也不额外分配图层
+                .drawBehind { drawRect(color = Color.Black, alpha = 0.5f * progress) }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null

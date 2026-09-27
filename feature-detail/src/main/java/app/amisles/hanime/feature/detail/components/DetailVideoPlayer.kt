@@ -49,7 +49,8 @@ internal fun DetailVideoPlayer(
         exoPlayer = exoPlayer,
         posterUrl = detail.posterUrl,
         videoSources = detail.videoSources,
-        initialSourceUrl = pickInitialSourceUrl(detail, Preferences.preferredQuality),
+        // 读 StateFlow 缓存值：避免每次重组都对加密存储做一次同步解密
+        initialSourceUrl = pickInitialSourceUrl(detail, Preferences.preferredQualityFlow.value),
         initialPositionMs = initialPositionMs,
         isFullscreen = isFullscreen,
         onFullscreenToggle = onFullscreenToggle,

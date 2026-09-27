@@ -43,7 +43,7 @@ data class SettingsUiState(
             maxDownloadConcurrent = Preferences.maxDownloadConcurrent,
             baseUrl = Preferences.baseUrl,
             isLoginSupported = Preferences.isLoginSupported,
-            downloadStoragePath = Preferences.downloadStoragePath
+            downloadStoragePath = Preferences.downloadStoragePathFlow.value
         )
     }
 }
@@ -82,7 +82,7 @@ class SettingsViewModel @Inject constructor(
             maxDownloadConcurrent = concurrent,
             baseUrl = url,
             isLoginSupported = loginSupported,
-            downloadStoragePath = Preferences.downloadStoragePath
+            downloadStoragePath = Preferences.downloadStoragePathFlow.value
         )
     }.combine(Preferences.downloadStoragePathFlow) { state, storagePath ->
         state.copy(downloadStoragePath = storagePath)

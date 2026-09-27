@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 进程级 ExoPlayer 工厂。针对详情页裸 ExoPlayer「加载慢、反复卡顿且不可恢复」做多处理：
@@ -130,26 +131,52 @@ object ExoPlayerFactory {
             .setDefaultRequestProperties(mapOf(VideoAntiHotlink.REFERER_HEADER to VideoAntiHotlink.referer))
     }
 
-    fun buildVideoPlayer(context: Context): ExoPlayer {
-        val cache = getCache(context)
+    /**
+     * 播放器构建所需的「重依赖」。
+     *
+     * 这两项都不依赖 Looper，却占了构建成本的绝大部分：
+     * - [cache]：SimpleCache 冷启动需要建目录、开 StandaloneDatabaseProvider、扫描缓存索引；
+     * - [loadControl]：需要一次到 system_server 的 ConnectivityManager binder IPC。
+     * 因此拆出来让调用方先在后台线程准备，再回到主线程只做 ExoPlayer.Builder#build()。
+     */
+    class VideoPlayerDeps internal constructor(
+        internal val cache: SimpleCache,
+        internal val loadControl: DefaultLoadControl
+    )
 
+    /**
+     * 在后台线程准备 [VideoPlayerDeps]。
+     *
+     * 调用方**必须**在组合阶段之外的协程里等待本方法（例如 `LaunchedEffect` 内），
+     * 否则重活会重新落回页面首帧的主线程预算里。
+     */
+    suspend fun prepareVideoPlayerDeps(context: Context): VideoPlayerDeps =
+        withContext(Dispatchers.Default) {
+            VideoPlayerDeps(getCache(context), buildLoadControlForNetwork(context))
+        }
+
+    /**
+     * 用已备好的 [deps] 构建播放器。
+     *
+     * **必须在主线程调用**：`ExoPlayer.Builder` 会把当前线程的 Looper 作为播放器的应用线程，
+     * 当前线程无 Looper 时回落到主 Looper。由主线程构建可保证播放器的应用线程就是主线程，
+     * 避免后续所有 Player 访问都触发 Media3 的「跨线程访问」告警。
+     */
+    fun buildVideoPlayer(context: Context, deps: VideoPlayerDeps): ExoPlayer {
         // 上游直连数据源：浏览器 UA + 跨协议重定向 + 适度超时 + 官网 Referer 防盗链
         val upstreamFactory = buildUpstreamFactory(15_000, 15_000)
 
         // 缓存数据源包住直连：先读缓存，未命中再走网络并回写；缓存写入异常时回退直连，不中断播放
         val cacheDataSourceFactory = CacheDataSource.Factory()
-            .setCache(cache)
+            .setCache(deps.cache)
             .setUpstreamDataSourceFactory(upstreamFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
         val mediaSourceFactory = DefaultMediaSourceFactory(cacheDataSourceFactory)
 
-        // 缓冲按网络类型动态选择
-        val loadControl = buildLoadControlForNetwork(context)
-
         return ExoPlayer.Builder(context.applicationContext)
             .setMediaSourceFactory(mediaSourceFactory)
-            .setLoadControl(loadControl)
+            .setLoadControl(deps.loadControl)
             .build()
             .apply {
                 playWhenReady = false

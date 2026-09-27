@@ -30,8 +30,18 @@ class HomeViewModel @Inject constructor(
     private val _banner = MutableStateFlow<HanimeBanner?>(null)
     val banner: StateFlow<HanimeBanner?> = _banner.asStateFlow()
 
+    /** 首屏加载（当前无任何数据，界面用骨架屏占位）。 */
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    /**
+     * 下拉刷新（已有数据，界面原地更新，**不清空、不切骨架屏**）。
+     *
+     * 与 [isLoading] 分开是刻意的：此前刷新复用 isLoading 并先清空数据，界面会经历
+     * 「内容消失 → 骨架屏 → 内容重建」两次跳变，重建还会让已解码的缩略图缓存全部失效。
+     */
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -43,24 +53,42 @@ class HomeViewModel @Inject constructor(
         loadHomeData()
     }
 
+    /**
+     * 加载首页数据。
+     *
+     * 「首屏加载」与「下拉刷新」的分支由**当前是否已有数据**自行判定，不由调用方传入：
+     * 下拉手势与错误页「重试」共用同一个回调，靠入参区分会漏判（重试时若走刷新分支，
+     * 界面会因 sections 为空且无骨架屏而白屏）。
+     * - 已有数据 → 刷新：保留 sections / banner 原地更新，只由下拉指示器表达进度；
+     * - 无数据 → 首屏加载：清空后由骨架屏接管。
+     */
     fun loadHomeData() {
-        _isLoading.value = true
+        val hasContent = _sections.value.isNotEmpty() || _banner.value != null
+        if (hasContent) {
+            _isRefreshing.value = true
+        } else {
+            _isLoading.value = true
+            _sections.value = emptyList()
+            _banner.value = null
+        }
         _error.value = null
-        _sections.value = emptyList()
-        _banner.value = null
 
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             var firstEventArrived = false
+            // 刷新时记录本次流实际返回的分区标题：流正常结束后据此剔除已下线的旧分区，
+            val receivedTitles = if (hasContent) mutableSetOf<String>() else null
+            var streamFailed = false
             repository.getHomeDataStream()
                 .catch { e ->
-                    if (!firstEventArrived) _isLoading.value = false
+                    streamFailed = true
                     _error.value = e.message ?: context.getString(R.string.error_load_home_failed)
                 }
                 .collect { event ->
                     if (!firstEventArrived) {
                         firstEventArrived = true
                         _isLoading.value = false
+                        _isRefreshing.value = false
                     }
                     when (event) {
                         is HomeDataEvent.Banner -> _banner.value = event.banner
@@ -70,6 +98,7 @@ class HomeViewModel @Inject constructor(
                             val section = event.section.copy(
                                 videos = event.section.videos.distinctBy { it.videoUrl }
                             )
+                            receivedTitles?.add(section.title)
                             // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块
                             _sections.value = _sections.value
                                 .filterNot { it.title == section.title } + section
@@ -77,6 +106,12 @@ class HomeViewModel @Inject constructor(
                         is HomeDataEvent.Error -> _error.value = event.message
                     }
                 }
+            _isLoading.value = false
+            _isRefreshing.value = false
+            // 出错时收到的分区只是残缺子集，不能据此剔除既有分区
+            if (receivedTitles != null && !streamFailed) {
+                _sections.value = _sections.value.filter { it.title in receivedTitles }
+            }
         }
     }
 }
