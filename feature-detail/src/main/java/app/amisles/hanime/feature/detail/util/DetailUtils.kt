@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.domain.model.VideoDetail
 
 /** 根据持久化画质偏好挑选初始播放源：偏好非空且存在对应分辨率时使用，否则回退默认源。 */
@@ -33,7 +34,7 @@ internal fun shareVideo(context: Context, title: String, url: String) {
 
 /** 视频卡片占位配色：按视频 id 稳定散列取渐变与 emoji，保证同一视频每次进入配色一致。 */
 internal fun videoGradient(id: String): Pair<Color, Color> =
-    gradients.getOrElse(id.hashCode() % gradients.size) { gradients[0] }
+    gradients[stableIndex(id, gradients.size)]
 
 internal fun videoEmoji(id: String): String =
-    emojis.getOrElse(id.hashCode() % emojis.size) { emojis[0] }
+    emojis[stableIndex(id, emojis.size)]

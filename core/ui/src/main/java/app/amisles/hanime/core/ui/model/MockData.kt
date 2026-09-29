@@ -42,6 +42,10 @@ val gradients = listOf(
 
 val emojis = listOf("🎬", "🎥", "📹", "🎞️", "📽️", "📀", "💿", "🎮")
 
+/** 由 id 稳定取 [gradients] / [emojis] 的下标；hashCode 可能为负，必须用 floorMod。 */
+fun stableIndex(key: String, size: Int): Int =
+    if (size <= 0) 0 else Math.floorMod(key.hashCode(), size)
+
 // label：服务端简体标识（匹配首页分区标题与深链接参数，不用于界面展示）
 // displayRes：界面展示的翻译资源；apiValue：搜索接口实际使用的参数（部分与展示名不同，如里番→裏番）
 data class Category(

@@ -53,6 +53,7 @@ import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
@@ -196,8 +197,8 @@ fun FavoriteScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(favorites, key = { it.id }) { video ->
-                    val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-                    val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+                    val gradient = gradients[stableIndex(video.id, gradients.size)]
+                    val emoji = emojis[stableIndex(video.id, emojis.size)]
                     val isSelected = video.id in selectedIds
 
                     FavoriteVideoItem(

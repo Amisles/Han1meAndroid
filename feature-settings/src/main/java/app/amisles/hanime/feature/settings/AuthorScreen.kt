@@ -52,6 +52,7 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.model.stableIndex
 import androidx.compose.material3.MaterialTheme
 import coil3.compose.AsyncImage
 
@@ -234,8 +235,8 @@ private fun PlaylistSummaryCard(
     playlist: PlaylistSummary,
     onClick: () -> Unit = {}
 ) {
-    val gradient = gradients.getOrElse(playlist.title.hashCode() % gradients.size) { gradients[0] }
-    val emoji = emojis.getOrElse(playlist.title.hashCode() % emojis.size) { emojis[0] }
+    val gradient = gradients[stableIndex(playlist.title, gradients.size)]
+    val emoji = emojis[stableIndex(playlist.title, emojis.size)]
 
     Row(
         modifier = Modifier

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.domain.model.HanimeVideo
 
 /**

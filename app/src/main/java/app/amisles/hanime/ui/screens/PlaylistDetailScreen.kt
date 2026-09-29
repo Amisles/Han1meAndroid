@@ -43,6 +43,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
+import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -203,8 +204,8 @@ private fun PlaylistVideoItem(
     video: HanimeVideo,
     onClick: () -> Unit = {}
 ) {
-    val gradient = gradients.getOrElse(video.id.hashCode() % gradients.size) { gradients[0] }
-    val emoji = emojis.getOrElse(video.id.hashCode() % emojis.size) { emojis[0] }
+    val gradient = gradients[stableIndex(video.id, gradients.size)]
+    val emoji = emojis[stableIndex(video.id, emojis.size)]
 
     Row(
         modifier = Modifier
