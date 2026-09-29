@@ -530,7 +530,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
     updateTask(taskId) { it.copy(downloadedBytes = totalDownloaded.coerceAtMost(totalBytes), totalBytes = totalBytes) }
 
     // 每个分块已精确校验「写入长度 == 区间长度」，各块区间之和恰为 totalBytes，
-    if (allDone && totalDownloaded >= totalBytes && onDisk >= totalBytes) {
+    if (allDone && totalDownloaded == totalBytes && onDisk == totalBytes) {
         partmapFile.delete()   // 成功后清理位图表
     } else {
         // 完整性不达标：抛出异常触发 FAILED 并保留位图表，下次续传仅补未完成块

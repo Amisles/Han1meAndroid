@@ -445,7 +445,7 @@ class DownloadManager @Inject constructor(
                     // 原判据在 totalBytes 未知时直接放行为 COMPLETED，会把空文件标成「已完成」；
                     // 且这正是「首个转发事件即终态」的成因之一（全程无进度回调，收尾直接发终态），
                     // 故一并收紧：未知总量不再视为成功。
-                    if (t.totalBytes <= 0 || t.downloadedBytes < t.totalBytes || onDisk < t.totalBytes) {
+                    if (t.totalBytes <= 0 || t.downloadedBytes != t.totalBytes || onDisk != t.totalBytes) {
                         AppLogger.logError(
                             "DownloadManager",
                             "完整性校验失败 ${task.title}: ${t.downloadedBytes}/${t.totalBytes} (磁盘 $onDisk)"
