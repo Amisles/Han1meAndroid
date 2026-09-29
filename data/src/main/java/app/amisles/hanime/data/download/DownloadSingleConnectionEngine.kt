@@ -12,7 +12,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.withPermit
 import okhttp3.Request
-import okhttp3.Response
 
 /**
  * 单连接顺序下载引擎：首下前的 Range/吞吐探测，以及单连接续传下载。
@@ -91,7 +90,8 @@ internal suspend fun DownloadManager.probeSupportAndThroughputInternal(taskId: I
 
 /**
  * 单连接顺序下载（首下降级 / 续传 / 不支持分块路径）。
- * 复用原有稳定逻辑：支持 Range 续传、失败限次重试、每 500ms 节流更新进度。
+ * 支持 Range 续传与限次重试：建连失败与流中断都会从磁盘已写长度接续，
+ * 避免弱网下长视频一次瞬断即整任务失败。每 500ms 节流更新进度。
  */
 internal suspend fun DownloadManager.downloadFileSingle(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
     // 单连接路径同样占一条真实连接，整段纳入全局连接预算
@@ -101,6 +101,33 @@ internal suspend fun DownloadManager.downloadFileSingle(taskId: Int, url: String
 }
 
 internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
+    var resume = resumeBytes
+    var attempt = 0
+    while (true) {
+        try {
+            downloadSingleConnectionAttempt(taskId, url, filePath, resume)
+            return
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (e: SourceChangedException) {
+            // 源文件已变：不重试，交给上层丢弃旧进度后整份重下
+            throw e
+        } catch (e: IOException) {
+            if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(taskId)) throw e
+            attempt++
+            if (attempt >= MAX_CHUNK_ATTEMPTS) {
+                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
+                return
+            }
+            AppLogger.log("DownloadManager", "单连接下载中断，1s 后重试($attempt): ${e.message}")
+            delay(1000)
+            // append 写入下 file.length() 即已落盘字节数，直接从该处接续
+            resume = runCatching { File(filePath).length() }.getOrDefault(resume)
+        }
+    }
+}
+
+private suspend fun DownloadManager.downloadSingleConnectionAttempt(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
     val requestBuilder = Request.Builder()
         .url(url)
         .header("User-Agent", DOWNLOAD_UA)
@@ -111,28 +138,9 @@ internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url
         requestBuilder.header("Range", "bytes=$resumeBytes-")
     }
 
-    var response: Response? = null
-    var attempt = 0
-    val maxRetries = 1
-    while (response == null && attempt <= maxRetries) {
-        try {
-            val call = client.newCall(requestBuilder.build())
-            trackCall(taskId, call)
-            response = call.execute()
-        } catch (e: IOException) {
-            if (isTaskCancelled(taskId)) return
-            attempt++
-            if (attempt <= maxRetries && currentCoroutineContext()[Job]?.isActive == true) {
-                AppLogger.log("DownloadManager", "下载请求失败，1s 后重试($attempt): ${e.message}")
-                delay(1000)
-            } else {
-                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
-                return
-            }
-        }
-    }
-
-    response!!.use { resp ->
+    val call = client.newCall(requestBuilder.build())
+    trackCall(taskId, call)
+    call.execute().use { resp ->
         if (resumeBytes > 0 && resp.code != 206 && !resp.isSuccessful) {
             updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = "HTTP ${resp.code}") }
             return
