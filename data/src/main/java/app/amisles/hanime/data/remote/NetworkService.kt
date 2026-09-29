@@ -28,7 +28,6 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import okhttp3.Cache
 import okhttp3.FormBody
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -50,15 +49,12 @@ class NetworkService @Inject constructor(
     // 入口拦截器：非官方域名根路径请求重写为 /enter
     private val entryInterceptor = EntryInterceptor()
 
-    private val httpCache = Cache(context.cacheDir.resolve("http_cache"), HTTP_CACHE_SIZE)
-
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
-        .cache(httpCache)
         .retryOnConnectionFailure(false)
         .cookieJar(HCookieJar)
         .addInterceptor(entryInterceptor)
@@ -66,9 +62,13 @@ class NetworkService @Inject constructor(
         .build()
 
     companion object {
-        private const val HTTP_CACHE_SIZE = 50L * 1024 * 1024 // 50 MB
         private const val MAX_GET_RETRIES = 1
         private val HOST_REGEX = Regex("https?://([^/]+)")
+    }
+
+    init {
+        // 历史版本的磁盘 HTTP 缓存可能残留含登录态页面的明文响应，随缓存移除一并清理
+        runCatching { context.cacheDir.resolve("http_cache").deleteRecursively() }
     }
 
     private val noRedirectClient by lazy {
