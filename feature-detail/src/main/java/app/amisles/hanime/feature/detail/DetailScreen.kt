@@ -425,21 +425,27 @@ fun DetailScreen(
             }
         }
     }
+    
+    // 避免在点击回调里同步等待磁盘操作而阻塞主线程。
+    LaunchedEffect(Unit) {
+        viewModel.downloadStartResults.collect { result ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    // 区分「已加入 / 已在下载 / 已下载 / 地址无效」
+                    message = context.getString(downloadResultMessage(result)),
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
 
     if (showDownloadDialog) {
         DetailDownloadDialog(
             isLoadingQualities = isLoadingQualities,
             downloadQualities = downloadQualities,
             onQualitySelected = { quality ->
-                val result = viewModel.startDownload(quality)
+                viewModel.startDownload(quality)
                 showDownloadDialog = false
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        // 区分「已加入 / 已在下载 / 已下载 / 地址无效」
-                        message = context.getString(downloadResultMessage(result)),
-                        duration = SnackbarDuration.Short
-                    )
-                }
             },
             onDismiss = { showDownloadDialog = false }
         )

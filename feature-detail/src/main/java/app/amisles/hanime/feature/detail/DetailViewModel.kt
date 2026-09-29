@@ -19,10 +19,13 @@ import app.amisles.hanime.core.common.result.AppResult
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,6 +59,9 @@ class DetailViewModel @Inject constructor(
 
     private val _isLoadingQualities = MutableStateFlow(false)
     val isLoadingQualities: StateFlow<Boolean> = _isLoadingQualities.asStateFlow()
+
+    private val _downloadStartResults = Channel<Int>(Channel.BUFFERED)
+    val downloadStartResults: Flow<Int> = _downloadStartResults.receiveAsFlow()
 
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
@@ -529,22 +535,31 @@ class DetailViewModel @Inject constructor(
     }
 
     /**
-     * 发起下载并返回结果码，由调用方决定提示文案。
+     * 发起下载。
+     *
+     * **不再同步返回结果码**：`DownloadManager.startDownload` 内含目录解析、`canonicalPath`
+     * 越界校验与残留文件清理等磁盘 I/O，原实现在 Compose 点击回调（主线程）中同步执行会阻塞主线程；
+     * 现改到 IO 线程发起，结果码经 [downloadStartResults] 异步回传，由界面弹提示。
      * quality 统一传 `quality.quality`，与批次页保持一致，才能让「文件名 + 去重键」对上。
      */
-    fun startDownload(quality: DownloadQuality): Int {
+    fun startDownload(quality: DownloadQuality) {
         val detail = _videoDetail.value
         val title = detail?.title ?: "video"
         val thumbnailUrl = detail?.posterUrl ?: ""
-        val result = downloadManager.startDownload(
-            title,
-            quality.quality,
-            quality.downloadUrl,
-            thumbnailUrl,
-            currentVideoId
-        )
-        AppLogger.d("DetailViewModel", "Start download result=$result, quality=${quality.quality}")
-        return result
+        // 切到 IO 线程前快照视频 id：协程可能晚于「用户已切到另一个视频」才执行，
+        // 而任务必须归属于发起时那部视频（原同步实现读到的也是发起时的值）。
+        val videoId = currentVideoId
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = downloadManager.startDownload(
+                title,
+                quality.quality,
+                quality.downloadUrl,
+                thumbnailUrl,
+                videoId
+            )
+            AppLogger.d("DetailViewModel", "Start download result=$result, quality=${quality.quality}")
+            _downloadStartResults.trySend(result)
+        }
     }
 
     /**
