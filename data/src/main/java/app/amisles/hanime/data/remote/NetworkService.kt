@@ -1,6 +1,5 @@
 package app.amisles.hanime.data.remote
 
-import android.util.Log
 import app.amisles.hanime.data.cookie.HCookieJar
 import android.content.Context
 import app.amisles.hanime.data.parser.AccountProfileParser
@@ -17,8 +16,6 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.domain.model.PlaylistDetail
 import app.amisles.hanime.domain.model.PlaylistSummary
-import app.amisles.hanime.core.common.extension.maskEmail
-import app.amisles.hanime.core.common.extension.maskSecret
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -284,10 +281,7 @@ class NetworkService @Inject constructor(
                 val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
                 "$baseUrl/subscriptions?query=$encoded"
             }
-            Log.i("SubscriptionsDebug", ">>> GET ${url.redactUrlForLog()}")
             val html = executeRequest(buildRequest(url))
-            // 仅记录长度：完整响应体包含用户订阅的作者与影片，不得落日志
-            Log.i("SubscriptionsDebug", "<<< Response length: ${html.length} chars")
             subscriptionsParser.parse(html, url)
         }
     }
@@ -300,7 +294,6 @@ class NetworkService @Inject constructor(
         return withContext(Dispatchers.IO) {
             val baseUrl = getCurrentBaseUrl()
             val url = "$baseUrl/user/$userId/edit"
-            Log.i("AccountDebug", ">>> GET ${url.redactUrlForLog()}")
             val html = executeRequest(buildRequest(url))
             FetchResult(html, baseUrl)
         }
@@ -317,7 +310,7 @@ class NetworkService @Inject constructor(
         name: String,
         email: String
     ): Int {
-        AppLogger.log("NetworkService", "updateAccountProfile called, userId: $userId, name: $name")
+        AppLogger.log("NetworkService", "updateAccountProfile called, userId: $userId")
         return withContext(Dispatchers.IO) {
             val baseUrl = getCurrentBaseUrl()
             val form = FormBody.Builder()
@@ -338,13 +331,8 @@ class NetworkService @Inject constructor(
                 .header("Origin", baseUrl)
                 .header("X-CSRF-TOKEN", csrfToken)
                 .build()
-            Log.i(
-                "AccountDebug",
-                ">>> POST $baseUrl/user/$userId (type=profile) name=$name email=${email.maskEmail()}"
-            )
             noRedirectClient.newCall(req).execute().use { resp ->
                 val code = resp.code
-                Log.i("AccountDebug", "<<< Response code: $code")
                 code
             }
         }
@@ -407,8 +395,9 @@ class NetworkService @Inject constructor(
                 val html = executeRequest(buildRequest(url))
                 authorPageParser.parseUserVideoList(html, url)
             } catch (e: IOException) {
+                // 同上，记录后抛出
                 AppLogger.logError("NetworkService", "Failed to fetch user video list: ${e.message}", e)
-                null
+                throw e
             }
         }
     }
@@ -609,11 +598,6 @@ class NetworkService @Inject constructor(
                 .add("subscribe-artist-id", artistId)
                 .add("subscribe-status", subscribeStatusValue)
                 .build()
-            Log.i("SubscribeDebug", ">>> POST $baseUrl/subscribe")
-            Log.i(
-                "SubscribeDebug",
-                ">>> Request: artistId=$artistId status=$subscribeStatusValue token=${csrfToken.maskSecret()}"
-            )
             val req = Request.Builder()
                 .url("$baseUrl/subscribe")
                 .post(form)
@@ -631,7 +615,6 @@ class NetworkService @Inject constructor(
                 val code = response.code
                 AppLogger.log("NetworkService", "toggleSubscribe response code: $code")
                 val body = response.body.string()
-                Log.i("SubscribeDebug", "<<< Response code: $code, body length: ${body.length}")
                 if (!response.isSuccessful) {
                     throw IOException("订阅作者失败 (HTTP $code)")
                 }
