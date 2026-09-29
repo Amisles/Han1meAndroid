@@ -338,8 +338,7 @@ object Preferences {
     }
 
     fun setThemeMode(mode: ThemeMode) {
-        // commit=true：主题是关键偏好，需同步落盘，避免进程被杀死时 apply() 异步写未落地而丢失
-        sp.edit(commit = true) { putString(SP_THEME_MODE, mode.name) }
+        sp.edit { putString(SP_THEME_MODE, mode.name) }
         _themeModeFlow.value = mode
     }
 

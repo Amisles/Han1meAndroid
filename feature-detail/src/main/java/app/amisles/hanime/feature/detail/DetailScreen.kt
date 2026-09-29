@@ -425,7 +425,7 @@ fun DetailScreen(
             }
         }
     }
-    
+
     // 避免在点击回调里同步等待磁盘操作而阻塞主线程。
     LaunchedEffect(Unit) {
         viewModel.downloadStartResults.collect { result ->

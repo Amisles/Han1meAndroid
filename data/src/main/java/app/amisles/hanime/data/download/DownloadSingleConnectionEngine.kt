@@ -5,6 +5,7 @@ import app.amisles.hanime.data.remote.VideoAntiHotlink
 import app.amisles.hanime.domain.model.DownloadStatus
 import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -167,11 +168,32 @@ internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url
             bodyLength
         }
 
-        val inputStream = body.byteStream()
         val outputFile = File(filePath)
         // 运行期目录可能被清理/卸载重挂，补一次父目录兜底重建
         outputFile.parentFile?.mkdirs()
-        val outputStream = if (resumeBytes > 0 && isPartial) {
+        val isResume = resumeBytes > 0 && isPartial
+        // 续传走 append 写，隐含要求「文件长度恰好等于 resumeBytes」，而分块写入是稀疏的：
+        // 块被驱逐/重排后可能让 file.length() 大于「已完成块的连续前缀」(= resumeBytes)。
+        // 此时 append 会落到 EOF，[resumeBytes, file.length()) 的空洞永不回填、后续数据整体错位，
+        // 而收尾校验只看长度下界（done/total、disk>=total）→ 静默产出「能播但花屏」的损坏文件。
+        // 故续传前显式把文件截断到 resumeBytes，把该不变量落到实处。
+        if (isResume) {
+            val onDisk = outputFile.length()
+            if (onDisk > resumeBytes) {
+                AppLogger.log(
+                    "DownloadManager",
+                    "单连接续传前截断稀疏文件：$onDisk -> $resumeBytes ($filePath)"
+                )
+                RandomAccessFile(outputFile, "rw").use { it.setLength(resumeBytes) }
+            } else if (onDisk < resumeBytes) {
+                // 起点越界说明隐含前提已被破坏（文件比续传点还短），继续 append 会写错偏移。
+                // 宁可显式失败让上层重试/重下，也不写出看似完整实则错位的文件。
+                throw IOException(
+                    "单连接续传起点越界：resume=$resumeBytes 但文件只有 $onDisk 字节，丢弃本次续传"
+                )
+            }
+        }
+        val outputStream = if (isResume) {
             java.io.FileOutputStream(outputFile, true)
         } else {
             java.io.FileOutputStream(outputFile, false)
@@ -181,6 +203,8 @@ internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url
         var downloadedBytes = if (isPartial) resumeBytes else 0L
         var lastUpdate = 0L
 
+        // 校验通过后再取响应流：截断失败/起点越界会直接抛出，不留半开的输入流
+        val inputStream = body.byteStream()
         inputStream.use { input ->
             outputStream.use { output ->
                 while (true) {

@@ -279,7 +279,10 @@ fun HomeScreenContent(
                 }
 
                 if (isCompactWidth) {
-                    items(visibleVideos, key = { it.videoUrl }) { video ->
+                    // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
+                    // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
+                    // 分区标题在 ViewModel 中已按标题去重，故「标题#url」在列表中唯一。
+                    items(visibleVideos, key = { "${section.title}#${it.videoUrl}" }) { video ->
                         VideoListItem(
                             video = video,
                             onClick = { onVideoClick(video.videoUrl) },
@@ -290,8 +293,9 @@ fun HomeScreenContent(
                 } else {
                     // 平板：按列数分行渲染，避免单列在大屏下空旷
                     val columns = sizeInfo.gridColumns
-                    visibleVideos.chunked(columns).forEach { rowVideos ->
-                        item {
+                    visibleVideos.chunked(columns).forEachIndexed { rowIndex, rowVideos ->
+                        // 与手机分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
+                        item(key = "home-row-${section.title}-$rowIndex") {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxWidth()
