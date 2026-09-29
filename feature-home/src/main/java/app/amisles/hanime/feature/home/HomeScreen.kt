@@ -124,12 +124,13 @@ fun HomeScreenContent(
 
     // 与渲染分支共用同一个判定，避免两处条件漂移
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
-    val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading, sizeInfo) {
+    val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading, error, sizeInfo) {
         val map = mutableMapOf<String, Int>()
         var idx = 0
         idx++ // header
         idx++ // category
         if (!isLoading) {
+            if (error != null && sections.isNotEmpty()) idx++ // 刷新失败提示行
             if (banner != null) idx++ // banner
             val columns = sizeInfo.gridColumns.coerceAtLeast(1)
             sections.forEach { section ->
