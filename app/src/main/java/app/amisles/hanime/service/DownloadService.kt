@@ -153,19 +153,22 @@ class DownloadService : Service() {
     private fun ensureForeground(taskId: Int, title: String, progress: Int, status: DownloadStatus?) {
         if (isForegroundStarted) return
         val id = if (taskId >= 0) notificationId(taskId) else NOTIFICATION_ID_PLACEHOLDER
-        runCatching {
-            startForeground(
-                id,
-                buildProgressNotification(title, progress, status),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
+        startForegroundSafely(id, taskId, buildProgressNotification(title, progress, status))
+    }
+
+    private fun startForegroundSafely(id: Int, taskId: Int, notification: Notification): Boolean {
+        if (isForegroundStarted && foregroundTaskId == taskId) return true
+        return runCatching {
+            startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         }.onSuccess {
             isForegroundStarted = true
-            foregroundTaskId = if (taskId >= 0) taskId else -1
+            foregroundTaskId = taskId
         }.onFailure { e ->
             AppLogger.log("DownloadService", "进入前台被系统拒绝，主动停止服务以撤销契约: ${e.message}")
+            isForegroundStarted = false
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             runCatching { stopSelf() }
-        }
+        }.isSuccess
     }
 
     override fun onDestroy() {
@@ -185,9 +188,7 @@ class DownloadService : Service() {
         acquireTransferLocks()
         val notification = buildProgressNotification(title, progress, status)
         if (!isForegroundStarted) {
-            startForeground(notificationId(taskId), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-            isForegroundStarted = true
-            foregroundTaskId = taskId
+            startForegroundSafely(notificationId(taskId), taskId, notification)
         } else if (foregroundTaskId == taskId) {
             notificationManager.notify(notificationId(taskId), notification)
         } else {
@@ -195,8 +196,7 @@ class DownloadService : Service() {
             if (foregroundTaskId >= 0 && activeTasks.containsKey(foregroundTaskId)) {
                 notificationManager.notify(notificationId(taskId), notification)
             } else {
-                foregroundTaskId = taskId
-                startForeground(notificationId(taskId), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                startForegroundSafely(notificationId(taskId), taskId, notification)
             }
         }
     }
@@ -224,12 +224,11 @@ class DownloadService : Service() {
             }
             stopSelfResult(startId)
         } else if (next != null) {
-            foregroundTaskId = next
             val (t, p) = activeTasks[next]!!
-            startForeground(
+            startForegroundSafely(
                 notificationId(next),
-                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                next,
+                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING)
             )
             if (taskId >= 0) {
                 notificationManager.notify(notificationId(taskId), terminalNotification)
@@ -263,12 +262,11 @@ class DownloadService : Service() {
             stopSelfResult(startId)
         } else if (wasForeground || !activeTasks.containsKey(foregroundTaskId)) {
             val next = activeTasks.keys.first()
-            foregroundTaskId = next
             val (t, p) = activeTasks[next]!!
-            startForeground(
+            startForegroundSafely(
                 notificationId(next),
-                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                next,
+                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING)
             )
             notificationManager.notify(notificationId(taskId), notification)
         } else {
@@ -297,12 +295,11 @@ class DownloadService : Service() {
             foregroundTaskId = -1
             stopSelfResult(startId)
         } else if (wasForeground || !activeTasks.containsKey(foregroundTaskId)) {
-            foregroundTaskId = next
             val (t, p) = activeTasks[next]!!
-            startForeground(
+            startForegroundSafely(
                 notificationId(next),
-                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                next,
+                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING)
             )
         }
         // 其余情况：前台仍是别的任务，被移除任务的通知已 cancel，无需额外处理
