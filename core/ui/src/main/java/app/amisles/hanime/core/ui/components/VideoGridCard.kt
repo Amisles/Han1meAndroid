@@ -16,10 +16,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.core.ui.model.stableIndex
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.HanimeVideo
 
 /**
@@ -34,6 +34,7 @@ fun VideoGridCard(
     onAuthorClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val cfg = LocalUiConfig.current
     val gradient = gradients[stableIndex(video.id, gradients.size)]
     val emoji = emojis[stableIndex(video.id, emojis.size)]
 
@@ -41,14 +42,14 @@ fun VideoGridCard(
         modifier = modifier
             .fillMaxWidth()
             // 先 clip 再 clickable，让点按涟漪跟随 8dp 圆角而不是方角
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(cfg.cardCornerRadius))
             .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
+                .aspectRatio(cfg.thumbnailAspectRatio)
+                .clip(RoundedCornerShape(cfg.cardCornerRadius))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             VideoThumbnail(
@@ -64,8 +65,8 @@ fun VideoGridCard(
 
         Text(
             text = video.title,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
+            fontSize = cfg.gridTitleFontSize,
+            lineHeight = cfg.gridTitleLineHeight,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onBackground,
             minLines = 2,
@@ -73,13 +74,13 @@ fun VideoGridCard(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 6.dp)
+                .padding(top = cfg.cardTitleTopPadding)
         )
 
         if (video.author.isNotEmpty()) {
             Text(
                 text = video.author,
-                fontSize = 11.sp,
+                fontSize = cfg.gridMetaFontSize,
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

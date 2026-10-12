@@ -59,6 +59,7 @@ import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.NavRail
@@ -80,6 +81,7 @@ import app.amisles.hanime.feature.settings.AuthorScreen
 import app.amisles.hanime.ui.screens.PlaylistDetailScreen
 import app.amisles.hanime.ui.screens.PlaylistListPageScreen
 import app.amisles.hanime.feature.settings.SettingsScreen
+import app.amisles.hanime.feature.settings.CustomizeScreen
 import app.amisles.hanime.feature.settings.DiagnosticsScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
@@ -111,6 +113,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeMode by Preferences.themeModeFlow.collectAsStateWithLifecycle()
+            val uiConfig by UiConfigStore.config.collectAsStateWithLifecycle()
+            val homeSections by UiConfigStore.homeSections.collectAsStateWithLifecycle()
             val darkTheme = when (themeMode) {
                 ThemeMode.DARK -> true
                 ThemeMode.LIGHT -> false
@@ -132,7 +136,11 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
-            HanimeTheme(themeMode = themeMode) {
+            HanimeTheme(
+                themeMode = themeMode,
+                uiConfig = uiConfig,
+                homeSectionConfig = homeSections
+            ) {
                 HanimeApp()
             }
         }
@@ -395,12 +403,18 @@ fun HanimeApp() {
                                 when (route) {
                                     "about" -> navController.navigate("about")
                                     "diagnostics" -> navController.navigate("diagnostics")
+                                    "customize" -> navController.navigate("customize")
                                 }
                             }
                         )
                     }
                     composable("diagnostics") {
                         DiagnosticsScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                    composable("customize") {
+                        CustomizeScreen(
                             onBackClick = { navController.popBackStack() }
                         )
                     }
@@ -503,7 +517,10 @@ fun HanimeApp() {
                             videoUrl = videoUrl,
                             onBackClick = { navController.popBackStack() },
                             onVideoClick = { newVideoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
+                                // 连播 / 点相关推荐是「同屏换片」，替换而非入栈，否则返回栈与 ViewModel 无界累积
+                                navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") {
+                                    popUpTo("detail?videoUrl={videoUrl}") { inclusive = true }
+                                } },
                             onTagClick = { tag ->
                                 navController.navigate("search?keyword=${Uri.encode(tag)}") { launchSingleTop = true } },
                             onAuthorClick = { author ->

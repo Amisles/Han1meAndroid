@@ -581,6 +581,54 @@
     <string name="settings_theme_dark">ダーク</string>
     <string name="settings_diagnostics">ネットワーク診断</string>
 
+    <!-- Customize UI -->
+    <string name="settings_customize_ui">UIカスタマイズ</string>
+    <string name="settings_customize_ui_summary">カード・画像サイズと文字サイズを調整</string>
+    <string name="customize_title">UIカスタマイズ</string>
+    <string name="customize_preview">リアルタイムプレビュー</string>
+    <string name="customize_presets">プリセット</string>
+    <string name="customize_preset_compact">コンパクト</string>
+    <string name="customize_preset_standard">標準</string>
+    <string name="customize_preset_comfortable">ゆったり</string>
+    <string name="customize_preset_large">大サイズ</string>
+    <string name="customize_group_typography">文字</string>
+    <string name="customize_group_card">カードと画像</string>
+    <string name="customize_group_grid">グリッド</string>
+    <string name="customize_font_scale">全体の文字倍率</string>
+    <string name="customize_aspect_ratio">サムネイルの縦横比</string>
+    <string name="customize_card_radius">カードの角丸</string>
+    <string name="customize_list_thumb_width">リストのサムネイル幅</string>
+    <string name="customize_grid_target_width">グリッドの目標列幅</string>
+    <string name="customize_image_quality">画像品質</string>
+    <string name="customize_quality_low">通信節約</string>
+    <string name="customize_quality_standard">標準</string>
+    <string name="customize_quality_high">高画質</string>
+    <string name="customize_reset">デフォルトに戻す</string>
+    <string name="customize_reset_done">デフォルト設定に戻しました</string>
+    <string name="customize_sample_title">サンプルタイトル：カードサイズと文字倍率を確認するための2行タイトル</string>
+    <string name="customize_sample_author">サンプル投稿者</string>
+    <string name="customize_group_home_sections">ホームセクション</string>
+    <string name="customize_section_visible_count">セクションごとの表示件数</string>
+    <string name="customize_section_order">セクションの順序</string>
+    <string name="customize_section_layout_auto">自動</string>
+    <string name="customize_section_layout_list">リスト</string>
+    <string name="customize_section_layout_grid">グリッド</string>
+    <string name="customize_section_layout_carousel">横スクロール</string>
+    <string name="customize_section_move_up">上へ</string>
+    <string name="customize_section_move_down">下へ</string>
+    <string name="customize_group_backup">設定のバックアップ</string>
+    <string name="customize_export">設定をエクスポート</string>
+    <string name="customize_export_done">設定をクリップボードにコピーしました</string>
+    <string name="customize_import">設定をインポート</string>
+    <string name="customize_import_hint">以前エクスポートした設定を貼り付け</string>
+    <string name="customize_import_done">設定をインポートしました</string>
+    <string name="customize_import_invalid">設定テキストが無効です</string>
+    <string name="customize_import_version">未対応の設定バージョンです</string>
+    <string name="customize_reset_item">この項目をリセット</string>
+    <string name="customize_font_scale_hint">%1$s～%2$s の範囲で入力</string>
+    <string name="customize_reset_confirm">すべての UI カスタマイズとホームセクション設定を消去し、初期状態の外観に戻します。</string>
+    <string name="customize_overflow_notice">文字サイズと寸法には安全範囲があり、範囲外の値は長文のはみ出しを防ぐため自動的に制限されます。</string>
+
     <!-- Diagnostics -->
     <string name="diagnostics_title">サイト可用性診断</string>
     <string name="diagnostics_description">現在のミラーサイトの DNS、接続、証明書、ミラー状態、ログイン状態を検査し、よくある問題を特定します。</string>

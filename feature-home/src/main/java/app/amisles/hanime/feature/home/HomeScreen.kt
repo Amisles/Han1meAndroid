@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,22 +51,66 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeBanner
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.VideoCard
+import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
+import app.amisles.hanime.core.ui.theme.HomeSectionConfig
+import app.amisles.hanime.core.ui.theme.HomeSectionLayout
+import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import kotlinx.coroutines.launch
 
-/** 每个首页分区在纵向列表里展示的视频条数。 */
-private const val HOME_SECTION_VISIBLE_COUNT = 6
+/** 横滑布局的卡片宽度。 */
+private val CAROUSEL_CARD_WIDTH = 200.dp
+
+/** 分区在 LazyColumn 中的实际渲染形态；[HomeSectionLayout.AUTO] 由窗口宽度决定，故需与用户可选模式区分。 */
+private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
+
+private data class SectionPlan(
+    val section: HomeSection,
+    val mode: SectionRenderMode,
+    val videos: List<HanimeVideo>,
+    /** 该分区在 LazyColumn 中占用的视频 item 数，索引映射与渲染共用，避免两处漂移。 */
+    val rows: Int
+)
+
+private fun renderMode(configured: HomeSectionLayout, isCompactWidth: Boolean): SectionRenderMode =
+    when (configured) {
+        HomeSectionLayout.LIST -> SectionRenderMode.LIST_COLUMN
+        HomeSectionLayout.GRID -> SectionRenderMode.GRID_ROWS
+        HomeSectionLayout.CAROUSEL -> SectionRenderMode.CAROUSEL
+        HomeSectionLayout.AUTO ->
+            if (isCompactWidth) SectionRenderMode.LIST_COLUMN else SectionRenderMode.LIST_ROWS
+    }
+
+private fun buildPlans(
+    sections: List<HomeSection>,
+    homeConfig: HomeSectionConfig,
+    isCompactWidth: Boolean,
+    columns: Int
+): List<SectionPlan> = homeConfig.applyOrder(sections).map { section ->
+    val mode = renderMode(homeConfig.layoutFor(section.title), isCompactWidth)
+    val videos = section.videos.take(homeConfig.visibleCount)
+    val rows = when (mode) {
+        SectionRenderMode.LIST_COLUMN -> videos.size
+        SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS ->
+            (videos.size + columns - 1) / columns
+        SectionRenderMode.CAROUSEL -> 1
+    }
+    SectionPlan(section, mode, videos, rows)
+}
 
 @Composable
 fun HomeScreen(
@@ -120,11 +166,17 @@ fun HomeScreenContent(
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
     val sizeInfo = currentWindowSizeInfo()
+    val cfg = LocalUiConfig.current
+    val homeConfig = LocalHomeSectionConfig.current
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
 
     // 与渲染分支共用同一个判定，避免两处条件漂移
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
-    val sectionTitleToIndex: Map<String, Int> = remember(sections, banner, isLoading, error, sizeInfo) {
+    val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
+    val plans = remember(sections, homeConfig, isCompactWidth, columns) {
+        buildPlans(sections, homeConfig, isCompactWidth, columns)
+    }
+    val sectionTitleToIndex: Map<String, Int> = remember(plans, banner, isLoading, error, sections) {
         val map = mutableMapOf<String, Int>()
         var idx = 0
         idx++ // header
@@ -132,18 +184,10 @@ fun HomeScreenContent(
         if (!isLoading) {
             if (error != null && sections.isNotEmpty()) idx++ // 刷新失败提示行
             if (banner != null) idx++ // banner
-            val columns = sizeInfo.gridColumns.coerceAtLeast(1)
-            sections.forEach { section ->
-                map[section.title] = idx // 标题 item 的索引
-                idx += 1 // 标题
-                // 视频区手机是「每条一个 item」、平板是「每行一个 item」，索引必须与下方渲染分支严格一致
-                val visibleCount = section.videos.take(HOME_SECTION_VISIBLE_COUNT).size
-                idx += if (isCompactWidth) {
-                    visibleCount
-                } else {
-                    (visibleCount + columns - 1) / columns
-                }
-                idx += 1 // 分区之间的 spacer
+            plans.forEach { plan ->
+                map[plan.section.title] = idx // 标题 item 的索引
+                // 标题 + 视频区（条数由 plan.rows 给出，与渲染分支同源）+ 分区之间的 spacer
+                idx += 1 + plan.rows + 1
             }
             idx++ // bottom spacer
         } else {
@@ -253,8 +297,8 @@ fun HomeScreenContent(
                 }
             }
 
-            sections.forEachIndexed { i, section ->
-                val visibleVideos = section.videos.take(HOME_SECTION_VISIBLE_COUNT)
+            plans.forEachIndexed { i, plan ->
+                val section = plan.section
                 item(key = "home-section-title-${section.title}-$i") {
                     Row(
                         modifier = Modifier
@@ -279,40 +323,87 @@ fun HomeScreenContent(
                     }
                 }
 
-                if (isCompactWidth) {
-                    // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
-                    // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
-                    // 分区标题在 ViewModel 中已按标题去重，故「标题#url」在列表中唯一。
-                    items(visibleVideos, key = { "${section.title}#${it.videoUrl}" }) { video ->
-                        VideoListItem(
-                            video = video,
-                            onClick = { onVideoClick(video.videoUrl) },
-                            onAuthorClick = onAuthorClick,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                        )
+                when (plan.mode) {
+                    SectionRenderMode.LIST_COLUMN -> {
+                        // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
+                        // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
+                        // 分区标题在 ViewModel 中已按标题去重，故「标题#url」在列表中唯一。
+                        items(plan.videos, key = { "${section.title}#${it.videoUrl}" }) { video ->
+                            VideoListItem(
+                                video = video,
+                                onClick = { onVideoClick(video.videoUrl) },
+                                onAuthorClick = onAuthorClick,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            )
+                        }
                     }
-                } else {
-                    // 平板：按列数分行渲染，避免单列在大屏下空旷
-                    val columns = sizeInfo.gridColumns
-                    visibleVideos.chunked(columns).forEachIndexed { rowIndex, rowVideos ->
-                        // 与手机分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
-                        item(key = "home-row-${section.title}-$rowIndex") {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.fillMaxWidth()
+
+                    SectionRenderMode.LIST_ROWS -> {
+                        // 按列数分行渲染，避免单列在大屏下空旷
+                        plan.videos.chunked(columns).forEachIndexed { rowIndex, rowVideos ->
+                            // 与单列分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
+                            item(key = "home-row-${section.title}-$rowIndex") {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    rowVideos.forEach { video ->
+                                        VideoListItem(
+                                            video = video,
+                                            onClick = { onVideoClick(video.videoUrl) },
+                                            onAuthorClick = onAuthorClick,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 5.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                    repeat(columns - rowVideos.size) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SectionRenderMode.GRID_ROWS -> {
+                        plan.videos.chunked(columns).forEachIndexed { rowIndex, rowVideos ->
+                            item(key = "home-grid-row-${section.title}-$rowIndex") {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp)
+                                ) {
+                                    rowVideos.forEach { video ->
+                                        VideoGridCard(
+                                            video = video,
+                                            onClick = { onVideoClick(video.videoUrl) },
+                                            onAuthorClick = onAuthorClick,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    repeat(columns - rowVideos.size) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SectionRenderMode.CAROUSEL -> {
+                        // 独立 LazyRow，key 只需在本行内唯一
+                        item(key = "home-carousel-${section.title}-$i") {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                rowVideos.forEach { video ->
-                                    VideoListItem(
+                                items(plan.videos, key = { it.videoUrl }) { video ->
+                                    VideoCard(
                                         video = video,
                                         onClick = { onVideoClick(video.videoUrl) },
                                         onAuthorClick = onAuthorClick,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(horizontal = 5.dp, vertical = 3.dp)
+                                        modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
                                     )
-                                }
-                                repeat(columns - rowVideos.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
                         }
@@ -389,6 +480,7 @@ private fun HomeSkeletonScreen() {
 /** 骨架视频列表行：整宽紧凑行，左缩略图（120x90）+ 右两行文字占位，与内容区 VideoListItem 布局一致。 */
 @Composable
 private fun SkeletonVideoRow(alpha: Float) {
+    val cfg = LocalUiConfig.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -399,9 +491,9 @@ private fun SkeletonVideoRow(alpha: Float) {
         // 缩略图占位
         Box(
             modifier = Modifier
-                .width(150.dp)
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(6.dp))
+                .width(cfg.listThumbnailWidth)
+                .aspectRatio(cfg.thumbnailAspectRatio)
+                .clip(RoundedCornerShape(cfg.listThumbnailCornerRadius))
                 .background(MaterialTheme.colorScheme.surface)
                 .alpha(alpha)
         )

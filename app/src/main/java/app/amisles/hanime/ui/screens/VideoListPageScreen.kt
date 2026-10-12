@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.components.VideoCard
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.HanimeBackground
@@ -98,7 +99,7 @@ fun VideoListPageScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(currentWindowSizeInfo().gridColumns),
+                    columns = GridCells.Fixed(currentWindowSizeInfo().gridColumns(LocalUiConfig.current)),
                     contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)

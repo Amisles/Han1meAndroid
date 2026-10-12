@@ -10,9 +10,16 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import app.amisles.hanime.core.ui.theme.ProvideWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.UiConfig
+import app.amisles.hanime.core.ui.theme.HomeSectionConfig
+import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimePrimaryLight
 import app.amisles.hanime.core.ui.theme.HanimeBackground
@@ -65,6 +72,8 @@ private val HanimeLightColorScheme = lightColorScheme(
 fun HanimeTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = false,
+    uiConfig: UiConfig = UiConfig.Default,
+    homeSectionConfig: HomeSectionConfig = HomeSectionConfig.Default,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -83,8 +92,19 @@ fun HanimeTheme(
         else -> HanimeLightColorScheme
     }
 
+    val density = LocalDensity.current
+    val scaledDensity = remember(density, uiConfig.fontScale) {
+        if (uiConfig.fontScale == 1f) density
+        else Density(density.density, density.fontScale * uiConfig.fontScale)
+    }
+
     // 全局禁用点击组件的涟漪效果
-    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    CompositionLocalProvider(
+        LocalRippleConfiguration provides null,
+        LocalUiConfig provides uiConfig,
+        LocalHomeSectionConfig provides homeSectionConfig,
+        LocalDensity provides scaledDensity
+    ) {
         ProvideWindowSizeInfo {
             MaterialTheme(
                 colorScheme = colorScheme,

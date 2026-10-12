@@ -37,8 +37,8 @@ class ProfileViewModel @Inject constructor(
     val displayLetter: StateFlow<String> = combine(
         Preferences.loginCookieFlow,
         Preferences.savedUserIdFlow
-    ) { _, _ ->
-        val raw = Preferences.extractDisplayEmail().ifBlank { Preferences.savedUserId }
+    ) { cookie, userId ->
+        val raw = Preferences.extractDisplayEmail(cookie.cookie, userId).ifBlank { userId }
         if (raw.isBlank()) "H" else raw.take(1).uppercase()
     }.stateIn(
         scope = viewModelScope,

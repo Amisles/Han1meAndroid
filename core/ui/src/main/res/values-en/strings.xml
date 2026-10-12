@@ -581,6 +581,54 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_diagnostics">Network Diagnostics</string>
 
+    <!-- Customize UI -->
+    <string name="settings_customize_ui">Customize UI</string>
+    <string name="settings_customize_ui_summary">Adjust card size, image size and text size</string>
+    <string name="customize_title">Customize UI</string>
+    <string name="customize_preview">Live preview</string>
+    <string name="customize_presets">Presets</string>
+    <string name="customize_preset_compact">Compact</string>
+    <string name="customize_preset_standard">Standard</string>
+    <string name="customize_preset_comfortable">Comfortable</string>
+    <string name="customize_preset_large">Large</string>
+    <string name="customize_group_typography">Text</string>
+    <string name="customize_group_card">Card and image</string>
+    <string name="customize_group_grid">Grid</string>
+    <string name="customize_font_scale">Global font scale</string>
+    <string name="customize_aspect_ratio">Thumbnail aspect ratio</string>
+    <string name="customize_card_radius">Card corner radius</string>
+    <string name="customize_list_thumb_width">List thumbnail width</string>
+    <string name="customize_grid_target_width">Grid target column width</string>
+    <string name="customize_image_quality">Image quality</string>
+    <string name="customize_quality_low">Data saver</string>
+    <string name="customize_quality_standard">Standard</string>
+    <string name="customize_quality_high">High</string>
+    <string name="customize_reset">Reset to default</string>
+    <string name="customize_reset_done">Reset to defaults</string>
+    <string name="customize_sample_title">Sample title: a two-line title to preview card size and font scale</string>
+    <string name="customize_sample_author">Sample author</string>
+    <string name="customize_group_home_sections">Home sections</string>
+    <string name="customize_section_visible_count">Items per section</string>
+    <string name="customize_section_order">Section order</string>
+    <string name="customize_section_layout_auto">Auto</string>
+    <string name="customize_section_layout_list">List</string>
+    <string name="customize_section_layout_grid">Grid</string>
+    <string name="customize_section_layout_carousel">Carousel</string>
+    <string name="customize_section_move_up">Move up</string>
+    <string name="customize_section_move_down">Move down</string>
+    <string name="customize_group_backup">Backup</string>
+    <string name="customize_export">Export config</string>
+    <string name="customize_export_done">Config copied to clipboard</string>
+    <string name="customize_import">Import config</string>
+    <string name="customize_import_hint">Paste a previously exported config</string>
+    <string name="customize_import_done">Config imported</string>
+    <string name="customize_import_invalid">Invalid config text</string>
+    <string name="customize_import_version">Unsupported config version</string>
+    <string name="customize_reset_item">Reset this item</string>
+    <string name="customize_font_scale_hint">Accepts %1$s–%2$s</string>
+    <string name="customize_reset_confirm">This clears all UI customization and home section settings, restoring the original appearance.</string>
+    <string name="customize_overflow_notice">Font size and dimensions have safe ranges; out-of-range values are clamped automatically to prevent text overflow.</string>
+
     <!-- Diagnostics -->
     <string name="diagnostics_title">Site Availability Diagnostics</string>
     <string name="diagnostics_description">Checks DNS, connectivity, certificate, mirror status and login status of the current mirror site to help identify common issues.</string>

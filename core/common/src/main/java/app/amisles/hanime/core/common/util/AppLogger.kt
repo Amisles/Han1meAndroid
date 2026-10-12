@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
+import app.amisles.hanime.core.common.BuildConfig
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -27,6 +28,9 @@ object AppLogger {
 
     private const val LOG_TAG = "AppLogger"
     private const val LOG_FILE_NAME = "hanime_app.log"
+
+    /** 普通日志仅在 debug 包写入。release 常开会高频落盘，并可能把用户邮箱、host 等信息写入文件。 */
+    private val VERBOSE_ENABLED = BuildConfig.DEBUG
 
     /** 单个日志文件上限，超过即轮转 */
     private const val MAX_FILE_SIZE = 2L * 1024 * 1024
@@ -93,6 +97,7 @@ object AppLogger {
     fun e(tag: String, message: String, throwable: Throwable? = null) = logError(tag, message, throwable)
 
     fun log(tag: String, message: String) {
+        if (!VERBOSE_ENABLED) return
         enqueue("", tag, message, null, force = false)
     }
 

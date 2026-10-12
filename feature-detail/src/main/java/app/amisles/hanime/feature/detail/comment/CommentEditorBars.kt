@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +35,7 @@ internal fun CommentInputBar(
     onClearError: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
-    var inputText by remember { mutableStateOf("") }
+    var inputText by rememberSaveable { mutableStateOf("") }
     // 是否已发出一次提交：只有「提交结束且无错误」才清空输入，避免发布失败时丢失已输入内容
     var awaitingResult by remember { mutableStateOf(false) }
 

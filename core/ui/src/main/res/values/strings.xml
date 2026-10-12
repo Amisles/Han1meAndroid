@@ -605,6 +605,54 @@
     <string name="settings_theme_dark">深色</string>
     <string name="settings_diagnostics">网络诊断</string>
 
+    <!-- Customize UI -->
+    <string name="settings_customize_ui">界面定制</string>
+    <string name="settings_customize_ui_summary">调整卡片尺寸、图片尺寸与文字大小</string>
+    <string name="customize_title">界面定制</string>
+    <string name="customize_preview">实时预览</string>
+    <string name="customize_presets">预设方案</string>
+    <string name="customize_preset_compact">紧凑</string>
+    <string name="customize_preset_standard">标准</string>
+    <string name="customize_preset_comfortable">舒适</string>
+    <string name="customize_preset_large">大图</string>
+    <string name="customize_group_typography">文字</string>
+    <string name="customize_group_card">卡片与图片</string>
+    <string name="customize_group_grid">栅格</string>
+    <string name="customize_font_scale">全局字号</string>
+    <string name="customize_aspect_ratio">缩略图宽高比</string>
+    <string name="customize_card_radius">卡片圆角</string>
+    <string name="customize_list_thumb_width">列表缩略图宽度</string>
+    <string name="customize_grid_target_width">栅格目标列宽</string>
+    <string name="customize_image_quality">图片质量</string>
+    <string name="customize_quality_low">省流</string>
+    <string name="customize_quality_standard">标准</string>
+    <string name="customize_quality_high">高清</string>
+    <string name="customize_reset">恢复默认</string>
+    <string name="customize_reset_done">已恢复默认设置</string>
+    <string name="customize_sample_title">示例标题：用于预览卡片尺寸与字号效果的两行标题</string>
+    <string name="customize_sample_author">示例作者</string>
+    <string name="customize_group_home_sections">首页分区</string>
+    <string name="customize_section_visible_count">每区显示条数</string>
+    <string name="customize_section_order">分区顺序</string>
+    <string name="customize_section_layout_auto">自动</string>
+    <string name="customize_section_layout_list">列表</string>
+    <string name="customize_section_layout_grid">网格</string>
+    <string name="customize_section_layout_carousel">横滑</string>
+    <string name="customize_section_move_up">上移</string>
+    <string name="customize_section_move_down">下移</string>
+    <string name="customize_group_backup">配置备份</string>
+    <string name="customize_export">导出配置</string>
+    <string name="customize_export_done">配置已复制到剪贴板</string>
+    <string name="customize_import">导入配置</string>
+    <string name="customize_import_hint">粘贴此前导出的配置文本</string>
+    <string name="customize_import_done">配置已导入</string>
+    <string name="customize_import_invalid">配置文本无效</string>
+    <string name="customize_import_version">配置版本不受支持</string>
+    <string name="customize_reset_item">重置此项</string>
+    <string name="customize_font_scale_hint">可输入 %1$s~%2$s</string>
+    <string name="customize_reset_confirm">将清除全部界面定制与首页分区设置，并恢复到初始外观。</string>
+    <string name="customize_overflow_notice">字号与尺寸存在安全区间，超出范围会自动限制，以免长文本溢出。</string>
+
     <!-- Diagnostics -->
     <string name="diagnostics_title">站点可用性诊断</string>
     <string name="diagnostics_description">检测当前镜像站的 DNS、连接、证书、镜像状态与登录状态，帮助定位常见问题。</string>

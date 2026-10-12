@@ -26,10 +26,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -52,14 +50,12 @@ class NetworkService @Inject constructor(
         .writeTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
-        .retryOnConnectionFailure(false)
+        .retryOnConnectionFailure(true)
         .cookieJar(HCookieJar)
         .addInterceptor(entryInterceptor)
-        .addInterceptor(IdempotentGetRetryInterceptor(MAX_GET_RETRIES))
         .build()
 
     companion object {
-        private const val MAX_GET_RETRIES = 1
         private val HOST_REGEX = Regex("https?://([^/]+)")
     }
 
@@ -621,25 +617,6 @@ class NetworkService @Inject constructor(
                 body ?: throw IOException("订阅作者返回空响应")
             }
         }
-    }
-}
-
-private class IdempotentGetRetryInterceptor(private val maxRetries: Int) : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
-        if (request.method != "GET") return chain.proceed(request)
-
-        var attempt = 0
-        var lastException: IOException? = null
-        while (attempt <= maxRetries) {
-            try {
-                return chain.proceed(request)
-            } catch (e: IOException) {
-                lastException = e
-                attempt++
-            }
-        }
-        throw lastException ?: IOException("Idempotent GET retry exhausted")
     }
 }
 

@@ -23,11 +23,11 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.model.emojis
 import app.amisles.hanime.core.ui.model.gradients
 import app.amisles.hanime.core.ui.model.stableIndex
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 
 @Composable
 fun VideoCard(
@@ -36,6 +36,7 @@ fun VideoCard(
     onAuthorClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val cfg = LocalUiConfig.current
     val gradient = gradients[stableIndex(video.id, gradients.size)]
     val emoji = emojis[stableIndex(video.id, emojis.size)]
 
@@ -47,8 +48,8 @@ fun VideoCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
+                .aspectRatio(cfg.thumbnailAspectRatio)
+                .clip(RoundedCornerShape(cfg.cardCornerRadius))
         ) {
             VideoThumbnail(
                 thumbnailUrl = video.thumbnailUrl,
@@ -64,11 +65,11 @@ fun VideoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 6.dp)
+                .padding(top = cfg.cardTitleTopPadding)
         ) {
             Text(
                 text = video.title,
-                fontSize = 13.sp,
+                fontSize = cfg.cardTitleFontSize,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
@@ -79,11 +80,11 @@ fun VideoCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(cfg.cardMetaSpacing)
                 ) {
                     Text(
                         text = video.author,
-                        fontSize = 11.sp,
+                        fontSize = cfg.cardMetaFontSize,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -94,7 +95,7 @@ fun VideoCard(
                     if (video.publishTime.isNotEmpty()) {
                         Text(
                             text = " • ${video.publishTime}",
-                            fontSize = 11.sp,
+                            fontSize = cfg.cardMetaFontSize,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             softWrap = false
@@ -114,11 +115,12 @@ fun VideoListItem(
     onAuthorClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val cfg = LocalUiConfig.current
     val gradient = gradients[stableIndex(video.id, gradients.size)]
     val emoji = emojis[stableIndex(video.id, emojis.size)]
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val cardShape = RoundedCornerShape(8.dp)
-    val thumbShape = RoundedCornerShape(6.dp)
+    val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
+    val thumbShape = RoundedCornerShape(cfg.listThumbnailCornerRadius)
     val shadowColor = Color.Black.copy(alpha = 0.18f)
 
     Row(
@@ -134,8 +136,8 @@ fun VideoListItem(
             .background(MaterialTheme.colorScheme.surface, cardShape)
             .clip(cardShape)
             .clickable { onClick() }
-            .padding(6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(cfg.listItemPadding),
+        horizontalArrangement = Arrangement.spacedBy(cfg.listItemSpacing),
         verticalAlignment = Alignment.CenterVertically
     ) {
         VideoThumbnail(
@@ -147,8 +149,8 @@ fun VideoListItem(
             viewCount = "",
             crop = true,
             modifier = Modifier
-                .width(150.dp)
-                .aspectRatio(16f / 9f)
+                .width(cfg.listThumbnailWidth)
+                .aspectRatio(cfg.thumbnailAspectRatio)
                 .shadow(
                     elevation = if (isDark) 0.dp else 1.5.dp,
                     shape = thumbShape,
@@ -165,7 +167,7 @@ fun VideoListItem(
         ) {
             Text(
                 text = video.title,
-                fontSize = 12.sp,
+                fontSize = cfg.listTitleFontSize,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
@@ -174,7 +176,7 @@ fun VideoListItem(
             if (video.author.isNotEmpty()) {
                 Text(
                     text = video.author,
-                    fontSize = 10.sp,
+                    fontSize = cfg.listMetaFontSize,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -184,20 +186,20 @@ fun VideoListItem(
                 )
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(cfg.listMetaSpacing),
                 modifier = Modifier.padding(top = 4.dp)
             ) {
                 if (video.viewCount.isNotEmpty()) {
                     Text(
                         text = video.viewCount,
-                        fontSize = 10.sp,
+                        fontSize = cfg.listMetaFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (video.likeRate.isNotEmpty()) {
                     Text(
                         text = "👍 ${video.likeRate}",
-                        fontSize = 10.sp,
+                        fontSize = cfg.listMetaFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

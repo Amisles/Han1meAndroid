@@ -195,7 +195,7 @@ fun DownloadScreen(
     var downloadSort by remember { mutableStateOf(DownloadSort.ADDED) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     // 文件名搜索关键词：纯本地过滤已下载任务，输入即生效，不触发任何网络请求
-    var nameQuery by remember { mutableStateOf("") }
+    var nameQuery by rememberSaveable { mutableStateOf("") }
 
     val downloadingTasks = tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
     val completedTasks = tasks.filter { it.status == DownloadStatus.COMPLETED }

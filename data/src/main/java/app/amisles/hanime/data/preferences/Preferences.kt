@@ -500,15 +500,14 @@ object Preferences {
         return ""
     }
 
-    fun extractDisplayEmail(): String {
-        val cookie = loginCookie.cookie
-        if (cookie.isBlank()) return ""
-        val segments = cookie.split(';')
-        for (seg in segments) {
+    fun extractDisplayEmail(): String = extractDisplayEmail(loginCookie.cookie, savedUserId)
+
+    fun extractDisplayEmail(cookieString: String, userId: String): String {
+        if (cookieString.isBlank()) return ""
+        for (seg in cookieString.split(';')) {
             val value = seg.substringAfter('=').trim()
             if (value.contains('@')) return value.substringBefore('@').take(12)
         }
-        val id = savedUserId.ifBlank { "H" }
-        return id.take(8)
+        return userId.ifBlank { "H" }.take(8)
     }
 }

@@ -30,12 +30,11 @@ data class WindowSizeInfo(
     val isLandscape: Boolean
 ) {
     /** 视频栅格列数：手机 2 列，平板 3–4 列 */
-    val gridColumns: Int
-        get() = when (widthClass) {
-            WindowWidthSizeClass.Compact -> 2
-            WindowWidthSizeClass.Medium -> 3
-            WindowWidthSizeClass.Expanded -> 4
-        }
+    fun gridColumns(cfg: UiConfig): Int = when (widthClass) {
+        WindowWidthSizeClass.Compact -> cfg.gridColumnsCompact
+        WindowWidthSizeClass.Medium -> cfg.gridColumnsMedium
+        WindowWidthSizeClass.Expanded -> cfg.gridColumnsExpanded
+    }
 
     /** 内容最大宽度：Compact 不限制，平板限宽避免元素被拉伸过大 */
     val contentMaxWidth: Dp

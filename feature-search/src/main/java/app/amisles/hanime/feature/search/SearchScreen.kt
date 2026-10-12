@@ -54,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -67,7 +68,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -76,6 +76,7 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
@@ -83,6 +84,7 @@ import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.SearchLayoutMode
+import java.util.Calendar
 
 val allCategory = Category("", R.string.search_all, "")
 val filterTypes = listOf(allCategory) + categories
@@ -130,7 +132,7 @@ fun SearchScreen(
     val dateValue by viewModel.date.collectAsStateWithLifecycle()
     val durationValue by viewModel.duration.collectAsStateWithLifecycle()
 
-    val localQuery = remember { mutableStateOf(query) }
+    var localQuery by rememberSaveable { mutableStateOf(query) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
     // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，避免下拉宣称一个未生效的值
@@ -181,7 +183,7 @@ fun SearchScreen(
     androidx.compose.runtime.LaunchedEffect(initialKeyword) {
         if (!initialKeyword.isNullOrEmpty()) {
             val cleanedKeyword = initialKeyword.trimStart('#').trim()
-            localQuery.value = cleanedKeyword
+            localQuery = cleanedKeyword
             viewModel.submitSearch(cleanedKeyword)
         }
     }
@@ -229,9 +231,9 @@ fun SearchScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
-                value = localQuery.value,
+                value = localQuery,
                 onValueChange = {
-                    localQuery.value = it
+                    localQuery = it
                 },
                 placeholder = { Text(stringResource(R.string.search_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier
@@ -240,7 +242,7 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
                     onSearch = {
-                        viewModel.submitSearch(localQuery.value)
+                        viewModel.submitSearch(localQuery)
                         keyboardController?.hide()
                     }
                 ),
@@ -259,13 +261,13 @@ fun SearchScreen(
                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 trailingIcon = {
-                    if (localQuery.value.isNotEmpty()) {
+                    if (localQuery.isNotEmpty()) {
                         Text(
                             text = "✕",
                             fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable {
-                                localQuery.value = ""
+                                localQuery = ""
                                 viewModel.setQuery("")
                             }
                         )
@@ -281,7 +283,7 @@ fun SearchScreen(
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.primary)
                     .clickable {
-                        viewModel.submitSearch(localQuery.value)
+                        viewModel.submitSearch(localQuery)
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -545,7 +547,7 @@ fun SearchScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    localQuery.value = historyQuery
+                                    localQuery = historyQuery
                                     viewModel.submitSearch(historyQuery)
                                 }
                                 .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -624,7 +626,8 @@ fun SearchScreen(
         } else if (isGridMode) {
             // 网格列数按「实测可用宽度」算而非只看宽度档位，横屏手机 / 分屏 / 折叠屏都能正确响应
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val columns = remember(maxWidth) { gridColumnsFor(maxWidth) }
+                val cfg = LocalUiConfig.current
+                val columns = remember(maxWidth, cfg) { cfg.gridColumnsFor(maxWidth) }
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Fixed(columns),
@@ -718,18 +721,6 @@ fun SearchScreen(
         }
     }
     }
-}
-
-/**
- * 网格列数：按实测可用宽度算，取 `floor((W + G) / (T + G))` 后夹在 [2, 5]。
- * 下限必须夹到 2——`GridCells.Adaptive` 在 330dp 下只会算出 1 列。
- */
-private fun gridColumnsFor(availableWidth: Dp): Int {
-    val width = availableWidth.value
-    if (width.isNaN() || width <= 0f) return 2
-    val target = 168.dp
-    val gap = 12.dp
-    return ((availableWidth + gap) / (target + gap)).toInt().coerceIn(2, 5)
 }
 
 /** 搜索结果「加载中」页脚：列表与网格共用，网格侧由调用方指定 span 横跨整行。 */
@@ -828,7 +819,7 @@ private fun TagFilterSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.common_close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
@@ -1006,7 +997,8 @@ private val dateQuickOptions = listOf(
  * 年份下拉：首项「全部」表示不限定年份。取值必须是官网原值（如 `2026 年`）——既要用于回显比较，
  * 也会直接拼进 date 参数，故不参与本地化；展示由 [yearDisplay] 按各语言格式串渲染。
  */
-private val dateYearOptions: List<String> = listOf(DATE_ALL) + (2026 downTo 1990).map { "$it 年" }
+private val dateYearOptions: List<String> =
+    listOf(DATE_ALL) + (Calendar.getInstance().get(Calendar.YEAR) downTo 1990).map { "$it 年" }
 
 /** 月份下拉：首项「全部」表示不限定月份。取值同为官网原值（`3 月`），展示由 [monthDisplay] 负责。 */
 private val dateMonthOptions: List<String> = listOf(DATE_ALL) + (1..12).map { "$it 月" }
@@ -1120,7 +1112,7 @@ private fun DateFilterSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.common_close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
@@ -1373,7 +1365,7 @@ private fun DurationFilterSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.common_close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )

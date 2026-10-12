@@ -168,7 +168,9 @@ fun DetailScreen(
     }
 
     // 进度记忆：每 5 秒检查一次，仅当「页面至少 STARTED 且播放位置确实前进」时落库，离场时保存最终进度。
-    // 以位置是否推进判定，可跳过暂停 / 缓冲 / 切后台 / 熄屏期间的空转写库。
+    // 两个判据各管一半：位置不推进跳过暂停 / 缓冲，页面不在 STARTED 跳过切后台 / 熄屏。
+    // 此处刻意用 LocalLifecycleOwner：离开本页即停落库正是期望行为；VideoPlayer 用 Activity 的 owner
+    // 是为避免画中画被应用内导航误触发，两者需求相反，勿照搬。
     val lifecycleOwner = LocalLifecycleOwner.current
     val activePlayer = exoPlayer
     DisposableEffect(activePlayer, lifecycleOwner) {

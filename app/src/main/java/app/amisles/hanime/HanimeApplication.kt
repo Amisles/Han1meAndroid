@@ -6,6 +6,7 @@ import android.content.res.AssetManager
 import android.content.res.Resources
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
+import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.feature.detail.ExoPlayerFactory
 import coil3.ImageLoader
@@ -83,6 +84,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         Preferences.init(this)
+        UiConfigStore.init(this)
         applyLanguage(persistedLanguage())
         AppLogger.init(this)
         ExoPlayerFactory.prewarmCache(this)
