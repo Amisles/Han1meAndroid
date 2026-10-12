@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "app.amisles.hanime"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 12
         versionName = "1.5.0"
 
