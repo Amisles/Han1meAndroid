@@ -44,6 +44,8 @@ import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import app.amisles.hanime.ui.viewmodel.PlaylistListPageViewModel
 
+private val ROW_THUMB_WIDTH = 130.dp
+
 @Composable
 fun PlaylistListPageScreen(
     title: String? = null,
@@ -139,7 +141,8 @@ private fun PlaylistListItem(
             likeRate = "",
             viewCount = playlist.videoCount,
             crop = true,
-            modifier = Modifier.width(130.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
+            targetWidth = ROW_THUMB_WIDTH,
+            modifier = Modifier.width(ROW_THUMB_WIDTH).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(
             modifier = Modifier.weight(1f),

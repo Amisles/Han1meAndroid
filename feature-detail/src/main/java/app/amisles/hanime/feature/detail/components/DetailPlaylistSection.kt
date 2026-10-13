@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.PlaylistInfo
 
+private val CELL_WIDTH = 140.dp
+
 /** 播放集合头部：集合名、作者（可点击）与集数。 */
 @Composable
 internal fun DetailPlaylistHeader(
@@ -104,7 +106,7 @@ internal fun DetailPlaylistVideos(
 
             Column(
                 modifier = Modifier
-                    .width(140.dp)
+                    .width(CELL_WIDTH)
                     .clickable { onVideoClick(video.videoUrl) }
             ) {
                 Box(
@@ -118,7 +120,8 @@ internal fun DetailPlaylistVideos(
                         duration = video.duration,
                         likeRate = video.likeRate,
                         viewCount = video.viewCount,
-                        crop = true
+                        crop = true,
+                        targetWidth = CELL_WIDTH
                     )
                 }
                 Text(

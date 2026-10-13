@@ -56,6 +56,8 @@ import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 
+private val ROW_THUMB_WIDTH = 140.dp
+
 @Composable
 fun FavoriteScreen(
     onBackClick: () -> Unit = {},
@@ -385,8 +387,9 @@ private fun FavoriteVideoItem(
             likeRate = video.likeRate,
             viewCount = video.viewCount,
             crop = true,
+            targetWidth = ROW_THUMB_WIDTH,
             modifier = Modifier
-                .width(140.dp)
+                .width(ROW_THUMB_WIDTH)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )

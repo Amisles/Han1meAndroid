@@ -53,6 +53,8 @@ import app.amisles.hanime.core.ui.components.VideoCard
 import androidx.compose.material3.MaterialTheme
 import coil3.compose.AsyncImage
 
+private val ROW_THUMB_WIDTH = 150.dp
+
 @Composable
 fun AuthorScreen(
     authorPageUrl: String = "",
@@ -249,8 +251,9 @@ private fun PlaylistSummaryCard(
             likeRate = "",
             viewCount = playlist.videoCount,
             crop = true,
+            targetWidth = ROW_THUMB_WIDTH,
             modifier = Modifier
-                .width(150.dp)
+                .width(ROW_THUMB_WIDTH)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )

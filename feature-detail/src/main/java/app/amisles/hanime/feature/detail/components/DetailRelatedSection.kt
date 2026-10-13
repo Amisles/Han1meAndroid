@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 
+private val RELATED_THUMB_WIDTH = 150.dp
+
 /**
  * 相关推荐列表项：左侧缩略图 + 右侧标题 / 作者 / 数据行；作者名可点击进入搜索，卡片整体可点击播放。
  */
@@ -49,8 +51,9 @@ internal fun DetailRelatedVideoCard(
             likeRate = "",
             viewCount = "",
             crop = true,
+            targetWidth = RELATED_THUMB_WIDTH,
             modifier = Modifier
-                .width(150.dp)
+                .width(RELATED_THUMB_WIDTH)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )

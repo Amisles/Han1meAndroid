@@ -49,6 +49,8 @@ import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import app.amisles.hanime.ui.viewmodel.PlaylistDetailViewModel
 import coil3.compose.AsyncImage
 
+private val ROW_THUMB_WIDTH = 120.dp
+
 @Composable
 fun PlaylistDetailScreen(
     url: String = "",
@@ -218,7 +220,8 @@ private fun PlaylistVideoItem(
             likeRate = video.likeRate,
             viewCount = video.viewCount,
             crop = true,
-            modifier = Modifier.width(120.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
+            targetWidth = ROW_THUMB_WIDTH,
+            modifier = Modifier.width(ROW_THUMB_WIDTH).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(
             modifier = Modifier.weight(1f),

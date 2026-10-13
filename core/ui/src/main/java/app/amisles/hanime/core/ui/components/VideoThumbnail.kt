@@ -3,13 +3,10 @@ package app.amisles.hanime.core.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -25,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -41,64 +39,41 @@ fun VideoThumbnail(
     likeRate: String,
     viewCount: String,
     modifier: Modifier = Modifier,
-    adaptHeight: Boolean = false,
-    crop: Boolean = false
+    crop: Boolean = false,
+    targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
-    val boxModifier = if (adaptHeight) {
-        modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-    } else {
-        modifier.fillMaxSize()
-    }.background(MaterialTheme.colorScheme.surfaceVariant)
-
-    val contentScale = if (crop) ContentScale.Crop else ContentScale.FillWidth
     val quality = cfg.thumbnailQuality
+    val aspectRatio = cfg.thumbnailAspectRatio
+    val context = LocalContext.current
+    val density = LocalDensity.current
 
-    if (quality == ThumbnailQuality.STANDARD || thumbnailUrl.isEmpty()) {
-        ThumbnailBox(
-            model = thumbnailUrl,
-            hasThumbnail = thumbnailUrl.isNotEmpty(),
-            duration = duration,
-            likeRate = likeRate,
-            viewCount = viewCount,
-            contentScale = contentScale,
-            cfg = cfg,
-            modifier = boxModifier
-        )
+    val model: Any? = if (thumbnailUrl.isEmpty() || quality == ThumbnailQuality.STANDARD || targetWidth == null) {
+        thumbnailUrl
     } else {
-        BoxWithConstraints(modifier = boxModifier) {
-            val density = LocalDensity.current
-            val context = LocalContext.current
-            val model = remember(thumbnailUrl, quality, maxWidth, maxHeight, density) {
-                val scale = quality.sizeScale
-                val widthPx = (with(density) { maxWidth.roundToPx() } * scale).toInt().coerceAtLeast(1)
-                val heightDim = if (maxHeight.value.isInfinite()) {
-                    Dimension.Undefined
-                } else {
-                    Dimension.Pixels(
-                        (with(density) { maxHeight.roundToPx() } * scale).toInt().coerceAtLeast(1)
-                    )
-                }
-                ImageRequest.Builder(context)
-                    .data(thumbnailUrl)
-                    .size(Dimension.Pixels(widthPx), heightDim)
-                    .precision(Precision.INEXACT)
-                    .build()
-            }
-            ThumbnailBox(
-                model = model,
-                hasThumbnail = true,
-                duration = duration,
-                likeRate = likeRate,
-                viewCount = viewCount,
-                contentScale = contentScale,
-                cfg = cfg,
-                modifier = Modifier.fillMaxSize()
-            )
+        remember(thumbnailUrl, quality, targetWidth, aspectRatio, density) {
+            val widthPx = (with(density) { targetWidth.roundToPx() } * quality.sizeScale).toInt().coerceAtLeast(1)
+            val heightPx = (widthPx / aspectRatio).toInt().coerceAtLeast(1)
+            ImageRequest.Builder(context)
+                .data(thumbnailUrl)
+                .size(Dimension.Pixels(widthPx), Dimension.Pixels(heightPx))
+                .precision(Precision.INEXACT)
+                .build()
         }
     }
+
+    ThumbnailBox(
+        model = model,
+        hasThumbnail = thumbnailUrl.isNotEmpty(),
+        duration = duration,
+        likeRate = likeRate,
+        viewCount = viewCount,
+        contentScale = if (crop) ContentScale.Crop else ContentScale.FillWidth,
+        cfg = cfg,
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    )
 }
 
 @Composable

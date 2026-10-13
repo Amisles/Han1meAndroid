@@ -59,6 +59,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private val ROW_THUMB_WIDTH = 140.dp
+
 @Composable
 private fun formatWatchedTime(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
@@ -265,8 +267,9 @@ fun HistoryScreen(
                             likeRate = "",
                             viewCount = "",
                             crop = true,
+                            targetWidth = ROW_THUMB_WIDTH,
                             modifier = Modifier
-                                .width(140.dp)
+                                .width(ROW_THUMB_WIDTH)
                                 .aspectRatio(16f / 9f)
                                 .clip(RoundedCornerShape(6.dp))
                         )

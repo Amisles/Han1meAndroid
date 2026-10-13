@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -29,7 +30,8 @@ fun VideoGridCard(
     video: HanimeVideo,
     onClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
 
@@ -52,7 +54,8 @@ fun VideoGridCard(
                 duration = video.duration,
                 likeRate = video.likeRate,
                 viewCount = video.viewCount,
-                crop = true
+                crop = true,
+                targetWidth = targetWidth
             )
         }
 
