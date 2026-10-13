@@ -1,21 +1,25 @@
 package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -33,8 +37,6 @@ import app.amisles.hanime.core.ui.theme.UiConfig
 @Composable
 fun VideoThumbnail(
     thumbnailUrl: String,
-    emoji: String,
-    gradient: Pair<Color, Color>,
     duration: String,
     likeRate: String,
     viewCount: String,
@@ -58,8 +60,6 @@ fun VideoThumbnail(
         ThumbnailBox(
             model = thumbnailUrl,
             hasThumbnail = thumbnailUrl.isNotEmpty(),
-            emoji = emoji,
-            gradient = gradient,
             duration = duration,
             likeRate = likeRate,
             viewCount = viewCount,
@@ -90,8 +90,6 @@ fun VideoThumbnail(
             ThumbnailBox(
                 model = model,
                 hasThumbnail = true,
-                emoji = emoji,
-                gradient = gradient,
                 duration = duration,
                 likeRate = likeRate,
                 viewCount = viewCount,
@@ -107,8 +105,6 @@ fun VideoThumbnail(
 private fun ThumbnailBox(
     model: Any?,
     hasThumbnail: Boolean,
-    emoji: String,
-    gradient: Pair<Color, Color>,
     duration: String,
     likeRate: String,
     viewCount: String,
@@ -126,22 +122,6 @@ private fun ThumbnailBox(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = contentScale
             )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(gradient.first, gradient.second)
-                        )
-                    )
-            ) {
-                Text(
-                    text = emoji,
-                    fontSize = cfg.placeholderEmojiFontSize,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
         }
 
         if (duration.isNotEmpty()) {
@@ -166,19 +146,30 @@ private fun ThumbnailBox(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (likeRate.isNotEmpty()) {
-                    Text(
-                        text = "👍 $likeRate",
-                        fontSize = cfg.badgeFontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
+                    Row(
                         modifier = Modifier
                             .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
-                            .padding(horizontal = 3.dp, vertical = 1.dp)
-                    )
+                            .padding(horizontal = 3.dp, vertical = 1.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ThumbUp,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = likeRate,
+                            fontSize = cfg.badgeFontSize,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
                 }
                 if (viewCount.isNotEmpty()) {
                     Text(
-                        text = " $viewCount",
+                        text = viewCount,
                         fontSize = cfg.badgeFontSize,
                         fontWeight = FontWeight.Normal,
                         color = Color.White,

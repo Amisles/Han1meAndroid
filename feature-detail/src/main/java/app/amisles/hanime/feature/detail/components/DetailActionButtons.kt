@@ -53,7 +53,7 @@ internal fun DetailActionButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(20.dp),
             tint = tint
         )
         Spacer(modifier = Modifier.height(2.dp))

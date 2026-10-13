@@ -16,9 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.HanimeVideo
 
@@ -35,8 +32,6 @@ fun VideoGridCard(
     modifier: Modifier = Modifier
 ) {
     val cfg = LocalUiConfig.current
-    val gradient = gradients[stableIndex(video.id, gradients.size)]
-    val emoji = emojis[stableIndex(video.id, emojis.size)]
 
     Column(
         modifier = modifier
@@ -54,8 +49,6 @@ fun VideoGridCard(
         ) {
             VideoThumbnail(
                 thumbnailUrl = video.thumbnailUrl,
-                emoji = emoji,
-                gradient = gradient,
                 duration = video.duration,
                 likeRate = video.likeRate,
                 viewCount = video.viewCount,

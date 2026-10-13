@@ -76,7 +76,7 @@ fun DiagnosticsScreen(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Text(
@@ -123,7 +123,7 @@ fun DiagnosticsScreen(
                     Icon(
                         imageVector = if (hasResults) Icons.Default.Refresh else Icons.Default.Speed,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(

@@ -49,11 +49,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Favorite
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
@@ -172,10 +170,13 @@ fun FavoriteScreen(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "❤️",
-                        fontSize = 48.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                    Icon(
+                        imageVector = Icons.Outlined.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(bottom = 16.dp)
+                            .size(48.dp)
                     )
                     Text(
                         text = stringResource(R.string.favorite_empty),
@@ -197,14 +198,10 @@ fun FavoriteScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(favorites, key = { it.id }) { video ->
-                    val gradient = gradients[stableIndex(video.id, gradients.size)]
-                    val emoji = emojis[stableIndex(video.id, emojis.size)]
                     val isSelected = video.id in selectedIds
 
                     FavoriteVideoItem(
                         video = video,
-                        gradient = gradient,
-                        emoji = emoji,
                         isSelectionMode = isSelectionMode,
                         isSelected = isSelected,
                         onVideoClick = {
@@ -350,8 +347,6 @@ fun FavoriteScreen(
 @Composable
 private fun FavoriteVideoItem(
     video: FavoriteVideo,
-    gradient: Pair<Color, Color>,
-    emoji: String,
     isSelectionMode: Boolean,
     isSelected: Boolean,
     onVideoClick: () -> Unit,
@@ -393,8 +388,6 @@ private fun FavoriteVideoItem(
 
         VideoThumbnail(
             thumbnailUrl = video.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = video.duration,
             likeRate = video.likeRate,
             viewCount = video.viewCount,

@@ -33,7 +33,6 @@ object UiConfigStore {
     private const val K_LIST_TITLE_FS = "list_title_fs"
     private const val K_LIST_META_FS = "list_meta_fs"
     private const val K_BADGE_FS = "badge_fs"
-    private const val K_EMOJI_FS = "emoji_fs"
     private const val K_COLS_COMPACT = "cols_compact"
     private const val K_COLS_MEDIUM = "cols_medium"
     private const val K_COLS_EXPANDED = "cols_expanded"
@@ -128,7 +127,6 @@ object UiConfigStore {
             listTitleFontSize = readFloat(K_LIST_TITLE_FS, d.listTitleFontSize.value).sp,
             listMetaFontSize = readFloat(K_LIST_META_FS, d.listMetaFontSize.value).sp,
             badgeFontSize = readFloat(K_BADGE_FS, d.badgeFontSize.value).sp,
-            placeholderEmojiFontSize = readFloat(K_EMOJI_FS, d.placeholderEmojiFontSize.value).sp,
             gridColumnsCompact = readInt(K_COLS_COMPACT, d.gridColumnsCompact),
             gridColumnsMedium = readInt(K_COLS_MEDIUM, d.gridColumnsMedium),
             gridColumnsExpanded = readInt(K_COLS_EXPANDED, d.gridColumnsExpanded),
@@ -161,7 +159,6 @@ object UiConfigStore {
             putFloat(K_LIST_TITLE_FS, cfg.listTitleFontSize.value)
             putFloat(K_LIST_META_FS, cfg.listMetaFontSize.value)
             putFloat(K_BADGE_FS, cfg.badgeFontSize.value)
-            putFloat(K_EMOJI_FS, cfg.placeholderEmojiFontSize.value)
             putInt(K_COLS_COMPACT, cfg.gridColumnsCompact)
             putInt(K_COLS_MEDIUM, cfg.gridColumnsMedium)
             putInt(K_COLS_EXPANDED, cfg.gridColumnsExpanded)

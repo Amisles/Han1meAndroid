@@ -262,14 +262,16 @@ fun SearchScreen(
                 ),
                 trailingIcon = {
                     if (localQuery.isNotEmpty()) {
-                        Text(
-                            text = "✕",
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable {
-                                localQuery = ""
-                                viewModel.setQuery("")
-                            }
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.common_close),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .clickable {
+                                    localQuery = ""
+                                    viewModel.setQuery("")
+                                }
+                                .size(20.dp)
                         )
                     }
                 }
@@ -467,7 +469,7 @@ fun SearchScreen(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
@@ -582,7 +584,7 @@ fun SearchScreen(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = stringResource(R.string.common_delete),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -1155,7 +1157,7 @@ private fun DateFilterSheet(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -1404,7 +1406,7 @@ private fun DurationFilterSheet(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }

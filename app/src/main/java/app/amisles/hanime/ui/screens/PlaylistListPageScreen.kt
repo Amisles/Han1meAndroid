@@ -37,9 +37,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R as CoreR
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -125,8 +122,6 @@ private fun PlaylistListItem(
     playlist: PlaylistSummary,
     onClick: () -> Unit = {}
 ) {
-    val gradient = gradients[stableIndex(playlist.title, gradients.size)]
-    val emoji = emojis[stableIndex(playlist.title, emojis.size)]
 
     Row(
         modifier = Modifier
@@ -139,8 +134,6 @@ private fun PlaylistListItem(
     ) {
         app.amisles.hanime.core.ui.components.VideoThumbnail(
             thumbnailUrl = playlist.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = "",
             likeRate = "",
             viewCount = playlist.videoCount,

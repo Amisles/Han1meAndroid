@@ -50,13 +50,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.History
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import androidx.compose.material3.MaterialTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -183,10 +181,13 @@ fun HistoryScreen(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "📋",
-                        fontSize = 48.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                    Icon(
+                        imageVector = Icons.Outlined.History,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(bottom = 16.dp)
+                            .size(48.dp)
                     )
                     Text(
                         text = stringResource(R.string.history_empty),
@@ -209,8 +210,6 @@ fun HistoryScreen(
             ) {
                 // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位
                 items(history, key = { it.id }) { video ->
-                    val gradient = gradients[stableIndex(video.id, gradients.size)]
-                    val emoji = emojis[stableIndex(video.id, emojis.size)]
                     val isSelected = video.id in selectedIds
 
                     Row(
@@ -269,8 +268,6 @@ fun HistoryScreen(
 
                         VideoThumbnail(
                             thumbnailUrl = video.thumbnailUrl,
-                            emoji = emoji,
-                            gradient = gradient,
                             duration = video.duration,
                             likeRate = "",
                             viewCount = "",

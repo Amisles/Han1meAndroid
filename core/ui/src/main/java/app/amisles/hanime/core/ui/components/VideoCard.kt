@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,9 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 
 @Composable
@@ -37,8 +38,6 @@ fun VideoCard(
     modifier: Modifier = Modifier
 ) {
     val cfg = LocalUiConfig.current
-    val gradient = gradients[stableIndex(video.id, gradients.size)]
-    val emoji = emojis[stableIndex(video.id, emojis.size)]
 
     Column(
         modifier = modifier
@@ -53,8 +52,6 @@ fun VideoCard(
         ) {
             VideoThumbnail(
                 thumbnailUrl = video.thumbnailUrl,
-                emoji = emoji,
-                gradient = gradient,
                 duration = video.duration,
                 likeRate = video.likeRate,
                 viewCount = video.viewCount,
@@ -116,8 +113,6 @@ fun VideoListItem(
     modifier: Modifier = Modifier
 ) {
     val cfg = LocalUiConfig.current
-    val gradient = gradients[stableIndex(video.id, gradients.size)]
-    val emoji = emojis[stableIndex(video.id, emojis.size)]
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
     val thumbShape = RoundedCornerShape(cfg.listThumbnailCornerRadius)
@@ -142,8 +137,6 @@ fun VideoListItem(
     ) {
         VideoThumbnail(
             thumbnailUrl = video.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = video.duration,
             likeRate = "",
             viewCount = "",
@@ -197,11 +190,22 @@ fun VideoListItem(
                     )
                 }
                 if (video.likeRate.isNotEmpty()) {
-                    Text(
-                        text = "👍 ${video.likeRate}",
-                        fontSize = cfg.listMetaFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ThumbUp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = video.likeRate,
+                            fontSize = cfg.listMetaFontSize,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

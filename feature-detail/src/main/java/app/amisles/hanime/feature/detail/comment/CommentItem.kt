@@ -115,7 +115,7 @@ internal fun CommentItem(
                         Icon(
                             imageVector = Icons.Default.ThumbUp,
                             contentDescription = stringResource(R.string.comment_like),
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(16.dp),
                             tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))

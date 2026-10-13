@@ -114,7 +114,7 @@ private fun <T> SettingsDropdownCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
@@ -429,7 +429,7 @@ fun SettingsScreen(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Text(
@@ -490,7 +490,7 @@ fun SettingsScreen(
                     imageVector = Icons.Outlined.Tune,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -554,7 +554,7 @@ fun SettingsScreen(
                     imageVector = Icons.Outlined.Folder,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -605,7 +605,7 @@ fun SettingsScreen(
                     imageVector = Icons.Outlined.Link,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -648,7 +648,7 @@ fun SettingsScreen(
                     imageVector = Icons.Outlined.NetworkCheck,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
@@ -684,7 +684,7 @@ fun SettingsScreen(
                     imageVector = Icons.Outlined.CleaningServices,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(

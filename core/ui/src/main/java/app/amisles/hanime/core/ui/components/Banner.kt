@@ -56,18 +56,8 @@ fun Banner(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background)
-                        )
-                    )
-            ) {
-                Text(
-                    text = "🎬",
-                    fontSize = 40.sp,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
         }
 
         Box(
@@ -146,7 +136,7 @@ fun Banner(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = stringResource(R.string.common_play),
                         tint = Color.Unspecified,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(

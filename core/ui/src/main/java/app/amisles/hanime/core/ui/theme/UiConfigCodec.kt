@@ -37,7 +37,6 @@ object UiConfigCodec {
             .putF("listTitleFontSize", config.listTitleFontSize.value)
             .putF("listMetaFontSize", config.listMetaFontSize.value)
             .putF("badgeFontSize", config.badgeFontSize.value)
-            .putF("placeholderEmojiFontSize", config.placeholderEmojiFontSize.value)
             .put("gridColumnsCompact", config.gridColumnsCompact)
             .put("gridColumnsMedium", config.gridColumnsMedium)
             .put("gridColumnsExpanded", config.gridColumnsExpanded)
@@ -87,7 +86,6 @@ object UiConfigCodec {
             listTitleFontSize = c.optF("listTitleFontSize", d.listTitleFontSize.value).sp,
             listMetaFontSize = c.optF("listMetaFontSize", d.listMetaFontSize.value).sp,
             badgeFontSize = c.optF("badgeFontSize", d.badgeFontSize.value).sp,
-            placeholderEmojiFontSize = c.optF("placeholderEmojiFontSize", d.placeholderEmojiFontSize.value).sp,
             gridColumnsCompact = c.optInt("gridColumnsCompact", d.gridColumnsCompact),
             gridColumnsMedium = c.optInt("gridColumnsMedium", d.gridColumnsMedium),
             gridColumnsExpanded = c.optInt("gridColumnsExpanded", d.gridColumnsExpanded),

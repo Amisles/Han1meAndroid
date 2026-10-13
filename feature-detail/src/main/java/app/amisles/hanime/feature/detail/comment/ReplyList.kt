@@ -185,7 +185,7 @@ internal fun ReplyItem(
                     Icon(
                         imageVector = Icons.Default.ThumbUp,
                         contentDescription = null,
-                        modifier = Modifier.size(12.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(

@@ -24,8 +24,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.feature.detail.util.videoEmoji
-import app.amisles.hanime.feature.detail.util.videoGradient
 
 /**
  * 相关推荐列表项：左侧缩略图 + 右侧标题 / 作者 / 数据行；作者名可点击进入搜索，卡片整体可点击播放。
@@ -36,8 +34,6 @@ internal fun DetailRelatedVideoCard(
     onVideoClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit
 ) {
-    val gradient = videoGradient(video.id)
-    val emoji = videoEmoji(video.id)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -57,8 +53,6 @@ internal fun DetailRelatedVideoCard(
     ) {
         app.amisles.hanime.core.ui.components.VideoThumbnail(
             thumbnailUrl = video.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = "",
             likeRate = "",
             viewCount = "",

@@ -71,9 +71,11 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Sort
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
@@ -107,7 +109,7 @@ private data class TaskOrderKey(
  * 下载页文件名搜索框。
  *
  * 样式与搜索页 SearchScreen 的搜索框逐项对齐：24dp 圆角并裁剪、surface 容器色、
- * 聚焦时 primary 描边、15sp 正文、右侧 ✕ 清除、输入法回车键为「搜索」。
+ * 聚焦时 primary 描边、15sp 正文、右侧清除图标、输入法回车键为「搜索」。
  * 唯一差异是 singleLine —— 表头高度需固定，长文件名不应把表头撑高。
  */
 @Composable
@@ -152,11 +154,13 @@ private fun DownloadSearchField(
         ),
         trailingIcon = {
             if (query.isNotEmpty()) {
-                Text(
-                    text = "✕",
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { onQueryChange("") }
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.common_close),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clickable { onQueryChange("") }
+                        .size(20.dp)
                 )
             }
         }
@@ -384,7 +388,7 @@ fun DownloadScreen(
                             imageVector = Icons.Outlined.Sort,
                             contentDescription = stringResource(R.string.download_sort_title),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -418,10 +422,12 @@ fun DownloadScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "📥",
-                    fontSize = 48.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                Icon(
+                    imageVector = Icons.Outlined.Download,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .size(64.dp)
                 )
                 Text(
                     text = stringResource(R.string.download_empty),

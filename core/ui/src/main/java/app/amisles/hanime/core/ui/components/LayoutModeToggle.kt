@@ -77,7 +77,7 @@ private fun LayoutModeToggleSegment(
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(20.dp)
         )
     }
 }

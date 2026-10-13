@@ -471,7 +471,7 @@ private fun ScreenHeader(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.common_back),
                 tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
         Text(
@@ -1228,7 +1228,7 @@ private fun OverflowNotice() {
             imageVector = Icons.Default.Info,
             contentDescription = null,
             tint = HanimeWarning,
-            modifier = Modifier.size(15.dp)
+            modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(9.dp))
         Text(
