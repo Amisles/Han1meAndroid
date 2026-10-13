@@ -82,9 +82,18 @@ private data class SectionPlan(
     val section: HomeSection,
     val mode: SectionRenderMode,
     val videos: List<HanimeVideo>,
+    val videoKeys: List<String>,
+    val rowVideos: List<List<HanimeVideo>>,
+    val rowKeys: List<String>
+) {
     /** 该分区在 LazyColumn 中占用的视频 item 数，索引映射与渲染共用，避免两处漂移。 */
-    val rows: Int
-)
+    val itemCount: Int
+        get() = when (mode) {
+            SectionRenderMode.LIST_COLUMN -> videos.size
+            SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> rowVideos.size
+            SectionRenderMode.CAROUSEL -> 1
+        }
+}
 
 private fun renderMode(configured: HomeSectionLayout, isCompactWidth: Boolean): SectionRenderMode =
     when (configured) {
@@ -103,13 +112,19 @@ private fun buildPlans(
 ): List<SectionPlan> = homeConfig.applyOrder(sections).map { section ->
     val mode = renderMode(homeConfig.layoutFor(section.title), isCompactWidth)
     val videos = section.videos.take(homeConfig.visibleCount)
-    val rows = when (mode) {
-        SectionRenderMode.LIST_COLUMN -> videos.size
-        SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS ->
-            (videos.size + columns - 1) / columns
-        SectionRenderMode.CAROUSEL -> 1
+    val rowVideos = when (mode) {
+        SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> videos.chunked(columns)
+        SectionRenderMode.LIST_COLUMN, SectionRenderMode.CAROUSEL -> emptyList()
     }
-    SectionPlan(section, mode, videos, rows)
+    val rowKeyPrefix = if (mode == SectionRenderMode.GRID_ROWS) "home-grid-row" else "home-row"
+    SectionPlan(
+        section = section,
+        mode = mode,
+        videos = videos,
+        videoKeys = videos.map { "${section.title}#${it.videoUrl}" },
+        rowVideos = rowVideos,
+        rowKeys = rowVideos.indices.map { "$rowKeyPrefix-${section.title}-$it" }
+    )
 }
 
 @Composable
@@ -186,8 +201,8 @@ fun HomeScreenContent(
             if (banner != null) idx++ // banner
             plans.forEach { plan ->
                 map[plan.section.title] = idx // 标题 item 的索引
-                // 标题 + 视频区（条数由 plan.rows 给出，与渲染分支同源）+ 分区之间的 spacer
-                idx += 1 + plan.rows + 1
+                // 标题 + 视频区（条数由 plan.itemCount 给出，与渲染分支同源）+ 分区之间的 spacer
+                idx += 1 + plan.itemCount + 1
             }
             idx++ // bottom spacer
         } else {
@@ -328,7 +343,8 @@ fun HomeScreenContent(
                         // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
                         // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
                         // 分区标题在 ViewModel 中已按标题去重，故「标题#url」在列表中唯一。
-                        items(plan.videos, key = { "${section.title}#${it.videoUrl}" }) { video ->
+                        items(count = plan.videos.size, key = { plan.videoKeys[it] }) { index ->
+                            val video = plan.videos[index]
                             VideoListItem(
                                 video = video,
                                 onClick = { onVideoClick(video.videoUrl) },
@@ -340,14 +356,14 @@ fun HomeScreenContent(
 
                     SectionRenderMode.LIST_ROWS -> {
                         // 按列数分行渲染，避免单列在大屏下空旷
-                        plan.videos.chunked(columns).forEachIndexed { rowIndex, rowVideos ->
+                        plan.rowVideos.forEachIndexed { rowIndex, row ->
                             // 与单列分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
-                            item(key = "home-row-${section.title}-$rowIndex") {
+                            item(key = plan.rowKeys[rowIndex]) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    rowVideos.forEach { video ->
+                                    row.forEach { video ->
                                         VideoListItem(
                                             video = video,
                                             onClick = { onVideoClick(video.videoUrl) },
@@ -357,7 +373,7 @@ fun HomeScreenContent(
                                                 .padding(horizontal = 5.dp, vertical = 3.dp)
                                         )
                                     }
-                                    repeat(columns - rowVideos.size) {
+                                    repeat(columns - row.size) {
                                         Spacer(modifier = Modifier.weight(1f))
                                     }
                                 }
@@ -366,15 +382,15 @@ fun HomeScreenContent(
                     }
 
                     SectionRenderMode.GRID_ROWS -> {
-                        plan.videos.chunked(columns).forEachIndexed { rowIndex, rowVideos ->
-                            item(key = "home-grid-row-${section.title}-$rowIndex") {
+                        plan.rowVideos.forEachIndexed { rowIndex, row ->
+                            item(key = plan.rowKeys[rowIndex]) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 10.dp)
                                 ) {
-                                    rowVideos.forEach { video ->
+                                    row.forEach { video ->
                                         VideoGridCard(
                                             video = video,
                                             onClick = { onVideoClick(video.videoUrl) },
@@ -382,7 +398,7 @@ fun HomeScreenContent(
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
-                                    repeat(columns - rowVideos.size) {
+                                    repeat(columns - row.size) {
                                         Spacer(modifier = Modifier.weight(1f))
                                     }
                                 }
@@ -402,6 +418,7 @@ fun HomeScreenContent(
                                         video = video,
                                         onClick = { onVideoClick(video.videoUrl) },
                                         onAuthorClick = onAuthorClick,
+                                        targetWidth = CAROUSEL_CARD_WIDTH,
                                         modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
                                     )
                                 }
