@@ -22,7 +22,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -89,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import app.amisles.hanime.core.ui.theme.HanimeDanger
@@ -225,7 +225,7 @@ fun CustomizeScreen(
 
             item(key = "typography") {
                 GroupLabel(stringResource(R.string.customize_group_typography))
-                SettingsCard {
+                SettingsGroupCard {
                     DecimalInputRow(
                         title = stringResource(R.string.customize_font_scale),
                         value = config.fontScale,
@@ -246,7 +246,7 @@ fun CustomizeScreen(
 
             item(key = "card") {
                 GroupLabel(stringResource(R.string.customize_group_card))
-                SettingsCard {
+                SettingsGroupCard {
                     SliderRow(
                         title = stringResource(R.string.customize_aspect_ratio),
                         valueText = String.format(Locale.US, "%.2f:1", config.thumbnailAspectRatio),
@@ -305,7 +305,7 @@ fun CustomizeScreen(
 
             item(key = "grid") {
                 GroupLabel(stringResource(R.string.customize_group_grid))
-                SettingsCard {
+                SettingsGroupCard {
                     SliderRow(
                         title = stringResource(R.string.customize_grid_target_width),
                         valueText = "${config.gridTargetWidth.value.roundToInt()}dp",
@@ -324,7 +324,7 @@ fun CustomizeScreen(
 
             item(key = "home_sections") {
                 GroupLabel(stringResource(R.string.customize_group_home_sections))
-                SettingsCard {
+                SettingsGroupCard {
                     SliderRow(
                         title = stringResource(R.string.customize_section_visible_count),
                         valueText = "${homeSections.visibleCount}",
@@ -368,7 +368,7 @@ fun CustomizeScreen(
 
             item(key = "backup") {
                 GroupLabel(stringResource(R.string.customize_group_backup))
-                SettingsCard {
+                SettingsGroupCard {
                     ActionRow(
                         icon = Icons.Default.Share,
                         title = stringResource(R.string.customize_export),
@@ -558,20 +558,6 @@ private fun GroupLabel(text: String) {
     )
 }
 
-@Composable
-private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = SCREEN_H_PADDING),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(content = content)
-    }
-}
-
-/** 卡片内相邻属性行之间的分隔线，两侧留出与内容等宽的内缩。 */
 @Composable
 private fun RowDivider() {
     HorizontalDivider(
@@ -1015,7 +1001,7 @@ private fun SectionOrderCard(
     onMove: (Int, Int) -> Unit,
     onLayoutChange: (String, HomeSectionLayout) -> Unit
 ) {
-    SettingsCard {
+    SettingsGroupCard {
         Text(
             text = stringResource(R.string.customize_section_order),
             fontSize = 12.sp,

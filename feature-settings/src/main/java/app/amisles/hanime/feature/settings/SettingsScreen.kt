@@ -19,10 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
@@ -31,8 +29,6 @@ import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -65,6 +61,9 @@ import java.io.File
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.SettingsGroupCard
+import app.amisles.hanime.core.ui.components.SettingsGroupDivider
+import app.amisles.hanime.core.ui.components.SettingsNavRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -81,7 +80,7 @@ private fun languageOptionRes(): List<Pair<String, Int>> = listOf(
 )
 
 @Composable
-private fun <T> SettingsDropdownCard(
+private fun <T> SettingsDropdownRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     selectedLabel: String,
@@ -95,78 +94,70 @@ private fun <T> SettingsDropdownCard(
     var menuWidthPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 15.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(10.dp)
-    ) {
-        Box(modifier = Modifier.onSizeChanged { boxWidthPx = it.width }) {
-            Row(
+    Box(modifier = Modifier.onSizeChanged { boxWidthPx = it.width }) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onExpandedChange(!expanded) }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = selectedLabel,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onExpandedChange(!expanded) }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = title,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = selectedLabel,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .rotate(if (expanded) 0f else -90f)
-                )
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { onExpandedChange(false) },
-                modifier = Modifier
-                    .onSizeChanged { menuWidthPx = it.width }
-                    .background(MaterialTheme.colorScheme.surface),
-                offset = DpOffset(
-                    x = with(density) {
-                        (boxWidthPx - menuWidthPx).coerceAtLeast(0).toDp()
+                    .size(20.dp)
+                    .rotate(if (expanded) 0f else -90f)
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier
+                .onSizeChanged { menuWidthPx = it.width }
+                .background(MaterialTheme.colorScheme.surface),
+            offset = DpOffset(
+                x = with(density) {
+                    (boxWidthPx - menuWidthPx).coerceAtLeast(0).toDp()
+                },
+                y = 0.dp
+            )
+        ) {
+            options.forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = label,
+                            fontSize = 14.sp,
+                            color = if (value == selectedValue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (value == selectedValue) FontWeight.Medium else FontWeight.Normal
+                        )
                     },
-                    y = 0.dp
+                    onClick = {
+                        onSelect(value)
+                        onExpandedChange(false)
+                    }
                 )
-            ) {
-                options.forEach { (value, label) ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = label,
-                                fontSize = 14.sp,
-                                color = if (value == selectedValue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = if (value == selectedValue) FontWeight.Medium else FontWeight.Normal
-                            )
-                        },
-                        onClick = {
-                            onSelect(value)
-                            onExpandedChange(false)
-                        }
-                    )
-                }
             }
         }
     }
@@ -445,261 +436,99 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 应用语言
-        SettingsDropdownCard(
-            icon = Icons.Outlined.Language,
-            title = stringResource(R.string.settings_app_language),
-            selectedLabel = languageOptions.find { it.code == uiState.appLanguage }?.label
-                ?: stringResource(R.string.settings_language_zh_cn),
-            expanded = appLanguageMenuExpanded,
-            onExpandedChange = { appLanguageMenuExpanded = it },
-            options = languageOptions.map { it.code to it.label },
-            selectedValue = uiState.appLanguage,
-            onSelect = { code -> viewModel.setAppLanguage(code) }
-        )
-
-        // 主题模式
-        SettingsDropdownCard(
-            icon = Icons.Outlined.Palette,
-            title = stringResource(R.string.settings_theme_mode),
-            selectedLabel = themeModeOptions.find { it.first == uiState.themeMode }?.second
-                ?: stringResource(R.string.settings_theme_system),
-            expanded = themeModeMenuExpanded,
-            onExpandedChange = { themeModeMenuExpanded = it },
-            options = themeModeOptions,
-            selectedValue = uiState.themeMode,
-            onSelect = { mode -> viewModel.setThemeMode(mode) }
-        )
-
-        // 界面定制
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp)
-                .clickable { onNavigate("customize") },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Tune,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_customize_ui),
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_customize_ui_summary),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                }
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        // 外观：语言 / 主题 / 界面定制
+        SettingsGroupCard {
+            SettingsDropdownRow(
+                icon = Icons.Outlined.Language,
+                title = stringResource(R.string.settings_app_language),
+                selectedLabel = languageOptions.find { it.code == uiState.appLanguage }?.label
+                    ?: stringResource(R.string.settings_language_zh_cn),
+                expanded = appLanguageMenuExpanded,
+                onExpandedChange = { appLanguageMenuExpanded = it },
+                options = languageOptions.map { it.code to it.label },
+                selectedValue = uiState.appLanguage,
+                onSelect = { code -> viewModel.setAppLanguage(code) }
+            )
+            SettingsGroupDivider()
+            SettingsDropdownRow(
+                icon = Icons.Outlined.Palette,
+                title = stringResource(R.string.settings_theme_mode),
+                selectedLabel = themeModeOptions.find { it.first == uiState.themeMode }?.second
+                    ?: stringResource(R.string.settings_theme_system),
+                expanded = themeModeMenuExpanded,
+                onExpandedChange = { themeModeMenuExpanded = it },
+                options = themeModeOptions,
+                selectedValue = uiState.themeMode,
+                onSelect = { mode -> viewModel.setThemeMode(mode) }
+            )
+            SettingsGroupDivider()
+            SettingsNavRow(
+                icon = Icons.Outlined.Tune,
+                title = stringResource(R.string.settings_customize_ui),
+                subtitle = stringResource(R.string.settings_customize_ui_summary),
+                onClick = { onNavigate("customize") }
+            )
         }
 
-        // 同时下载数
-        SettingsDropdownCard(
-            icon = Icons.Default.Layers,
-            title = stringResource(R.string.settings_max_concurrent),
-            selectedLabel = "${uiState.maxDownloadConcurrent}$concurrentCountSuffix",
-            expanded = downloadConcurrentMenuExpanded,
-            onExpandedChange = { downloadConcurrentMenuExpanded = it },
-            options = (1..5).map { it to "$it$concurrentCountSuffix" },
-            selectedValue = uiState.maxDownloadConcurrent,
-            onSelect = { count ->
-                viewModel.setMaxDownloadConcurrent(count)
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.settings_concurrent_set_toast, count),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        )
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 下载存储路径
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp)
-                .clickable { showStoragePathDialog = true },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_download_storage),
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = if (uiState.downloadStoragePath.isBlank()) {
-                            stringResource(R.string.settings_download_storage_external)
-                        } else {
-                            uiState.downloadStoragePath
-                        },
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
+        // 下载：并发数 / 存储路径
+        SettingsGroupCard {
+            SettingsDropdownRow(
+                icon = Icons.Default.Layers,
+                title = stringResource(R.string.settings_max_concurrent),
+                selectedLabel = "${uiState.maxDownloadConcurrent}$concurrentCountSuffix",
+                expanded = downloadConcurrentMenuExpanded,
+                onExpandedChange = { downloadConcurrentMenuExpanded = it },
+                options = (1..5).map { it to "$it$concurrentCountSuffix" },
+                selectedValue = uiState.maxDownloadConcurrent,
+                onSelect = { count ->
+                    viewModel.setMaxDownloadConcurrent(count)
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_concurrent_set_toast, count),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            )
+            SettingsGroupDivider()
+            SettingsNavRow(
+                icon = Icons.Outlined.Folder,
+                title = stringResource(R.string.settings_download_storage),
+                subtitle = if (uiState.downloadStoragePath.isBlank()) {
+                    stringResource(R.string.settings_download_storage_external)
+                } else {
+                    uiState.downloadStoragePath
+                },
+                onClick = { showStoragePathDialog = true }
+            )
         }
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp)
-                .clickable {
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 网络与数据：镜像站 / 诊断 / 缓存
+        SettingsGroupCard {
+            SettingsNavRow(
+                icon = Icons.Outlined.Link,
+                title = stringResource(R.string.settings_base_url),
+                subtitle = uiState.baseUrl,
+                onClick = {
                     baseUrlInput = uiState.baseUrl
                     showBaseUrlDialog = true
-                },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Link,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_base_url),
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = uiState.baseUrl,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
                 }
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp)
-                .clickable { onNavigate("diagnostics") },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.NetworkCheck,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = stringResource(R.string.settings_diagnostics),
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp)
-                .clickable { showClearCacheDialog = true },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.CleaningServices,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = stringResource(R.string.settings_clear_cache),
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            )
+            SettingsGroupDivider()
+            SettingsNavRow(
+                icon = Icons.Outlined.NetworkCheck,
+                title = stringResource(R.string.settings_diagnostics),
+                onClick = { onNavigate("diagnostics") }
+            )
+            SettingsGroupDivider()
+            SettingsNavRow(
+                icon = Icons.Outlined.CleaningServices,
+                title = stringResource(R.string.settings_clear_cache),
+                onClick = { showClearCacheDialog = true }
+            )
         }
     }
 
