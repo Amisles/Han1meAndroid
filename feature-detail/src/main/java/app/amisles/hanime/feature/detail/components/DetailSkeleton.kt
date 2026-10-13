@@ -24,19 +24,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
 /** 详情页骨架屏：加载时模拟详情页布局的占位；手机单列与平板分栏共用 [DetailSkeletonBody]。 */
 @Composable
 internal fun DetailSkeletonScreen() {
     val transition = rememberInfiniteTransition(label = "detail-skeleton-shimmer")
-    val alpha by transition.animateFloat(
+    val shimmerAlpha = transition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.6f,
         animationSpec = infiniteRepeatable(
@@ -58,7 +58,7 @@ internal fun DetailSkeletonScreen() {
                 .background(Color.Black)
         )
 
-        DetailSkeletonBody(alpha = alpha)
+        DetailSkeletonBody(shimmerAlpha = shimmerAlpha)
         Spacer(modifier = Modifier.height(8.dp))
 
         // 相关推荐标题骨架
@@ -69,7 +69,7 @@ internal fun DetailSkeletonScreen() {
                 .height(18.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
 
         // 相关推荐视频骨架（3 条）
@@ -90,7 +90,7 @@ internal fun DetailSkeletonScreen() {
                         .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(6.dp))
                         .background(MaterialTheme.colorScheme.background)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -102,7 +102,7 @@ internal fun DetailSkeletonScreen() {
                             .height(14.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.background)
-                            .alpha(alpha)
+                            .graphicsLayer { alpha = shimmerAlpha.value }
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Box(
@@ -111,7 +111,7 @@ internal fun DetailSkeletonScreen() {
                             .height(12.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.background)
-                            .alpha(alpha)
+                            .graphicsLayer { alpha = shimmerAlpha.value }
                     )
                 }
             }
@@ -123,7 +123,7 @@ internal fun DetailSkeletonScreen() {
 @Composable
 internal fun TabletDetailSkeleton() {
     val transition = rememberInfiniteTransition(label = "tablet-detail-skeleton-shimmer")
-    val alpha by transition.animateFloat(
+    val shimmerAlpha = transition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.6f,
         animationSpec = infiniteRepeatable(
@@ -151,7 +151,7 @@ internal fun TabletDetailSkeleton() {
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .alpha(alpha)
+                    .graphicsLayer { alpha = shimmerAlpha.value }
             )
         }
         LazyColumn(
@@ -161,7 +161,7 @@ internal fun TabletDetailSkeleton() {
                 .background(MaterialTheme.colorScheme.background)
         ) {
             item {
-                DetailSkeletonBody(alpha = alpha)
+                DetailSkeletonBody(shimmerAlpha = shimmerAlpha)
             }
         }
     }
@@ -170,7 +170,7 @@ internal fun TabletDetailSkeleton() {
 /** 两个骨架屏共用的详情占位内容：标题 / 作者 / 元信息 / 操作按钮 / 标签行。 */
 @Composable
 private fun DetailSkeletonBody(
-    alpha: Float,
+    shimmerAlpha: State<Float>,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(15.dp)) {
@@ -181,7 +181,7 @@ private fun DetailSkeletonBody(
             .height(20.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .alpha(alpha)
+            .graphicsLayer { alpha = shimmerAlpha.value }
     )
     Spacer(modifier = Modifier.height(8.dp))
     Box(
@@ -190,7 +190,7 @@ private fun DetailSkeletonBody(
             .height(20.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .alpha(alpha)
+            .graphicsLayer { alpha = shimmerAlpha.value }
     )
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -205,7 +205,7 @@ private fun DetailSkeletonBody(
                 .size(32.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
         Box(
             modifier = Modifier
@@ -213,7 +213,7 @@ private fun DetailSkeletonBody(
                 .height(14.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
     }
 
@@ -227,7 +227,7 @@ private fun DetailSkeletonBody(
                 .height(12.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
         Box(
             modifier = Modifier
@@ -235,7 +235,7 @@ private fun DetailSkeletonBody(
                 .height(12.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
     }
 
@@ -250,7 +250,7 @@ private fun DetailSkeletonBody(
                     .height(42.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .alpha(alpha)
+                    .graphicsLayer { alpha = shimmerAlpha.value }
             )
         }
     }
@@ -266,7 +266,7 @@ private fun DetailSkeletonBody(
                     .height(26.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .alpha(alpha)
+                    .graphicsLayer { alpha = shimmerAlpha.value }
             )
         }
     }

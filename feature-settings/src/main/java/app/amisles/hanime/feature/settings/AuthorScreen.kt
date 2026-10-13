@@ -35,8 +35,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
@@ -302,7 +302,7 @@ private fun PlaylistSummaryCard(
 @Composable
 private fun AuthorSkeletonScreen() {
     val transition = rememberInfiniteTransition(label = "author-skeleton-shimmer")
-    val alpha by transition.animateFloat(
+    val shimmerAlpha = transition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.6f,
         animationSpec = infiniteRepeatable(
@@ -327,7 +327,7 @@ private fun AuthorSkeletonScreen() {
                         .size(80.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.background)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
                 Box(
                     modifier = Modifier
@@ -336,7 +336,7 @@ private fun AuthorSkeletonScreen() {
                         .padding(top = 12.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(MaterialTheme.colorScheme.background)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
                 Row(
                     modifier = Modifier.padding(top = 14.dp),
@@ -349,7 +349,7 @@ private fun AuthorSkeletonScreen() {
                                 .height(16.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.background)
-                                .alpha(alpha)
+                                .graphicsLayer { alpha = shimmerAlpha.value }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
@@ -358,7 +358,7 @@ private fun AuthorSkeletonScreen() {
                                 .height(12.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.background)
-                                .alpha(alpha)
+                                .graphicsLayer { alpha = shimmerAlpha.value }
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -368,7 +368,7 @@ private fun AuthorSkeletonScreen() {
                                 .height(16.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.background)
-                                .alpha(alpha)
+                                .graphicsLayer { alpha = shimmerAlpha.value }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
@@ -377,7 +377,7 @@ private fun AuthorSkeletonScreen() {
                                 .height(12.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.background)
-                                .alpha(alpha)
+                                .graphicsLayer { alpha = shimmerAlpha.value }
                         )
                     }
                 }
@@ -397,7 +397,7 @@ private fun AuthorSkeletonScreen() {
                         .height(15.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(MaterialTheme.colorScheme.surface)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
                 Box(
                     modifier = Modifier
@@ -405,7 +405,7 @@ private fun AuthorSkeletonScreen() {
                         .height(13.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(MaterialTheme.colorScheme.surface)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
             }
         }
@@ -423,7 +423,7 @@ private fun AuthorSkeletonScreen() {
                             .height(210.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surface)
-                            .alpha(alpha)
+                            .graphicsLayer { alpha = shimmerAlpha.value }
                     ) {}
                 }
             }
@@ -442,7 +442,7 @@ private fun AuthorSkeletonScreen() {
                         .height(15.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(MaterialTheme.colorScheme.surface)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
                 Box(
                     modifier = Modifier
@@ -450,7 +450,7 @@ private fun AuthorSkeletonScreen() {
                         .height(13.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(MaterialTheme.colorScheme.surface)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
             }
         }
@@ -472,7 +472,7 @@ private fun AuthorSkeletonScreen() {
                         .size(width = 120.dp, height = 68.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(MaterialTheme.colorScheme.background)
-                        .alpha(alpha)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -484,7 +484,7 @@ private fun AuthorSkeletonScreen() {
                             .height(13.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.background)
-                            .alpha(alpha)
+                            .graphicsLayer { alpha = shimmerAlpha.value }
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Box(
@@ -493,7 +493,7 @@ private fun AuthorSkeletonScreen() {
                             .height(11.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.background)
-                            .alpha(alpha)
+                            .graphicsLayer { alpha = shimmerAlpha.value }
                     )
                 }
             }
