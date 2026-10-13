@@ -767,7 +767,7 @@ private fun DecimalInputRow(
         Text(
             text = hint,
             fontSize = 10.sp,
-            color = if (outOfRange) HanimeDanger else MaterialTheme.colorScheme.outline,
+            color = if (outOfRange) HanimeDanger else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 6.dp)
         )
     }
