@@ -64,6 +64,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -257,9 +258,11 @@ fun CustomizeScreen(
                         onReset = {
                             UiConfigStore.update { it.copy(thumbnailAspectRatio = defaults.thumbnailAspectRatio) }
                         },
-                        onChange = { v ->
-                            val rounded = (v * 100).roundToInt() / 100f
-                            UiConfigStore.update { it.copy(thumbnailAspectRatio = rounded) }
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(thumbnailAspectRatio = (v * 100).roundToInt() / 100f) }
+                        },
+                        onCommit = { v ->
+                            UiConfigStore.update { it.copy(thumbnailAspectRatio = (v * 100).roundToInt() / 100f) }
                         }
                     )
                     RowDivider()
@@ -271,7 +274,10 @@ fun CustomizeScreen(
                         defaultValue = defaults.cardCornerRadius.value,
                         isDefault = config.cardCornerRadius == defaults.cardCornerRadius,
                         onReset = { UiConfigStore.update { it.copy(cardCornerRadius = defaults.cardCornerRadius) } },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(cardCornerRadius = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.update { it.copy(cardCornerRadius = v.roundToInt().toFloat().dp) }
                         }
                     )
@@ -284,7 +290,10 @@ fun CustomizeScreen(
                         defaultValue = defaults.listThumbnailWidth.value,
                         isDefault = config.listThumbnailWidth == defaults.listThumbnailWidth,
                         onReset = { UiConfigStore.update { it.copy(listThumbnailWidth = defaults.listThumbnailWidth) } },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(listThumbnailWidth = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.update { it.copy(listThumbnailWidth = v.roundToInt().toFloat().dp) }
                         }
                     )
@@ -314,7 +323,10 @@ fun CustomizeScreen(
                         defaultValue = defaults.gridTargetWidth.value,
                         isDefault = config.gridTargetWidth == defaults.gridTargetWidth,
                         onReset = { UiConfigStore.update { it.copy(gridTargetWidth = defaults.gridTargetWidth) } },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(gridTargetWidth = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.update { it.copy(gridTargetWidth = v.roundToInt().toFloat().dp) }
                         }
                     )
@@ -336,7 +348,10 @@ fun CustomizeScreen(
                         onReset = {
                             UiConfigStore.updateHomeSections { it.copy(visibleCount = sectionDefaults.visibleCount) }
                         },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updateHomeSectionsPreviewOnly { it.copy(visibleCount = v.roundToInt()) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.updateHomeSections { it.copy(visibleCount = v.roundToInt()) }
                         }
                     )
@@ -628,7 +643,8 @@ private fun SliderRow(
     defaultValue: Float,
     isDefault: Boolean,
     onReset: () -> Unit,
-    onChange: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
     ticks: Int = 0
 ) {
     Column(
@@ -664,7 +680,8 @@ private fun SliderRow(
             range = range,
             defaultValue = defaultValue,
             ticks = ticks,
-            onChange = onChange,
+            onPreview = onPreview,
+            onCommit = onCommit,
             modifier = Modifier.padding(top = SLIDER_BAR_TOP)
         )
     }
@@ -794,7 +811,8 @@ private fun CustomSlider(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     defaultValue: Float,
-    onChange: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
     modifier: Modifier = Modifier,
     ticks: Int = 0
 ) {
@@ -820,6 +838,9 @@ private fun CustomSlider(
     )
 
     val interactionSource = remember { MutableInteractionSource() }
+    val latestValue = remember { mutableStateOf(value) }
+    val latestPreview = rememberUpdatedState(onPreview)
+    val latestCommit = rememberUpdatedState(onCommit)
 
     Box(
         modifier = modifier
@@ -833,10 +854,15 @@ private fun CustomSlider(
                     val base = dragFraction ?: valueFraction
                     val next = (base + delta / trackWidthPx).coerceIn(0f, 1f)
                     dragFraction = next
-                    onChange(range.start + next * span)
+                    val raw = range.start + next * span
+                    latestValue.value = raw
+                    latestPreview.value(raw)
                 },
                 onDragStarted = { dragFraction = valueFraction },
-                onDragStopped = { dragFraction = null }
+                onDragStopped = {
+                    dragFraction = null
+                    latestCommit.value(latestValue.value)
+                }
             )
     ) {
         // 轨道已内缩半个滑块，滑块中心走完整个轨道跨度；此内缩同时是下方各叠加层的坐标基准，

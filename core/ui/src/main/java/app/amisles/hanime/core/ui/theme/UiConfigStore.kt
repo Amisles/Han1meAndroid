@@ -74,6 +74,12 @@ object UiConfigStore {
 
     fun update(transform: (UiConfig) -> UiConfig) = set(transform(_config.value))
 
+    /** 仅更新内存中的预览值，不落盘；供滑杆拖动期间高频调用，拖动结束时用 [set] 持久化。 */
+    fun updatePreviewOnly(transform: (UiConfig) -> UiConfig) {
+        val safe = transform(_config.value).sanitized()
+        if (safe != _config.value) _config.value = safe
+    }
+
     fun setHomeSections(config: HomeSectionConfig) {
         val safe = config.sanitized()
         if (safe == _homeSections.value) return
@@ -83,6 +89,12 @@ object UiConfigStore {
 
     fun updateHomeSections(transform: (HomeSectionConfig) -> HomeSectionConfig) =
         setHomeSections(transform(_homeSections.value))
+
+    /** 仅更新内存中的首页分区预览值，不落盘；与 [updatePreviewOnly] 对称。 */
+    fun updateHomeSectionsPreviewOnly(transform: (HomeSectionConfig) -> HomeSectionConfig) {
+        val safe = transform(_homeSections.value).sanitized()
+        if (safe != _homeSections.value) _homeSections.value = safe
+    }
 
     fun reset() {
         set(UiConfig.Default)
