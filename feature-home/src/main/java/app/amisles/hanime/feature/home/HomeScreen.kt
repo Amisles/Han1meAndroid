@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,8 +43,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -452,7 +453,7 @@ fun HomeScreenContent(
 private fun HomeSkeletonScreen() {
     // 闪烁动画：alpha 在 0.3f ~ 0.6f 循环，时长 1000ms
     val transition = rememberInfiniteTransition(label = "skeleton-shimmer")
-    val alpha by transition.animateFloat(
+    val shimmerAlpha = transition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.6f,
         animationSpec = infiniteRepeatable(
@@ -474,7 +475,7 @@ private fun HomeSkeletonScreen() {
                 .height(260.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
 
         // 区块骨架（共 3 个）：标题 + 紧凑列表行
@@ -486,12 +487,12 @@ private fun HomeSkeletonScreen() {
                     .size(width = 120.dp, height = 18.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .alpha(alpha)
+                    .graphicsLayer { alpha = shimmerAlpha.value }
             )
 
             // 紧凑列表行骨架
             repeat(5) {
-                SkeletonVideoRow(alpha = alpha)
+                SkeletonVideoRow(shimmerAlpha = shimmerAlpha)
             }
             Spacer(modifier = Modifier.height(6.dp))
         }
@@ -502,7 +503,7 @@ private fun HomeSkeletonScreen() {
 
 /** 骨架视频列表行：整宽紧凑行，左缩略图（120x90）+ 右两行文字占位，与内容区 VideoListItem 布局一致。 */
 @Composable
-private fun SkeletonVideoRow(alpha: Float) {
+private fun SkeletonVideoRow(shimmerAlpha: State<Float>) {
     val cfg = LocalUiConfig.current
     Row(
         modifier = Modifier
@@ -518,7 +519,7 @@ private fun SkeletonVideoRow(alpha: Float) {
                 .aspectRatio(cfg.thumbnailAspectRatio)
                 .clip(RoundedCornerShape(cfg.listThumbnailCornerRadius))
                 .background(MaterialTheme.colorScheme.surface)
-                .alpha(alpha)
+                .graphicsLayer { alpha = shimmerAlpha.value }
         )
         Column(
             modifier = Modifier
@@ -532,7 +533,7 @@ private fun SkeletonVideoRow(alpha: Float) {
                     .height(12.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .alpha(alpha)
+                    .graphicsLayer { alpha = shimmerAlpha.value }
             )
             Spacer(modifier = Modifier.height(6.dp))
             Box(
@@ -541,7 +542,7 @@ private fun SkeletonVideoRow(alpha: Float) {
                     .height(10.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .alpha(alpha)
+                    .graphicsLayer { alpha = shimmerAlpha.value }
             )
         }
     }
