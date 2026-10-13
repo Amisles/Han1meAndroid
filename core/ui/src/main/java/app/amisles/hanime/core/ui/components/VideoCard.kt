@@ -21,14 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.surfaceEdge
 
 @Composable
 fun VideoCard(
@@ -113,22 +111,14 @@ fun VideoListItem(
     modifier: Modifier = Modifier
 ) {
     val cfg = LocalUiConfig.current
-    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
     val thumbShape = RoundedCornerShape(cfg.listThumbnailCornerRadius)
-    val shadowColor = Color.Black.copy(alpha = 0.18f)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = if (isDark) 0.dp else 2.dp,
-                shape = cardShape,
-                clip = false,
-                ambientColor = shadowColor,
-                spotColor = shadowColor
-            )
             .background(MaterialTheme.colorScheme.surface, cardShape)
+            .surfaceEdge(cardShape)
             .clip(cardShape)
             .clickable { onClick() }
             .padding(cfg.listItemPadding),
@@ -144,13 +134,6 @@ fun VideoListItem(
             modifier = Modifier
                 .width(cfg.listThumbnailWidth)
                 .aspectRatio(cfg.thumbnailAspectRatio)
-                .shadow(
-                    elevation = if (isDark) 0.dp else 1.5.dp,
-                    shape = thumbShape,
-                    clip = false,
-                    ambientColor = shadowColor,
-                    spotColor = shadowColor
-                )
                 .clip(thumbShape)
         )
 

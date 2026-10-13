@@ -58,8 +58,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -70,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.theme.surfaceEdge
 import coil3.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -304,13 +303,7 @@ private fun VideoItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .shadow(
-                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                shape = RoundedCornerShape(12.dp),
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.18f)
-            )
+            .surfaceEdge(RoundedCornerShape(12.dp))
             .then(
                 if (isDisabled) {
                     Modifier
