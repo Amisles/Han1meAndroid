@@ -123,6 +123,7 @@ fun Banner(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .background(Color.White, RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(6.dp))
                         .padding(7.dp)
                         .clickable {
                             if (bannerData.videoUrl.isNotEmpty()) {

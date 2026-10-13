@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.search
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -423,6 +424,7 @@ fun SearchScreen(
                         modifier = Modifier
                             .width(sortDropdownWidth)
                             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { sortMenuExpanded = true }
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -785,7 +787,10 @@ private fun TagFilterSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -796,7 +801,10 @@ private fun TagFilterSheet(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 )
-                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 消费背景点击，避免误触遮罩关闭面板 */ }
         ) {
             // 顶部标题栏
             Row(
@@ -1078,7 +1086,10 @@ private fun DateFilterSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -1089,7 +1100,10 @@ private fun DateFilterSheet(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 )
-                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 消费背景点击，避免误触遮罩关闭面板 */ }
         ) {
             // 标题栏
             Row(
@@ -1255,6 +1269,7 @@ private fun DateDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1331,7 +1346,10 @@ private fun DurationFilterSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -1342,7 +1360,10 @@ private fun DurationFilterSheet(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 )
-                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 消费背景点击，避免误触遮罩关闭面板 */ }
         ) {
             // 标题栏
             Row(

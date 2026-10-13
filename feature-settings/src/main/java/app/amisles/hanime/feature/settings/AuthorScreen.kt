@@ -238,6 +238,7 @@ private fun PlaylistSummaryCard(
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)

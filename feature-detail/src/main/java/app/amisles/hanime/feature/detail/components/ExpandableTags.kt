@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.unit.dp
@@ -52,8 +53,9 @@ internal fun ExpandableTags(
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
                         .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                         .clickable { onTagClick(cleanedTag) }
                 )

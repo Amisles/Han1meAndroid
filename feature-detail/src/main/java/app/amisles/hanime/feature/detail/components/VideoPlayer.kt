@@ -14,6 +14,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1471,7 +1472,10 @@ fun VideoPlayer(
                         .height(120.dp)
                         .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
-                        .clickable { /* 拦截点击，避免穿透到遮罩关闭 */ }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { /* 拦截点击，避免穿透到遮罩关闭 */ }
                         .padding(2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -1513,7 +1517,10 @@ fun VideoPlayer(
                         .height(120.dp)
                         .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
                         .verticalScroll(scrollState)
-                        .clickable { /* 拦截点击，避免穿透到遮罩关闭 */ }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { /* 拦截点击，避免穿透到遮罩关闭 */ }
                         .padding(2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
