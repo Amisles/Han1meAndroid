@@ -78,6 +78,8 @@ private val CAROUSEL_CARD_WIDTH = 200.dp
 /** 分区在 LazyColumn 中的实际渲染形态；[HomeSectionLayout.AUTO] 由窗口宽度决定，故需与用户可选模式区分。 */
 private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
 
+private enum class HomeItemType { HEADER, CATEGORY, SKELETON, ERROR, REFRESH_ERROR, BANNER, SECTION_TITLE, VIDEO_LIST, VIDEO_ROW, GRID_ROW, CAROUSEL, SPACER }
+
 private data class SectionPlan(
     val section: HomeSection,
     val mode: SectionRenderMode,
@@ -229,14 +231,14 @@ fun HomeScreenContent(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-        item(key = "home-header") {
+        item(key = "home-header", contentType = HomeItemType.HEADER) {
             Header(
                 onSearchNavigate = onNavigateToSearch,
                 onProfileClick = onProfileClick
             )
         }
 
-        item(key = "home-category") {
+        item(key = "home-category", contentType = HomeItemType.CATEGORY) {
             CategoryScroll(
                 selectedCategory = selectedCategory,
                 onCategorySelected = { category ->
@@ -258,11 +260,11 @@ fun HomeScreenContent(
         }
 
         if (isLoading) {
-            item(key = "home-loading") {
+            item(key = "home-loading", contentType = HomeItemType.SKELETON) {
                 HomeSkeletonScreen()
             }
         } else if (error != null && sections.isEmpty()) {
-            item(key = "home-error") {
+            item(key = "home-error", contentType = HomeItemType.ERROR) {
                 KaomojiErrorView(
                     message = error,
                     onRetry = onRefresh,
@@ -271,7 +273,7 @@ fun HomeScreenContent(
             }
         } else {
             if (error != null && sections.isNotEmpty()) {
-                item(key = "home-refresh-error") {
+                item(key = "home-refresh-error", contentType = HomeItemType.REFRESH_ERROR) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -303,7 +305,7 @@ fun HomeScreenContent(
             }
 
             banner?.let {
-                item(key = "home-banner") {
+                item(key = "home-banner", contentType = HomeItemType.BANNER) {
                     Banner(
                         bannerData = it,
                         onPlayClick = { onVideoClick(it.videoUrl) },
@@ -314,7 +316,7 @@ fun HomeScreenContent(
 
             plans.forEachIndexed { i, plan ->
                 val section = plan.section
-                item(key = "home-section-title-${section.title}-$i") {
+                item(key = "home-section-title-${section.title}-$i", contentType = HomeItemType.SECTION_TITLE) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -343,7 +345,11 @@ fun HomeScreenContent(
                         // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
                         // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
                         // 分区标题在 ViewModel 中已按标题去重，故「标题#url」在列表中唯一。
-                        items(count = plan.videos.size, key = { plan.videoKeys[it] }) { index ->
+                        items(
+                            count = plan.videos.size,
+                            key = { plan.videoKeys[it] },
+                            contentType = { HomeItemType.VIDEO_LIST }
+                        ) { index ->
                             val video = plan.videos[index]
                             VideoListItem(
                                 video = video,
@@ -358,7 +364,7 @@ fun HomeScreenContent(
                         // 按列数分行渲染，避免单列在大屏下空旷
                         plan.rowVideos.forEachIndexed { rowIndex, row ->
                             // 与单列分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
-                            item(key = plan.rowKeys[rowIndex]) {
+                            item(key = plan.rowKeys[rowIndex], contentType = HomeItemType.VIDEO_ROW) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier.fillMaxWidth()
@@ -383,7 +389,7 @@ fun HomeScreenContent(
 
                     SectionRenderMode.GRID_ROWS -> {
                         plan.rowVideos.forEachIndexed { rowIndex, row ->
-                            item(key = plan.rowKeys[rowIndex]) {
+                            item(key = plan.rowKeys[rowIndex], contentType = HomeItemType.GRID_ROW) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     modifier = Modifier
@@ -408,7 +414,7 @@ fun HomeScreenContent(
 
                     SectionRenderMode.CAROUSEL -> {
                         // 独立 LazyRow，key 只需在本行内唯一
-                        item(key = "home-carousel-${section.title}-$i") {
+                        item(key = "home-carousel-${section.title}-$i", contentType = HomeItemType.CAROUSEL) {
                             LazyRow(
                                 contentPadding = PaddingValues(horizontal = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -427,12 +433,12 @@ fun HomeScreenContent(
                     }
                 }
 
-                item(key = "home-section-spacer-${section.title}-$i") {
+                item(key = "home-section-spacer-${section.title}-$i", contentType = HomeItemType.SPACER) {
                     Spacer(modifier = Modifier.height(6.dp))
                 }
             }
 
-            item(key = "home-bottom-spacer") {
+            item(key = "home-bottom-spacer", contentType = HomeItemType.SPACER) {
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
