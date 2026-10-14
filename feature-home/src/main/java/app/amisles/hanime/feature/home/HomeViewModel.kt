@@ -7,7 +7,9 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.core.ui.R
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,6 +81,18 @@ class HomeViewModel @Inject constructor(
             // 刷新时记录本次流实际返回的分区标题：流正常结束后据此剔除已下线的旧分区，
             val receivedTitles = if (hasContent) mutableSetOf<String>() else null
             var streamFailed = false
+            val accumulated = LinkedHashMap<String, HomeSection>()
+            if (hasContent) {
+                _sections.value.forEach { accumulated[it.title] = it }
+            }
+            var firstPushDone = false
+            var flushJob: Job? = null
+            val flushScope: CoroutineScope = this
+
+            fun pushSections() {
+                _sections.value = accumulated.values.toList()
+            }
+
             repository.getHomeDataStream()
                 .catch { e ->
                     streamFailed = true
@@ -100,18 +114,34 @@ class HomeViewModel @Inject constructor(
                             )
                             receivedTitles?.add(section.title)
                             // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块
-                            _sections.value = _sections.value
-                                .filterNot { it.title == section.title } + section
+                            accumulated.remove(section.title)
+                            accumulated[section.title] = section
+                            if (!firstPushDone) {
+                                // 首个分区立即提交，保住首屏速度
+                                firstPushDone = true
+                                pushSections()
+                            } else if (flushJob?.isActive != true) {
+                                // 其余分区在合并窗口内攒批提交，避免逐条更新触发整页重建
+                                flushJob = flushScope.launch {
+                                    delay(FLUSH_WINDOW_MS)
+                                    pushSections()
+                                }
+                            }
                         }
                         is HomeDataEvent.Error -> _error.value = event.message
                     }
                 }
+            flushJob?.cancel()
             _isLoading.value = false
             _isRefreshing.value = false
             // 出错时收到的分区只是残缺子集，不能据此剔除既有分区
             if (receivedTitles != null && !streamFailed) {
-                _sections.value = _sections.value.filter { it.title in receivedTitles }
+                accumulated.keys.retainAll(receivedTitles)
             }
+            pushSections()
         }
     }
 }
+
+/** 分区提交合并窗口：窗口内到达的多个分区合并为一次 UI 更新，避免逐条提交触发整页重建 */
+private const val FLUSH_WINDOW_MS = 120L
