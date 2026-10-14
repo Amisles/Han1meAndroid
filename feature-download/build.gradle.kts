@@ -32,7 +32,7 @@ kotlin {
 }
 
 composeCompiler {
-    stabilityConfigurationFiles.add(rootProject.file("compose-stability.conf"))
+    stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("compose-stability.conf"))
 }
 
 dependencies {
