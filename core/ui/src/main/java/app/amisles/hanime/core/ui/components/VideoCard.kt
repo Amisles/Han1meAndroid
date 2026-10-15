@@ -117,7 +117,13 @@ fun VideoListItem(
 ) {
     val cfg = LocalUiConfig.current
     val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
-    val thumbShape = RoundedCornerShape(cfg.listThumbnailCornerRadius)
+    // 兜底：缩略图圆角需 thumbR + pad >= cardR，否则左边界会伸到卡片背景之外（浅色阴影下可见）
+    val thumbShape = RoundedCornerShape(
+        cfg.listThumbnailCornerRadius.coerceIn(
+            (cfg.cardCornerRadius - cfg.listItemPadding).coerceAtLeast(0.dp),
+            cfg.cardCornerRadius
+        )
+    )
     val thumbWidth = thumbnailWidth ?: cfg.listThumbnailWidth
 
     Row(
