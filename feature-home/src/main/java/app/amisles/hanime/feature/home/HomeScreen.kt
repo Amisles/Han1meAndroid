@@ -76,6 +76,11 @@ import kotlinx.coroutines.launch
 /** 横滑布局的卡片宽度。 */
 private val CAROUSEL_CARD_WIDTH = 200.dp
 
+/** 行内多列布局的项间距、单项水平外边距与缩略图占卡宽比例；换算列宽时须与渲染处一致。 */
+private const val LIST_ROW_SPACING_DP = 10f
+private const val LIST_ITEM_H_PADDING_DP = 5f
+private const val LIST_ROW_THUMB_RATIO = 0.42f
+
 /** 分区在 LazyColumn 中的实际渲染形态；[HomeSectionLayout.AUTO] 由窗口宽度决定，故需与用户可选模式区分。 */
 private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
 
@@ -193,6 +198,19 @@ fun HomeScreenContent(
     val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
     val plans = remember(sections, homeConfig, isCompactWidth, columns) {
         buildPlans(sections, homeConfig, isCompactWidth, columns)
+    }
+    // 多列时缩略图须按列宽等比缩小：固定 150dp 会把文字区压到几 dp。比例取 0.42，
+    // 与手机单列下缩略图占卡宽的比例（150 / 340）一致
+    val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
+        if (isCompactWidth) {
+            cfg.listThumbnailWidth
+        } else {
+            val contentWidth = minOf(sizeInfo.widthDp.toFloat(), sizeInfo.contentMaxWidth.value)
+            val rowWidth = (contentWidth - (columns - 1) * LIST_ROW_SPACING_DP) / columns - 2 * LIST_ITEM_H_PADDING_DP
+            (rowWidth * LIST_ROW_THUMB_RATIO)
+                .coerceAtMost(cfg.listThumbnailWidth.value)
+                .coerceAtLeast(56f).dp
+        }
     }
     val sectionTitleToIndex: Map<String, Int> = remember(plans, banner, isLoading, error, sections) {
         val map = mutableMapOf<String, Int>()
@@ -367,7 +385,7 @@ fun HomeScreenContent(
                             // 与单列分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
                             item(key = plan.rowKeys[rowIndex], contentType = HomeItemType.VIDEO_ROW) {
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(LIST_ROW_SPACING_DP.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     row.forEach { video ->
@@ -375,9 +393,13 @@ fun HomeScreenContent(
                                             video = video,
                                             onClick = { onVideoClick(video.videoUrl) },
                                             onAuthorClick = onAuthorClick,
+                                            thumbnailWidth = rowThumbnailWidth,
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .padding(horizontal = 5.dp, vertical = 3.dp)
+                                                .padding(
+                                                    horizontal = LIST_ITEM_H_PADDING_DP.dp,
+                                                    vertical = 3.dp
+                                                )
                                         )
                                     }
                                     repeat(columns - row.size) {

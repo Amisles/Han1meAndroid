@@ -111,11 +111,13 @@ fun VideoListItem(
     video: HanimeVideo,
     onClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    thumbnailWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
     val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
     val thumbShape = RoundedCornerShape(cfg.listThumbnailCornerRadius)
+    val thumbWidth = thumbnailWidth ?: cfg.listThumbnailWidth
 
     Row(
         modifier = modifier
@@ -134,9 +136,9 @@ fun VideoListItem(
             likeRate = "",
             viewCount = "",
             crop = true,
-            targetWidth = cfg.listThumbnailWidth,
+            targetWidth = thumbWidth,
             modifier = Modifier
-                .width(cfg.listThumbnailWidth)
+                .width(thumbWidth)
                 .aspectRatio(cfg.thumbnailAspectRatio)
                 .clip(thumbShape)
         )
