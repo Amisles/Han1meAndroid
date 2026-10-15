@@ -82,7 +82,6 @@ fun VideoGridCard(
                 overflow = TextOverflow.Ellipsis,
                 // 内层 clickable 会优先消费点击，不会连带触发整卡的 onClick
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(top = 2.dp, bottom = 6.dp)
                     .clickable { onAuthorClick(video.author) }
             )
