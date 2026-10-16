@@ -159,7 +159,6 @@ fun VideoListItem(
                 fontSize = cfg.listTitleFontSize,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
-                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
