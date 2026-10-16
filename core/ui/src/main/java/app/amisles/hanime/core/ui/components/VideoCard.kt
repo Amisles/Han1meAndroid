@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -21,10 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.surfaceEdge
@@ -60,21 +64,35 @@ fun VideoCard(
             )
         }
 
-        Column(
+        // 标题区固定两行高并让文字垂直居中：单行标题时空白上下均分，不会全堆在标题与作者之间。
+    // 横滑卡原先没有显式行高，这里按字号的固定倍数补上，使两行高可稳定换算
+    val titleLineHeight = cfg.cardTitleFontSize.value.times(1.2f).sp
+    val titleBlockHeight = with(LocalDensity.current) { (titleLineHeight * 2).toDp() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = cfg.cardTitleTopPadding)
+    ) {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = cfg.cardTitleTopPadding)
+                .height(titleBlockHeight),
+            contentAlignment = Alignment.TopStart
         ) {
             Text(
                 text = video.title,
                 fontSize = cfg.cardTitleFontSize,
+                lineHeight = titleLineHeight,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground,
-                minLines = 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(align = Alignment.CenterVertically)
             )
+        }
             if (video.author.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
