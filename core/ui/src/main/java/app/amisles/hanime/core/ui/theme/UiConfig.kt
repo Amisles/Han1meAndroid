@@ -48,11 +48,10 @@ data class UiConfig(
         val maxCols = gridMaxColumns.coerceIn(minCols, 8)
         // 缩略图圆角不得超出卡片圆角缺口：需 thumbR + pad >= cardR，否则内边距再小
         // 缩略图左边界也会伸到卡片背景之外（浅色阴影下可见）
-        val cardRadius = cardCornerRadius.clamp(0f, 24f)
-        val listPad = listItemPadding.clamp(0f, 16f)
-        val thumbRadius = listThumbnailCornerRadius
-            .clamp(0f, 24f)
-            .coerceIn((cardRadius.value - listPad).coerceAtLeast(0f), cardRadius.value)
+        val cardRadius = cardCornerRadius.value.coerceIn(0f, 24f)
+        val listPad = listItemPadding.value.coerceIn(0f, 16f)
+        val thumbRadius = listThumbnailCornerRadius.value.coerceIn(0f, 24f)
+            .coerceIn((cardRadius - listPad).coerceAtLeast(0f), cardRadius)
         return copy(
             fontScale = fontScale.coerceIn(0.85f, 1.4f),
             thumbnailAspectRatio = thumbnailAspectRatio.coerceIn(1f, 2f),
