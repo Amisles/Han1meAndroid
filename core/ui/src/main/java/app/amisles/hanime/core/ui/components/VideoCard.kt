@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -21,10 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.surfaceEdge
@@ -125,6 +129,10 @@ fun VideoListItem(
         ).dp
     )
     val thumbWidth = thumbnailWidth ?: cfg.listThumbnailWidth
+    // 标题区固定两行高并让文字垂直居中：单行标题时空白上下均分，不会全堆在标题与作者之间。
+    // 行高比例与 grid 标题一致（16sp / 12sp），两行高据此换算，等高且不裁切
+    val titleLineHeight = cfg.listTitleFontSize.value.times(4f / 3f).sp
+    val titleBlockHeight = with(LocalDensity.current) { (titleLineHeight * 2).toDp() }
 
     Row(
         modifier = modifier
@@ -154,14 +162,25 @@ fun VideoListItem(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = video.title,
-                fontSize = cfg.listTitleFontSize,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(titleBlockHeight),
+                contentAlignment = Alignment.TopStart
+            ) {
+                Text(
+                    text = video.title,
+                    fontSize = cfg.listTitleFontSize,
+                    lineHeight = titleLineHeight,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(align = Alignment.CenterVertically)
+                )
+            }
             if (video.author.isNotEmpty()) {
                 Text(
                     text = video.author,
