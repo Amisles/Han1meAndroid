@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -166,7 +165,7 @@ fun VideoListItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(titleBlockHeight),
-                contentAlignment = Alignment.TopStart
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = video.title,
@@ -176,9 +175,7 @@ fun VideoListItem(
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(align = Alignment.CenterVertically)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
             if (video.author.isNotEmpty()) {
