@@ -35,8 +35,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,12 +42,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -62,10 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,6 +67,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
@@ -134,7 +127,6 @@ fun SearchScreen(
     val durationValue by viewModel.duration.collectAsStateWithLifecycle()
 
     var localQuery by rememberSaveable { mutableStateOf(query) }
-    val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
     // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，避免下拉宣称一个未生效的值
     val selectedSort = remember { mutableStateOf<SortOption?>(null) }
@@ -231,72 +223,18 @@ fun SearchScreen(
                 .padding(horizontal = 15.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
+            SearchField(
                 value = localQuery,
                 onValueChange = {
                     localQuery = it
                 },
-                placeholder = { Text(stringResource(R.string.search_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(24.dp)),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        viewModel.submitSearch(localQuery)
-                        keyboardController?.hide()
-                    }
-                ),
-                shape = RoundedCornerShape(24.dp),
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 15.sp
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                ),
-                trailingIcon = {
-                    if (localQuery.isNotEmpty()) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.common_close),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .clickable {
-                                    localQuery = ""
-                                    viewModel.setQuery("")
-                                }
-                                .size(20.dp)
-                        )
-                    }
-                }
+                placeholder = stringResource(R.string.search_placeholder),
+                onSearch = {
+                    viewModel.submitSearch(localQuery)
+                },
+                onClear = { viewModel.setQuery("") },
+                modifier = Modifier.weight(1f)
             )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable {
-                        viewModel.submitSearch(localQuery)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.common_search),
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
         }
 
         Column(

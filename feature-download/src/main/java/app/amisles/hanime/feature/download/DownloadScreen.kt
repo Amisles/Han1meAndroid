@@ -28,8 +28,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -39,8 +37,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,6 +71,7 @@ import androidx.compose.material.icons.outlined.Sort
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
@@ -107,8 +101,7 @@ private data class TaskOrderKey(
 /**
  * 下载页文件名搜索框。
  *
- * 样式与搜索页 SearchScreen 的搜索框逐项对齐：24dp 圆角并裁剪、surface 容器色、
- * 聚焦时 primary 描边、15sp 正文、右侧清除图标、输入法回车键为「搜索」。
+ * 复用 core/ui 的 [SearchField]，与搜索页完全同款：微圆角弱描边、搜索图标内嵌、回车收起键盘。
  * 唯一差异是 singleLine —— 表头高度需固定，长文件名不应把表头撑高。
  */
 @Composable
@@ -117,52 +110,12 @@ private fun DownloadSearchField(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    OutlinedTextField(
+    SearchField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = {
-            Text(
-                text = stringResource(R.string.download_search_placeholder),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                // 提示文案必须单行省略：否则搜索框被压窄时它会折行，把表头撑高
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        modifier = modifier.clip(RoundedCornerShape(24.dp)),
+        placeholder = stringResource(R.string.download_search_placeholder),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(
-            // 本地过滤随输入实时生效，回车仅收起键盘
-            onSearch = { keyboardController?.hide() }
-        ),
-        shape = RoundedCornerShape(24.dp),
-        textStyle = TextStyle(
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 15.sp
-        ),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-        ),
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.common_close),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clickable { onQueryChange("") }
-                        .size(20.dp)
-                )
-            }
-        }
+        modifier = modifier
     )
 }
 
