@@ -30,7 +30,9 @@ class SubscriptionsViewModel @Inject constructor(
     private val _videos = MutableStateFlow<List<HanimeVideo>>(emptyList())
     val videos: StateFlow<List<HanimeVideo>> = _videos.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    // 已登录时进入页面即加载，初值置 true：否则首帧会先渲染「暂无订阅」再切加载圈；
+    // 未登录时 UI 走 !isLogin 分支，不受该值影响
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
