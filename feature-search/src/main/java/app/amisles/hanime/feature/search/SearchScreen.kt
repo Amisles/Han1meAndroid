@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.search
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,8 +44,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -68,6 +67,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -365,7 +366,7 @@ fun SearchScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 6.dp),
+                    .padding(top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -375,31 +376,35 @@ fun SearchScreen(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                // 按钮与下拉菜单合成一个统一矩形：ExposedDropdownMenuBox 令菜单宽度与触发器一致
-                // 且自带缩放淡入过渡，无需再手写动画
-                ExposedDropdownMenuBox(
-                    expanded = sortMenuExpanded,
-                    onExpandedChange = { sortMenuExpanded = it }
-                ) {
-                    val sortShape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
+                // 按钮与下拉菜单拼成一个整体矩形：展开时按钮去下圆角、菜单去上圆角，
+                // 菜单 offset 归零紧贴按钮，且容器色、描边、标高全部与按钮对齐
+                val sortRadius = LocalUiConfig.current.cardCornerRadius
+                val sortWidth = 116.dp
+                val closedShape = RoundedCornerShape(sortRadius)
+                val buttonShape = if (sortMenuExpanded) {
+                    RoundedCornerShape(topStart = sortRadius, topEnd = sortRadius)
+                } else {
+                    closedShape
+                }
+                val menuShape = RoundedCornerShape(bottomStart = sortRadius, bottomEnd = sortRadius)
+                val arrowRotation by animateFloatAsState(
+                    targetValue = if (sortMenuExpanded) 180f else 0f,
+                    label = "sortArrow"
+                )
+                Box {
                     Row(
                         modifier = Modifier
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                            .clip(sortShape)
+                            .width(sortWidth)
+                            .clip(buttonShape)
                             .background(MaterialTheme.colorScheme.surface)
                             .border(
                                 width = 1.dp,
-                                color = if (sortMenuExpanded) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.outline
-                                },
-                                shape = sortShape
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = buttonShape
                             )
-                            .clickable { sortMenuExpanded = true }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            .clickable { sortMenuExpanded = !sortMenuExpanded }
+                            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = selectedSort.value?.let { stringResource(it.labelRes) }
@@ -407,19 +412,28 @@ fun SearchScreen(
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = stringResource(R.string.search_sort),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier
+                                .size(18.dp)
+                                .graphicsLayer { rotationZ = arrowRotation }
                         )
                     }
-                    ExposedDropdownMenu(
+                    DropdownMenu(
                         expanded = sortMenuExpanded,
                         onDismissRequest = { sortMenuExpanded = false },
-                        shape = sortShape,
+                        modifier = Modifier.width(sortWidth),
+                        offset = DpOffset(0.dp, 0.dp),
+                        shape = menuShape,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         sortOptions.forEach { option ->
@@ -428,9 +442,10 @@ fun SearchScreen(
                                 text = {
                                     Text(
                                         text = stringResource(option.labelRes),
-                                        fontSize = 14.sp,
+                                        fontSize = 13.sp,
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                        maxLines = 1
                                     )
                                 },
                                 onClick = {
@@ -438,13 +453,14 @@ fun SearchScreen(
                                     sortMenuExpanded = false
                                     viewModel.setSort(option.apiValue)
                                 },
+                                contentPadding = PaddingValues(start = 12.dp, end = 6.dp),
                                 trailingIcon = {
                                     if (isSelected) {
                                         Icon(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
                                 }
