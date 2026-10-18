@@ -497,52 +497,56 @@ fun SearchScreen(
                     .height(400.dp)
             )
         } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null && tagsValue.isEmpty() && dateValue.isEmpty() && durationValue.isEmpty()) {
-            if (searchHistory.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 15.dp, vertical = 12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            // null = 历史仍在读库，此时什么都不渲染：否则会先弹空态提示、再切成历史列表
+            val history = searchHistory
+            if (history != null) {
+                if (history.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(R.string.search_history),
+                            text = stringResource(R.string.search_empty_hint),
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = stringResource(R.string.common_clear),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable { viewModel.clearSearchHistory() }
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SearchHistoryChips(
-                        history = searchHistory,
-                        onSearch = { keyword ->
-                            localQuery = keyword
-                            viewModel.submitSearch(keyword)
-                        },
-                        onRemove = { viewModel.removeSearchHistory(it) }
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.search_empty_hint),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 15.dp, vertical = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.search_history),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = stringResource(R.string.common_clear),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable { viewModel.clearSearchHistory() }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SearchHistoryChips(
+                            history = history,
+                            onSearch = { keyword ->
+                                localQuery = keyword
+                                viewModel.submitSearch(keyword)
+                            },
+                            onRemove = { viewModel.removeSearchHistory(it) }
+                        )
+                    }
                 }
             }
         } else if (videos.isEmpty()) {

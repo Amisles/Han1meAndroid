@@ -64,8 +64,9 @@ class SearchViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
-    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+    // null 表示历史尚未从数据库读出：与「读完后确实为空」区分，避免进页面时先闪一下空态提示
+    private val _searchHistory = MutableStateFlow<List<String>?>(null)
+    val searchHistory: StateFlow<List<String>?> = _searchHistory.asStateFlow()
 
     private var currentPageNum = 1
 
@@ -86,8 +87,9 @@ class SearchViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // 搜索历史读取失败（如数据库损坏）不应让搜索页崩溃
+                // 搜索历史读取失败（如数据库损坏）不应让搜索页崩溃；按「无历史」收口，避免一直停在未加载态
                 AppLogger.e("SearchViewModel", "读取搜索历史失败: ${e.message}", e)
+                _searchHistory.value = emptyList()
             }
         }
     }
