@@ -1,6 +1,7 @@
 package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 
 /**
  * 列表 / 网格布局切换：两段式图标，选中段用主题色底标示当前模式。
@@ -32,10 +34,12 @@ fun LayoutModeToggle(
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
             .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
@@ -64,7 +68,7 @@ private fun LayoutModeToggleSegment(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(maxOf(0f, LocalUiConfig.current.cardCornerRadius.value - 2f).dp))
             .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
             .clickable { onClick() }
             .padding(horizontal = 8.dp, vertical = 6.dp)

@@ -1,7 +1,9 @@
 package app.amisles.hanime.feature.search
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -35,9 +37,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -101,6 +108,7 @@ val sortOptions = listOf(
     SortOption("他们在看", R.string.search_sort_watching, "他們在看")
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onVideoClick: (String) -> Unit = {},
@@ -220,7 +228,7 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 15.dp, vertical = 12.dp),
+                .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SearchField(
@@ -241,7 +249,7 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 15.dp, vertical = 12.dp)
+                .padding(start = 15.dp, end = 15.dp, bottom = 6.dp)
         ) {
             // 是否存在任何已生效的筛选条件（决定是否显示「清除筛选」入口）
             val hasActiveFilter = genreValue != null || tagsValue.isNotEmpty() ||
@@ -253,10 +261,16 @@ fun SearchScreen(
                 // 一键清除全部筛选：仅在确有筛选生效时出现
                 if (hasActiveFilter) {
                     item(key = "clear_filters_chip") {
+                        val clearShape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(clearShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = clearShape
+                                )
                                 .clickable {
                                     // 先同步 UI 本地态，再让 ViewModel 一次性清空并只发一次请求
                                     selectedTags.value = emptySet()
@@ -320,11 +334,16 @@ fun SearchScreen(
                 }
                 items(items = filterTypes, key = { it.displayRes }) { filter ->
                     val isSelected = selectedFilter.value.apiValue == filter.apiValue
-                    val shape = RoundedCornerShape(16.dp)
+                    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
                     Box(
                         modifier = Modifier
                             .clip(shape)
                             .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                shape = shape
+                            )
                             .clickable {
                                 selectedFilter.value = filter
                                 val apiValue = filter.apiValue.ifEmpty { null }
@@ -346,7 +365,7 @@ fun SearchScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp),
+                    .padding(bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -356,15 +375,29 @@ fun SearchScreen(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                val sortDropdownWidth = 140.dp
-                Box {
+                // 按钮与下拉菜单合成一个统一矩形：ExposedDropdownMenuBox 令菜单宽度与触发器一致
+                // 且自带缩放淡入过渡，无需再手写动画
+                ExposedDropdownMenuBox(
+                    expanded = sortMenuExpanded,
+                    onExpandedChange = { sortMenuExpanded = it }
+                ) {
+                    val sortShape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
                     Row(
                         modifier = Modifier
-                            .width(sortDropdownWidth)
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                            .clip(RoundedCornerShape(16.dp))
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .clip(sortShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 1.dp,
+                                color = if (sortMenuExpanded) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.outline
+                                },
+                                shape = sortShape
+                            )
                             .clickable { sortMenuExpanded = true }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
@@ -373,19 +406,21 @@ fun SearchScreen(
                                 ?: stringResource(R.string.search_sort_default),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = stringResource(R.string.search_sort),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
-                    DropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = sortMenuExpanded,
                         onDismissRequest = { sortMenuExpanded = false },
-                        modifier = Modifier.width(sortDropdownWidth)
+                        shape = sortShape,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         sortOptions.forEach { option ->
                             val isSelected = option == selectedSort.value
@@ -901,12 +936,18 @@ private fun FilterEntryChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(shape)
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                shape = shape
+            )
             .clickable { onClick() }
-            .padding(start = 14.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+            .padding(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
