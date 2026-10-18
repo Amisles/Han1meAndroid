@@ -78,7 +78,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -444,86 +446,18 @@ fun SearchScreen(
                     }
                     // 锚定在按钮下方，用垂直展开代替菜单默认的中心缩放，
                     // 视觉上是从按钮底边向下拉出；退出同样朝向按钮收起
-                    if (!menuTransition.isIdle || menuTransition.currentState) {
-                        Popup(
-                            popupPositionProvider = remember {
-                                object : PopupPositionProvider {
-                                    override fun calculatePosition(
-                                        anchorBounds: IntRect,
-                                        windowSize: IntSize,
-                                        layoutDirection: LayoutDirection,
-                                        popupContentSize: IntSize
-                                    ): IntOffset {
-                                        val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
-                                        return IntOffset(
-                                            x = anchorBounds.left.coerceIn(0, maxX),
-                                            y = anchorBounds.bottom
-                                        )
-                                    }
-                                }
-                            },
-                            onDismissRequest = { sortMenuExpanded = false },
-                            properties = PopupProperties(focusable = true)
-                        ) {
-                            AnimatedVisibility(
-                                visibleState = menuTransition,
-                                enter = expandVertically(
-                                    animationSpec = tween(180),
-                                    expandFrom = Alignment.Top
-                                ) + fadeIn(animationSpec = tween(120)),
-                                exit = shrinkVertically(
-                                    animationSpec = tween(140),
-                                    shrinkTowards = Alignment.Top
-                                ) + fadeOut(animationSpec = tween(90))
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .width(sortWidth)
-                                        .background(MaterialTheme.colorScheme.surface)
-                                        .border(1.dp, MaterialTheme.colorScheme.outline, menuShape)
-                                        .clip(menuShape)
-                                        .heightIn(max = 400.dp)
-                                        .verticalScroll(rememberScrollState())
-                                ) {
-                                    sortOptions.forEach { option ->
-                                        val isSelected = option == selectedSort.value
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    selectedSort.value = option
-                                                    sortMenuExpanded = false
-                                                    viewModel.setSort(option.apiValue)
-                                                }
-                                                .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = stringResource(option.labelRes),
-                                                fontSize = 13.sp,
-                                                color = if (isSelected) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                                                maxLines = 1,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            if (isSelected) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    SortMenuPopup(
+                        transition = menuTransition,
+                        width = sortWidth,
+                        shape = menuShape,
+                        selected = selectedSort.value,
+                        onSelect = { option ->
+                            selectedSort.value = option
+                            sortMenuExpanded = false
+                            viewModel.setSort(option.apiValue)
+                        },
+                        onDismiss = { sortMenuExpanded = false }
+                    )
                 }
 
                 // 布局模式切换：右对齐，与排序下拉同一行；写入即视为用户已显式选择
@@ -1299,6 +1233,99 @@ private fun DateFilterSheet(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 排序下拉：锚定在按钮底边、自上而下垂直展开，收起时反向缩回，视觉上像从按钮里拉出。
+ *
+ * 独立成顶层函数而非内联在筛选栏的 Row 内：`AnimatedVisibility` 有 `RowScope` 扩展重载，
+ * 内联时会优先解析到该重载，而 `Popup` 的 content 不是 `RowScope`，编译器会拒绝隐式接收者。
+ */
+@Composable
+private fun SortMenuPopup(
+    transition: MutableTransitionState<Boolean>,
+    width: Dp,
+    shape: Shape,
+    selected: SortOption?,
+    onSelect: (SortOption) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (transition.isIdle && !transition.currentState) return
+
+    Popup(
+        popupPositionProvider = remember {
+            object : PopupPositionProvider {
+                override fun calculatePosition(
+                    anchorBounds: IntRect,
+                    windowSize: IntSize,
+                    layoutDirection: LayoutDirection,
+                    popupContentSize: IntSize
+                ): IntOffset {
+                    val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                    return IntOffset(
+                        x = anchorBounds.left.coerceIn(0, maxX),
+                        y = anchorBounds.bottom
+                    )
+                }
+            }
+        },
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = true)
+    ) {
+        AnimatedVisibility(
+            visibleState = transition,
+            enter = expandVertically(
+                animationSpec = tween(180),
+                expandFrom = Alignment.Top
+            ) + fadeIn(animationSpec = tween(120)),
+            exit = shrinkVertically(
+                animationSpec = tween(140),
+                shrinkTowards = Alignment.Top
+            ) + fadeOut(animationSpec = tween(90))
+        ) {
+            Column(
+                modifier = Modifier
+                    .width(width)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+                    .clip(shape)
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                sortOptions.forEach { option ->
+                    val isSelected = option == selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(option) }
+                            .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(option.labelRes),
+                            fontSize = 13.sp,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
