@@ -830,8 +830,14 @@ fun DownloadTaskItem(
                 RoundedCornerShape(8.dp)
             )
             .surfaceEdge(RoundedCornerShape(8.dp))
-            .padding(12.dp)
-            .clickable(enabled = isSelectionMode) { onToggleSelection() },
+            .clip(RoundedCornerShape(8.dp))
+            // 已完成项整卡可点即播放；选中模式优先切换选中态。其余状态不可点，避免出现无响应的点击反馈
+            .clickable(
+                enabled = isSelectionMode || task.status == DownloadStatus.COMPLETED
+            ) {
+                if (isSelectionMode) onToggleSelection() else onPlayClick()
+            }
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -849,8 +855,8 @@ fun DownloadTaskItem(
 
         Box(
             modifier = Modifier
-                .width(80.dp)
-                .height(60.dp)
+                .width(112.dp)
+                .height(63.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center
@@ -1013,19 +1019,6 @@ fun DownloadTaskItem(
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = stringResource(R.string.common_retry),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    task.status == DownloadStatus.COMPLETED -> {
-                        IconButton(
-                            onClick = onPlayClick,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = stringResource(R.string.common_play),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
