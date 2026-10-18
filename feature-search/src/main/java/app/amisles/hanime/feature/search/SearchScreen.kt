@@ -1,11 +1,19 @@
 package app.amisles.hanime.feature.search
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,12 +71,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -377,7 +391,7 @@ fun SearchScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 // 按钮与下拉菜单拼成一个整体矩形：展开时按钮去下圆角、菜单去上圆角，
-                // 菜单 offset 归零紧贴按钮，且容器色、描边、标高全部与按钮对齐
+                // 菜单紧贴按钮底部，且容器色、描边与按钮一致
                 val sortRadius = LocalUiConfig.current.cardCornerRadius
                 val sortWidth = 116.dp
                 val closedShape = RoundedCornerShape(sortRadius)
@@ -391,17 +405,20 @@ fun SearchScreen(
                     targetValue = if (sortMenuExpanded) 180f else 0f,
                     label = "sortArrow"
                 )
+                // 用 MutableTransitionState 驱动进出动画：收起时需等动画结束再移除 Popup
+                val menuTransition = remember { MutableTransitionState(false) }
+                menuTransition.targetState = sortMenuExpanded
                 Box {
                     Row(
                         modifier = Modifier
                             .width(sortWidth)
-                            .clip(buttonShape)
                             .background(MaterialTheme.colorScheme.surface)
                             .border(
                                 width = 1.dp,
                                 color = MaterialTheme.colorScheme.outline,
                                 shape = buttonShape
                             )
+                            .clip(buttonShape)
                             .clickable { sortMenuExpanded = !sortMenuExpanded }
                             .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -425,46 +442,86 @@ fun SearchScreen(
                                 .graphicsLayer { rotationZ = arrowRotation }
                         )
                     }
-                    DropdownMenu(
-                        expanded = sortMenuExpanded,
-                        onDismissRequest = { sortMenuExpanded = false },
-                        modifier = Modifier.width(sortWidth),
-                        offset = DpOffset(0.dp, 0.dp),
-                        shape = menuShape,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 0.dp,
-                        shadowElevation = 0.dp,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    ) {
-                        sortOptions.forEach { option ->
-                            val isSelected = option == selectedSort.value
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(option.labelRes),
-                                        fontSize = 13.sp,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                                        maxLines = 1
-                                    )
-                                },
-                                onClick = {
-                                    selectedSort.value = option
-                                    sortMenuExpanded = false
-                                    viewModel.setSort(option.apiValue)
-                                },
-                                contentPadding = PaddingValues(start = 12.dp, end = 6.dp),
-                                trailingIcon = {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
+                    // 锚定在按钮下方，用垂直展开代替菜单默认的中心缩放，
+                    // 视觉上是从按钮底边向下拉出；退出同样朝向按钮收起
+                    if (!menuTransition.isIdle || menuTransition.currentState) {
+                        Popup(
+                            popupPositionProvider = remember {
+                                object : PopupPositionProvider {
+                                    override fun calculatePosition(
+                                        anchorBounds: IntRect,
+                                        windowSize: IntSize,
+                                        layoutDirection: LayoutDirection,
+                                        popupContentSize: IntSize
+                                    ): IntOffset {
+                                        val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                                        return IntOffset(
+                                            x = anchorBounds.left.coerceIn(0, maxX),
+                                            y = anchorBounds.bottom
                                         )
                                     }
                                 }
-                            )
+                            },
+                            onDismissRequest = { sortMenuExpanded = false },
+                            properties = PopupProperties(focusable = true)
+                        ) {
+                            AnimatedVisibility(
+                                visibleState = menuTransition,
+                                enter = expandVertically(
+                                    animationSpec = tween(180),
+                                    expandFrom = Alignment.Top
+                                ) + fadeIn(animationSpec = tween(120)),
+                                exit = shrinkVertically(
+                                    animationSpec = tween(140),
+                                    shrinkTowards = Alignment.Top
+                                ) + fadeOut(animationSpec = tween(90))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .width(sortWidth)
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, menuShape)
+                                        .clip(menuShape)
+                                        .heightIn(max = 400.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    sortOptions.forEach { option ->
+                                        val isSelected = option == selectedSort.value
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    selectedSort.value = option
+                                                    sortMenuExpanded = false
+                                                    viewModel.setSort(option.apiValue)
+                                                }
+                                                .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = stringResource(option.labelRes),
+                                                fontSize = 13.sp,
+                                                color = if (isSelected) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                                maxLines = 1,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
