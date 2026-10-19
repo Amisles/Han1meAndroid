@@ -89,8 +89,16 @@ class HomeViewModel @Inject constructor(
             var flushJob: Job? = null
             val flushScope: CoroutineScope = this
 
+            // 上一次已提交的快照。分区内容未变时不再重发 —— 合并窗口触发时很可能只有部分
+            // 分区到达，若每次都无条件 _sections.value = 新 list，下游 buildPlans 会重算、
+            // LazyColumn 会对整页做一次 diff，纯属浪费。
+            var lastPushed: List<HomeSection> = _sections.value
+
             fun pushSections() {
-                _sections.value = accumulated.values.toList()
+                val next = accumulated.values.toList()
+                if (next == lastPushed) return
+                lastPushed = next
+                _sections.value = next
             }
 
             repository.getHomeDataStream()
