@@ -97,7 +97,9 @@ class MainActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) {
         // 必须读取已初始化的 Preferences，不可再用明文 getSharedPreferences 打开同一文件：
         // 会与 EncryptedSharedPreferences 冲突并反复误触发「明文→加密」迁移，覆盖已存的主题/语言。
-        val lang = runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
+        // 走 Application 的语言缓存：该回调位于 Activity 创建最早期，不应在这里做加密存储解密。
+        val lang = (newBase.applicationContext as? HanimeApplication)?.currentLanguage()
+            ?: runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
         super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
     }
 
