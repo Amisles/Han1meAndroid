@@ -21,6 +21,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            // 纯逻辑单测（如 UiConfigCodec 的字符串编解码）不触碰 android.* 桩实现；
+            // 需要时再打开 returnDefaultValues，避免把框架行为误当成逻辑错误。
+            isReturnDefaultValues = false
+        }
+    }
 }
 
 kotlin {
@@ -46,4 +54,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    testImplementation(libs.junit)
 }
