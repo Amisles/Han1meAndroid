@@ -106,7 +106,7 @@ class NetworkService @Inject constructor(
 
     data class LoginFormResult(val code: Int, val setCookies: List<String>, val body: String?)
 
-    suspend fun fetchLoginPageWithBaseUrl(): FetchResult {
+    suspend fun fetchLoginPageWithBaseUrl(): FetchResult = withContext(Dispatchers.IO) {
         AppLogger.log("NetworkService", "fetchLoginPageWithBaseUrl called")
         val base = getCurrentBaseUrl()
         val url = "$base/login"
@@ -117,16 +117,14 @@ class NetworkService @Inject constructor(
             .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
             .get()
             .build()
-        val (code, html) = withContext(Dispatchers.IO) {
-            client.newCall(req).execute().use { resp ->
-                val c = resp.code
-                val h = if (c in 200..399) resp.body.string() else ""
-                c to h
-            }
+        val (code, html) = client.newCall(req).execute().use { resp ->
+            val c = resp.code
+            val h = if (c in 200..399) resp.body.string() else ""
+            c to h
         }
         AppLogger.log("NetworkService", "fetchLoginPage code=$code url=$base")
         if (code in 200..399) {
-            return FetchResult(html, base)
+            FetchResult(html, base)
         } else {
             throw IOException("login page HTTP $code")
         }
@@ -136,7 +134,7 @@ class NetworkService @Inject constructor(
         csrfToken: String,
         email: String,
         password: String
-    ): LoginFormResult {
+    ): LoginFormResult = withContext(Dispatchers.IO) {
         AppLogger.log("NetworkService", "postLoginForm called (email length=${email.length})")
         val base = getCurrentBaseUrl()
         val form = FormBody.Builder()
@@ -154,17 +152,15 @@ class NetworkService @Inject constructor(
             .header("Origin", base)
             .header("X-CSRF-TOKEN", csrfToken)
             .build()
-        return withContext(Dispatchers.IO) {
-            noRedirectClient.newCall(req).execute().use { resp ->
-                val code = resp.code
-                val cookies = resp.headers("Set-Cookie")
-                var body: String? = null
-                if (code in 200..299) {
-                    body = resp.body.string()
-                }
-                AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
-                LoginFormResult(code, cookies, body)
+        noRedirectClient.newCall(req).execute().use { resp ->
+            val code = resp.code
+            val cookies = resp.headers("Set-Cookie")
+            var body: String? = null
+            if (code in 200..299) {
+                body = resp.body.string()
             }
+            AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
+            LoginFormResult(code, cookies, body)
         }
     }
 
@@ -186,7 +182,7 @@ class NetworkService @Inject constructor(
         broad: Boolean = false,
         date: String = "",
         duration: String = ""
-    ): FetchResult {
+    ): FetchResult = withContext(Dispatchers.IO) {
         AppLogger.log("NetworkService", "fetchSearchPageWithBaseUrl called")
         val baseUrl = getCurrentBaseUrl()
         AppLogger.log("NetworkService", "Using base URL: $baseUrl")
@@ -220,25 +216,25 @@ class NetworkService @Inject constructor(
         }
         val url = "$baseUrl/search?" + queryParts.joinToString("&")
         val html = executeRequest(buildRequest(url))
-        return FetchResult(html, baseUrl)
+        FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchWatchPageWithBaseUrl(videoUrl: String): FetchResult {
+    suspend fun fetchWatchPageWithBaseUrl(videoUrl: String): FetchResult = withContext(Dispatchers.IO) {
         AppLogger.log("NetworkService", "fetchWatchPageWithBaseUrl called, videoUrl: ${videoUrl.redactUrlForLog()}")
         val url = if (videoUrl.startsWith("http")) videoUrl else "${getCurrentBaseUrl()}$videoUrl"
         AppLogger.log("NetworkService", "Full URL: ${url.redactUrlForLog()}")
         val html = executeRequest(buildRequest(url))
         val baseUrl = "https://${HOST_REGEX.find(url)?.groupValues?.get(1) ?: Preferences.DEFAULT_BASE_URL.removePrefix("https://")}"
-        return FetchResult(html, baseUrl)
+        FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchDownloadPageWithBaseUrl(videoId: String): FetchResult {
+    suspend fun fetchDownloadPageWithBaseUrl(videoId: String): FetchResult = withContext(Dispatchers.IO) {
         AppLogger.log("NetworkService", "fetchDownloadPageWithBaseUrl called, videoId: $videoId")
         val baseUrl = getCurrentBaseUrl()
         AppLogger.log("NetworkService", "Fetching download page from: $baseUrl")
         val url = "$baseUrl/download?v=$videoId"
         val html = executeRequest(buildRequest(url))
-        return FetchResult(html, baseUrl)
+        FetchResult(html, baseUrl)
     }
 
     suspend fun fetchAuthorPage(authorPageUrl: String): AuthorPageData {
