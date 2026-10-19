@@ -33,6 +33,8 @@ object Preferences {
     private const val SP_CF_COOKIE = "cloudflare_cookie"
     /** 登录态 Cookie 的来源域名（小写 host）。会话只能注入回该域名，见 [saveLogin]。 */
     private const val SP_LOGIN_COOKIE_DOMAIN = "login_cookie_domain"
+    /** 明文→加密迁移已完成的标记。写进加密存储，避免每次启动都重新做明文探测。 */
+    private const val SP_MIGRATED_TO_ENCRYPTED = "migrated_to_encrypted"
     private const val SP_SAVED_USER_ID = "saved_user_id"
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
@@ -202,9 +204,20 @@ object Preferences {
                 .build()
         }.getOrNull() ?: return plainFallback(context)
 
+        // 加密存储只创建一次：既用于读取迁移标记，也直接作为返回值。
+        // 早期实现是先创建一次判断标记、再创建一次返回，每次启动多付一次 Keystore/文件解析成本。
+        val encrypted = createEncrypted(appCtx, masterKey)
         val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
-        // 仅当旧文件确为明文格式才迁移，否则会误读加密文件为 null 并覆盖已保存数据
-        if (legacyFile.exists() && isLegacyPlaintextPrefs(appCtx)) {
+        // 仅当旧文件确为明文格式才迁移，否则会误读加密文件为 null 并覆盖已保存数据。
+        // 迁移标记写在加密存储里，已迁移的用户不再触发 isLegacyPlaintextPrefs（它会额外打开
+        // 一次同名 SharedPreferences 并解析整份 XML）。
+        val alreadyMigrated = runCatching {
+            encrypted?.getBoolean(SP_MIGRATED_TO_ENCRYPTED, false) == true
+        }.getOrDefault(false)
+        // encrypted == null 时跳过迁移，直接落到下方的「清空重建 / 保持原状」判定
+        if (encrypted != null && !alreadyMigrated &&
+            legacyFile.exists() && isLegacyPlaintextPrefs(appCtx)
+        ) {
             // 读取明文旧值（此时旧文件尚在），随后删除再创建加密文件
             val legacy = appCtx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             val alreadyLogin = legacy.getBoolean(SP_ALREADY_LOGIN, false)
@@ -216,6 +229,7 @@ object Preferences {
             val appLang = legacy.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN).orEmpty()
             val themeMode = legacy.getString(SP_THEME_MODE, ThemeMode.SYSTEM.name).orEmpty()
             appCtx.deleteSharedPreferences(NAME)
+            // 删除明文文件后需要重建：旧实例仍指向已删除的文件，复用会读到空数据
             val enc = createEncrypted(appCtx, masterKey) ?: return plainFallback(context)
             enc.edit {
                 putBoolean(SP_ALREADY_LOGIN, alreadyLogin)
@@ -232,12 +246,17 @@ object Preferences {
                 putString(SP_THEME_MODE, themeMode)
             }
             AppLogger.log("Preferences", "已将明文偏好迁移至 EncryptedSharedPreferences")
+            enc.edit { putBoolean(SP_MIGRATED_TO_ENCRYPTED, true) }
             return enc
         }
 
-        createEncrypted(appCtx, masterKey)?.let { enc ->
+        encrypted?.let { enc ->
             val size = runCatching { enc.all.size }.getOrDefault(-1)
             AppLogger.log("Preferences", "加密存储已就绪，条目数=$size")
+            // 首次确认没有可迁移的明文文件后落标记，后续启动无需再打开明文 SharedPreferences
+            if (!alreadyMigrated) {
+                runCatching { enc.edit { putBoolean(SP_MIGRATED_TO_ENCRYPTED, true) } }
+            }
             return enc
         }
 
