@@ -469,14 +469,12 @@ class DetailViewModel @Inject constructor(
             likeCount = 0,
             replyTo = target.replyToUsername
         )
-        val prevComments = _comments.value
-        val prevReplies = _repliesCache.value
         // +1 回复数
-        _comments.value = prevComments.map { c ->
+        _comments.value = _comments.value.map { c ->
             if (c.id == target.commentId) c.copy(replyCount = c.replyCount + 1) else c
         }
         // 追加临时回复
-        _repliesCache.value = prevReplies.toMutableMap().apply {
+        _repliesCache.value = _repliesCache.value.toMutableMap().apply {
             val list = this[target.commentId] ?: emptyList()
             this[target.commentId] = list + optimisticReply
         }
@@ -505,9 +503,7 @@ class DetailViewModel @Inject constructor(
                         AppLogger.d("DetailViewModel", "Reply posted for comment ${target.commentId}, replyId=${newReply.id}")
                     }
                     is AppResult.Error -> {
-                        // 回滚到提交前状态
-                        _comments.value = prevComments
-                        _repliesCache.value = prevReplies
+                        rollbackOptimisticReply(target.commentId, optimisticReply.id)
                         _replyError.value = result.message
                         AppLogger.e("DetailViewModel", "Error posting reply: ${result.message}", result.exception)
                     }
@@ -519,13 +515,29 @@ class DetailViewModel @Inject constructor(
                 // 异常路径同样要回滚乐观更新，否则界面会残留一条永不落地的临时回复
                 AppLogger.e("DetailViewModel", "Error posting reply: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _comments.value = prevComments
-                    _repliesCache.value = prevReplies
+                    rollbackOptimisticReply(target.commentId, optimisticReply.id)
                     _replyError.value = e.message
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isPostingReply.value = false
             }
+        }
+    }
+
+    /**
+     * 精确回滚一次乐观回复：只移除该临时回复并把该评论的回复数 -1，不再整表恢复提交前快照。
+     *
+     * 原实现用提交前的 prevComments/prevReplies 整体覆盖，会把请求期间的并发修改一并抹掉 ——
+     * 例如同一条评论的回复列表在此期间被重新拉取、或其它评论的点攒/回复已乐观写入，
+     * 回滚会让这些变更凭空消失。
+     */
+    private fun rollbackOptimisticReply(commentId: String, optimisticId: String) {
+        _comments.value = _comments.value.map { c ->
+            if (c.id == commentId) c.copy(replyCount = (c.replyCount - 1).coerceAtLeast(0)) else c
+        }
+        _repliesCache.value = _repliesCache.value.toMutableMap().apply {
+            val list = this[commentId] ?: return@apply
+            this[commentId] = list.filter { it.id != optimisticId }
         }
     }
 
