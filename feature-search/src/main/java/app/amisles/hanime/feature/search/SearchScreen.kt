@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -175,8 +176,14 @@ fun SearchScreen(
         SearchLayoutMode.GRID
     }) == SearchLayoutMode.GRID
 
-    // 滚动接近底部自动加载下一页；网格与列表各有一套滚动状态，跟随当前生效的那一套
-    androidx.compose.runtime.LaunchedEffect(isGridMode, videos, isLoadingMore, hasMore) {
+    // 滚动接近底部自动加载下一页；网格与列表各有一套滚动状态，跟随当前生效的那一套。
+    // key 只保留 isGridMode：videos / isLoadingMore / hasMore 每翻一页都会变，若作为 key
+    // 会连带重建整套 snapshotFlow 与收集协程（分页越多重建越频繁，且每次重建都会重新
+    // 触发一次「已在底部」的判定）。这三个值改为通过 rememberUpdatedState 读取最新值。
+    val videosState = rememberUpdatedState(videos)
+    val isLoadingMoreState = rememberUpdatedState(isLoadingMore)
+    val hasMoreState = rememberUpdatedState(hasMore)
+    androidx.compose.runtime.LaunchedEffect(isGridMode) {
         val nearEnd = if (isGridMode) {
             snapshotFlow {
                 val layoutInfo = gridState.layoutInfo
@@ -193,7 +200,9 @@ fun SearchScreen(
             }
         }
         nearEnd.collect { shouldLoad ->
-            if (shouldLoad && hasMore && !isLoadingMore && videos.isNotEmpty()) {
+            if (shouldLoad && hasMoreState.value && !isLoadingMoreState.value &&
+                videosState.value.isNotEmpty()
+            ) {
                 viewModel.loadMore()
             }
         }
