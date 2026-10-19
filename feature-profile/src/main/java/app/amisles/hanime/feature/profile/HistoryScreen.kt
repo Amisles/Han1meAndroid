@@ -72,7 +72,11 @@ private fun formatWatchedTime(timestamp: Long): String {
         minutes < 60 -> stringResource(R.string.history_time_minutes_ago, minutes)
         hours < 24 -> stringResource(R.string.history_time_hours_ago, hours)
         days < 30 -> stringResource(R.string.history_time_days_ago, days)
-        else -> SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(timestamp))
+        // SimpleDateFormat 构造成本不低，按 Locale 缓存一份复用，避免列表里每个
+        // 超过 30 天的条目在每次重组时都新建一次；语言切换时 Locale 变化会自动重建。
+        else -> remember(Locale.getDefault()) {
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        }.format(Date(timestamp))
     }
 }
 
