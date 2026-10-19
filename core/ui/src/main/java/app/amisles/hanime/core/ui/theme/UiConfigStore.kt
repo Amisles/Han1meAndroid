@@ -48,6 +48,14 @@ object UiConfigStore {
     @Volatile
     private var initialized = false
 
+    // 配置写盘是「整表重写」（27 个键），原实现在调用方线程同步 commit，而调用点全在 Compose
+    // 点击/滑杆回调（主线程）上，一次提交就是一次同步磁盘写入。改为单线程串行落盘，
+    // 保留「后写覆盖先写」的顺序语义，同时不阻塞 UI。SharedPreferences 自身是线程安全的，
+    // 后台写与主线程读不会冲突。
+    private val writeExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "hanime-ui-config-writer").apply { isDaemon = true }
+    }
+
     private lateinit var sp: SharedPreferences
 
     private val _config = MutableStateFlow(UiConfig.Default)
@@ -68,7 +76,7 @@ object UiConfigStore {
     fun set(config: UiConfig) {
         val safe = config.sanitized()
         if (safe == _config.value) return
-        if (initialized) write(safe)
+        if (initialized) persistAsync { write(safe) }
         _config.value = safe
     }
 
@@ -83,7 +91,7 @@ object UiConfigStore {
     fun setHomeSections(config: HomeSectionConfig) {
         val safe = config.sanitized()
         if (safe == _homeSections.value) return
-        if (initialized) writeHomeSections(safe)
+        if (initialized) persistAsync { writeHomeSections(safe) }
         _homeSections.value = safe
     }
 
@@ -112,6 +120,15 @@ object UiConfigStore {
             setHomeSections(result.homeSections)
         }
         return result
+    }
+
+    /** 把一次写盘提交到串行写线程；异常只记录，不影响内存态（内存态已先行更新，UI 保持一致）。 */
+    private fun persistAsync(block: () -> Unit) {
+        writeExecutor.execute {
+            runCatching(block).onFailure { e ->
+                android.util.Log.w("UiConfigStore", "界面配置落盘失败", e)
+            }
+        }
     }
 
     private fun read(): UiConfig {
