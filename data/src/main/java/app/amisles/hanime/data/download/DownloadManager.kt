@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Semaphore
 import okhttp3.OkHttpClient
 import okhttp3.Dispatcher
@@ -281,6 +283,9 @@ class DownloadManager @Inject constructor(
         }
         val filePath = targetFile.absolutePath
 
+        // 需要「锁外推导续传状态」的既有任务 id；非空表示本方法是复用而非新建
+        var deferredResumeId: Int? = null
+
         tasksLock.withLock {
             // 去重必须按「文件身份」而非 (url, quality)：downloadUrl 是带时效签名的 CDN 直链，
             // 重新拉取画质页会得到不同 url；而落盘路径由 (title, quality, videoId) 决定。若按不按
@@ -291,8 +296,10 @@ class DownloadManager @Inject constructor(
                 return when (existingTask.status) {
                     // 暂停/失败：复用即续传，保持「点下载 = 继续」的既有语义
                     DownloadStatus.PAUSED, DownloadStatus.FAILED -> {
-                        resumeDownloadInternal(existingTask.id)
-                        existingTask.id
+                        // resumeDownloadInternal 内的续传推导（读 .partmap / stat / delete）会阻塞
+                        // 持锁期间主线程的 pauseDownload / cancelDownload，故延后到锁外执行
+                        deferredResumeId = existingTask.id
+                        RESULT_RESUME_DEFERRED
                     }
                     DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> RESULT_ALREADY_ACTIVE
                     DownloadStatus.COMPLETED -> RESULT_ALREADY_COMPLETED
@@ -321,6 +328,15 @@ class DownloadManager @Inject constructor(
 
             return taskId
         }
+
+        deferredResumeId?.let { id ->
+            val task = taskMap[id] ?: return id
+            // 锁外做磁盘 I/O，再重新持锁启动；putIfAbsent 保证并发重复启动的安全性
+            val (rb, rm) = deriveResumeState(task)
+            tasksLock.withLock { startDownloadWithConcurrencyInternal(task, rb, rm) }
+            return id
+        }
+        return RESULT_INVALID_URL
     }
 
     /**
@@ -514,17 +530,35 @@ class DownloadManager @Inject constructor(
     }
 
     private fun startNextPendingTask() {
-        tasksLock.withLock {
-            val pendingTask = taskMap.values.firstOrNull {
-                it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)
+        // 只在锁内做内存判定（挑任务 + 快速失败），磁盘 I/O 全部移到锁外。
+        // taskMap / downloadJobs 均为 ConcurrentHashMap，分散读取不会撕裂。
+        val tried = HashSet<Int>()
+        while (true) {
+            val candidate = tasksLock.withLock { pickPendingTaskLocked(exclude = tried) } ?: return
+            if (activeSlots.get() >= concurrencyLimit) return
+            AppLogger.log("DownloadManager", "启动下一个等待任务: ${candidate.title}")
+            // 锁外推导（含 .partmap 读取/删除、file.length()），不阻塞主线程 pause/cancel
+            val (rb, rm) = deriveResumeState(candidate)
+            val launched = tasksLock.withLock {
+                startDownloadWithConcurrencyInternal(candidate, rb, rm)
+                downloadJobs.containsKey(candidate.id)
             }
-            // activeSlots 判定仅作快速失败的启发式；真正的并发正确性由 tryAcquireSoftSlot 的 CAS 保证
-            if (pendingTask != null && activeSlots.get() < concurrencyLimit) {
-                AppLogger.log("DownloadManager", "启动下一个等待任务: ${pendingTask.title}")
-                val (rb, rm) = deriveResumeState(pendingTask)
-                startDownloadWithConcurrencyInternal(pendingTask, rb, rm)
-            }
+            if (!launched) return
+            tried.add(candidate.id)
         }
+    }
+
+    /**
+     * 锁内挑选下一个待启动任务（排除 [exclude]）。返回 null 表示没有可用任务。
+     *
+     * 只读 ConcurrentHashMap，不做任何磁盘 I/O —— 这是持锁执行的关键约束：
+     * 持锁做 I/O 会让主线程上的 pauseDownload / cancelDownload / startDownload 长时间等锁。
+     */
+    private fun pickPendingTaskLocked(exclude: Set<Int>): DownloadTask? {
+        val pendingTask = taskMap.values.firstOrNull {
+            it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id) && it.id !in exclude
+        }
+        return pendingTask?.takeIf { activeSlots.get() < concurrencyLimit }
     }
 
     fun updateConcurrencyLimit(maxConcurrent: Int) {
@@ -533,17 +567,16 @@ class DownloadManager @Inject constructor(
         concurrencyLimit = safeMax
         AppLogger.log("DownloadManager", "并发下载数已更新为: $safeMax")
 
-        tasksLock.withLock {
-            val pendingTasks = taskMap.values.filter {
-                it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id)
+        // 锁内挑任务、锁外推导续传起点，避免批量启动时长时间持锁阻塞主线程
+        while (activeSlots.get() < concurrencyLimit) {
+            val candidate = tasksLock.withLock { pickPendingTaskLocked(exclude = emptySet()) }
+                ?: break
+            val (rb, rm) = deriveResumeState(candidate)
+            val launched = tasksLock.withLock {
+                startDownloadWithConcurrencyInternal(candidate, rb, rm)
+                downloadJobs.containsKey(candidate.id)
             }
-            pendingTasks.forEach { task ->
-                if (activeSlots.get() < concurrencyLimit) {
-                    // 启动前重新推导续传起点
-                    val (rb, rm) = deriveResumeState(task)
-                    startDownloadWithConcurrencyInternal(task, rb, rm)
-                }
-            }
+            if (!launched) break
         }
     }
 
@@ -757,23 +790,35 @@ class DownloadManager @Inject constructor(
      * 调用方需持有 tasksLock，resumeDownloadInternal 不再重复取锁。
      */
     fun retryAllFailed() {
-        tasksLock.withLock {
-            taskMap.values.filter { it.status == DownloadStatus.FAILED }.forEach {
-                resumeDownloadInternal(it.id)
+        // 锁内只取失败列表，磁盘 I/O 与调度都在锁外；失败任务可能多达数十个，
+        // 原实现在锁内逐个 deriveResumeState，会把主线程的 pause/cancel 长时间挡住。
+        val failedIds = tasksLock.withLock {
+            taskMap.values.filter { it.status == DownloadStatus.FAILED }.map { it.id }
+        }
+        failedIds.forEach { id ->
+            val task = taskMap[id] ?: return@forEach
+            val (rb, rm) = deriveResumeState(task)
+            tasksLock.withLock {
+                val current = taskMap[id] ?: return@withLock
+                if (current.status != DownloadStatus.FAILED) return@withLock
+                startDownloadWithConcurrencyInternal(current, rb, rm)
             }
         }
-        AppLogger.log("DownloadManager", "retryAllFailed: 已触发全部失败任务重试")
+        AppLogger.log("DownloadManager", "retryAllFailed: 已触发 " + failedIds.size + " 个失败任务重试")
     }
 
     /**
-     * 内部方法，调用者必须持有 tasksLock。
+     * 启动单个任务的续传：先在锁外推导续传状态，再持锁启动。
+     * 调用方**不要**持有 tasksLock（推导含磁盘 I/O）。
      */
     private fun resumeDownloadInternal(taskId: Int) {
         val task = taskMap[taskId] ?: return
         if (task.status != DownloadStatus.PAUSED && task.status != DownloadStatus.FAILED) return
         if (downloadJobs.containsKey(taskId)) return
         val (resumeBytes, resumeMap) = deriveResumeState(task)
-        startDownloadWithConcurrencyInternal(task, resumeBytes, resumeMap)
+        tasksLock.withLock {
+            startDownloadWithConcurrencyInternal(task, resumeBytes, resumeMap)
+        }
         if (resumeMap != null) {
             AppLogger.log("DownloadManager", "Resume (chunked) download: $taskId, undone chunks=${resumeMap.count { !it }}/${resumeMap.size}")
         } else {
@@ -783,22 +828,29 @@ class DownloadManager @Inject constructor(
 
     fun cancelDownload(taskId: Int) {
         cancelTaskCalls(taskId)
+        // 先取消再 join：Job.cancel() 是协作式的，写循环里检查到取消后仍有正在进行的 write。
+        // 若此时就删文件，写入会落到已 unlink 的 inode 上，随后新建的同名任务会指向另一个
+        // inode，表现为「新任务下载到旧数据」并泄漏磁盘空间。
         val job = downloadJobs.remove(taskId)
         job?.cancel()
+        runBlocking { withTimeoutOrNull(5_000L) { job?.join() } }
         if (job == null) taskCancelFlags.remove(taskId)
-        tasksLock.withLock {
-            val task = taskMap[taskId]
-            task?.let {
-                val file = File(it.filePath)
-                if (file.exists()) file.delete()
-                // 一并清理分块续传位图表与其 .tmp 中间文件，避免孤儿文件
-                val pm = File(it.filePath + PARTMAP_SUFFIX)
-                if (pm.exists()) pm.delete()
-                val pmTmp = File(it.filePath + PARTMAP_SUFFIX + ".tmp")
-                if (pmTmp.exists()) pmTmp.delete()
-            }
-            taskMap.remove(taskId)
+
+        // 锁内只做内存移除；文件删除移到锁外（delete 会触发 FS 元数据更新，持锁期间
+        // 主线程的 pauseDownload / startDownload 会长时间等锁）
+        val removed = tasksLock.withLock {
+            val task = taskMap.remove(taskId)
             emitTasks()
+            task
+        }
+        removed?.let { task ->
+            val file = File(task.filePath)
+            if (file.exists()) file.delete()
+            // 一并清理分块续传位图表与其 .tmp 中间文件，避免孤儿文件
+            val pm = File(task.filePath + PARTMAP_SUFFIX)
+            if (pm.exists()) pm.delete()
+            val pmTmp = File(task.filePath + PARTMAP_SUFFIX + ".tmp")
+            if (pmTmp.exists()) pmTmp.delete()
         }
         // 走与 persistTask 相同的串行队列，避免 DELETE 与在途 UPSERT 竞争导致任务复活
         persistDelete(taskId)
@@ -962,6 +1014,8 @@ class DownloadManager @Inject constructor(
          * - [RESULT_ALREADY_COMPLETED]：同一文件已下载完成。
          */
         const val RESULT_INVALID_URL = -1
+        /** 复用了已有任务并已在锁外启动续传；调用方按「已启动」处理。 */
+        const val RESULT_RESUME_DEFERRED = -4
         const val RESULT_ALREADY_ACTIVE = -2
         const val RESULT_ALREADY_COMPLETED = -3
     }
