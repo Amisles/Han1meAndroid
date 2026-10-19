@@ -12,7 +12,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,14 +20,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
@@ -78,7 +74,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -1227,107 +1222,37 @@ fun VideoPlayer(
 
             // 弹框打开时覆盖一层透明遮罩，点击其他区域即收起弹框
             if (showSpeedMenu || showQualityMenu) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable {
-                            markControlTap()
-                            showSpeedMenu = false
-                            showQualityMenu = false
-                        }
-                )
+                PlayerMenuScrim(onDismiss = {
+                    markControlTap()
+                    showSpeedMenu = false
+                    showQualityMenu = false
+                })
             }
 
             if (showSpeedMenu && speedBtnBounds != Rect.Zero) {
-                val scrollState = rememberScrollState()
-                val menuWidthPx = with(density) { 48.dp.toPx() }
-                val menuHeightPx = with(density) { 120.dp.toPx() }
-                val gapPx = with(density) { 4.dp.toPx() }
-                // 按钮根坐标减播放器根坐标，换算为弹框局部坐标
-                val localX = speedBtnBounds.center.x - playerPos.x
-                val localY = speedBtnBounds.top - playerPos.y
-                Column(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (localX - menuWidthPx / 2f).toInt(),
-                                (localY - menuHeightPx - gapPx).toInt()
-                            )
-                        }
-                        .width(48.dp)
-                        .height(120.dp)
-                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-                        .verticalScroll(scrollState)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { /* 拦截点击，避免穿透到遮罩关闭 */ }
-                        .padding(2.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    playbackSpeeds.forEach { speed ->
-                        Text(
-                            text = "${speed}x",
-                            color = if (speed == effectiveSpeed) HanimePrimary else Color.White,
-                            fontSize = 11.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable {
-                                    markControlTap()
-                                    setPlaybackSpeed(speed)
-                                },
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+                SpeedMenuPopup(
+                    anchor = speedBtnBounds,
+                    ui = PlayerMenuUi(
+                        playerPos = playerPos,
+                        effectiveSpeed = effectiveSpeed,
+                        playbackSpeeds = playbackSpeeds,
+                        onSpeedSelected = { setPlaybackSpeed(it) },
+                        onControlTap = { markControlTap() }
+                    )
+                )
             }
 
             if (showQualityMenu && sortedSources.isNotEmpty() && qualityBtnBounds != Rect.Zero) {
-                val scrollState = rememberScrollState()
-                val menuWidthPx = with(density) { 56.dp.toPx() }
-                val menuHeightPx = with(density) { 120.dp.toPx() }
-                val gapPx = with(density) { 4.dp.toPx() }
-                // 按钮根坐标减播放器根坐标，换算为弹框局部坐标
-                val localX = qualityBtnBounds.center.x - playerPos.x
-                val localY = qualityBtnBounds.top - playerPos.y
-                Column(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (localX - menuWidthPx / 2f).toInt(),
-                                (localY - menuHeightPx - gapPx).toInt()
-                            )
-                        }
-                        .width(56.dp)
-                        .height(120.dp)
-                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-                        .verticalScroll(scrollState)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { /* 拦截点击，避免穿透到遮罩关闭 */ }
-                        .padding(2.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    sortedSources.forEach { source ->
-                        val isSelected = source.url == currentSourceUrl
-                        Text(
-                            text = source.resolution,
-                            color = if (isSelected) HanimePrimary else Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable {
-                                    markControlTap()
-                                    switchQuality(source)
-                                },
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+                QualityMenuPopup(
+                    anchor = qualityBtnBounds,
+                    ui = QualityMenuUi(
+                        playerPos = playerPos,
+                        sources = sortedSources,
+                        currentSourceUrl = currentSourceUrl,
+                        onSourceSelected = { switchQuality(it) },
+                        onControlTap = { markControlTap() }
+                    )
+                )
             }
         }
     }
