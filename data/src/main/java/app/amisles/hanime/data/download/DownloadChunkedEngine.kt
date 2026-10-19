@@ -19,6 +19,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withPermit
+import kotlin.concurrent.withLock
+import java.util.concurrent.locks.ReentrantLock
 import okhttp3.Call
 import okhttp3.Request
 
@@ -174,6 +176,10 @@ internal suspend fun DownloadManager.downloadFileChunked(
     }
 
     val lock = Any()
+    // 位图表写盘串行化：reporter 的周期落盘与收尾落盘并发时都会走「写 .tmp → rename」，
+    // 不互斥会互相覆盖中间文件。与 [lock] 分开：写盘含 fsync，不应阻塞 worker 登记块完成。
+    // 用 ReentrantLock 而非 Mutex：收尾路径在 suspend 函数里，而 .withLock{} 不可跨挂起点。
+    val partmapWriteLock = ReentrantLock()
     val initialDone = chunkDone.count { it }
     val completedChunks = AtomicInteger(initialDone)
     val chunkCallRefs = Array(chunkCount) { AtomicReference<Call?>(null) }
@@ -471,7 +477,9 @@ internal suspend fun DownloadManager.downloadFileChunked(
                         if (done != lastPersistedDone || now - lastBitmapPersist > PARTMAP_PERSIST_MS) {
                             lastBitmapPersist = now
                             lastPersistedDone = done
-                            writePartmap(partmapFile, chunkCount, chunkDone)
+                            // 先拷贝快照再释放 lock，避免持锁做 fsync 阻塞 worker 登记块完成
+                            val snapshot = chunkDone.copyOf()
+                            partmapWriteLock.withLock { writePartmap(partmapFile, chunkCount, snapshot) }
                         }
                     }
                 }
@@ -485,7 +493,15 @@ internal suspend fun DownloadManager.downloadFileChunked(
             reporter.cancel()
         }
     } catch (ce: CancellationException) {
-        if (!rangeUnsupported.get() && sourceChanged.get() == null) throw ce
+        if (!rangeUnsupported.get() && sourceChanged.get() == null) {
+            // 暂停/取消在这里把位图表刷盘，且必须先写再抛：调用方 catch 后不再有可靠落盘点。
+            // 原先只有函数末尾「取消后正常返回」的分支会写位图，而 Job.cancel() 让协程以
+            // CancellationException 退出，根本走不到那里 —— 位图停在上一次节流落盘（最多早 5 秒）
+            // 的状态，暂停后「续传」实际会丢失这段时间内完成的块，并可能退回整份重下。
+            // 这里不调用 updateTask：暂停态由 DownloadManager.pauseDownload 负责写入。
+            flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, lock, partmapWriteLock)
+            throw ce
+        }
     } catch (inefficient: ChunkedInefficientException) {
         // 不让「驱逐预算耗尽」升级为任务失败：保留位图表，改用单连接从「已完成块的连续前缀」处续传
         AppLogger.log("DownloadManager", "分块下载降级单连接续传: ${inefficient.message}")
@@ -514,9 +530,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
     }
 
     if (isTaskCancelled(taskId)) {
-        if (outputFile.exists()) {
-            synchronized(lock) { writePartmap(partmapFile, chunkCount, chunkDone) }
-        }
+        flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, lock, partmapWriteLock)
         AppLogger.log("DownloadManager", "分块下载中止（暂停/取消）: taskId=$taskId，位图表已保留供续传")
         return
     }
@@ -535,6 +549,30 @@ internal suspend fun DownloadManager.downloadFileChunked(
     } else {
         // 完整性不达标：抛出异常触发 FAILED 并保留位图表，下次续传仅补未完成块
         throw IOException("分块下载完整性校验失败：allDone=$allDone, $totalDownloaded/$totalBytes, disk=$onDisk")
+    }
+}
+
+/**
+ * 尽力把当前分块位图表刷到磁盘（暂停 / 取消 / 中止路径共用）。
+ *
+ * 先拷快照再释放 [lock] 做 fsync，避免阻塞 worker 登记块完成；写盘经 [writeLock] 串行化，
+ * 与 reporter 的周期落盘不会互相覆盖 .tmp。任何异常都被吞掉：这里位于清理路径，
+ * 不能因为写位图失败而改变上层对取消/异常的判定。
+ */
+private fun flushPartmapBestEffort(
+    partmapFile: File,
+    outputFile: File,
+    chunkCount: Int,
+    chunkDone: BooleanArray,
+    lock: Any,
+    writeLock: ReentrantLock
+) {
+    runCatching {
+        if (!outputFile.exists()) return
+        val snapshot = synchronized(lock) { chunkDone.copyOf() }
+        writeLock.withLock { writePartmap(partmapFile, chunkCount, snapshot) }
+    }.onFailure { e ->
+        AppLogger.logError("DownloadManager", "位图表落盘失败（续传进度可能丢失一部分）: " + e.message, e)
     }
 }
 
