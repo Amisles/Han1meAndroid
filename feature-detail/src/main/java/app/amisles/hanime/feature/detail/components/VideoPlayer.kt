@@ -651,16 +651,17 @@ fun VideoPlayer(
             // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击；
             // 以指针数为唯一真相源，避免多检测器竞争与状态卡死
             .pointerInput(Unit) {
+                // 拖动判定与位移换算已抽为纯类：阈值、方向优先级、左右半屏分界都在
+                // PlayerGestureMath 内，便于单测覆盖（见 PlayerGestureMathTest）。
+                val gestureMath = PlayerGestureMath(PlayerGestureMath.DEFAULT_SLOP_PX)
                 while (true) {
                     awaitPointerEventScope {
                         var pointerCount = 0
                         var isZoom = false
-                        var dragMode: String? = null   // "seek" | "brightness" | "volume"
+                        var dragMode: DragMode? = null
                         var startX = 0f
                         var lastX = 0f
                         var lastY = 0f
-                        var accDx = 0f
-                        var accDy = 0f
                         var seekStartPos = 0L
                         var lastPinch = 0f
                         var downX = 0f
@@ -714,7 +715,7 @@ fun VideoPlayer(
                                         }
                                     }
                                 }
-                                if (dragMode == "seek") {
+                                if (dragMode == DragMode.SEEK) {
                                     exoPlayer.seekTo(seekPreview)
                                 }
                                 if (dragMode != null || isZoom) {
@@ -777,10 +778,11 @@ fun VideoPlayer(
                                     continue
                                 }
                                 if (dragMode == null) {
-                                    accDx += x - lastX
-                                    accDy += y - lastY
-                                    val slop = 8f
-                                    if (abs(accDx) > slop || abs(accDy) > slop) {
+                                    val mode = gestureMath.onMove(
+                                        x = x, y = y, lastX = lastX, lastY = lastY,
+                                        downX = downX, playerWidth = playerWidth
+                                    )
+                                    if (mode != null) {
                                         moved = true
                                         longPressJob?.cancel()
                                         startX = x
@@ -788,36 +790,34 @@ fun VideoPlayer(
                                         showQualityMenu = false
                                         seekStartPos = exoPlayer.currentPosition
                                         seekPreview = seekStartPos
-                                        dragMode = if (abs(accDx) > abs(accDy)) {
-                                            "seek"
-                                        } else if (x < playerWidth / 2f) {
-                                            "brightness"
-                                        } else {
-                                            "volume"
-                                        }
+                                        dragMode = mode
                                     }
                                 } else {
                                     when (dragMode) {
-                                        "seek" -> {
+                                        DragMode.SEEK -> {
                                             val dur = exoPlayer.duration
-                                            if (dur > 0 && playerWidth > 0f) {
-                                                val totalDelta = x - startX
-                                                val timeDelta = (totalDelta / playerWidth * dur.toFloat()).toLong()
-                                                seekPreview = (seekStartPos + timeDelta).coerceIn(0L, dur)
+                                            seekPreview = gestureMath.seekTarget(
+                                                startPosition = seekStartPos,
+                                                startX = startX,
+                                                currentX = x,
+                                                playerWidth = playerWidth,
+                                                duration = dur
+                                            )
+                                            if (dur > 0) {
                                                 gestureHint = "${formatTime(seekPreview)} / ${formatTime(dur)}"
                                             }
                                         }
-                                        "brightness" -> {
+                                        DragMode.BRIGHTNESS -> {
                                             if (playerHeight > 0f) {
-                                                val delta = -(y - lastY) / playerHeight
+                                                val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight)
                                                 brightness = (brightness + delta).coerceIn(0f, 1f)
                                                 setBrightness(brightness)
                                                 gestureHint = context.getString(R.string.player_brightness, (brightness * 100).toInt())
                                             }
                                         }
-                                        "volume" -> {
+                                        DragMode.VOLUME -> {
                                             if (playerHeight > 0f) {
-                                                val delta = -(y - lastY) / playerHeight
+                                                val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight)
                                                 volume = (volume + delta).coerceIn(0f, 1f)
                                                 exoPlayer.volume = volume
                                                 isMuted = volume == 0f
