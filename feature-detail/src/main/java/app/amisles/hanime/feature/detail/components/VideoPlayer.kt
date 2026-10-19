@@ -2,8 +2,6 @@ package app.amisles.hanime.feature.detail.components
 
 import android.app.Activity
 import android.app.PictureInPictureParams
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
@@ -20,7 +18,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,9 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -51,8 +46,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -109,67 +102,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import kotlin.math.abs
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 扩展与工具
-// ─────────────────────────────────────────────────────────────────────────────
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
-/** 设备物理朝向，用于全屏时锁到正确的横屏一侧（角度→方向常量勿写反，否则全屏持续上下颠倒）。 */
-private enum class DeviceTilt(val landscapeOrientation: Int?) {
-    /** 竖持。 */
-    PORTRAIT(null),
-
-    /** 横置、顶部朝左。 */
-    TOP_TO_LEFT(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE),
-
-    /** 横置、顶部朝右。 */
-    TOP_TO_RIGHT(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
-
-    val isLandscape: Boolean get() = landscapeOrientation != null
-}
-
-/** 把 [OrientationEventListener] 角度归类为物理朝向；临界区（近乎平放/斜持）返回 null 待后续判定，避免抖动。 */
-private fun classifyDeviceTilt(orientation: Int): DeviceTilt? = when (orientation) {
-    in 55..125 -> DeviceTilt.TOP_TO_RIGHT
-    in 235..305 -> DeviceTilt.TOP_TO_LEFT
-    in 0..35, in 325..359 -> DeviceTilt.PORTRAIT
-    in 145..215 -> DeviceTilt.PORTRAIT
-    else -> null
-}
-
-/** 是否为「锁定横屏」方向常量；全屏是本应用唯一锁方向处，快照到这些值不能作为退出全屏的恢复目标。 */
-private val Int.isLandscapeOrientation: Boolean
-    get() = this == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        || this == ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
-
-private fun formatTime(ms: Long): String {
-    if (ms <= 0) return "00:00"
-    val hours = TimeUnit.MILLISECONDS.toHours(ms)
-    val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
-    val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
-    return if (hours > 0) {
-        String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 常量
 // ─────────────────────────────────────────────────────────────────────────────
-
-// 控件隐藏时贴在播放器底部的简易进度条高度
-private val MINI_PROGRESS_HEIGHT = 3.dp
 
 // ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
@@ -179,168 +116,6 @@ private const val LONG_PRESS_BOOST_SPEED = 2f
 
 // 视频缩放模式：SCALE_TO_FIT
 private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 私有子组件：进度条 / 迷你进度条
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * 可交互进度条（时间文本 + 滑块）。轨道按三层亮度展示「已播放 / 已缓冲 / 未缓冲」。
- * 进度轮询下沉到本组合内部，仅重排自身、不触发外层 VideoPlayer 重排。
- *
- * @param onSeekInteract 用户点击 / 拖动时回调，外层据此判定触摸落在控件上、不切换控件显隐。
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PlaybackProgressBar(
-    exoPlayer: ExoPlayer,
-    modifier: Modifier = Modifier,
-    onSeekInteract: () -> Unit = {}
-) {
-    var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
-    var duration by remember { mutableLongStateOf(exoPlayer.duration) }
-    // 已缓冲位置（毫秒）：画「已缓冲」段，与拖动无关，始终刷新
-    var bufferedPosition by remember { mutableLongStateOf(exoPlayer.bufferedPosition) }
-    var isDragging by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            bufferedPosition = exoPlayer.bufferedPosition
-            if (!isDragging) {
-                currentPosition = exoPlayer.currentPosition
-                duration = exoPlayer.duration
-            }
-            delay(if (exoPlayer.isPlaying) 500 else 1000)
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(30.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopStart)
-                .offset(y = (-14).dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = formatTime(currentPosition), color = Color.White, fontSize = 11.sp)
-            Text(text = formatTime(duration), color = Color.White, fontSize = 11.sp)
-        }
-        Slider(
-            value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
-            onValueChange = { value ->
-                isDragging = true
-                currentPosition = (value * duration).toLong()
-                onSeekInteract()
-            },
-            onValueChangeFinished = {
-                isDragging = false
-                exoPlayer.seekTo(currentPosition)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center),
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-            ),
-            thumb = {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .offset(y = 4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                )
-            },
-            track = {
-                // 三层亮度：30% = 未缓冲，60% = 已缓冲未播放，100% = 已播放。
-                // 必须 coerceIn：fillMaxWidth(fraction) 要求 fraction 落在 0f..1f，越界会抛异常
-                val playedFraction = (if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f)
-                    .coerceIn(0f, 1f)
-                val bufferedFraction = (if (duration > 0) bufferedPosition.toFloat() / duration.toFloat() else 0f)
-                    .coerceIn(0f, 1f)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .wrapContentHeight(Alignment.CenterVertically)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(Color.White.copy(alpha = 0.3f))
-                ) {
-                    // 已缓冲（含已播放部分）：压在已播放段之下，拖拽时可预览可跳范围
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(bufferedFraction)
-                            .height(8.dp)
-                            .background(Color.White.copy(alpha = 0.6f))
-                    )
-                    // 已播放
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(playedFraction)
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(1.dp))
-                            .background(Color.White)
-                    )
-                }
-            }
-        )
-    }
-}
-
-/**
- * 控件隐藏时贴在播放器最底部的简易进度条：展示「已播放 / 已缓冲」两段进度，不接受交互
- * （点击穿透到外层手势，等同点击空白唤回控件）。三层亮度：25% = 未缓冲，55% = 已缓冲，100% = 已播放。
- */
-@Composable
-private fun MiniPlaybackProgress(
-    exoPlayer: ExoPlayer,
-    modifier: Modifier = Modifier
-) {
-    var progress by remember { mutableFloatStateOf(0f) }
-    var buffered by remember { mutableFloatStateOf(0f) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            val d = exoPlayer.duration
-            if (d > 0) {
-                progress = (exoPlayer.currentPosition.toFloat() / d).coerceIn(0f, 1f)
-                buffered = (exoPlayer.bufferedPosition.toFloat() / d).coerceIn(0f, 1f)
-            } else {
-                progress = 0f
-                buffered = 0f
-            }
-            delay(if (exoPlayer.isPlaying) 500 else 1000)
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(MINI_PROGRESS_HEIGHT)
-            .background(Color.White.copy(alpha = 0.25f))
-    ) {
-        // 已缓冲（含已播放部分）
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(buffered)
-                .background(Color.White.copy(alpha = 0.55f))
-        )
-        // 已播放
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(progress)
-                .background(Color.White)
-        )
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 主组件：VideoPlayer
