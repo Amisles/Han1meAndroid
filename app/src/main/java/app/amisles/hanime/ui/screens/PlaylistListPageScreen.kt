@@ -37,15 +37,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R as CoreR
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import app.amisles.hanime.ui.viewmodel.PlaylistListPageViewModel
+
+private val ROW_THUMB_WIDTH = 130.dp
 
 @Composable
 fun PlaylistListPageScreen(
@@ -125,27 +124,25 @@ private fun PlaylistListItem(
     playlist: PlaylistSummary,
     onClick: () -> Unit = {}
 ) {
-    val gradient = gradients[stableIndex(playlist.title, gradients.size)]
-    val emoji = emojis[stableIndex(playlist.title, emojis.size)]
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
             .background(HanimeCard, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         app.amisles.hanime.core.ui.components.VideoThumbnail(
             thumbnailUrl = playlist.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = "",
             likeRate = "",
             viewCount = playlist.videoCount,
             crop = true,
-            modifier = Modifier.width(130.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
+            targetWidth = ROW_THUMB_WIDTH,
+            modifier = Modifier.width(ROW_THUMB_WIDTH).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(
             modifier = Modifier.weight(1f),

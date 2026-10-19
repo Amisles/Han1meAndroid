@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subscriptions
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +45,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -156,11 +157,7 @@ fun ProfileScreen(
                     if (!isLogin) tryNavigateToLogin()
                 }
             ) {
-                Text(
-                    text = if (isLogin) displayLetter else "👤",
-                    fontSize = 22.sp,
-                    textAlign = TextAlign.Center,
-                    color = if (isLogin) MaterialTheme.colorScheme.onBackground else Color.Unspecified,
+                Box(
                     modifier = Modifier
                         .width(56.dp)
                         .height(56.dp)
@@ -168,9 +165,24 @@ fun ProfileScreen(
                         .background(
                             if (isLogin) Color.White.copy(alpha = 0.15f)
                             else Color.White.copy(alpha = 0.2f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isLogin) {
+                        Text(
+                            text = displayLetter,
+                            fontSize = 22.sp,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
-                        .padding(top = 12.dp)
-                )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
 
                 Column(
                     modifier = Modifier.weight(1f)
@@ -233,7 +245,7 @@ fun ProfileScreen(
                     Icon(
                         imageVector = item.iconVector,
                         contentDescription = item.text,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.onBackground
                     )
 

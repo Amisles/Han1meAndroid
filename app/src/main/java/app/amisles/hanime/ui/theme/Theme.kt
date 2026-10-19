@@ -1,6 +1,7 @@
 package app.amisles.hanime.ui.theme
 
 import android.os.Build
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.Density
 import app.amisles.hanime.core.ui.theme.ProvideWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.StateLayerIndication
 import app.amisles.hanime.core.ui.theme.UiConfig
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
@@ -98,7 +100,9 @@ fun HanimeTheme(
         else Density(density.density, density.fontScale * uiConfig.fontScale)
     }
 
-    // 全局禁用点击组件的涟漪效果
+    // 涟漪保持关闭（全局禁用以避免所有可点区域都出现涟漪），改由 LocalIndication 提供状态层反馈。
+    // 该提供点必须位于 MaterialTheme 之内：MaterialTheme 自身会用 ripple() 覆盖 LocalIndication，
+    // 而 ripple() 在 LocalRippleConfiguration 为 null 时是空操作，写在外层会被它盖掉。
     CompositionLocalProvider(
         LocalRippleConfiguration provides null,
         LocalUiConfig provides uiConfig,
@@ -108,9 +112,14 @@ fun HanimeTheme(
         ProvideWindowSizeInfo {
             MaterialTheme(
                 colorScheme = colorScheme,
-                typography = if (currentWindowSizeInfo().largeTypography) TypographyLarge else Typography,
-                content = content
-            )
+                typography = if (currentWindowSizeInfo().largeTypography) TypographyLarge else Typography
+            ) {
+                CompositionLocalProvider(
+                    LocalIndication provides StateLayerIndication(colorScheme.onSurface)
+                ) {
+                    content()
+                }
+            }
         }
     }
 }

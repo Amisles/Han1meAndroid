@@ -22,7 +22,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,6 +64,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import app.amisles.hanime.core.ui.theme.HanimeDanger
@@ -225,7 +226,7 @@ fun CustomizeScreen(
 
             item(key = "typography") {
                 GroupLabel(stringResource(R.string.customize_group_typography))
-                SettingsCard {
+                SettingsGroupCard {
                     DecimalInputRow(
                         title = stringResource(R.string.customize_font_scale),
                         value = config.fontScale,
@@ -246,7 +247,7 @@ fun CustomizeScreen(
 
             item(key = "card") {
                 GroupLabel(stringResource(R.string.customize_group_card))
-                SettingsCard {
+                SettingsGroupCard {
                     SliderRow(
                         title = stringResource(R.string.customize_aspect_ratio),
                         valueText = String.format(Locale.US, "%.2f:1", config.thumbnailAspectRatio),
@@ -257,9 +258,11 @@ fun CustomizeScreen(
                         onReset = {
                             UiConfigStore.update { it.copy(thumbnailAspectRatio = defaults.thumbnailAspectRatio) }
                         },
-                        onChange = { v ->
-                            val rounded = (v * 100).roundToInt() / 100f
-                            UiConfigStore.update { it.copy(thumbnailAspectRatio = rounded) }
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(thumbnailAspectRatio = (v * 100).roundToInt() / 100f) }
+                        },
+                        onCommit = { v ->
+                            UiConfigStore.update { it.copy(thumbnailAspectRatio = (v * 100).roundToInt() / 100f) }
                         }
                     )
                     RowDivider()
@@ -271,7 +274,10 @@ fun CustomizeScreen(
                         defaultValue = defaults.cardCornerRadius.value,
                         isDefault = config.cardCornerRadius == defaults.cardCornerRadius,
                         onReset = { UiConfigStore.update { it.copy(cardCornerRadius = defaults.cardCornerRadius) } },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(cardCornerRadius = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.update { it.copy(cardCornerRadius = v.roundToInt().toFloat().dp) }
                         }
                     )
@@ -284,7 +290,10 @@ fun CustomizeScreen(
                         defaultValue = defaults.listThumbnailWidth.value,
                         isDefault = config.listThumbnailWidth == defaults.listThumbnailWidth,
                         onReset = { UiConfigStore.update { it.copy(listThumbnailWidth = defaults.listThumbnailWidth) } },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(listThumbnailWidth = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.update { it.copy(listThumbnailWidth = v.roundToInt().toFloat().dp) }
                         }
                     )
@@ -305,7 +314,7 @@ fun CustomizeScreen(
 
             item(key = "grid") {
                 GroupLabel(stringResource(R.string.customize_group_grid))
-                SettingsCard {
+                SettingsGroupCard {
                     SliderRow(
                         title = stringResource(R.string.customize_grid_target_width),
                         valueText = "${config.gridTargetWidth.value.roundToInt()}dp",
@@ -314,7 +323,10 @@ fun CustomizeScreen(
                         defaultValue = defaults.gridTargetWidth.value,
                         isDefault = config.gridTargetWidth == defaults.gridTargetWidth,
                         onReset = { UiConfigStore.update { it.copy(gridTargetWidth = defaults.gridTargetWidth) } },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(gridTargetWidth = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.update { it.copy(gridTargetWidth = v.roundToInt().toFloat().dp) }
                         }
                     )
@@ -324,7 +336,7 @@ fun CustomizeScreen(
 
             item(key = "home_sections") {
                 GroupLabel(stringResource(R.string.customize_group_home_sections))
-                SettingsCard {
+                SettingsGroupCard {
                     SliderRow(
                         title = stringResource(R.string.customize_section_visible_count),
                         valueText = "${homeSections.visibleCount}",
@@ -336,7 +348,10 @@ fun CustomizeScreen(
                         onReset = {
                             UiConfigStore.updateHomeSections { it.copy(visibleCount = sectionDefaults.visibleCount) }
                         },
-                        onChange = { v ->
+                        onPreview = { v ->
+                            UiConfigStore.updateHomeSectionsPreviewOnly { it.copy(visibleCount = v.roundToInt()) }
+                        },
+                        onCommit = { v ->
                             UiConfigStore.updateHomeSections { it.copy(visibleCount = v.roundToInt()) }
                         }
                     )
@@ -368,7 +383,7 @@ fun CustomizeScreen(
 
             item(key = "backup") {
                 GroupLabel(stringResource(R.string.customize_group_backup))
-                SettingsCard {
+                SettingsGroupCard {
                     ActionRow(
                         icon = Icons.Default.Share,
                         title = stringResource(R.string.customize_export),
@@ -471,7 +486,7 @@ private fun ScreenHeader(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.common_back),
                 tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
         Text(
@@ -559,20 +574,6 @@ private fun GroupLabel(text: String) {
 }
 
 @Composable
-private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = SCREEN_H_PADDING),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(content = content)
-    }
-}
-
-/** 卡片内相邻属性行之间的分隔线，两侧留出与内容等宽的内缩。 */
-@Composable
 private fun RowDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = CARD_INNER_H),
@@ -642,7 +643,8 @@ private fun SliderRow(
     defaultValue: Float,
     isDefault: Boolean,
     onReset: () -> Unit,
-    onChange: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
     ticks: Int = 0
 ) {
     Column(
@@ -678,7 +680,8 @@ private fun SliderRow(
             range = range,
             defaultValue = defaultValue,
             ticks = ticks,
-            onChange = onChange,
+            onPreview = onPreview,
+            onCommit = onCommit,
             modifier = Modifier.padding(top = SLIDER_BAR_TOP)
         )
     }
@@ -781,7 +784,7 @@ private fun DecimalInputRow(
         Text(
             text = hint,
             fontSize = 10.sp,
-            color = if (outOfRange) HanimeDanger else MaterialTheme.colorScheme.outline,
+            color = if (outOfRange) HanimeDanger else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 6.dp)
         )
     }
@@ -808,7 +811,8 @@ private fun CustomSlider(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     defaultValue: Float,
-    onChange: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
     modifier: Modifier = Modifier,
     ticks: Int = 0
 ) {
@@ -834,6 +838,9 @@ private fun CustomSlider(
     )
 
     val interactionSource = remember { MutableInteractionSource() }
+    val latestValue = remember { mutableStateOf(value) }
+    val latestPreview = rememberUpdatedState(onPreview)
+    val latestCommit = rememberUpdatedState(onCommit)
 
     Box(
         modifier = modifier
@@ -847,10 +854,15 @@ private fun CustomSlider(
                     val base = dragFraction ?: valueFraction
                     val next = (base + delta / trackWidthPx).coerceIn(0f, 1f)
                     dragFraction = next
-                    onChange(range.start + next * span)
+                    val raw = range.start + next * span
+                    latestValue.value = raw
+                    latestPreview.value(raw)
                 },
                 onDragStarted = { dragFraction = valueFraction },
-                onDragStopped = { dragFraction = null }
+                onDragStopped = {
+                    dragFraction = null
+                    latestCommit.value(latestValue.value)
+                }
             )
     ) {
         // 轨道已内缩半个滑块，滑块中心走完整个轨道跨度；此内缩同时是下方各叠加层的坐标基准，
@@ -1015,7 +1027,7 @@ private fun SectionOrderCard(
     onMove: (Int, Int) -> Unit,
     onLayoutChange: (String, HomeSectionLayout) -> Unit
 ) {
-    SettingsCard {
+    SettingsGroupCard {
         Text(
             text = stringResource(R.string.customize_section_order),
             fontSize = 12.sp,
@@ -1228,7 +1240,7 @@ private fun OverflowNotice() {
             imageVector = Icons.Default.Info,
             contentDescription = null,
             tint = HanimeWarning,
-            modifier = Modifier.size(15.dp)
+            modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(9.dp))
         Text(

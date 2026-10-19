@@ -36,8 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -49,15 +47,16 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Favorite
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
+import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
+
+private val ROW_THUMB_WIDTH = 140.dp
 
 @Composable
 fun FavoriteScreen(
@@ -172,10 +171,13 @@ fun FavoriteScreen(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "❤️",
-                        fontSize = 48.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                    Icon(
+                        imageVector = Icons.Outlined.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(bottom = 16.dp)
+                            .size(48.dp)
                     )
                     Text(
                         text = stringResource(R.string.favorite_empty),
@@ -197,14 +199,10 @@ fun FavoriteScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(favorites, key = { it.id }) { video ->
-                    val gradient = gradients[stableIndex(video.id, gradients.size)]
-                    val emoji = emojis[stableIndex(video.id, emojis.size)]
                     val isSelected = video.id in selectedIds
 
                     FavoriteVideoItem(
                         video = video,
-                        gradient = gradient,
-                        emoji = emoji,
                         isSelectionMode = isSelectionMode,
                         isSelected = isSelected,
                         onVideoClick = {
@@ -350,8 +348,6 @@ fun FavoriteScreen(
 @Composable
 private fun FavoriteVideoItem(
     video: FavoriteVideo,
-    gradient: Pair<Color, Color>,
-    emoji: String,
     isSelectionMode: Boolean,
     isSelected: Boolean,
     onVideoClick: () -> Unit,
@@ -362,14 +358,8 @@ private fun FavoriteVideoItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 3.dp)
-            .shadow(
-                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                shape = RoundedCornerShape(8.dp),
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.18f)
-            )
             .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .surfaceEdge(RoundedCornerShape(8.dp))
             .padding(8.dp)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
@@ -393,14 +383,13 @@ private fun FavoriteVideoItem(
 
         VideoThumbnail(
             thumbnailUrl = video.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = video.duration,
             likeRate = video.likeRate,
             viewCount = video.viewCount,
             crop = true,
+            targetWidth = ROW_THUMB_WIDTH,
             modifier = Modifier
-                .width(140.dp)
+                .width(ROW_THUMB_WIDTH)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(6.dp))
         )

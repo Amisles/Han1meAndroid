@@ -28,8 +28,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -39,8 +37,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,15 +49,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,14 +62,18 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Sort
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.theme.HanimeDanger
+import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
 import coil3.compose.AsyncImage
 
@@ -106,8 +101,7 @@ private data class TaskOrderKey(
 /**
  * 下载页文件名搜索框。
  *
- * 样式与搜索页 SearchScreen 的搜索框逐项对齐：24dp 圆角并裁剪、surface 容器色、
- * 聚焦时 primary 描边、15sp 正文、右侧 ✕ 清除、输入法回车键为「搜索」。
+ * 复用 core/ui 的 [SearchField]，与搜索页完全同款：微圆角弱描边、搜索图标内嵌、回车收起键盘。
  * 唯一差异是 singleLine —— 表头高度需固定，长文件名不应把表头撑高。
  */
 @Composable
@@ -116,50 +110,12 @@ private fun DownloadSearchField(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    OutlinedTextField(
+    SearchField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = {
-            Text(
-                text = stringResource(R.string.download_search_placeholder),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                // 提示文案必须单行省略：否则搜索框被压窄时它会折行，把表头撑高
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        modifier = modifier.clip(RoundedCornerShape(24.dp)),
+        placeholder = stringResource(R.string.download_search_placeholder),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(
-            // 本地过滤随输入实时生效，回车仅收起键盘
-            onSearch = { keyboardController?.hide() }
-        ),
-        shape = RoundedCornerShape(24.dp),
-        textStyle = TextStyle(
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 15.sp
-        ),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-        ),
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                Text(
-                    text = "✕",
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { onQueryChange("") }
-                )
-            }
-        }
+        modifier = modifier
     )
 }
 
@@ -384,7 +340,7 @@ fun DownloadScreen(
                             imageVector = Icons.Outlined.Sort,
                             contentDescription = stringResource(R.string.download_sort_title),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -418,10 +374,12 @@ fun DownloadScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "📥",
-                    fontSize = 48.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                Icon(
+                    imageVector = Icons.Outlined.Download,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .size(64.dp)
                 )
                 Text(
                     text = stringResource(R.string.download_empty),
@@ -867,19 +825,19 @@ fun DownloadTaskItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
-            .shadow(
-                elevation = if (isSystemInDarkTheme()) 0.dp else 2.dp,
-                shape = RoundedCornerShape(8.dp),
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.18f)
-            )
             .background(
                 if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface,
                 RoundedCornerShape(8.dp)
             )
-            .padding(12.dp)
-            .clickable(enabled = isSelectionMode) { onToggleSelection() },
+            .surfaceEdge(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            // 已完成项整卡可点即播放；选中模式优先切换选中态。其余状态不可点，避免出现无响应的点击反馈
+            .clickable(
+                enabled = isSelectionMode || task.status == DownloadStatus.COMPLETED
+            ) {
+                if (isSelectionMode) onToggleSelection() else onPlayClick()
+            }
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -897,8 +855,8 @@ fun DownloadTaskItem(
 
         Box(
             modifier = Modifier
-                .width(80.dp)
-                .height(60.dp)
+                .width(112.dp)
+                .height(63.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center
@@ -1061,19 +1019,6 @@ fun DownloadTaskItem(
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = stringResource(R.string.common_retry),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    task.status == DownloadStatus.COMPLETED -> {
-                        IconButton(
-                            onClick = onPlayClick,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = stringResource(R.string.common_play),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )

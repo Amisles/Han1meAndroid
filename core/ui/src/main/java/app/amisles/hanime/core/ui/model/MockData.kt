@@ -6,45 +6,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.ui.graphics.Color
 import app.amisles.hanime.core.ui.R
-
-data class Video(
-    val id: String,
-    val title: String,
-    val thumbnailEmoji: String,
-    val thumbnailGradient: Pair<Color, Color>,
-    val duration: String,
-    val likeRate: String,
-    val viewCount: String,
-    val brand: String,
-    val publishTime: String
-)
-
-data class BannerData(
-    val title: String,
-    val viewCount: String,
-    val publishTime: String,
-    val tags: List<String>,
-    val gradient: Pair<Color, Color>
-)
-
-val gradients = listOf(
-    Pair(Color(0xFF667eea), Color(0xFF764ba2)),
-    Pair(Color(0xFFf093fb), Color(0xFFf5576c)),
-    Pair(Color(0xFF4facfe), Color(0xFF00f2fe)),
-    Pair(Color(0xFF43e97b), Color(0xFF38f9d7)),
-    Pair(Color(0xFFfa709a), Color(0xFFfee140)),
-    Pair(Color(0xFFa18cd1), Color(0xFFfbc2eb)),
-    Pair(Color(0xFFff9a9e), Color(0xFFfecfef)),
-    Pair(Color(0xFFffecd2), Color(0xFFfcb69f))
-)
-
-val emojis = listOf("🎬", "🎥", "📹", "🎞️", "📽️", "📀", "💿", "🎮")
-
-/** 由 id 稳定取 [gradients] / [emojis] 的下标；hashCode 可能为负，必须用 floorMod。 */
-fun stableIndex(key: String, size: Int): Int =
-    if (size <= 0) 0 else Math.floorMod(key.hashCode(), size)
 
 // label：服务端简体标识（匹配首页分区标题与深链接参数，不用于界面展示）
 // displayRes：界面展示的翻译资源；apiValue：搜索接口实际使用的参数（部分与展示名不同，如里番→裏番）

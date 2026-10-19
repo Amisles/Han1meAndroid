@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,7 @@ internal fun DetailDownloadDialog(
                             .fillMaxWidth()
                             .padding(vertical = 6.dp)
                             .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable { onQualitySelected(quality) }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,

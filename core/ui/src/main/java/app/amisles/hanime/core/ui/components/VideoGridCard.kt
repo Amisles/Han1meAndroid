@@ -15,10 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.HanimeVideo
 
@@ -32,11 +30,10 @@ fun VideoGridCard(
     video: HanimeVideo,
     onClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
-    val gradient = gradients[stableIndex(video.id, gradients.size)]
-    val emoji = emojis[stableIndex(video.id, emojis.size)]
 
     Column(
         modifier = modifier
@@ -54,12 +51,11 @@ fun VideoGridCard(
         ) {
             VideoThumbnail(
                 thumbnailUrl = video.thumbnailUrl,
-                emoji = emoji,
-                gradient = gradient,
                 duration = video.duration,
                 likeRate = video.likeRate,
                 viewCount = video.viewCount,
-                crop = true
+                crop = true,
+                targetWidth = targetWidth
             )
         }
 
@@ -86,7 +82,6 @@ fun VideoGridCard(
                 overflow = TextOverflow.Ellipsis,
                 // 内层 clickable 会优先消费点击，不会连带触发整卡的 onClick
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(top = 2.dp, bottom = 6.dp)
                     .clickable { onAuthorClick(video.author) }
             )

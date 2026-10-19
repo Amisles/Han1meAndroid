@@ -26,12 +26,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -68,12 +68,12 @@ data class AppFeature(
 
 /** 功能列表：(图标, 文案资源 id)；由调用方在组合期解析字符串。 */
 private fun appFeatureRes(): List<Pair<ImageVector, Int>> = listOf(
-    Icons.Filled.Home to R.string.about_feature_1,
-    Icons.Filled.Search to R.string.about_feature_2,
-    Icons.Filled.PlayArrow to R.string.about_feature_3,
-    Icons.Filled.Download to R.string.about_feature_4,
-    Icons.Filled.Favorite to R.string.about_feature_5,
-    Icons.Filled.Settings to R.string.about_feature_6
+    Icons.Default.Home to R.string.about_feature_1,
+    Icons.Default.Search to R.string.about_feature_2,
+    Icons.Default.PlayArrow to R.string.about_feature_3,
+    Icons.Default.Download to R.string.about_feature_4,
+    Icons.Default.Favorite to R.string.about_feature_5,
+    Icons.Default.Settings to R.string.about_feature_6
 )
 
 /** 致谢列表；版本号需与 `gradle/libs.versions.toml` 手动保持一致，升级依赖时同步本表。 */
@@ -214,7 +214,7 @@ fun AboutScreen(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
@@ -446,7 +446,7 @@ fun AboutScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Info,
+                                imageVector = Icons.Default.Info,
                                 contentDescription = stringResource(R.string.about_license),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)

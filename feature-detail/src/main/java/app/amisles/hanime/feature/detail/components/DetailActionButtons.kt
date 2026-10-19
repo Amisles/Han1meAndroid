@@ -47,13 +47,14 @@ internal fun DetailActionButton(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp))
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(6.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 4.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(20.dp),
             tint = tint
         )
         Spacer(modifier = Modifier.height(2.dp))

@@ -27,7 +27,6 @@ data class UiConfig(
     val listTitleFontSize: TextUnit = 12.sp,
     val listMetaFontSize: TextUnit = 10.sp,
     val badgeFontSize: TextUnit = 10.sp,
-    val placeholderEmojiFontSize: TextUnit = 40.sp,
     val gridColumnsCompact: Int = 2,
     val gridColumnsMedium: Int = 3,
     val gridColumnsExpanded: Int = 4,
@@ -47,15 +46,21 @@ data class UiConfig(
     fun sanitized(): UiConfig {
         val minCols = gridMinColumns.coerceIn(1, 6)
         val maxCols = gridMaxColumns.coerceIn(minCols, 8)
+        // 缩略图圆角不得超出卡片圆角缺口：需 thumbR + pad >= cardR，否则内边距再小
+        // 缩略图左边界也会伸到卡片背景之外（浅色阴影下可见）
+        val cardRadius = cardCornerRadius.value.coerceIn(0f, 24f)
+        val listPad = listItemPadding.value.coerceIn(0f, 16f)
+        val thumbRadius = listThumbnailCornerRadius.value.coerceIn(0f, 24f)
+            .coerceIn((cardRadius - listPad).coerceAtLeast(0f), cardRadius)
         return copy(
             fontScale = fontScale.coerceIn(0.85f, 1.4f),
             thumbnailAspectRatio = thumbnailAspectRatio.coerceIn(1f, 2f),
-            cardCornerRadius = cardCornerRadius.clamp(0f, 24f),
+            cardCornerRadius = cardRadius.dp,
             listThumbnailWidth = listThumbnailWidth.clamp(100f, 200f),
-            listThumbnailCornerRadius = listThumbnailCornerRadius.clamp(0f, 24f),
+            listThumbnailCornerRadius = thumbRadius.dp,
             cardTitleTopPadding = cardTitleTopPadding.clamp(0f, 16f),
             cardMetaSpacing = cardMetaSpacing.clamp(0f, 16f),
-            listItemPadding = listItemPadding.clamp(0f, 16f),
+            listItemPadding = listPad.dp,
             listItemSpacing = listItemSpacing.clamp(0f, 24f),
             listMetaSpacing = listMetaSpacing.clamp(0f, 24f),
             cardTitleFontSize = cardTitleFontSize.clampSp(10f, 20f),
@@ -66,7 +71,6 @@ data class UiConfig(
             listTitleFontSize = listTitleFontSize.clampSp(10f, 20f),
             listMetaFontSize = listMetaFontSize.clampSp(8f, 18f),
             badgeFontSize = badgeFontSize.clampSp(8f, 16f),
-            placeholderEmojiFontSize = placeholderEmojiFontSize.clampSp(16f, 72f),
             gridColumnsCompact = gridColumnsCompact.coerceIn(1, 6),
             gridColumnsMedium = gridColumnsMedium.coerceIn(1, 6),
             gridColumnsExpanded = gridColumnsExpanded.coerceIn(1, 6),

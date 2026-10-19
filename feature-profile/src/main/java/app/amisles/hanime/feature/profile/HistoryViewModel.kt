@@ -24,7 +24,8 @@ class HistoryViewModel @Inject constructor(
     private val _history = MutableStateFlow<List<WatchHistory>>(emptyList())
     val history: StateFlow<List<WatchHistory>> = _history.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    // 页面进入即加载，初值置 true：否则首帧会先渲染「暂无记录」再切加载圈
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     fun loadHistory() {

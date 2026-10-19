@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.PlaylistInfo
-import app.amisles.hanime.feature.detail.util.videoEmoji
-import app.amisles.hanime.feature.detail.util.videoGradient
+
+private val CELL_WIDTH = 140.dp
 
 /** 播放集合头部：集合名、作者（可点击）与集数。 */
 @Composable
@@ -103,12 +103,10 @@ internal fun DetailPlaylistVideos(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items(playlist.videos, key = { it.id }) { video ->
-            val gradient = videoGradient(video.id)
-            val emoji = videoEmoji(video.id)
 
             Column(
                 modifier = Modifier
-                    .width(140.dp)
+                    .width(CELL_WIDTH)
                     .clickable { onVideoClick(video.videoUrl) }
             ) {
                 Box(
@@ -119,12 +117,11 @@ internal fun DetailPlaylistVideos(
                 ) {
                     app.amisles.hanime.core.ui.components.VideoThumbnail(
                         thumbnailUrl = video.thumbnailUrl,
-                        emoji = emoji,
-                        gradient = gradient,
                         duration = video.duration,
                         likeRate = video.likeRate,
                         viewCount = video.viewCount,
-                        crop = true
+                        crop = true,
+                        targetWidth = CELL_WIDTH
                     )
                 }
                 Text(

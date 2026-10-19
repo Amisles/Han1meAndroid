@@ -1,14 +1,28 @@
 package app.amisles.hanime.feature.search
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,6 +33,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,7 +42,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,20 +49,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -61,19 +71,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
@@ -107,6 +126,7 @@ val sortOptions = listOf(
     SortOption("他们在看", R.string.search_sort_watching, "他們在看")
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onVideoClick: (String) -> Unit = {},
@@ -133,7 +153,6 @@ fun SearchScreen(
     val durationValue by viewModel.duration.collectAsStateWithLifecycle()
 
     var localQuery by rememberSaveable { mutableStateOf(query) }
-    val keyboardController = LocalSoftwareKeyboardController.current
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
     // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，避免下拉宣称一个未生效的值
     val selectedSort = remember { mutableStateOf<SortOption?>(null) }
@@ -227,80 +246,28 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 15.dp, vertical = 12.dp),
+                .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
+            SearchField(
                 value = localQuery,
                 onValueChange = {
                     localQuery = it
                 },
-                placeholder = { Text(stringResource(R.string.search_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(24.dp)),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        viewModel.submitSearch(localQuery)
-                        keyboardController?.hide()
-                    }
-                ),
-                shape = RoundedCornerShape(24.dp),
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 15.sp
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                ),
-                trailingIcon = {
-                    if (localQuery.isNotEmpty()) {
-                        Text(
-                            text = "✕",
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable {
-                                localQuery = ""
-                                viewModel.setQuery("")
-                            }
-                        )
-                    }
-                }
+                placeholder = stringResource(R.string.search_placeholder),
+                onSearch = {
+                    viewModel.submitSearch(localQuery)
+                },
+                onClear = { viewModel.setQuery("") },
+                modifier = Modifier.weight(1f)
             )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable {
-                        viewModel.submitSearch(localQuery)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.common_search),
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
         }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 15.dp, vertical = 12.dp)
+                .padding(start = 15.dp, end = 15.dp, bottom = 6.dp)
         ) {
             // 是否存在任何已生效的筛选条件（决定是否显示「清除筛选」入口）
             val hasActiveFilter = genreValue != null || tagsValue.isNotEmpty() ||
@@ -312,10 +279,16 @@ fun SearchScreen(
                 // 一键清除全部筛选：仅在确有筛选生效时出现
                 if (hasActiveFilter) {
                     item(key = "clear_filters_chip") {
+                        val clearShape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(clearShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = clearShape
+                                )
                                 .clickable {
                                     // 先同步 UI 本地态，再让 ViewModel 一次性清空并只发一次请求
                                     selectedTags.value = emptySet()
@@ -379,11 +352,16 @@ fun SearchScreen(
                 }
                 items(items = filterTypes, key = { it.displayRes }) { filter ->
                     val isSelected = selectedFilter.value.apiValue == filter.apiValue
-                    val shape = RoundedCornerShape(16.dp)
+                    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
                     Box(
                         modifier = Modifier
                             .clip(shape)
                             .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                shape = shape
+                            )
                             .clickable {
                                 selectedFilter.value = filter
                                 val apiValue = filter.apiValue.ifEmpty { null }
@@ -405,7 +383,7 @@ fun SearchScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp),
+                    .padding(top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -415,65 +393,72 @@ fun SearchScreen(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                val sortDropdownWidth = 140.dp
+                // 按钮与下拉菜单拼成一个整体矩形：展开时按钮去下圆角、菜单去上圆角，
+                // 菜单紧贴按钮底部，且容器色、描边与按钮一致
+                val sortRadius = LocalUiConfig.current.cardCornerRadius
+                val sortWidth = 116.dp
+                val closedShape = RoundedCornerShape(sortRadius)
+                val buttonShape = if (sortMenuExpanded) {
+                    RoundedCornerShape(topStart = sortRadius, topEnd = sortRadius)
+                } else {
+                    closedShape
+                }
+                val menuShape = RoundedCornerShape(bottomStart = sortRadius, bottomEnd = sortRadius)
+                val arrowRotation by animateFloatAsState(
+                    targetValue = if (sortMenuExpanded) 180f else 0f,
+                    label = "sortArrow"
+                )
+                // 用 MutableTransitionState 驱动进出动画：收起时需等动画结束再移除 Popup
+                val menuTransition = remember { MutableTransitionState(false) }
+                menuTransition.targetState = sortMenuExpanded
                 Box {
                     Row(
                         modifier = Modifier
-                            .width(sortDropdownWidth)
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                            .clickable { sortMenuExpanded = true }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            .width(sortWidth)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = buttonShape
+                            )
+                            .clip(buttonShape)
+                            .clickable { sortMenuExpanded = !sortMenuExpanded }
+                            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = selectedSort.value?.let { stringResource(it.labelRes) }
                                 ?: stringResource(R.string.search_sort_default),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = stringResource(R.string.search_sort),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier
+                                .size(18.dp)
+                                .graphicsLayer { rotationZ = arrowRotation }
                         )
                     }
-                    DropdownMenu(
-                        expanded = sortMenuExpanded,
-                        onDismissRequest = { sortMenuExpanded = false },
-                        modifier = Modifier.width(sortDropdownWidth)
-                    ) {
-                        sortOptions.forEach { option ->
-                            val isSelected = option == selectedSort.value
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(option.labelRes),
-                                        fontSize = 14.sp,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
-                                    )
-                                },
-                                onClick = {
-                                    selectedSort.value = option
-                                    sortMenuExpanded = false
-                                    viewModel.setSort(option.apiValue)
-                                },
-                                trailingIcon = {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }
+                    // 锚定在按钮下方，用垂直展开代替菜单默认的中心缩放，
+                    // 视觉上是从按钮底边向下拉出；退出同样朝向按钮收起
+                    SortMenuPopup(
+                        transition = menuTransition,
+                        width = sortWidth,
+                        shape = menuShape,
+                        selected = selectedSort.value,
+                        onSelect = { option ->
+                            selectedSort.value = option
+                            sortMenuExpanded = false
+                            viewModel.setSort(option.apiValue)
+                        },
+                        onDismiss = { sortMenuExpanded = false }
+                    )
                 }
 
                 // 布局模式切换：右对齐，与排序下拉同一行；写入即视为用户已显式选择
@@ -512,102 +497,56 @@ fun SearchScreen(
                     .height(400.dp)
             )
         } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null && tagsValue.isEmpty() && dateValue.isEmpty() && durationValue.isEmpty()) {
-            if (searchHistory.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 15.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.search_history),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = stringResource(R.string.common_clear),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.clickable { viewModel.clearSearchHistory() }
-                    )
-                }
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 200.dp)
-                        .padding(horizontal = 15.dp)
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    itemsIndexed(searchHistory, key = { _, q -> q }) { index, historyQuery ->
-                        // 单条历史项：搜索图标 + 关键词 + 删除按钮
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    localQuery = historyQuery
-                                    viewModel.submitSearch(historyQuery)
-                                }
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            // 搜索图标
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            // 历史关键词
-                            Text(
-                                text = historyQuery,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            // 删除按钮：留足点击区域
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .clickable { viewModel.removeSearchHistory(historyQuery) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.common_delete),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        // 项之间用细分割线分隔，最后一项不显示
-                        if (index < searchHistory.lastIndex) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 12.dp),
-                                thickness = 0.5.dp,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                            )
-                        }
+            // null = 历史仍在读库，此时什么都不渲染：否则会先弹空态提示、再切成历史列表
+            val history = searchHistory
+            if (history != null) {
+                if (history.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.search_empty_hint),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.search_empty_hint),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 15.dp, vertical = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.search_history),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = stringResource(R.string.common_clear),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clickable { viewModel.clearSearchHistory() }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SearchHistoryChips(
+                            history = history,
+                            onSearch = { keyword ->
+                                localQuery = keyword
+                                viewModel.submitSearch(keyword)
+                            },
+                            onRemove = { viewModel.removeSearchHistory(it) }
+                        )
+                    }
                 }
             }
         } else if (videos.isEmpty()) {
@@ -783,7 +722,10 @@ private fun TagFilterSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -794,7 +736,10 @@ private fun TagFilterSheet(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 )
-                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 消费背景点击，避免误触遮罩关闭面板 */ }
         ) {
             // 顶部标题栏
             Row(
@@ -953,12 +898,18 @@ private fun FilterEntryChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(shape)
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                shape = shape
+            )
             .clickable { onClick() }
-            .padding(start = 14.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+            .padding(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
@@ -1076,7 +1027,10 @@ private fun DateFilterSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -1087,7 +1041,10 @@ private fun DateFilterSheet(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 )
-                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 消费背景点击，避免误触遮罩关闭面板 */ }
         ) {
             // 标题栏
             Row(
@@ -1155,7 +1112,7 @@ private fun DateFilterSheet(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -1237,6 +1194,157 @@ private fun DateFilterSheet(
     }
 }
 
+/**
+ * 搜索历史：与详情页标签同款的矩形贴片，横向流式排列、超宽自动换行。
+ *
+ * 每个贴片右侧内嵌删除按钮；两者各自 `clickable`，内层删除按钮优先消费点击，
+ * 因此点 × 不会连带触发关键词搜索。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SearchHistoryChips(
+    history: List<String>,
+    onSearch: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        history.forEach { keyword ->
+            val chipShape = RoundedCornerShape(4.dp)
+            Row(
+                modifier = Modifier
+                    .widthIn(max = 220.dp)
+                    .background(MaterialTheme.colorScheme.surface, chipShape)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, chipShape)
+                    .clip(chipShape)
+                    .clickable { onSearch(keyword) }
+                    .padding(start = 10.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = keyword,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .clickable { onRemove(keyword) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.common_delete),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 排序下拉：锚定在按钮底边、自上而下垂直展开，收起时反向缩回，视觉上像从按钮里拉出。
+ *
+ * 独立成顶层函数而非内联在筛选栏的 Row 内：`AnimatedVisibility` 有 `RowScope` 扩展重载，
+ * 内联时会优先解析到该重载，而 `Popup` 的 content 不是 `RowScope`，编译器会拒绝隐式接收者。
+ */
+@Composable
+private fun SortMenuPopup(
+    transition: MutableTransitionState<Boolean>,
+    width: Dp,
+    shape: Shape,
+    selected: SortOption?,
+    onSelect: (SortOption) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (transition.isIdle && !transition.currentState) return
+
+    Popup(
+        popupPositionProvider = remember {
+            object : PopupPositionProvider {
+                override fun calculatePosition(
+                    anchorBounds: IntRect,
+                    windowSize: IntSize,
+                    layoutDirection: LayoutDirection,
+                    popupContentSize: IntSize
+                ): IntOffset {
+                    val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                    return IntOffset(
+                        x = anchorBounds.left.coerceIn(0, maxX),
+                        y = anchorBounds.bottom
+                    )
+                }
+            }
+        },
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = true)
+    ) {
+        AnimatedVisibility(
+            visibleState = transition,
+            enter = expandVertically(
+                animationSpec = tween(180),
+                expandFrom = Alignment.Top
+            ) + fadeIn(animationSpec = tween(120)),
+            exit = shrinkVertically(
+                animationSpec = tween(140),
+                shrinkTowards = Alignment.Top
+            ) + fadeOut(animationSpec = tween(90))
+        ) {
+            Column(
+                modifier = Modifier
+                    .width(width)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+                    .clip(shape)
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                sortOptions.forEach { option ->
+                    val isSelected = option == selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(option) }
+                            .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(option.labelRes),
+                            fontSize = 13.sp,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** 年 / 月下拉按钮（自绘，与筛选栏排序下拉同款视觉；官网年份较多，故限定最大高度并可滚动）。 */
 @Composable
 private fun DateDropdown(
@@ -1253,6 +1361,7 @@ private fun DateDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1329,7 +1438,10 @@ private fun DurationFilterSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-            .clickable { onDismiss() }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onDismiss() }
     ) {
         Column(
             modifier = Modifier
@@ -1340,7 +1452,10 @@ private fun DurationFilterSheet(
                     MaterialTheme.colorScheme.surface,
                     RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 )
-                .clickable { /* 消费背景点击，避免误触遮罩关闭面板 */ }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* 消费背景点击，避免误触遮罩关闭面板 */ }
         ) {
             // 标题栏
             Row(
@@ -1404,7 +1519,7 @@ private fun DurationFilterSheet(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }

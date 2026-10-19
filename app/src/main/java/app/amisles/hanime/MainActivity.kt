@@ -34,7 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             // 依据主题模式动态调整系统栏图标颜色
-            SideEffect {
+            LaunchedEffect(darkTheme) {
                 val bgArgb = (if (darkTheme) HanimeBackground else HanimeBackgroundLight).toArgb()
                 enableEdgeToEdge(
                     statusBarStyle = if (darkTheme) {

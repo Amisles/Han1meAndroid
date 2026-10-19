@@ -41,9 +41,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.R as CoreR
-import app.amisles.hanime.core.ui.model.emojis
-import app.amisles.hanime.core.ui.model.gradients
-import app.amisles.hanime.core.ui.model.stableIndex
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeCard
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -51,6 +48,8 @@ import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
 import app.amisles.hanime.ui.viewmodel.PlaylistDetailViewModel
 import coil3.compose.AsyncImage
+
+private val ROW_THUMB_WIDTH = 120.dp
 
 @Composable
 fun PlaylistDetailScreen(
@@ -204,27 +203,25 @@ private fun PlaylistVideoItem(
     video: HanimeVideo,
     onClick: () -> Unit = {}
 ) {
-    val gradient = gradients[stableIndex(video.id, gradients.size)]
-    val emoji = emojis[stableIndex(video.id, emojis.size)]
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
             .background(HanimeCard, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         app.amisles.hanime.core.ui.components.VideoThumbnail(
             thumbnailUrl = video.thumbnailUrl,
-            emoji = emoji,
-            gradient = gradient,
             duration = video.duration,
             likeRate = video.likeRate,
             viewCount = video.viewCount,
             crop = true,
-            modifier = Modifier.width(120.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
+            targetWidth = ROW_THUMB_WIDTH,
+            modifier = Modifier.width(ROW_THUMB_WIDTH).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(
             modifier = Modifier.weight(1f),
