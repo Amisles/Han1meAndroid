@@ -128,6 +128,19 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+    /**
+     * 只更新已有历史记录的播放进度；返回是否命中了记录（未命中时由调用方插入完整记录）。
+     * 播放过程中高频调用，避免读-改-写的整行 REPLACE。
+     */
+    suspend fun updateWatchProgress(videoId: String, position: Long, duration: Long): Boolean {
+        return try {
+            watchHistoryDao.updatePlaybackProgress(videoId, position, duration) > 0
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error updating watch progress: " + e.message, e)
+            false
+        }
+    }
+
     suspend fun getWatchHistory(videoId: String): WatchHistory? {
         return try {
             watchHistoryDao.getWatchHistoryById(videoId)?.toDomain()

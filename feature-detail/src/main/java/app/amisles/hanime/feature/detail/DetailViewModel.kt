@@ -765,32 +765,33 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    /** 持久化当前播放进度（毫秒）；保留标题/封面等元数据，watchedAt 沿用旧值避免历史顺序频繁跳动。 */
+    /**
+     * 持久化当前播放进度（毫秒）。
+     *
+     * 播放中每 5 秒调用一次：若该视频已有历史记录，只 UPDATE 三个进度列；尚未建立历史时才
+     * 插入完整记录。原实现每次都先 SELECT 再整行 REPLACE，两次事务全表重写，写放大且会与其他
+     * 字段的并发更新互相覆盖。
+     */
     fun savePlaybackProgress(position: Long, duration: Long) {
         val id = currentVideoId
         if (id.isEmpty()) return
         val detail = _videoDetail.value ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val existing = repository.getWatchHistory(id)
-                val base = existing ?: WatchHistory(
-                    id = id,
-                    title = detail.title,
-                    thumbnailUrl = detail.posterUrl,
-                    videoUrl = currentVideoUrl,
-                    author = detail.author,
-                    duration = "",
-                    watchedAt = System.currentTimeMillis()
-                )
+                val updated = repository.updateWatchProgress(id, position, duration)
+                if (updated) return@launch
+                // 尚无历史记录（例如首次播放即调用）：插入完整记录
                 repository.addWatchHistory(
-                    base.copy(
+                    WatchHistory(
+                        id = id,
                         title = detail.title,
                         thumbnailUrl = detail.posterUrl,
                         videoUrl = currentVideoUrl,
                         author = detail.author,
+                        duration = "",
+                        watchedAt = System.currentTimeMillis(),
                         playbackPosition = position,
-                        playbackDuration = duration,
-                        watchedAt = existing?.watchedAt ?: System.currentTimeMillis()
+                        playbackDuration = duration
                     )
                 )
             } catch (e: CancellationException) {

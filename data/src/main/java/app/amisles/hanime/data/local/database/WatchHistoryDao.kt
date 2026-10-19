@@ -18,6 +18,15 @@ interface WatchHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addWatchHistory(history: WatchHistoryEntity)
 
+    /**
+     * 仅更新播放进度列。播放中每 5 秒落库一次，整行 REPLACE 会把标题、封面等元数据重复写一遍，
+     * 单条 UPDATE 的写入量与快照大小都更低，也不会与其他字段的并发写入互相覆盖。
+     */
+    @Query(
+        "UPDATE watch_history SET playback_position = :position, playback_duration = :duration WHERE id = :videoId"
+    )
+    suspend fun updatePlaybackProgress(videoId: String, position: Long, duration: Long): Int
+
     @Query("DELETE FROM watch_history WHERE id = :videoId")
     suspend fun removeWatchHistory(videoId: String)
 
