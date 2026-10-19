@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +22,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val repository: HanimeRepository,
+    private val library: LibraryRepository,
+    private val account: AccountRepository,
     private val downloadManager: DownloadManager
 ) : ViewModel() {
 
@@ -50,7 +52,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    repository.logout()
+                    account.logout()
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -66,10 +68,10 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _watchCount.value = withContext(Dispatchers.IO) {
-                    repository.getWatchHistoryCount()
+                    library.getWatchHistoryCount()
                 }
                 _favoriteCount.value = withContext(Dispatchers.IO) {
-                    repository.getFavoriteCount()
+                    library.getFavoriteCount()
                 }
                 _downloadCount.value = withContext(Dispatchers.IO) {
                     downloadManager.getCompletedDownloadCount()

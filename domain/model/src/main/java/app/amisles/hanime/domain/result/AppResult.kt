@@ -1,6 +1,11 @@
-package app.amisles.hanime.core.common.result
+package app.amisles.hanime.domain.result
 
-/** 统一结果封装，替代直接返回 null 或抛异常；命名为 AppResult 以避免与 kotlin.Result 冲突。 */
+/**
+ * 统一结果封装，替代直接返回 null 或抛异常；命名为 AppResult 以避免与 kotlin.Result 冲突。
+ *
+ * 位于 domain 层（纯 Kotlin JVM）：仓储接口的返回值类型必须能被上层与实现层共同引用，
+ * 而接口本身定义在 domain，故该类型也必须下沉到这里 —— 它不依赖任何 Android API。
+ */
 sealed class AppResult<T> {
     data class Success<T>(val data: T) : AppResult<T>()
     data class Error<T>(val message: String, val exception: Throwable? = null) : AppResult<T>()

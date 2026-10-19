@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.parser.ParserUtils
-import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
@@ -15,7 +17,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +38,11 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val repository: HanimeRepository,
+    // 刻意注入三个窄接口而非一个"全能仓储"：本 ViewModel 同时用到内容、本地库与账号能力，
+    // 通过参数类型即可看出它依赖哪些领域，也便于测试时只 fake 相关部分。
+    private val content: ContentRepository,
+    private val library: LibraryRepository,
+    private val account: AccountRepository,
     private val downloadManager: DownloadManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -186,7 +192,7 @@ class DetailViewModel @Inject constructor(
         detailLoadJob?.cancel()
         detailLoadJob = viewModelScope.launch {
             var mainArrived = false
-            repository.getVideoDetailStream(videoUrl)
+            content.getVideoDetailStream(videoUrl)
                 .catch { e ->
                     // 仅当主信息尚未到达时才关闭骨架屏，避免尾部异常把已渲染内容误判为失败
                     if (!mainArrived) _isLoading.value = false
@@ -213,7 +219,7 @@ class DetailViewModel @Inject constructor(
                             if (currentVideoId.isNotEmpty()) {
                                 // 先读取已有历史，保留播放进度，避免每次进入覆盖为 0
                                 val existing = withContext(Dispatchers.IO) {
-                                    repository.getWatchHistory(currentVideoId)
+                                    library.getWatchHistory(currentVideoId)
                                 }
                                 val history = WatchHistory(
                                     id = currentVideoId,
@@ -227,13 +233,13 @@ class DetailViewModel @Inject constructor(
                                     playbackDuration = existing?.playbackDuration ?: 0L
                                 )
                                 withContext(Dispatchers.IO) {
-                                    repository.addWatchHistory(history)
+                                    library.addWatchHistory(history)
                                 }
                                 _savedPosition.value = existing?.playbackPosition ?: 0L
                             }
 
                             val isFav = withContext(Dispatchers.IO) {
-                                repository.isFavorite(currentVideoId)
+                                library.isFavorite(currentVideoId)
                             }
                             _isFavorite.value = isFav
 
@@ -269,7 +275,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.getDownloadQualities(requestVideoId)
+                    content.getDownloadQualities(requestVideoId)
                 }
                 if (!isSameVideoAsRequest(requestVideoId)) {
                     // 已切到其他视频：丢弃结果，相关状态已由 loadVideoDetail 重置
@@ -315,7 +321,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.getComments(requestVideoId)
+                    account.getComments(requestVideoId)
                 }
                 if (!isSameVideoAsRequest(requestVideoId)) {
                     // 已切到其他视频：丢弃结果，避免评论串到别的视频
@@ -364,7 +370,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.getReplies(commentId)
+                    account.getReplies(commentId)
                 }
                 if (!isSameVideoAsRequest(requestVideoId)) {
                     // 已切到其他视频：丢弃结果，避免旧视频的回复写进缓存
@@ -483,7 +489,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.replyComment(target.commentId, finalText, detail.csrfToken)
+                    account.replyComment(target.commentId, finalText, detail.csrfToken)
                 }
                 // 已切到其他视频：不回写也不回滚（状态由 loadVideoDetail 整体重置）。
                 // 不取消 POST —— 服务端可能已创建回复。
@@ -602,7 +608,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.postComment(
+                    account.postComment(
                         videoId = requestVideoId,
                         commentText = trimmed,
                         commentCount = detail.commentCount,
@@ -677,7 +683,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.toggleCommentLike(
+                    account.toggleCommentLike(
                         commentId = comment.id,
                         currentLikeStatus = comment.likeStatus,
                         likeCount = comment.likeCount,
@@ -733,7 +739,7 @@ class DetailViewModel @Inject constructor(
 
                 if (currentState) {
                     withContext(Dispatchers.IO) {
-                        repository.removeFavorite(currentVideoId)
+                        library.removeFavorite(currentVideoId)
                     }
                     AppLogger.d("DetailViewModel", "Removed from favorites")
                 } else {
@@ -750,12 +756,12 @@ class DetailViewModel @Inject constructor(
                             createdAt = System.currentTimeMillis()
                         )
                         withContext(Dispatchers.IO) {
-                            repository.addFavorite(favoriteVideo)
+                            library.addFavorite(favoriteVideo)
                         }
                         AppLogger.d("DetailViewModel", "Added to favorites")
                     }
                 }
-                val verified = withContext(Dispatchers.IO) { repository.isFavorite(currentVideoId) }
+                val verified = withContext(Dispatchers.IO) { library.isFavorite(currentVideoId) }
                 _isFavorite.value = verified
             } catch (e: CancellationException) {
                 throw e
@@ -778,10 +784,10 @@ class DetailViewModel @Inject constructor(
         val detail = _videoDetail.value ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val updated = repository.updateWatchProgress(id, position, duration)
+                val updated = library.updateWatchProgress(id, position, duration)
                 if (updated) return@launch
                 // 尚无历史记录（例如首次播放即调用）：插入完整记录
-                repository.addWatchHistory(
+                library.addWatchHistory(
                     WatchHistory(
                         id = id,
                         title = detail.title,
@@ -805,7 +811,7 @@ class DetailViewModel @Inject constructor(
 
     /** 读取某视频的已保存播放进度（毫秒），用于进入时续播。 */
     suspend fun getSavedPlaybackPosition(videoId: String): Long =
-        withContext(Dispatchers.IO) { repository.getWatchHistory(videoId)?.playbackPosition ?: 0L }
+        withContext(Dispatchers.IO) { library.getWatchHistory(videoId)?.playbackPosition ?: 0L }
 
     /**
      * 订阅 / 取消订阅作者。调用官网 /subscribe 接口，凭 subscribe-status 区分。
@@ -837,7 +843,7 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.toggleSubscribe(
+                    account.toggleSubscribe(
                         userId = detail.subscribeUserId,
                         artistId = detail.subscribeArtistId,
                         willSubscribe = willSubscribe,

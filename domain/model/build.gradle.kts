@@ -25,6 +25,9 @@ kotlin {
 }
 
 dependencies {
+    // Flow 用于仓储接口的流式返回值；domain 层刻意不引入任何 Android 依赖
+    api(libs.kotlinx.coroutines.core)
+
     // Test
     testImplementation(libs.junit)
 }

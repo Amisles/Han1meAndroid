@@ -32,7 +32,10 @@ import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.result.AppResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.emitAll
@@ -57,9 +60,9 @@ class HanimeRepository @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val watchHistoryDao: WatchHistoryDao,
     private val searchHistoryDao: SearchHistoryDao
-) {
+) : ContentRepository, LibraryRepository, AccountRepository {
 
-    suspend fun addFavorite(video: FavoriteVideo) {
+    override suspend fun addFavorite(video: FavoriteVideo) {
         try {
             favoriteDao.addFavorite(video.toEntity())
             AppLogger.log("HanimeRepository", "Favorite added successfully")
@@ -68,7 +71,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun removeFavorite(videoId: String) {
+    override suspend fun removeFavorite(videoId: String) {
         try {
             favoriteDao.removeFavoriteById(videoId)
             AppLogger.log("HanimeRepository", "Favorite removed successfully")
@@ -80,7 +83,7 @@ class HanimeRepository @Inject constructor(
     /**
      * 批量删除收藏。ids 为空时直接返回：Room 的 `IN (:ids)` 在空集合下会生成非法 SQL。
      */
-    suspend fun removeFavorites(videoIds: List<String>) {
+    override suspend fun removeFavorites(videoIds: List<String>) {
         if (videoIds.isEmpty()) return
         try {
             favoriteDao.removeFavoritesByIds(videoIds)
@@ -90,7 +93,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun isFavorite(videoId: String): Boolean {
+    override suspend fun isFavorite(videoId: String): Boolean {
         return try {
             favoriteDao.isFavorite(videoId)
         } catch (e: SQLException) {
@@ -99,7 +102,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getAllFavorites(): List<FavoriteVideo> {
+    override suspend fun getAllFavorites(): List<FavoriteVideo> {
         return try {
             val favorites = favoriteDao.getAllFavorites().map { it.toDomain() }
             AppLogger.log("HanimeRepository", "Got ${favorites.size} favorites")
@@ -110,7 +113,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getFavoriteCount(): Int {
+    override suspend fun getFavoriteCount(): Int {
         return try {
             favoriteDao.getFavoriteCount()
         } catch (e: SQLException) {
@@ -119,7 +122,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun addWatchHistory(history: WatchHistory) {
+    override suspend fun addWatchHistory(history: WatchHistory) {
         try {
             watchHistoryDao.addWatchHistory(history.toEntity())
             AppLogger.log("HanimeRepository", "Watch history added successfully")
@@ -132,7 +135,7 @@ class HanimeRepository @Inject constructor(
      * 只更新已有历史记录的播放进度；返回是否命中了记录（未命中时由调用方插入完整记录）。
      * 播放过程中高频调用，避免读-改-写的整行 REPLACE。
      */
-    suspend fun updateWatchProgress(videoId: String, position: Long, duration: Long): Boolean {
+    override suspend fun updateWatchProgress(videoId: String, position: Long, duration: Long): Boolean {
         return try {
             watchHistoryDao.updatePlaybackProgress(videoId, position, duration) > 0
         } catch (e: SQLException) {
@@ -141,7 +144,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getWatchHistory(videoId: String): WatchHistory? {
+    override suspend fun getWatchHistory(videoId: String): WatchHistory? {
         return try {
             watchHistoryDao.getWatchHistoryById(videoId)?.toDomain()
         } catch (e: SQLException) {
@@ -150,11 +153,11 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>> {
+    override fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>> {
         return watchHistoryDao.getAllWatchHistory().map { list -> list.map { it.toDomain() } }
     }
 
-    suspend fun removeWatchHistory(videoId: String) {
+    override suspend fun removeWatchHistory(videoId: String) {
         try {
             watchHistoryDao.removeWatchHistory(videoId)
             AppLogger.log("HanimeRepository", "Watch history removed successfully")
@@ -166,7 +169,7 @@ class HanimeRepository @Inject constructor(
     /**
      * 批量删除观看历史。ids 为空时直接返回：Room 的 `IN (:ids)` 在空集合下会生成非法 SQL。
      */
-    suspend fun removeWatchHistories(videoIds: List<String>) {
+    override suspend fun removeWatchHistories(videoIds: List<String>) {
         if (videoIds.isEmpty()) return
         try {
             watchHistoryDao.removeWatchHistoriesByIds(videoIds)
@@ -176,7 +179,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun clearWatchHistory() {
+    override suspend fun clearWatchHistory() {
         try {
             watchHistoryDao.clearWatchHistory()
             AppLogger.log("HanimeRepository", "Watch history cleared successfully")
@@ -185,7 +188,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getWatchHistoryCount(): Int {
+    override suspend fun getWatchHistoryCount(): Int {
         return try {
             watchHistoryDao.getWatchHistoryCount()
         } catch (e: SQLException) {
@@ -193,7 +196,7 @@ class HanimeRepository @Inject constructor(
             0
         }
     }
-    suspend fun getHomeData(): AppResult<HomePageData> {
+    override suspend fun getHomeData(): AppResult<HomePageData> {
         return try {
             val result = networkService.fetchHomePageWithBaseUrl()
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -207,7 +210,7 @@ class HanimeRepository @Inject constructor(
     }
 
     /** 流式加载首页 */
-    fun getHomeDataStream(): Flow<HomeDataEvent> = flow {
+    override fun getHomeDataStream(): Flow<HomeDataEvent> = flow {
         try {
             val result = networkService.fetchHomePageWithBaseUrl()
             AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -222,7 +225,7 @@ class HanimeRepository @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
-    suspend fun searchVideos(query: String, genre: String? = null, sort: String? = null, page: Int = 1): AppResult<List<HanimeVideo>> {
+    override suspend fun searchVideos(query: String, genre: String?, sort: String?, page: Int): AppResult<List<HanimeVideo>> {
         return try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -235,7 +238,16 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun searchVideosWithPagination(query: String, genre: String? = null, sort: String? = null, page: Int = 1, tags: List<String> = emptyList(), broad: Boolean = false, date: String = "", duration: String = ""): AppResult<SearchResult> {
+    override suspend fun searchVideosWithPagination(
+        query: String,
+        genre: String?,
+        sort: String?,
+        page: Int,
+        tags: List<String>,
+        broad: Boolean,
+        date: String,
+        duration: String
+    ): AppResult<SearchResult> {
         return try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page, tags, broad, date, duration)
             AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -248,7 +260,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getVideoDetail(videoUrl: String): AppResult<VideoDetail> {
+    override suspend fun getVideoDetail(videoUrl: String): AppResult<VideoDetail> {
         return try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
             AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -268,7 +280,7 @@ class HanimeRepository @Inject constructor(
      * 按「主信息 → 播放列表 → 相关视频」顺序 emit [VideoDetailEvent]，供 ViewModel 增量刷新 UI。
      * 网络或解析失败统一转换为 [VideoDetailEvent.Error] 事件。
      */
-    fun getVideoDetailStream(videoUrl: String): Flow<VideoDetailEvent> = flow {
+    override fun getVideoDetailStream(videoUrl: String): Flow<VideoDetailEvent> = flow {
         try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
             AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -281,7 +293,7 @@ class HanimeRepository @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
-    suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
+    override suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
         return try {
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
             AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
@@ -294,7 +306,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getComments(videoId: String): AppResult<List<Comment>> {
+    override suspend fun getComments(videoId: String): AppResult<List<Comment>> {
         return try {
             val json = networkService.fetchComments(videoId)
             AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
@@ -307,7 +319,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun getReplies(commentId: String): AppResult<List<Reply>> {
+    override suspend fun getReplies(commentId: String): AppResult<List<Reply>> {
         return try {
             val json = networkService.fetchReplies(commentId)
             AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
@@ -326,7 +338,7 @@ class HanimeRepository @Inject constructor(
      * @param commentCount 当前评论数（取自 VideoDetail.commentCount）
      * @param csrfToken 取自 VideoDetail.csrfToken
      */
-    suspend fun postComment(
+    override suspend fun postComment(
         videoId: String,
         commentText: String,
         commentCount: Int,
@@ -366,7 +378,7 @@ class HanimeRepository @Inject constructor(
      * @param likeCount 当前点赞数（作为 comment-likes-count / comment-likes-sum 上传）
      * @param csrfToken 取自 VideoDetail.csrfToken
      */
-    suspend fun toggleCommentLike(
+    override suspend fun toggleCommentLike(
         commentId: String,
         currentLikeStatus: Int,
         likeCount: Int,
@@ -402,7 +414,7 @@ class HanimeRepository @Inject constructor(
      * @param replyText 回复内容（回复其他回复时已带 "@用户名 " 前缀）
      * @param csrfToken 取自 VideoDetail.csrfToken
      */
-    suspend fun replyComment(
+    override suspend fun replyComment(
         commentId: String,
         replyText: String,
         csrfToken: String
@@ -439,7 +451,7 @@ class HanimeRepository @Inject constructor(
      * @param csrfToken 取自 VideoDetail.csrfToken
      * @return 订阅结果（新状态 + 回传 CSRF Token）
      */
-    suspend fun toggleSubscribe(
+    override suspend fun toggleSubscribe(
         userId: String,
         artistId: String,
         willSubscribe: Boolean,
@@ -482,7 +494,7 @@ class HanimeRepository @Inject constructor(
      * 拉取账户资料（用户名称 + 电邮 + CSRF Token），GET /user/{id}/edit，
      * 由 [AccountProfileParser] 解析表单当前值。
      */
-    suspend fun getAccountProfile(): AppResult<AccountProfile> {
+    override suspend fun getAccountProfile(): AppResult<AccountProfile> {
         return try {
             val userId = Preferences.savedUserId.ifBlank {
                 return AppResult.error("未登录，无法查看账户资料")
@@ -505,7 +517,7 @@ class HanimeRepository @Inject constructor(
      *
      * @param csrfToken 账户资料页解析出的 CSRF Token
      */
-    suspend fun updateAccountProfile(
+    override suspend fun updateAccountProfile(
         name: String,
         email: String,
         csrfToken: String
@@ -536,7 +548,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun login(email: String, password: String): AppResult<String> {
+    override suspend fun login(email: String, password: String): AppResult<String> {
         return runCatching {
             val page = try {
                 networkService.fetchLoginPageWithBaseUrl()
@@ -605,7 +617,7 @@ class HanimeRepository @Inject constructor(
         )
     }
 
-    suspend fun saveLoginCookie(cookieString: String, sourceDomain: String? = null): Boolean {
+    override suspend fun saveLoginCookie(cookieString: String, sourceDomain: String?): Boolean {
         val safe = cookieString.trim().removePrefix("Cookie:").trim()
         if (safe.isBlank()) return false
         // sourceDomain：WebView 登录时传入实际登录站点的 host；手填 Cookie 时为空（回落到当前 baseUrl）
@@ -613,16 +625,16 @@ class HanimeRepository @Inject constructor(
         return true
     }
 
-    fun logout() {
+    override fun logout() {
         Preferences.logout()
     }
 
     /** 搜索历史关键词（按时间倒序，最多 20 条）。只暴露字符串，避免持久化实体泄漏到上层。 */
-    fun getSearchHistory(): Flow<List<String>> {
+    override fun getSearchHistory(): Flow<List<String>> {
         return searchHistoryDao.getAllHistory().map { list -> list.map { it.query } }
     }
 
-    suspend fun addSearchHistory(query: String) {
+    override suspend fun addSearchHistory(query: String) {
         if (query.isBlank()) return
         try {
             searchHistoryDao.addSearch(
@@ -636,7 +648,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun removeSearchHistory(query: String) {
+    override suspend fun removeSearchHistory(query: String) {
         try {
             searchHistoryDao.removeSearch(query)
         } catch (e: SQLException) {
@@ -644,7 +656,7 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    suspend fun clearSearchHistory() {
+    override suspend fun clearSearchHistory() {
         try {
             searchHistoryDao.clearAllSearch()
         } catch (e: SQLException) {

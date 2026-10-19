@@ -48,7 +48,7 @@ import kotlinx.coroutines.CancellationException
 class DownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadDao: DownloadDao
-) {
+) : app.amisles.hanime.domain.repository.DownloadRepository {
 
     // maxRequestsPerHost 只对异步调用生效：OkHttp 仅对 readyAsyncCalls 限流，本项目下载全部走
     // 同步 call.execute()，因此该配置不构成并发兜底，真正的全局上限由 connectionPermits 承担。
@@ -276,12 +276,12 @@ class DownloadManager @Inject constructor(
      *         [RESULT_ALREADY_ACTIVE] 同一文件已有进行中/等待中的任务；
      *         [RESULT_ALREADY_COMPLETED] 同一文件已下载完成。
      */
-    fun startDownload(
+    override fun startDownload(
         title: String,
         quality: String,
         url: String,
-        thumbnailUrl: String = "",
-        videoId: String = ""
+        thumbnailUrl: String,
+        videoId: String
     ): Int {
         if (url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) {
             // 脱敏：直链带时效签名，落盘后等同于泄露访问凭据
@@ -795,7 +795,7 @@ class DownloadManager @Inject constructor(
         errorMessage = errorMessage
     )
 
-    fun pauseDownload(taskId: Int) {
+    override fun pauseDownload(taskId: Int) {
         // 用户/系统主动暂停时移出自动暂停集合：这不是断网触发的，不应在网络恢复后被自动拉起
         autoPausedByNetwork.remove(taskId)
 
@@ -809,7 +809,7 @@ class DownloadManager @Inject constructor(
         AppLogger.log("DownloadManager", "Download paused: $taskId")
     }
 
-    fun resumeDownload(taskId: Int) {
+    override fun resumeDownload(taskId: Int) {
         tasksLock.withLock {
             resumeDownloadInternal(taskId)
         }
@@ -820,7 +820,7 @@ class DownloadManager @Inject constructor(
      * （含续传起点推导与并发槽位门控），受并发上限约束依次进入调度。
      * 调用方需持有 tasksLock，resumeDownloadInternal 不再重复取锁。
      */
-    fun retryAllFailed() {
+    override fun retryAllFailed() {
         // 锁内只取失败列表，磁盘 I/O 与调度都在锁外；失败任务可能多达数十个，
         // 原实现在锁内逐个 deriveResumeState，会把主线程的 pause/cancel 长时间挡住。
         val failedIds = tasksLock.withLock {
@@ -857,7 +857,7 @@ class DownloadManager @Inject constructor(
         }
     }
 
-    fun cancelDownload(taskId: Int) {
+    override fun cancelDownload(taskId: Int) {
         cancelTaskCalls(taskId)
         // 先取消再 join：Job.cancel() 是协作式的，写循环里检查到取消后仍有正在进行的 write。
         // 若此时就删文件，写入会落到已 unlink 的 inode 上，随后新建的同名任务会指向另一个
@@ -982,7 +982,7 @@ class DownloadManager @Inject constructor(
             .sortedByDescending { it.id }
     }
 
-    suspend fun getCompletedDownloadCount(): Int {
+    override suspend fun getCompletedDownloadCount(): Int {
         return try {
             downloadDao.getCompletedCount()
         } catch (e: SQLiteException) {
@@ -990,7 +990,7 @@ class DownloadManager @Inject constructor(
         }
     }
 
-    fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean {
+    override fun isVideoDownloaded(videoId: String, quality: String): Boolean {
         return if (videoId.isBlank()) {
             false
         } else {
@@ -1001,7 +1001,7 @@ class DownloadManager @Inject constructor(
         }
     }
 
-    fun isVideoDownloading(videoId: String, quality: String = ""): Boolean {
+    override fun isVideoDownloading(videoId: String, quality: String): Boolean {
         return if (videoId.isBlank()) {
             false
         } else {
@@ -1015,7 +1015,7 @@ class DownloadManager @Inject constructor(
         }
     }
 
-    fun getDownloadStatus(videoId: String): DownloadStatus? {
+    override fun getDownloadStatus(videoId: String): DownloadStatus? {
         val task = if (videoId.isBlank()) {
             null
         } else {

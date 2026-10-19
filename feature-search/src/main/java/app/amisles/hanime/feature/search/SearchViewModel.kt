@@ -3,8 +3,9 @@ package app.amisles.hanime.feature.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.data.repository.HanimeRepository
-import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +20,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: HanimeRepository
+    // 搜索页既要读站点内容，也要读写本地搜索历史 —— 两个窄接口分别注入
+    private val content: ContentRepository,
+    private val library: LibraryRepository
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -81,7 +84,7 @@ class SearchViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                repository.getSearchHistory().collect { queries ->
+                library.getSearchHistory().collect { queries ->
                     _searchHistory.value = queries
                 }
             } catch (e: CancellationException) {
@@ -201,7 +204,7 @@ class SearchViewModel @Inject constructor(
             val requestPage = 1
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.searchVideosWithPagination(
+                    content.searchVideosWithPagination(
                         query = _query.value,
                         genre = _genre.value,
                         sort = _sort.value,
@@ -222,7 +225,7 @@ class SearchViewModel @Inject constructor(
                         _hasMore.value = data.hasNextPage
                         if (_query.value.isNotEmpty()) {
                             withContext(Dispatchers.IO) {
-                                repository.addSearchHistory(_query.value)
+                                library.addSearchHistory(_query.value)
                             }
                         }
                     }
@@ -261,7 +264,7 @@ class SearchViewModel @Inject constructor(
         loadMoreJob = viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    repository.searchVideosWithPagination(
+                    content.searchVideosWithPagination(
                         query = _query.value,
                         genre = _genre.value,
                         sort = _sort.value,
@@ -310,7 +313,7 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    repository.clearSearchHistory()
+                    library.clearSearchHistory()
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -324,7 +327,7 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    repository.removeSearchHistory(query)
+                    library.removeSearchHistory(query)
                 }
             } catch (e: CancellationException) {
                 throw e

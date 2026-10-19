@@ -2,7 +2,7 @@ package app.amisles.hanime.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.CancellationException
@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val repository: HanimeRepository
+    private val repository: LibraryRepository
 ) : ViewModel() {
 
     private val _history = MutableStateFlow<List<WatchHistory>>(emptyList())

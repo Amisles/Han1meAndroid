@@ -5,7 +5,8 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.HomeDataEvent
-import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -22,7 +23,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: HanimeRepository,
+    private val repository: ContentRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 

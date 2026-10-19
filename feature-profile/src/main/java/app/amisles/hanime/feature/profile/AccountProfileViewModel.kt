@@ -3,10 +3,10 @@ package app.amisles.hanime.feature.profile
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.core.common.result.AppResult
+import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,7 +27,7 @@ sealed interface AccountUpdateState {
 
 @HiltViewModel
 class AccountProfileViewModel @Inject constructor(
-    private val repository: HanimeRepository,
+    private val repository: AccountRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
