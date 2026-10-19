@@ -57,6 +57,7 @@ class DownloadService : Service() {
     private var foregroundTaskId = -1
     private var isForegroundStarted = false
 
+
     private val notificationManager by lazy {
         getSystemService(NOTIFICATION_SERVICE) as NotificationManager
     }
@@ -123,6 +124,10 @@ class DownloadService : Service() {
         val status = statusStr?.let { runCatching { DownloadStatus.valueOf(it) }.getOrNull() }
         val action = intent?.action
 
+        // 无条件尝试进入前台：之前用 isForegroundStarted 缓存短路，若服务已被 stopForeground 或
+        // stopSelf，而该标志未复位，后续 startForegroundService 的 5 秒履约就永远不满足，
+        // Android 12+ 会抛 ForegroundServiceDidNotStartInTimeException。系统对重复 startForeground
+        // 是幂等的，因此这里不做缓存，直接推进履约束。
         ensureForeground(taskId, title ?: "", progress, status)
 
         if (taskId < 0) {
@@ -151,13 +156,13 @@ class DownloadService : Service() {
     }
 
     private fun ensureForeground(taskId: Int, title: String, progress: Int, status: DownloadStatus?) {
-        if (isForegroundStarted) return
         val id = if (taskId >= 0) notificationId(taskId) else NOTIFICATION_ID_PLACEHOLDER
         startForegroundSafely(id, taskId, buildProgressNotification(title, progress, status))
     }
 
     private fun startForegroundSafely(id: Int, taskId: Int, notification: Notification): Boolean {
-        if (isForegroundStarted && foregroundTaskId == taskId) return true
+        // 不用 isForegroundStarted 短路：onStartCommand 已保证每次都推进履约，
+        // 系统对重复 startForeground 是幂等的，缓存反而会让 5s 计时失效。
         return runCatching {
             startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         }.onSuccess {
@@ -171,8 +176,29 @@ class DownloadService : Service() {
         }.isSuccess
     }
 
-    override fun onDestroy() {
-        // 服务生命周期终点是锁释放的最后一道兜底
+    /**
+     * dataSync 类型前台服务在 Android 15（API 35）起有时长上限：24 小时窗口内累计约 6 小时后
+     * 系统会回调本方法。默认实现会直接抛 RemoteServiceException 从而崩溃整个进程。
+     *
+     * 下载是可恢复的：这里把进度落盘后转 PAUSED 并停止服务，用户下次点继续即可从位图表续传。
+     * 不实现该回调会导致长时间下载在后台被系统杀掉且进度停在半截。
+     */
+    override fun onTimeout(startId: Int) {
+        AppLogger.log(
+            "DownloadService",
+            "dataSync 前台服务时长已达系统上限，退出前台以让任务转为暂停: startId=$startId"
+        )
+        // 这里只负责交还系统配额：任务的最新进度已由 DownloadManager 的更新链路实时落盘
+        // （updateTask 内状态切换即 persist），退出前台后用户下次点「继续」即可续传。
+        activeTasks.clear()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        isForegroundStarted = false
+        foregroundTaskId = -1
+        releaseTransferLocks()
+        stopSelf(startId)
+    }
+
+    override fun onDestroy() {        // 服务生命周期终点是锁释放的最后一道兜底
         releaseTransferLocks()
         super.onDestroy()
     }
