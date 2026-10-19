@@ -1,8 +1,6 @@
 package app.amisles.hanime.feature.detail
 
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -34,6 +32,8 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import java.io.File
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 
 /**
  * 本地视频播放页：播放已下载到本机的文件，不依赖任何外部播放器应用。
@@ -60,14 +60,18 @@ fun LocalPlayerScreen(
 
     // 与详情页同理：不能在组合期同步构建播放器，否则整段构建压在页面首帧上
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    // release() 是阻塞调用，延后一帧执行以避开离场帧
-    val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     LaunchedEffect(Unit) {
-        exoPlayer = ExoPlayerFactory.buildLocalVideoPlayer(context).apply {
+        val player = ExoPlayerFactory.buildLocalVideoPlayer(context).apply {
             // 沿用详情页持久化的倍速偏好；读 StateFlow 缓存值，避免同步解密
             setPlaybackSpeed(Preferences.playbackSpeedFlow.value)
         }
+        // 构建期间页面可能已离开组合（快速返回）：此时无人持有该播放器，就地释放
+        if (!currentCoroutineContext().isActive) {
+            player.release()
+            return@LaunchedEffect
+        }
+        exoPlayer = player
     }
 
     val fileExists = remember(filePath) { !filePath.isNullOrEmpty() && File(filePath).exists() }
@@ -90,7 +94,8 @@ fun LocalPlayerScreen(
             // 播放器尚未就绪：无可释放。此分支同时保证 DisposableEffect 一定有返回值。
             onDispose { }
         } else {
-            onDispose { mainHandler.post { player.release() } }
+            // 同步释放：延后一帧的 post 在宿主提前销毁时会丢失，导致播放器与解码器泄漏
+            onDispose { releasePlayerSafely(player) }
         }
     }
 

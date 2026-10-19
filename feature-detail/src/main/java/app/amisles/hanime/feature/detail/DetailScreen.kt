@@ -1,8 +1,6 @@
 package app.amisles.hanime.feature.detail
 
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -41,6 +39,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
@@ -56,6 +55,8 @@ import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
 import app.amisles.hanime.feature.detail.components.VideoUnavailableHint
 import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
 import app.amisles.hanime.feature.detail.util.shareVideo
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -125,14 +126,20 @@ fun DetailScreen(
 
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
-    val mainHandler = remember { Handler(Looper.getMainLooper()) }
-
     LaunchedEffect(Unit) {
         val deps = ExoPlayerFactory.prepareVideoPlayerDeps(context)
-        exoPlayer = ExoPlayerFactory.buildVideoPlayer(context, deps).apply {
+        val player = ExoPlayerFactory.buildVideoPlayer(context, deps).apply {
             // 读 StateFlow 缓存值，避免在首帧路径上再触发一次加密存储解密
             setPlaybackSpeed(Preferences.playbackSpeedFlow.value)
         }
+        // 连播切集时本页面会在构建期间离开组合：此时 exoPlayer 的 DisposableEffect 已随组合
+        // 一同销毁，之后再赋值的播放器不会被任何人释放（含 CacheDataSource 持有的 SimpleCache
+        // 引用、解码器与网络连接）。故先确认组合仍然有效，否则就地释放。
+        if (!currentCoroutineContext().isActive) {
+            player.release()
+            return@LaunchedEffect
+        }
+        exoPlayer = player
     }
 
     LaunchedEffect(videoDetail?.defaultSourceUrl, exoPlayer) {
@@ -199,8 +206,11 @@ fun DetailScreen(
                 if (position > 0) {
                     viewModel.savePlaybackProgress(position, duration)
                 }
-                // 延后一帧再释放：与目标页面的播放器构建错开，避免同帧叠加两次阻塞开销
-                mainHandler.post { player.release() }
+                // 必须同步释放：之前用 mainHandler.post 延后一帧，一旦宿主 Activity 在
+                // posted runnable 执行前销毁，或 release() 自身抛异常，播放器就永久泄漏
+                // （连同解码器、Cache 数据源与在途网络连接）。ExoPlayer.release() 本身要求
+                // 在其应用线程（此处为主线程）同步完成，开销也远小于一次页面转场。
+                releasePlayerSafely(player)
             }
         }
     }
@@ -489,4 +499,20 @@ private fun downloadResultMessage(result: Int): Int = when (result) {
     DownloadManager.RESULT_ALREADY_ACTIVE -> R.string.detail_download_in_progress
     DownloadManager.RESULT_ALREADY_COMPLETED -> R.string.detail_download_completed
     else -> R.string.detail_download_added
+}
+
+
+/**
+ * 安全释放播放器：先移除监听再 release，任何异常只记录不外抛。
+ *
+ * 不带上报错直接 release 时，Media3 在某些状态下（如 prepare 过程中被释放）会从回调链上抛出；
+ * 这里的清理动作发生在页面销毁的 onDispose 中，异常逃逸只会炸掉组合器，且让后续播放器也得不到释放。
+ */
+internal fun releasePlayerSafely(player: ExoPlayer) {
+    runCatching {
+        player.clearVideoSurface()
+        player.release()
+    }.onFailure { e ->
+        AppLogger.logError("DetailScreen", "释放播放器失败: " + e.message, e)
+    }
 }
