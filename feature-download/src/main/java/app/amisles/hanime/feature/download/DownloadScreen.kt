@@ -90,6 +90,15 @@ enum class DownloadSort {
  * tasks 每秒会因进度产生多个新列表；抽出「筛选与排序真正依赖的字段」作不可变键，
  * 进度以外的字段没变时即可复用排序结果，避免每秒重排整表。
  */
+/** 下载页按状态分组 + 按 id 索引的一次性遍历结果，供列表与分组视图共用。 */
+private data class TaskGroups(
+    val downloading: List<DownloadTask>,
+    val completed: List<DownloadTask>,
+    val paused: List<DownloadTask>,
+    val failed: List<DownloadTask>,
+    val byId: Map<Int, DownloadTask>
+)
+
 private data class TaskOrderKey(
     val id: Int,
     val status: DownloadStatus,
@@ -153,10 +162,30 @@ fun DownloadScreen(
     // 文件名搜索关键词：纯本地过滤已下载任务，输入即生效，不触发任何网络请求
     var nameQuery by rememberSaveable { mutableStateOf("") }
 
-    val downloadingTasks = tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
-    val completedTasks = tasks.filter { it.status == DownloadStatus.COMPLETED }
-    val pausedTasks = tasks.filter { it.status == DownloadStatus.PAUSED }
-    val failedTasks = tasks.filter { it.status == DownloadStatus.FAILED }
+    // 一次遍历同时完成分组与 id 索引：原来分别做 4 次 filter + 1 次 associateBy，
+    // 每次重组都要把整个任务表扫 5 遍；下载进度每 500ms 更新一次，代价随任务数线性增长。
+    // 以 tasks 为 key 记忆，只有任务列表真正变化时才重算。
+    val groups = remember(tasks) {
+        val downloading = ArrayList<DownloadTask>()
+        val completed = ArrayList<DownloadTask>()
+        val paused = ArrayList<DownloadTask>()
+        val failed = ArrayList<DownloadTask>()
+        val byId = HashMap<Int, DownloadTask>(tasks.size * 2)
+        for (task in tasks) {
+            byId[task.id] = task
+            when (task.status) {
+                DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> downloading += task
+                DownloadStatus.COMPLETED -> completed += task
+                DownloadStatus.PAUSED -> paused += task
+                DownloadStatus.FAILED -> failed += task
+            }
+        }
+        TaskGroups(downloading, completed, paused, failed, byId)
+    }
+    val downloadingTasks = groups.downloading
+    val completedTasks = groups.completed
+    val pausedTasks = groups.paused
+    val failedTasks = groups.failed
 
     // 筛选 + 排序后的可见任务：先取排序/筛选依据的稳定键，再按 id 映射回最新 Task 对象，
     // 这样进度更新不会触发整表重排，而界面进度仍是实时的
@@ -200,8 +229,9 @@ fun DownloadScreen(
             DownloadSort.PROGRESS -> base.sortedByDescending { it.progress }
         }.map { it.id }
     }
-    val tasksById = tasks.associateBy { it.id }
-    val visibleTasks = orderedTaskIds.mapNotNull { tasksById[it] }
+    val visibleTasks = remember(orderedTaskIds, groups) {
+        orderedTaskIds.mapNotNull { groups.byId[it] }
+    }
     // 搜索态必须退化为扁平列表：分组视图按状态整段渲染原始列表，不经过关键词过滤
     val useGroupedView = downloadFilter == DownloadFilter.ALL &&
         downloadSort == DownloadSort.ADDED &&
