@@ -572,6 +572,10 @@ class DownloadManager @Inject constructor(
             downloadFileSingle(taskId, url, filePath, resumeBytes)
             return
         }
+        // 已知总量时先做一次磁盘空间预检：空间不足立即失败，避免把 ENOSPC 当成可重试的网络
+        // 错误反复退避重试（每次重试都会再失败），让用户以为在下载却毫无进展。
+        val knownTotal = taskMap[taskId]?.totalBytes ?: 0L
+        if (knownTotal > 0) requireFreeSpace(File(filePath), knownTotal)
         val probe = probeSupportAndThroughput(taskId, url)
         if (probe == null || !probe.supportsRange) {
             downloadFileSingle(taskId, url, filePath, 0L)
@@ -581,7 +585,29 @@ class DownloadManager @Inject constructor(
             downloadFileSingle(taskId, url, filePath, 0L)
             return
         }
+        // 探测拿到了准确总量，写第一个字节前再确认一次空间
+        requireFreeSpace(File(filePath), probe.totalBytes)
         downloadFileChunked(taskId, url, filePath, probe.totalBytes, singleBps = probe.bps, resumeMap = null)
+    }
+
+    /** 读取任务已知的总字节数（未知时为 0），供引擎做空间预检。 */
+    internal fun knownTotalBytes(taskId: Int): Long = taskMap[taskId]?.totalBytes ?: 0L
+
+    /**
+     * 磁盘空间预检：目标目录可用空间不足以完成 [needBytes] 时抛出 [NotEnoughSpaceException]。
+     *
+     * 保留 [SPACE_RESERVE_BYTES] 余量，避免写满整块分区后拖垮系统其它写入（日志、数据库）。
+     * 仅对「已知总量」的下载生效；总量未知的流式下载无法预判，只能依赖写入失败时的错误归类。
+     */
+    internal fun requireFreeSpace(target: File, needBytes: Long) {
+        if (needBytes <= 0L) return
+        val dir = target.parentFile ?: return
+        val available = runCatching { android.os.StatFs(dir.absolutePath).availableBytes }.getOrDefault(Long.MAX_VALUE)
+        if (available < needBytes + SPACE_RESERVE_BYTES) {
+            throw NotEnoughSpaceException(
+                "存储空间不足：需要 ${needBytes / 1024 / 1024}MB，可用 ${available / 1024 / 1024}MB"
+            )
+        }
     }
 
     /**

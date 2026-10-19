@@ -9,7 +9,7 @@ import javax.net.ssl.SSLException
 /**
  * 下载失败的标记异常与面向用户的错误文案归类。
  *
- * 三个异常都是「需换策略」的信号，由下载链路捕获后决定回退单连接、整份重下或直接失败。
+ * 几个异常都是「需换策略」或「不可重试」的信号，由下载链路捕获后决定回退单连接、整份重下或直接失败。
  */
 // 服务器忽略 Range、对分块请求返回 200 时抛出的标记异常
 internal class RangeNotSupportedException(message: String) : IOException(message)
@@ -20,8 +20,12 @@ internal class SourceChangedException(message: String) : IOException(message)
 // 分块路径在本机/当前网络下持续无收益（反复被驱逐），据此降级为单连接续传而非判失败
 internal class ChunkedInefficientException(message: String) : IOException(message)
 
+// 存储空间不足：不可重试（重试只会空转），需直接失败并给出明确原因
+internal class NotEnoughSpaceException(message: String) : IOException(message)
+
 internal fun classifyError(e: Throwable): String {
     return when (e) {
+        is NotEnoughSpaceException -> "存储空间不足，请清理后再试"
         is SocketTimeoutException -> "网络超时，请检查网络后重试"
         is UnknownHostException -> "无法解析服务器地址（DNS 失败）"
         is SSLException -> "安全连接失败（SSL 错误）"

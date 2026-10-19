@@ -123,6 +123,10 @@ internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url
             delay(1000)
             // append 写入下 file.length() 即已落盘字节数，直接从该处接续
             resume = runCatching { File(filePath).length() }.getOrDefault(resume)
+            // 重试前确认剩余空间仍足够：写入失败（ENOSPC）在外层被归类为 IO 异常，
+            // 若空间确实不足，继续重试只会空转到次数耗尽，不如立即给出准确原因。
+            val need = knownTotalBytes(taskId) - resume
+            if (need > 0) requireFreeSpace(File(filePath), need)
         }
     }
 }

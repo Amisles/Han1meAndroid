@@ -11,6 +11,8 @@ import app.amisles.hanime.data.BuildConfig
  */
 internal const val MAX_CONCURRENT = 5
 internal const val PROGRESS_PERSIST_INTERVAL_MS = 3000L
+// 磁盘空间预检的保留余量：不写满整块分区，给日志与数据库留出写入空间
+internal const val SPACE_RESERVE_BYTES = 64L * 1024 * 1024
 
 // 单个文件名（UTF-8 字节）上限：ext4/大多数文件系统为 255 字节，留出余量
 internal const val MAX_FILE_NAME_BYTES = 200
