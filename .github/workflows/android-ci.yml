@@ -64,19 +64,56 @@ jobs:
           validate-wrappers: true
           gradle-home-cache-cleanup: true
 
-      - name: Run unit tests & build debug APK
+      # ── 质量门禁 ────────────────────────────────────────────────────────────
+      - name: Verify ProGuard/R8 rules are not commented out
+        run: |
+          # 历史事故：注释与指令被拼到同一行，整条 -keep 因此被当作注释而失效，
+          # 保护 DownloadStatus 枚举（Room 里按 name 持久化）与 Room 类的规则一度形同虚设。
+          # 这类问题编译器不会报错，只能靠静态扫描兜住。
+          fail=0
+          checked=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            checked=$((checked + 1))
+            # grep 无匹配时返回 1，作为 if 条件不会中断脚本
+            if grep -nE '^[[:space:]]*#.*-(keep|keepclassmembers|keepattributes|dontwarn|dontoptimize)' "$file"; then
+              echo "::error file=$file::检测到指令被注释符吞掉，该规则不会生效"
+              fail=1
+            fi
+          done <<< "$(find . -name '*.pro' -not -path './build/*' -not -path '*/build/*')"
+          echo "已扫描 $checked 个 .pro 文件"
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo 'ProGuard 规则扫描通过'
+
+      - name: Run unit tests
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleDebug --stacktrace
+          ./gradlew testDebugUnitTest --stacktrace --continue
 
-      - name: Upload build & test reports (on failure)
-        if: failure()
+      - name: Run Android Lint
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
+        run: |
+          # 不阻断构建：当前 Lint 存在历史遗留问题（图标资源等）。
+          # 先把结果可视化并留档，待清理后再通过 lint { abortOnError = true } 收紧。
+          ./gradlew lintDebug --stacktrace --continue || true
+
+      - name: Build debug APK
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload test & lint reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-and-test-reports
+          name: reports
           path: |
-            app/build/reports/
-            app/build/test-results/
+            **/build/reports/tests/
+            **/build/test-results/
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.sarif
           retention-days: 7
+          if-no-files-found: ignore
