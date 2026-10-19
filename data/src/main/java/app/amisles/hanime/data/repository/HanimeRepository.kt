@@ -574,7 +574,13 @@ class HanimeRepository @Inject constructor(
                 throw IllegalStateException("登录失败：请检查邮箱或密码，或切换到 WebView 登录")
             }
             val userId = LoginParser.parseUserIdFromSetCookies(result.setCookies)
-            Preferences.saveLogin(mergedCookie, userId)
+            // 会话与「实际提交登录的站点」绑定：之后即使用户把 baseUrl 改成镜像站，也不会跨域注入
+            Preferences.saveLogin(
+                mergedCookie,
+                userId,
+                // page.baseUrl 即本次实际登录的站点（可能已切换为镜像站），以它作为会话来源
+                sourceDomain = runCatching { android.net.Uri.parse(page.baseUrl).host }.getOrNull()
+            )
             mergedCookie
         }.fold(
             onSuccess = { AppResult.success(it) },
@@ -586,10 +592,11 @@ class HanimeRepository @Inject constructor(
         )
     }
 
-    suspend fun saveLoginCookie(cookieString: String): Boolean {
+    suspend fun saveLoginCookie(cookieString: String, sourceDomain: String? = null): Boolean {
         val safe = cookieString.trim().removePrefix("Cookie:").trim()
         if (safe.isBlank()) return false
-        Preferences.saveLogin(safe)
+        // sourceDomain：WebView 登录时传入实际登录站点的 host；手填 Cookie 时为空（回落到当前 baseUrl）
+        Preferences.saveLogin(safe, sourceDomain = sourceDomain)
         return true
     }
 

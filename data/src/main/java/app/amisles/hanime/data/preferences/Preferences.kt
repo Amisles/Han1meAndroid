@@ -31,6 +31,8 @@ object Preferences {
     private const val SP_ALREADY_LOGIN = "already_login"
     private const val SP_LOGIN_COOKIE = "login_cookie"
     private const val SP_CF_COOKIE = "cloudflare_cookie"
+    /** 登录态 Cookie 的来源域名（小写 host）。会话只能注入回该域名，见 [saveLogin]。 */
+    private const val SP_LOGIN_COOKIE_DOMAIN = "login_cookie_domain"
     private const val SP_SAVED_USER_ID = "saved_user_id"
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
@@ -79,6 +81,9 @@ object Preferences {
     val loginStateFlow: StateFlow<Boolean> = _loginStateFlow.asStateFlow()
 
     private val _loginCookieFlow = MutableStateFlow(CookieString(""))
+    // 登录态 Cookie 的来源域名。历史版本只存 Cookie 不存域名，启动时按 baseUrl 推断一次。
+    @Volatile
+    private var _loginCookieDomain: String = ""
     val loginCookieFlow: StateFlow<CookieString> = _loginCookieFlow.asStateFlow()
 
     private val _cloudFlareCookieFlow = MutableStateFlow(CookieString(""))
@@ -146,6 +151,7 @@ object Preferences {
     private fun readPersistedValues() {
         _loginStateFlow.value = readBoolean(SP_ALREADY_LOGIN, false)
         _loginCookieFlow.value = CookieString(readString(SP_LOGIN_COOKIE, "").orEmpty())
+        _loginCookieDomain = readString(SP_LOGIN_COOKIE_DOMAIN, "").orEmpty().lowercase()
         _cloudFlareCookieFlow.value = CookieString(readString(SP_CF_COOKIE, "").orEmpty())
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
@@ -166,6 +172,7 @@ object Preferences {
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
+        migrateLegacyLoginCookieDomain()
     }
 
     private fun readBoolean(key: String, default: Boolean): Boolean =
@@ -213,6 +220,10 @@ object Preferences {
             enc.edit {
                 putBoolean(SP_ALREADY_LOGIN, alreadyLogin)
                 putString(SP_LOGIN_COOKIE, loginCookie)
+                putString(
+                    SP_LOGIN_COOKIE_DOMAIN,
+                    (runCatching { android.net.Uri.parse(baseUrl).host?.lowercase() }.getOrNull() ?: "")
+                )
                 putString(SP_CF_COOKIE, cfCookie)
                 putString(SP_SAVED_USER_ID, savedUserId)
                 putInt(SP_MAX_DOWNLOAD_CONCURRENT, maxConcurrent)
@@ -297,6 +308,24 @@ object Preferences {
 
     val loginCookie: CookieString get() = _loginCookieFlow.value
 
+    /** 登录态 Cookie 的来源域名（小写）；为空表示未知，此时不会向任何主机注入。 */
+    val loginCookieDomain: String get() = _loginCookieDomain
+
+    /**
+     * 历史数据迁移：升级前的版本只持久化了 Cookie 文本，没有记录来源域名。
+     * 当时 Cookie 只可能由「当前 baseUrl 站点」的登录流程写入，故用当前 baseUrl 的 host 作为来源。
+     * 迁移后立刻回写；若用户随后又把 baseUrl 改成镜像站，会话依然不会跨域注入。
+     */
+    private fun migrateLegacyLoginCookieDomain() {
+        if (_loginCookieDomain.isNotBlank()) return
+        val cookie = _loginCookieFlow.value.cookie
+        if (cookie.isBlank()) return
+        val host = runCatching { android.net.Uri.parse(_baseUrlFlow.value).host?.lowercase() }
+            .getOrNull() ?: return
+        _loginCookieDomain = host
+        runCatching { sp.edit { putString(SP_LOGIN_COOKIE_DOMAIN, host) } }
+    }
+
     val cloudFlareCookie: CookieString get() = _cloudFlareCookieFlow.value
 
     val savedUserId: String get() = _savedUserIdFlow.value
@@ -376,14 +405,21 @@ object Preferences {
      * 加密存储不可用时**不落盘**：明文存储中的登录 Cookie 可被同设备上任意应用或 root 读取，
      * 代价高于「本次会话有效、重启后需重新登录」。此时登录态只在内存中保留。
      */
-    fun saveLogin(cookieString: String, userId: String? = null) {
+    fun saveLogin(cookieString: String, userId: String? = null, sourceDomain: String? = null) {
         val safeCookie = cookieString.take(8192)
         val id = userId ?: extractUserId(safeCookie)
+        // 会话必须与来源域名绑定：CookieJar 只会把它注入回这个 host。
+        // 未显式指定时取当前 baseUrl 的 host（手填 Cookie / 透传场景），调用方无法提供时该值为空，
+        // 此时宁可不注入，也不能把它发给用户后来改成的任意镜像站。
+        val domain = sourceDomain?.trim()?.lowercase()
+            ?.ifBlank { null }
+            ?: currentBaseHost()
         if (secureStorageAvailable) {
             sp.edit {
                 putBoolean(SP_ALREADY_LOGIN, true)
                 putString(SP_LOGIN_COOKIE, safeCookie)
                 putString(SP_SAVED_USER_ID, id)
+                putString(SP_LOGIN_COOKIE_DOMAIN, domain)
             }
         } else {
             AppLogger.logError(
@@ -393,6 +429,7 @@ object Preferences {
         }
         _loginStateFlow.value = true
         _loginCookieFlow.value = CookieString(safeCookie)
+        _loginCookieDomain = domain
         _savedUserIdFlow.value = id
     }
 
@@ -409,10 +446,16 @@ object Preferences {
     }
 
     /** 保存 Cloudflare 校验 Cookie。加密存储不可用时同样不落盘（同 [saveLogin]）。 */
-    fun saveCloudFlareCookie(cookieString: String) {
+    fun saveCloudFlareCookie(cookieString: String, sourceDomain: String? = null) {
         val safe = cookieString.take(8192)
         if (secureStorageAvailable) {
-            sp.edit { putString(SP_CF_COOKIE, safe) }
+            sp.edit {
+                putString(SP_CF_COOKIE, safe)
+                // Cloudflare 校验 Cookie 与登录 Cookie 同源，共用来源域名。
+                // 未传入时保留原有域名，避免把手动 Cookie 登录得到的正式会话域名清空。
+                val domain = sourceDomain?.trim()?.lowercase()?.ifBlank { null } ?: _loginCookieDomain
+                if (domain.isNotBlank()) putString(SP_LOGIN_COOKIE_DOMAIN, domain)
+            }
         } else {
             AppLogger.logError(
                 "Preferences",
@@ -481,12 +524,18 @@ object Preferences {
         sp.edit {
             remove(SP_ALREADY_LOGIN)
             remove(SP_LOGIN_COOKIE)
+            remove(SP_LOGIN_COOKIE_DOMAIN)
             remove(SP_SAVED_USER_ID)
         }
         _loginStateFlow.value = false
         _loginCookieFlow.value = CookieString("")
+        _loginCookieDomain = ""
         _savedUserIdFlow.value = ""
     }
+
+    /** 当前 baseUrl 的 host（小写）；解析失败时返回空串。 */
+    private fun currentBaseHost(): String =
+        runCatching { android.net.Uri.parse(_baseUrlFlow.value).host?.lowercase() }.getOrNull().orEmpty()
 
     private fun extractUserId(cookieString: String): String {
         if (cookieString.isBlank()) return ""

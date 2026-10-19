@@ -94,8 +94,34 @@ class LoginViewModel @Inject constructor(
         cookie.contains("laravel_session", ignoreCase = true) ||
             cookie.contains("session", ignoreCase = true)
 
-    fun saveWebViewCookie(cookieFromManager: String) {
-        saveManualCookie(cookieFromManager)
+    /**
+     * 保存 WebView 登录拿到的 Cookie。
+     *
+     * [sourceDomain] 是实际完成登录的站点 host：会话只能注入回该域名，避免用户之后把
+     * baseUrl 改成镜像站时把主站会话一并发送过去。
+     */
+    fun saveWebViewCookie(cookieFromManager: String, sourceDomain: String? = null) {
+        val clean = cookieFromManager.trim()
+        if (clean.isEmpty()) {
+            _uiState.value = UiState.Error(context.getString(R.string.login_cookie_empty))
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            try {
+                val ok = repository.saveLoginCookie(clean, sourceDomain)
+                _uiState.value = if (ok) {
+                    UiState.Success(clean.length)
+                } else {
+                    UiState.Error(context.getString(R.string.login_cookie_invalid))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("LoginViewModel", "保存 WebView Cookie 失败: " + e.message, e)
+                _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
+            }
+        }
     }
 
     fun reset() {

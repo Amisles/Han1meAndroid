@@ -377,7 +377,9 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     val reportLoginIfCompleted: (String, String?) -> Unit = { url, cookies ->
         if (!loginReported.value && isLoginCompleted(url, cookies, cookieAtStart)) {
             loginReported.value = true
-            cookies?.let { vm.saveWebViewCookie(it) }
+            // 带上完成登录的站点 host：会话与来源域名绑定，之后改 baseUrl 也不会跨域下发
+            val domain = runCatching { android.net.Uri.parse(url).host }.getOrNull()
+            cookies?.let { vm.saveWebViewCookie(it, domain) }
         }
     }
 

@@ -41,8 +41,15 @@ object HCookieJar : CookieJar {
             }
         }
 
-        // 仅向 baseUrl 所属域名注入登录态 Cookie，避免会话被带向跨域主机造成泄漏
-        if (isBaseUrlHost(host)) {
+        // 仅向「会话来源域名」注入登录态 Cookie。
+        // 刻意不用当前 baseUrl 判定：baseUrl 是用户可随意修改的镜像站地址，若据此注入，
+        // 用户把官网地址改成第三方镜像后，主站会话（laravel_session / remember_web_*）会立刻
+        // 被发往镜像站。会话只认签发它的 host，改站点不改变这一点。
+        val sessionHost = Preferences.loginCookieDomain
+        if (sessionHost.isBlank()) {
+            // 未知来源：宁可不注入，也不能把凭据发往不确定的主机
+            AppLogger.d("HCookieJar", "登录 Cookie 缺少来源域名，已跳过注入以避免跨域泄漏")
+        } else if (host.equals(sessionHost, ignoreCase = true)) {
             out += Preferences.loginCookie.toLoginCookieList(host)
             out += Preferences.cloudFlareCookie.toLoginCookieList(host)
         }
@@ -81,11 +88,4 @@ object HCookieJar : CookieJar {
         cookieMap.clear()
     }
 
-    /** 判断请求 host 是否属于当前 baseUrl 域名（含子域），用于限定登录态 Cookie 的注入范围。 */
-    private fun isBaseUrlHost(host: String): Boolean {
-        val baseHost = runCatching {
-            android.net.Uri.parse(Preferences.baseUrl).host?.lowercase()
-        }.getOrNull() ?: return false
-        return host == baseHost || host.endsWith(".$baseHost")
-    }
 }
