@@ -403,10 +403,15 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * 内部方法，调用者须持有 tasksLock。统一负责 activeSlots 的 CAS 占位与终态/取消时的 -1，
+     * 统一负责 activeSlots 的占位与释放：只有通过 [tryAcquireSoftSlot] 的调用才会进入 Job 作用域，
+     * 也只有那里才会 -1，保证占位与释放成对；登记本身用 putIfAbsent 保证幂等。
      * 结束后调度下一个 PENDING 任务。
      */
     private fun startDownloadWithConcurrencyInternal(task: DownloadTask, resumeBytes: Long = 0L, resumeChunkMap: BooleanArray? = null) {
+        // 本方法会在多条路径上重入（startDownload / startNextPendingTask / updateConcurrencyLimit /
+        // retryAllFailed）。收敛到同一把锁上，保证「检查 downloadJobs」与「占槽位再登记 job」成为
+        // 一个原子步骤：否则并发重入会让同一任务登记两个 Job，前一个被覆盖后其 finally 的
+        // activeSlots -1 就不再对应任何真实占位，计数被减成负数，并发上限永久失效。
         if (downloadJobs.containsKey(task.id)) return
         // 占不到槽位则退回 PENDING，由 finally 的链式调度重新推导续传起点后拾起
         if (!tryAcquireSoftSlot()) {
@@ -478,18 +483,33 @@ class DownloadManager @Inject constructor(
                 AppLogger.logError("DownloadManager", "下载失败 ${task.title}: ${e.message}", e)
                 updateTask(task.id) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
             } finally {
-                // 释放槽位并调度下一个等待任务（成功/失败/取消均执行）
                 currentCoroutineContext()[Job]?.let { self -> downloadJobs.remove(task.id, self) }
                 if (!downloadJobs.containsKey(task.id)) {
                     taskCalls.remove(task.id)
                     taskCancelFlags.remove(task.id)
                 }
-                activeSlots.decrementAndGet()
+                // 进入此作用域必然已在上面通过 tryAcquireSoftSlot 占位，故此处释放是配对的。
+                val remaining = activeSlots.decrementAndGet()
+                if (remaining < 0) {
+                    // 防御：计数理论上不应为负。一旦出现即说明存在占位/释放缺口，
+                    // 记日志并纠正为 0，避免并发上限永久失效导致连接与内存失控。
+                    AppLogger.logError("DownloadManager", "activeSlots 计数异常并已纠正: " + remaining)
+                    activeSlots.set(0)
+                }
                 startNextPendingTask()
             }
         }
 
-        downloadJobs[task.id] = job
+        // 占位与登记必须原子：并发重入一旦让两个 Job 落到同一 taskId，先登记的那个被覆盖，
+        // 它的 finally 里的 -1 就不再对应任何真实占位，activeSlots 会被减成负数。
+        // putIfAbsent(LAZY 且未启动的 Job) 是原子的：只有成功登记的一方才有权 start()。
+        val existing = downloadJobs.putIfAbsent(task.id, job)
+        if (existing != null) {
+            // 已有 Job 占有该任务：归还刚拿到的槽位，本次调度作废
+            activeSlots.decrementAndGet()
+            AppLogger.log("DownloadManager", "任务 " + task.id + " 已在下载中，忽略重复调度")
+            return
+        }
         job.start()
     }
 
