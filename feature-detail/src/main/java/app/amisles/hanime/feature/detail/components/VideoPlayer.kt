@@ -174,6 +174,9 @@ private val MINI_PROGRESS_HEIGHT = 3.dp
 // ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
 
+// 长按临时加速的目标倍速（仅作用于播放器与展示，不写回偏好）
+private const val LONG_PRESS_BOOST_SPEED = 2f
+
 // 视频缩放模式：SCALE_TO_FIT
 private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
 
@@ -390,7 +393,6 @@ fun VideoPlayer(
     var isMuted by remember { mutableStateOf(false) }
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
     val gestureScope = rememberCoroutineScope()
-    val playbackSpeedRef = rememberUpdatedState(playbackSpeed)
     var showSpeedMenu by remember { mutableStateOf(false) }
     var showQualityMenu by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -686,22 +688,25 @@ fun VideoPlayer(
         onPlaybackSpeedChanged(speed)
     }
 
-    // 长按 2x 加速：仅临时修改播放器与界面倍速、不持久化到 Preferences（松手恢复原始倍速）
-    fun setLongPressBoost(active: Boolean, restoreSpeed: Float) {
+    // 长按 2x 加速：只临时修改播放器与「生效倍速」，不改写用户选择的 playbackSpeed。
+    // 原实现把 playbackSpeed 直接置 2f，加速期间若打开倍速菜单再选中任一档，
+    // UI 高亮与恢复值都会错乱（松手恢复到被覆盖后的值）；这里让两者彻底分离。
+    fun setLongPressBoost(active: Boolean) {
         if (active) {
             if (!isLongPressBoost) {
                 isLongPressBoost = true
-                playbackSpeed = 2f
-                exoPlayer.setPlaybackSpeed(2f)
+                exoPlayer.setPlaybackSpeed(LONG_PRESS_BOOST_SPEED)
             }
         } else {
             if (isLongPressBoost) {
                 isLongPressBoost = false
-                playbackSpeed = restoreSpeed
-                exoPlayer.setPlaybackSpeed(restoreSpeed)
+                exoPlayer.setPlaybackSpeed(playbackSpeed)
             }
         }
     }
+
+    /** 界面上展示的倍速：加速期间显示 2x，其余显示用户选择的档位。 */
+    val effectiveSpeed: Float = if (isLongPressBoost) LONG_PRESS_BOOST_SPEED else playbackSpeed
 
     fun toggleFullscreen() {
         onFullscreenToggle(!isFullscreen)
@@ -889,7 +894,6 @@ fun VideoPlayer(
                         var initialized = false
                         // 长按 2x 加速：是否已触发、被覆盖前的原始倍速
                         var longPressFired = false
-                        var preBoostSpeed = 1f
                         // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发 2x
                         var longPressJob: Job? = null
                         while (true) {
@@ -901,7 +905,7 @@ fun VideoPlayer(
                                 if (longPressFired) {
                                     // 长按加速结束：恢复原始倍速，不触发点击切换/快进退
                                     longPressJob?.cancel()
-                                    setLongPressBoost(false, preBoostSpeed)
+                                    setLongPressBoost(false)
                                     longPressFired = false
                                     gestureHint = null
                                     break
@@ -978,7 +982,6 @@ fun VideoPlayer(
                                     lastY = y
                                     initialized = true
                                     longPressFired = false
-                                    preBoostSpeed = playbackSpeedRef.value
                                     // 每次手势开始都清空「落在控件上」标记：控件 onClick 要到抬起才置位，
                                     // 若上次手势残留该标记会吞掉下一次空白点击
                                     isControlTap = false
@@ -989,7 +992,7 @@ fun VideoPlayer(
                                         delay(1000L)
                                         if (!longPressFired && !moved && !isZoom && dragMode == null) {
                                             longPressFired = true
-                                            setLongPressBoost(true, preBoostSpeed)
+                                            setLongPressBoost(true)
                                             showSpeedMenu = false
                                             showQualityMenu = false
                                             gestureHint = context.getString(R.string.player_long_press_boost)
@@ -1303,7 +1306,7 @@ fun VideoPlayer(
                         }
                 ) {
                     Text(
-                        text = "${playbackSpeed}x",
+                        text = "${effectiveSpeed}x",
                         color = Color.White,
                         fontSize = 12.sp
                     )
@@ -1490,7 +1493,7 @@ fun VideoPlayer(
                     playbackSpeeds.forEach { speed ->
                         Text(
                             text = "${speed}x",
-                            color = if (speed == playbackSpeed) HanimePrimary else Color.White,
+                            color = if (speed == effectiveSpeed) HanimePrimary else Color.White,
                             fontSize = 11.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
