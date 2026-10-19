@@ -196,13 +196,16 @@ class SearchViewModel @Inject constructor(
         _hasMore.value = true
 
         searchJob = viewModelScope.launch {
+            // 快照本轮请求的页码：协程挂起期间 currentPageNum 可能被 loadMore 改动，
+            // 直接读共享变量会发出错误的页码。
+            val requestPage = 1
             try {
                 val result = withContext(Dispatchers.IO) {
                     repository.searchVideosWithPagination(
                         query = _query.value,
                         genre = _genre.value,
                         sort = _sort.value,
-                        page = currentPageNum,
+                        page = requestPage,
                         tags = _tags.value,
                         broad = _broad.value,
                         date = _date.value,
@@ -251,7 +254,9 @@ class SearchViewModel @Inject constructor(
         val epoch = ++loadMoreEpoch
         loadMoreJob?.cancel()
         _isLoadingMore.value = true
-        currentPageNum++
+        // 局部页码：不再共享改写 currentPageNum。原实现在失败路径 currentPageNum--，若期间用户
+        // 已触发新一轮搜索（resetSearch 把它置 1），这个 -- 就会把页码减成 0，后续每一页都从 0 请求。
+        val pageToLoad = currentPageNum + 1
 
         loadMoreJob = viewModelScope.launch {
             try {
@@ -260,7 +265,7 @@ class SearchViewModel @Inject constructor(
                         query = _query.value,
                         genre = _genre.value,
                         sort = _sort.value,
-                        page = currentPageNum,
+                        page = pageToLoad,
                         tags = _tags.value,
                         broad = _broad.value,
                         date = _date.value,
@@ -274,12 +279,13 @@ class SearchViewModel @Inject constructor(
                             // 分页追加必须去重：站点结果集在两次请求间漂移时会重复返回，重复 key 会抛异常
                             _videos.value = (_videos.value + data.videos).distinctBy { it.id }
                         }
+                        // 只有仍属于当前这一轮搜索时才推进共享游标
+                        if (epoch == loadMoreEpoch) currentPageNum = pageToLoad
                         _currentPage.value = data.currentPage
                         _totalPages.value = data.totalPages
                         _hasMore.value = data.hasNextPage
                     }
                     is AppResult.Error -> {
-                        currentPageNum--
                         _hasMore.value = true
                         // 记录失败原因。注意：SearchScreen 仅在 videos 为空时渲染 error，
                         // 而分页失败时列表非空，故此处暂无可见提示（属既有 UI 缺口，未在本次修复范围内）
@@ -291,7 +297,7 @@ class SearchViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 AppLogger.e("SearchViewModel", "加载更多失败: ${e.message}", e)
-                currentPageNum--
+                // 不触碰共享游标：本轮失败只是没加载下一页，下一轮仍从同一页继续
                 _hasMore.value = true
                 _error.value = e.message ?: "加载更多失败"
             } finally {
