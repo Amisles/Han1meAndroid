@@ -120,16 +120,15 @@ class DownloadManager @Inject constructor(
     internal val connectionPermits = Semaphore(MAX_CONCURRENT_CONNECTIONS)
 
     /**
-     * 落盘串行化队列。原实现「即发即忘」的 upsert 不保证完成顺序，连续状态切换时可能
-     * 先发起的 UPSERT 后落库而覆盖新状态、DELETE 与残留 UPSERT 竞争导致任务复活。
-     * 改为单消费者 Channel：严格 FIFO，提交顺序即写库顺序（提交点均在 tasksLock 内）。
+     * 落盘合并队列：按 taskId 只保留最新快照，删除以哨兵标记（覆盖同 id 的在途 upsert）。
+     *
+     * 原来是 UNLIMITED 的每条队列：进度每 500ms 一条、状态切换一条，批量添加 100 个任务时
+     * 队列可积压上千份完整快照（标题、URL、路径都在内），既是内存压力也让数据库反复重写同一行。
+     * 改为「id → 最新状态」后，无论产生多少条中间态，一个任务最终只落一次盘。
      */
-    private sealed interface PersistCmd {
-        data class Upsert(val task: DownloadTask) : PersistCmd
-        data class Delete(val taskId: Int) : PersistCmd
-    }
-
-    private val persistChannel = Channel<PersistCmd>(Channel.UNLIMITED)
+    private val pendingPersist = ConcurrentHashMap<Int, DownloadTask>()
+    private val pendingDelete: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+    private val persistSignal = Channel<Unit>(Channel.CONFLATED)
     private val defaultDownloadDir: File by lazy {
 
         val base = context.getExternalFilesDir(null)
@@ -165,14 +164,25 @@ class DownloadManager @Inject constructor(
         }
 
         scope.launch {
-            for (cmd in persistChannel) {
+            for (signal in persistSignal) {
                 runCatching {
-                    when (cmd) {
-                        is PersistCmd.Upsert -> downloadDao.upsertDownload(cmd.task.toEntity())
-                        is PersistCmd.Delete -> downloadDao.deleteDownload(cmd.taskId)
+                    // 一次性取走当前全部待写项：期间的中间态已在上面的 map 里被覆盖，
+                    // 因此这里拿到的就是每个任务的最终状态，写一次即正确。
+                    val deletedIds = pendingDelete.toList().also { pendingDelete.removeAll(it.toSet()) }
+                    val batch = pendingPersist.values.toList().also { items ->
+                        // 逐个 remove 而非 clear：消费期间新产生的快照不能被误删
+                        items.forEach { pendingPersist.remove(it.id) }
+                    }
+                    deletedIds.forEach { id ->
+                        val stillPending = pendingDelete.contains(id)
+                        if (!stillPending) downloadDao.deleteDownload(id)
+                    }
+                    if (batch.isNotEmpty()) {
+                        // 批量 upsert 在单事务内完成，避免 N 次独立 fsync
+                        downloadDao.upsertAll(batch.map { it.toEntity() })
                     }
                 }.onFailure { e ->
-                    AppLogger.logError("DownloadManager", "Failed to persist $cmd: ${e.message}", e)
+                    AppLogger.logError("DownloadManager", "Failed to persist batch: " + e.message, e)
                 }
             }
         }
@@ -745,12 +755,18 @@ class DownloadManager @Inject constructor(
 
     /** 提交一次落盘。只入队不直接写库，实际写入由 init 中的单消费者协程串行执行。 */
     private fun persistTask(task: DownloadTask) {
-        persistChannel.trySend(PersistCmd.Upsert(task))
+        pendingDelete.remove(task.id)
+        pendingPersist[task.id] = task
+        // CONFLATED：队列里已有未消费信号时直接丢弃本次，合并效果等价但无内存积压
+        persistSignal.trySend(Unit)
     }
 
     /** 提交一次删除。与 [persistTask] 共用同一队列，避免删除与在途更新竞争。 */
     private fun persistDelete(taskId: Int) {
-        persistChannel.trySend(PersistCmd.Delete(taskId))
+        // 删除哨兵必须覆盖同 id 的在途 upsert，否则旧快照可能在删除之后才落库，任务「复活」
+        pendingPersist.remove(taskId)
+        pendingDelete.add(taskId)
+        persistSignal.trySend(Unit)
     }
 
     private fun DownloadTask.toEntity() = DownloadEntity(
