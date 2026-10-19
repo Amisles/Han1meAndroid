@@ -156,13 +156,21 @@ private const val TRANSITION_EXIT_DURATION_MS = 160
 /** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 private fun String.baseRoute(): String = substringBefore('?')
 
-/** 切换底部导航 / 导航栏的 Tab */
+/**
+ * 切换底部导航 / 导航栏的 Tab。
+ *
+ * 固定为「以 startDestination 为根、保存/恢复各 Tab 状态」的标准模式：
+ * - 原实现用 popBackStack(route) 回退到目标 Tab，返回栈会随「首页→搜索→下载→首页→…」
+ *   的往返不断累积同一批目的地，返回键需要按很多次才能退出，且各 Tab 的滚动位置不会被保存；
+ * - 改为 popUpTo(图起点){saveState} + launchSingleTop + restoreState 后，栈深度恒定，
+ *   再次进入同一 Tab 时能恢复上次的列表位置。
+ */
 private fun NavController.navigateToTab(route: String) {
     if (currentDestination?.route?.baseRoute() == route) return
-    if (!popBackStack(route, inclusive = false)) {
-        navigate(route) {
-            launchSingleTop = true
-        }
+    navigate(route) {
+        popUpTo(graph.startDestinationId) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
