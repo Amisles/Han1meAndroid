@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.database.sqlite.SQLiteException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -119,6 +120,15 @@ class DownloadManager @Inject constructor(
      */
     internal val connectionPermits = Semaphore(MAX_CONCURRENT_CONNECTIONS)
 
+    /** 网络监听是否已注册；DownloadManager 是进程级单例，重复注册会收到重复回调。 */
+    @Volatile
+    private var networkCallbackRegistered = false
+
+    /**
+     * 因断网而被自动暂停的任务 id。只有这些任务才会在网络恢复后自动续传 ——
+     * 用户手动点暂停的任务必须保持暂停，否则「暂停省个流量」的意图会被下一次网络切换打断。
+     */
+    private val autoPausedByNetwork: MutableSet<Int> = ConcurrentHashMap.newKeySet()
     /**
      * 落盘合并队列：按 taskId 只保留最新快照，删除以哨兵标记（覆盖同 id 的在途 upsert）。
      *
@@ -255,6 +265,8 @@ class DownloadManager @Inject constructor(
                 AppLogger.logError("DownloadManager", "Failed to restore tasks: ${e.message}", e)
             }
         }
+
+        registerNetworkObserver()
     }
 
     /**
@@ -784,6 +796,9 @@ class DownloadManager @Inject constructor(
     )
 
     fun pauseDownload(taskId: Int) {
+        // 用户/系统主动暂停时移出自动暂停集合：这不是断网触发的，不应在网络恢复后被自动拉起
+        autoPausedByNetwork.remove(taskId)
+
         cancelTaskCalls(taskId)
         downloadJobs[taskId]?.cancel()
         downloadJobs.remove(taskId)
@@ -875,6 +890,68 @@ class DownloadManager @Inject constructor(
         // 常驻通知并重算活动集合，否则通知（ongoing 不可划掉）与 dataSync 前台服务会永久残留。
         forwardRemoveToService(taskId)
         AppLogger.log("DownloadManager", "Download cancelled: $taskId")
+    }
+
+    /**
+     * 注册网络变化监听：断网时把在途任务转为 PAUSED，恢复后自动续传。
+     *
+     * 原实现没有任何网络感知：断网后分块路径的块会被无限重新入队（在 30 秒零进度
+     * 看门狗下反复全量重建连接），单连接路径要等 readTimeout=120s 才判失败；期间通知
+     * 一直显示「下载中」，实际没有任何数据流动，纯耗电。
+     */
+    private fun registerNetworkObserver() {
+        if (networkCallbackRegistered) return
+        val cm = runCatching {
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        }.getOrNull() ?: run {
+            AppLogger.log("DownloadManager", "无法获取 ConnectivityManager，跳过网络监听")
+            return
+        }
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                // 只在真的可用时才触发；onCapabilitiesChanged 会更晚且频繁，onAvailable 足够
+                scope.launch {
+                    val paused = tasksLock.withLock {
+                        // 只恢复「因断网自动暂停」的那些，手动暂停的不动
+                        taskMap.values.filter {
+                            it.status == DownloadStatus.PAUSED && it.id in autoPausedByNetwork
+                        }.map { it.id }
+                    }
+                    if (paused.isEmpty()) return@launch
+                    AppLogger.log("DownloadManager", "网络已恢复，自动续传 ${paused.size} 个已暂停任务")
+                    // resumeDownloadInternal 现在不持锁（内部自行处理），from within launch 无需 tasksLock
+                    paused.forEach { id ->
+                        autoPausedByNetwork.remove(id)
+                        resumeDownloadInternal(id)
+                    }
+                }
+            }
+
+            override fun onLost(network: android.net.Network) {
+                scope.launch {
+                    val active = tasksLock.withLock {
+                        taskMap.values.filter {
+                            it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+                        }.map { it.id }
+                    }
+                    if (active.isEmpty()) return@launch
+                    AppLogger.log("DownloadManager", "网络已断开，暂停 ${active.size} 个任务等待恢复")
+                    // 用 pauseDownload（含取消在途调用），使位图表按暂停语义落盘；
+                    // 同时记入 autoPausedByNetwork，供网络恢复后只续传这些任务。
+                    active.forEach {
+                        autoPausedByNetwork.add(it)
+                        pauseDownload(it)
+                    }
+                }
+            }
+        }
+        networkCallbackRegistered = runCatching {
+            cm.registerDefaultNetworkCallback(callback)
+            true
+        }.getOrDefault(false)
+        if (!networkCallbackRegistered) {
+            AppLogger.log("DownloadManager", "注册网络监听失败，将依赖下载自身的重试与超时")
+        }
     }
 
     /**
