@@ -51,21 +51,6 @@ internal fun ceilDiv(value: Long, divisor: Long): Long {
 }
 
 /**
- * 已完成块的「连续前缀」字节数。
- *
- * 降级单连接续传时只能从一段无空洞的前缀处接续（单连接顺序写，起点若落在有空洞的位置，
- * 空洞会永远保留）。块边界复用 [chunkEndExclusive]，与分块布局同源。
- */
-internal fun contiguousDoneBytes(chunkDone: BooleanArray, chunkCount: Int, totalBytes: Long): Long {
-    var prefix = 0L
-    for (i in 0 until chunkCount) {
-        if (!chunkDone[i]) break
-        prefix = chunkEndExclusive(i, chunkCount, totalBytes)
-    }
-    return prefix
-}
-
-/**
  * 写位图表，返回是否成功。
  *
  * 先写同名 `.tmp` 并 flush + fsync 落盘，再用 [moveAtomically] 原子替换，避免进程在写入中途被杀留下半截内容。

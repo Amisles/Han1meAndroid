@@ -508,13 +508,15 @@ internal suspend fun DownloadManager.downloadFileChunked(
         // 记住「该文件分块无收益」，使后续暂停/恢复直接走单连接，避免周期性震荡
         singleConnectionFiles.add(filePath)
         if (isTaskCancelled(taskId)) return
-        val contiguous = contiguousDoneBytes(chunkDone, chunkCount, totalBytes)
-        downloadFileSingle(taskId, url, filePath, contiguous)
-        // 单连接写满后位图表已无意义（其分块布局与单连接续传冲突），完整落盘时清理
-        val fullLength = runCatching { outputFile.length() }.getOrDefault(0L)
-        if (partmapFile.exists() && fullLength >= totalBytes) {
-            runCatching { partmapFile.delete() }
-        }
+        // 不能用 contiguousDoneBytes 作单连接续传起点：它只表示「位图前缀连续」，而分块写入是
+        // 稀疏的，文件中间可能仍有未写入的空洞。按该偏移截断后续写会让空洞永久保留，而收尾只
+        // 比对文件长度，最终产出「长度正确、中段是垃圾数据」的坏文件。
+        // 这里改为丢弃分块文件、位图与单连接标记，随后以 0 起始整份重写。
+        AppLogger.log("DownloadManager", "分块降级单连接：丢弃稀疏分块文件后整份重下，避免空洞导致坏文件")
+        runCatching { partmapFile.delete() }
+        runCatching { outputFile.delete() }
+        singleConnectionFiles.remove(filePath)
+        downloadFileSingle(taskId, url, filePath, 0L)
         return
     }
 

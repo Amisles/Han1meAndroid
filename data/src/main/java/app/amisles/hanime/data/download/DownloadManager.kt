@@ -355,14 +355,19 @@ class DownloadManager @Inject constructor(
                 // 字节确实落在当前文件长度内」才承认完成，否则清位重下，避免「位图说完成、数据不在」
                 // 导致收尾校验恒失败且无法自愈。
                 val sanitized = sanitizePartmap(task, file, cc, bitmap)
-                // 该文件已被判定分块无收益时，直接按连续完成前缀做单连接续传（缓存避免周期性震荡）
+                // 该文件已被判定分块无收益时，本应改走单连接续传。但分块写入是稀疏的：
+                // contiguousDoneBytes 只保证「位图中的逻辑前缀连续」，且 sanitizePartmap 只校验
+                // 各块末尾字节是否落在 file.length() 内 —— 文件中间仍可能有从未写入的空洞。
+                // 若按前缀截断后单连接续写，空洞将永久保留，而收尾只比对文件长度，最终会得到
+                // 「长度正确但中段是垃圾数据」的坏文件。故此处一律丢弃分块进度，整份重下。
                 if (singleConnectionFiles.contains(task.filePath)) {
-                    val prefix = contiguousDoneBytes(sanitized, cc, task.totalBytes)
-                    AppLogger.log(
+                    AppLogger.logError(
                         "DownloadManager",
-                        "该文件已判定分块无收益，继续单连接续传: prefix=$prefix / total=${task.totalBytes}"
+                        "该文件曾判定分块无收益，但残留的是稀疏分块文件，不能直接单连接续传；丢弃后整份重下: " + task.title
                     )
-                    return prefix to null
+                    runCatching { partmapFile.delete() }
+                    runCatching { file.delete() }
+                    return 0L to null
                 }
                 return 0L to sanitized
             }
