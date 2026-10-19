@@ -774,13 +774,21 @@ fun VideoPlayer(
         // 竖屏待确认次数：左右横置互翻必经竖屏，而全屏时 SENSOR_LANDSCAPE 不会让画面经过竖屏，
         // 若一次判到竖屏就退出会「退出全屏又立刻重进」，故竖屏需连续两次判定才生效
         var portraitStreak = 0
+        // 上一次真正落地判定时的物理朝向。OrientationEventListener 在一般设备上会以
+        // 传感器采样率持续回调（数十次/秒），原实现每次回调都写 deviceTilt 这个 Compose State，
+        // 即使值不变也会走一次快照写入与失效检查。这里先与已生效值比较，只有真正变化才写入。
+        var appliedTilt: DeviceTilt? = null
         val listener = object : OrientationEventListener(act) {
             override fun onOrientationChanged(orientation: Int) {
                 if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) return
                 // 临界区返回 null：维持原判定，等角度稳定后再判
                 val tilt = classifyDeviceTilt(orientation) ?: return
-                // 物理朝向始终同步（左右翻转也要更新，供全屏锁方向用）；重复写入同一枚举值不触发重组
-                deviceTilt = tilt
+                // 物理朝向始终同步（左右翻转也要更新，供全屏锁方向用）。
+                // 先比对已生效值：朝向未变时不写 State，避免高频回调反复触发重组检查。
+                if (tilt != appliedTilt) {
+                    appliedTilt = tilt
+                    deviceTilt = tilt
+                }
                 val landscape = tilt.isLandscape
                 val previous = lastLandscape
                 if (previous == landscape) {
