@@ -24,6 +24,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -126,6 +127,16 @@ fun DetailScreen(
 
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
+    // 续播点在播放器构建期间并行读取，避免「先 await 播放器、再 await 数据库」串行两次 IO，
+    // 把首帧起播往后推。读取结果是 State，VideoPlayer 在首帧就绪时再消费。
+    val savedSeekMs by produceState(0L, viewModel.videoId) {
+        value = if (viewModel.videoId.isNotEmpty()) {
+            viewModel.getSavedPlaybackPosition(viewModel.videoId)
+        } else {
+            0L
+        }
+    }
+
     LaunchedEffect(Unit) {
         val deps = ExoPlayerFactory.prepareVideoPlayerDeps(context)
         val player = ExoPlayerFactory.buildVideoPlayer(context, deps).apply {
@@ -151,8 +162,9 @@ fun DetailScreen(
                 detail,
                 Preferences.preferredQualityFlow.value
             )
-            // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转
-            initialSeekMs = viewModel.getSavedPlaybackPosition(viewModel.videoId)
+            // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转。
+            // 这里只做赋值，不再 await 数据库：起播不必等待历史记录查询完成。
+            initialSeekMs = savedSeekMs
             player.setMediaItem(MediaItem.fromUri(Uri.parse(preferredUrl)))
             player.prepare()
         }
