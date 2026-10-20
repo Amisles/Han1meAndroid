@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.detail
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
@@ -42,6 +43,9 @@ object ExoPlayerFactory {
 
     // 磁盘缓存上限 512MB，按 LRU 淘汰最久未用的片段。
     private const val CACHE_MAX_BYTES = 512L * 1024 * 1024
+
+    // 播放器请求头日志的 TAG：logcat 过滤 HanimePlayer 即可只看这些日志
+    private const val TAG = "HanimePlayer"
 
     private val cacheRef = AtomicReference<SimpleCache?>(null)
 
@@ -122,14 +126,19 @@ object ExoPlayerFactory {
      *   代价是自定义请求头（Referer）会随重定向发往跳转目标主机；头内只有官网地址、不含凭据，故接受。
      * [connectTimeoutMs]/[readTimeoutMs] 由调用方按场景（预缓存 / 正片）传入。
      * [referer] 由调用方提供（§播放器不读配置：本类是 object，注入配置会让它依赖数据层）。
+     *
+     * 返回值外面套了一层 [LoggingHttpDataSourceFactory]：每次真正发起 HTTP 请求前，
+     * 按 TAG "HanimePlayer" 用 Log.i 打印完整请求头（UA / Referer / Range / Accept-Encoding 等）。
      */
-    private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int, referer: String): DefaultHttpDataSource.Factory {
-        return DefaultHttpDataSource.Factory()
+    private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int, referer: String): LoggingHttpDataSourceFactory {
+        val requestHeaders = mapOf(VideoAntiHotlink.HEADER_NAME to referer)
+        val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(BROWSER_UA)
             .setConnectTimeoutMs(connectTimeoutMs)
             .setReadTimeoutMs(readTimeoutMs)
             .setAllowCrossProtocolRedirects(true)
-            .setDefaultRequestProperties(mapOf(VideoAntiHotlink.HEADER_NAME to referer))
+            .setDefaultRequestProperties(requestHeaders)
+        return LoggingHttpDataSourceFactory(httpFactory, BROWSER_UA, requestHeaders)
     }
 
     /**
@@ -152,7 +161,10 @@ object ExoPlayerFactory {
      * 否则重活会重新落回页面首帧的主线程预算里。
      */
     suspend fun prepareVideoPlayerDeps(context: Context): VideoPlayerDeps =
-        withContext(Dispatchers.Default) {
+        // 必须是 IO 而非 Default：[getCache] 内含 mkdirs、StandaloneDatabaseProvider 建表与
+        // 缓存索引扫描，属阻塞磁盘 I/O；Default 是 CPU 密集池（线程数 = 核数），占用它会在
+        // 低端机上挤占真正的计算任务。
+        withContext(Dispatchers.IO) {
             VideoPlayerDeps(getCache(context), buildLoadControlForNetwork(context))
         }
 
@@ -166,6 +178,13 @@ object ExoPlayerFactory {
     fun buildVideoPlayer(context: Context, deps: VideoPlayerDeps, referer: String): ExoPlayer {
         // 上游直连数据源：浏览器 UA + 跨协议重定向 + 适度超时 + 官网 Referer 防盗链
         val upstreamFactory = buildUpstreamFactory(15_000, 15_000, referer)
+
+        // 进入视频详情页即打一条入口日志：确认日志链路生效，并交代接下来要打印的请求头内容
+        Log.i(
+            TAG,
+            "[播放器请求头] 进入视频详情页，开始构建播放器；" +
+                "Referer=" + referer + "，后续每次 HTTP 请求都会打印完整请求头"
+        )
 
         // 缓存数据源包住直连：先读缓存，未命中再走网络并回写；缓存写入异常时回退直连，不中断播放
         val cacheDataSourceFactory = CacheDataSource.Factory()
