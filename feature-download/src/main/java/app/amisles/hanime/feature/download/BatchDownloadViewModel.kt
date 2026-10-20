@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -72,12 +74,18 @@ class BatchDownloadViewModel @Inject constructor(
     private var batchInitInProgress = false
 
     init {
-        // 观察下载任务变化，自动更新视频列表中的下载状态
+        // 观察下载任务变化，自动更新视频列表中的下载状态。
+        // 进度上报周期为 500ms，tasks 在下载时会持续高频发射；而本页只关心每个视频的
+        // 「已完成 / 进行中」判定，与字节数无关。故先投影成 (videoId, status) 再
+        // distinctUntilChanged：纯进度变化不会产生新发射，避免每 500ms 对整页视频重扫一遍。
         viewModelScope.launch {
             try {
-                downloads.tasks.collect { tasks ->
-                    syncDownloadStatuses(tasks)
-                }
+                downloads.tasks
+                    .map { tasks -> tasks.map { it.videoId to it.status } }
+                    .distinctUntilChanged()
+                    .collect { statusPairs ->
+                        syncDownloadStatuses(statusPairs)
+                    }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -93,15 +101,19 @@ class BatchDownloadViewModel @Inject constructor(
      * 不能按 url 匹配：downloadUrl 是带时效签名的 CDN 直链，重新拉取画质页会得到不同 url，
      * 与已存在任务的 url 必然不相等，导致漏配。
      */
-    private fun indexTasksByVideoId(tasks: List<DownloadTask>): Map<String, List<DownloadTask>> =
-        tasks.filter { it.videoId.isNotBlank() }.groupBy { it.videoId }
+    private fun indexTasksByVideoId(tasks: List<DownloadTask>): Map<String, List<DownloadStatus>> =
+        tasks.filter { it.videoId.isNotBlank() }.groupBy({ it.videoId }, { it.status })
+
+    /** 与 [indexTasksByVideoId] 等价，但输入是已投影的 (videoId, status) 列表，无需再建实体。 */
+    private fun indexStatusesByVideoId(pairs: List<Pair<String, DownloadStatus>>): Map<String, List<DownloadStatus>> =
+        pairs.filter { it.first.isNotBlank() }.groupBy({ it.first }, { it.second })
 
     /**
      * 是否「下载中」。仅 DOWNLOADING / PENDING 计入；PAUSED 不计入，使已暂停的视频仍可在本页
      * 重新选中加入队列以恢复下载。
      */
-    private fun List<DownloadTask>.hasActiveDownload(): Boolean = any {
-        it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+    private fun List<DownloadStatus>.hasActiveDownload(): Boolean = any {
+        it == DownloadStatus.DOWNLOADING || it == DownloadStatus.PENDING
     }
 
     /**
@@ -110,10 +122,10 @@ class BatchDownloadViewModel @Inject constructor(
      */
     private fun resolveVideoFlags(
         videoId: String,
-        tasksByVideoId: Map<String, List<DownloadTask>>
+        tasksByVideoId: Map<String, List<DownloadStatus>>
     ): Pair<Boolean, Boolean> {
-        val videoTasks = tasksByVideoId[videoId].orEmpty()
-        return videoTasks.any { it.status == DownloadStatus.COMPLETED } to videoTasks.hasActiveDownload()
+        val statuses = tasksByVideoId[videoId].orEmpty()
+        return statuses.any { it == DownloadStatus.COMPLETED } to statuses.hasActiveDownload()
     }
 
     /**
@@ -122,10 +134,10 @@ class BatchDownloadViewModel @Inject constructor(
      * 判定键统一为 videoId，且与 [searchAuthor] / [loadMore] 的初始判定使用同一套逻辑，
      * 避免首次同步后状态跳变。tasks 发射频率跟随下载进度（可达每秒数次），故先建索引避免嵌套遍历。
      */
-    private fun syncDownloadStatuses(tasks: List<DownloadTask>) {
+    private fun syncDownloadStatuses(statusPairs: List<Pair<String, DownloadStatus>>) {
         if (batchInitInProgress) return
 
-        val tasksByVideoId = indexTasksByVideoId(tasks)
+        val tasksByVideoId = indexStatusesByVideoId(statusPairs)
 
         _state.update { currentState ->
             if (currentState.videos.isEmpty() && currentState.downloadingVideoIds.isEmpty()) {
@@ -545,7 +557,8 @@ class BatchDownloadViewModel @Inject constructor(
                 }
             } finally {
                 batchInitInProgress = false
-                syncDownloadStatuses(downloads.tasks.value)
+                // 与 init 里的投影保持一致：这里同样只需要 (videoId, status)
+                syncDownloadStatuses(downloads.tasks.value.map { it.videoId to it.status })
             }
         }
     }
