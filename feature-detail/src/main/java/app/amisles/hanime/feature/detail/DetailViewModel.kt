@@ -21,10 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -95,14 +92,21 @@ class DetailViewModel @Inject constructor(
     private var detailLoadJob: Job? = null
 
     /**
-     * 视频已切换的通知，值为新 videoId。
+     * 当前视频 ID 的可观察镜像，供评论域同步。
      *
      * UI 层订阅它来调用 CommentViewModel.selectVideo()：视频域与评论域是两个独立 VM，
-     * 之间的同步走这个单向事件，而不是让 DetailViewModel 持有 CommentViewModel
+     * 之间的同步走这条单向通道，而不是让 DetailViewModel 持有 CommentViewModel
      * （Hilt 不允许 @HiltViewModel 互为依赖，且会形成循环依赖）。
+     *
+     * **必须是 StateFlow 而不是 SharedFlow**：原先用
+     * `MutableSharedFlow(extraBufferCapacity = 1)` 发送，但 replay = 0 —— 缓冲只对「已订阅」
+     * 的收集者生效。而 UI 侧的 LaunchedEffect 是首次启动收集，等它挂起到 ACTIVE 时
+     * loadVideoDetail() 早已同步发完事件，首次进入详情页的事件必然丢失：
+     * 评论域 currentVideoId 保持空串，loadComments() 首行直接 return，评论永远加载不出来。
+     * StateFlow 自带当前值，晚订阅也能立刻拿到，从根上消除这个时序依赖。
      */
-    private val _videoSwitched = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val videoSwitched: SharedFlow<String> = _videoSwitched.asSharedFlow()
+    private val _videoSwitched = MutableStateFlow("")
+    val videoSwitched: StateFlow<String> = _videoSwitched.asStateFlow()
 
     fun loadVideoDetail(videoUrl: String) {
         AppLogger.d("DetailViewModel", "loadVideoDetail called, url: ${videoUrl.redactUrlForLog()}")
@@ -111,7 +115,7 @@ class DetailViewModel @Inject constructor(
 
         currentVideoId = extractVideoId(videoUrl)
         currentVideoUrl = videoUrl
-        _videoSwitched.tryEmit(currentVideoId)
+        _videoSwitched.value = currentVideoId
 
         // 切换视频时重置评论域（评论/回复/点赞/展开态）与订阅态，使新视频可被重新加载。
         // 评论域的 16 项复位由 CommentViewModel.selectVideo 收拢，本类不再逐个赋值 ——

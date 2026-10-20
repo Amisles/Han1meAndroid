@@ -120,8 +120,16 @@ class CommentViewModel @Inject constructor(
      *
      * 原先这些复位散在 loadVideoDetail 里逐个赋值，一次要写 14 行，漏一个就会串数据；
      * 收拢到本方法后视频域只需一行调用。
+     *
+     * **幂等**：视频域用 StateFlow 承载当前 videoId，UI 重新订阅或配置变更后重放同一个值
+     * 时会再次调用本方法。若不短路，一次无意义的复位会把已经加载好的评论与展开态清空，
+     * 表现为「旋转屏幕后评论区变空」。
      */
     fun selectVideo(videoId: String) {
+        if (videoId == currentVideoId && videoId.isNotEmpty()) {
+            AppLogger.d("CommentViewModel", "selectVideo 收到同一视频，跳过复位: $videoId")
+            return
+        }
         currentVideoId = videoId
         _comments.value = emptyList()
         _commentsLoaded.value = false

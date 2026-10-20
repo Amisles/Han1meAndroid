@@ -113,10 +113,12 @@ fun DetailScreen(
     val isPostingReply by commentVm.isPostingReply.collectAsStateWithLifecycle()
     val replyError by commentVm.replyError.collectAsStateWithLifecycle()
 
-    // 视频域切换视频时通知评论域复位：两个 VM 独立，同步走单向事件
+    // 视频域切换视频时通知评论域复位：两个 VM 独立，同步走这条单向通道。
+    // videoSwitched 是 StateFlow，带当前值，晚订阅也不会丢（此前的 SharedFlow replay=0
+    // 会让首次进入的事件必然丢失）。初始值与「尚未加载视频」都表现为空串，直接跳过。
     LaunchedEffect(viewModel, commentVm) {
         viewModel.videoSwitched.collect { videoId ->
-            commentVm.selectVideo(videoId)
+            if (videoId.isNotEmpty()) commentVm.selectVideo(videoId)
         }
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
