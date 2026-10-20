@@ -9,10 +9,15 @@ import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.feature.detail.ExoPlayerFactory
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
+import coil3.disk.directory
+import coil3.memory.MemoryCache
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class HanimeApplication : Application() {
+class HanimeApplication : Application(), SingletonImageLoader.Factory {
 
     /**
      * 语言包装后的 Context。
@@ -93,6 +98,38 @@ class HanimeApplication : Application() {
 
     private fun persistedLanguage(): String =
         runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
+
+    /** 图片磁盘缓存上限。Coil 默认取可用空间的 2% 且没有绝对上限，
+     *  在本项目这种缩略图量级下（首页分区 + 搜索无限滚动 + 批量下载整作者列表）
+     *  会随使用时长无限增长，故显式给定容量。 */
+    private val IMAGE_DISK_CACHE_BYTES = 256L * 1024 * 1024
+
+    /** 图片内存缓存占可用堆的比例。列表快速滚动时主要靠它避免重复解码。 */
+    private val IMAGE_MEMORY_CACHE_PERCENT = 0.15
+
+    /**
+     * 自定义 Coil 单例：为图片磁盘 / 内存缓存设定显式上限。
+     *
+     * 之前完全用默认配置 —— Coil 3 的磁盘缓存默认「可用空间的 2%」，没有绝对上限，
+     * 在缩略图数量极大的场景下会持续吃满存储，且与 ExoPlayer 的 512MB 视频缓存叠加。
+     * 这里统一收敛到 256MB，并按 15% 堆上限设置内存缓存。
+     */
+    override fun newImageLoader(context: android.content.Context): ImageLoader =
+        ImageLoader.Builder(context)
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(IMAGE_DISK_CACHE_BYTES)
+                    .build()
+            }
+            .memoryCache {
+                MemoryCache.Builder()
+                    .maxSizePercent(context, IMAGE_MEMORY_CACHE_PERCENT)
+                    .build()
+            }
+            // 不设置 crossfade：该版本 ImageLoader.Builder 未暴露此方法，Coil 3 默认不对
+            // AsyncImage 施加全局淡入，与 v1.6.0「移除图片淡入」的效果一致。
+            .build()
 
     override fun onCreate() {
         super.onCreate()
