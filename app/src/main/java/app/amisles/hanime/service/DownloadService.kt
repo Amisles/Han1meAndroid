@@ -54,8 +54,16 @@ class DownloadService : Service() {
 
     // taskId -> (title, progress)，记录仍在进行的下载任务（仅 DOWNLOADING/PENDING）
     private val activeTasks = ConcurrentHashMap<Int, Pair<String, Int>>()
+    /**
+     * 当前占据前台通知的任务 id；-1 表示「服务未处于前台」。
+     *
+     * 这是前台状态的**唯一事实来源**。此前另有 isForegroundStarted 布尔与之并存，两者在
+     * handleTerminal / handlePaused / handleRemove 的分支上会失去同步：服务仍在别的任务上
+     * 处于前台，而 foregroundTaskId 已被置回 -1，此后任何进度回调都会走错分支 —— 该提升
+     * 为前台的没提升，或把刚发出的终态通知又拉回前台。
+     * 「是否已进入前台」与「foregroundTaskId >= 0」本就是同一件事，不该维护两份。
+     */
     private var foregroundTaskId = -1
-    private var isForegroundStarted = false
 
 
     private val notificationManager by lazy {
@@ -124,16 +132,15 @@ class DownloadService : Service() {
         val status = statusStr?.let { runCatching { DownloadStatus.valueOf(it) }.getOrNull() }
         val action = intent?.action
 
-        // 无条件尝试进入前台：之前用 isForegroundStarted 缓存短路，若服务已被 stopForeground 或
-        // stopSelf，而该标志未复位，后续 startForegroundService 的 5 秒履约就永远不满足，
-        // Android 12+ 会抛 ForegroundServiceDidNotStartInTimeException。系统对重复 startForeground
-        // 是幂等的，因此这里不做缓存，直接推进履约束。
+        // 无条件尝试进入前台：若用「是否已在前台」缓存短路，服务被 stopForeground / stopSelf 后
+        // 标志若未复位，后续 startForegroundService 的 5 秒履约就永远不满足，Android 12+ 会抛
+        // ForegroundServiceDidNotStartInTimeException。系统对重复 startForeground 是幂等的，
+        // 因此这里不做缓存，直接推进履约。
         ensureForeground(taskId, title ?: "", progress, status)
 
         if (taskId < 0) {
             // 非法 taskId：已占位进入前台以履约，随即撤销并停止服务。
             stopForeground(STOP_FOREGROUND_REMOVE)
-            isForegroundStarted = false
             foregroundTaskId = -1
             stopSelfResult(startId)
             return START_NOT_STICKY
@@ -161,16 +168,17 @@ class DownloadService : Service() {
     }
 
     private fun startForegroundSafely(id: Int, taskId: Int, notification: Notification): Boolean {
-        // 不用 isForegroundStarted 短路：onStartCommand 已保证每次都推进履约，
-        // 系统对重复 startForeground 是幂等的，缓存反而会让 5s 计时失效。
+        // 不做缓存短路：onStartCommand 已保证每次都推进履约，系统对重复 startForeground
+        // 是幂等的，缓存反而会让 5s 计时失效。
         return runCatching {
             startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         }.onSuccess {
-            isForegroundStarted = true
             foregroundTaskId = taskId
         }.onFailure { e ->
             AppLogger.log("DownloadService", "进入前台被系统拒绝，主动停止服务以撤销契约: ${e.message}")
-            isForegroundStarted = false
+            // 必须复位：否则 foregroundTaskId 仍指向旧任务，后续进度回调会误判「已在前台」
+            // 而只发通知，导致服务永远不满足前台契约。
+            foregroundTaskId = -1
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             runCatching { stopSelf() }
         }.isSuccess
@@ -192,7 +200,6 @@ class DownloadService : Service() {
         // （updateTask 内状态切换即 persist），退出前台后用户下次点「继续」即可续传。
         activeTasks.clear()
         stopForeground(STOP_FOREGROUND_REMOVE)
-        isForegroundStarted = false
         foregroundTaskId = -1
         releaseTransferLocks()
         stopSelf(startId)
@@ -213,17 +220,13 @@ class DownloadService : Service() {
         // 仍有在途任务即续期 CPU / Wi-Fi 锁
         acquireTransferLocks()
         val notification = buildProgressNotification(title, progress, status)
-        if (!isForegroundStarted) {
+        // 只有「当前没有前台任务」或「前台任务已不在活动集合里」时才需要占据前台；
+        // 其余情况（包括本任务就是前台任务）一律只更新通知，不必重复 startForeground。
+        val needForeground = foregroundTaskId < 0 || !activeTasks.containsKey(foregroundTaskId)
+        if (needForeground) {
             startForegroundSafely(notificationId(taskId), taskId, notification)
-        } else if (foregroundTaskId == taskId) {
-            notificationManager.notify(notificationId(taskId), notification)
         } else {
-            // 次级任务：前台任务仍在则发独立通知；否则提升本任务为前台通知
-            if (foregroundTaskId >= 0 && activeTasks.containsKey(foregroundTaskId)) {
-                notificationManager.notify(notificationId(taskId), notification)
-            } else {
-                startForegroundSafely(notificationId(taskId), taskId, notification)
-            }
+            notificationManager.notify(notificationId(taskId), notification)
         }
     }
 
@@ -239,9 +242,9 @@ class DownloadService : Service() {
         val needPromote = foregroundTaskId == taskId || !activeTasks.containsKey(foregroundTaskId)
         val next = if (needPromote) activeTasks.keys.firstOrNull() else null
         if (needPromote && next == null) {
-            if (isForegroundStarted) {
+            // foregroundTaskId >= 0 即表示服务仍在前台，无需再查第二个标志
+            if (foregroundTaskId >= 0) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                isForegroundStarted = false
             }
             foregroundTaskId = -1
             // 退出前台后再发完成/失败普通通知，避免被 stopForeground(REMOVE) 移除
@@ -278,9 +281,8 @@ class DownloadService : Service() {
         activeTasks.remove(taskId)
         val notification = buildPausedNotification(title, progress)
         if (activeTasks.isEmpty()) {
-            if (isForegroundStarted) {
+            if (foregroundTaskId >= 0) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                isForegroundStarted = false
             }
             foregroundTaskId = -1
             // 退出前台后再发暂停通知，避免被 stopForeground(REMOVE) 一并移除
@@ -314,9 +316,8 @@ class DownloadService : Service() {
         notificationManager.cancel(notificationId(taskId))
         val next = activeTasks.keys.firstOrNull()
         if (next == null) {
-            if (isForegroundStarted) {
+            if (foregroundTaskId >= 0) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
-                isForegroundStarted = false
             }
             foregroundTaskId = -1
             stopSelfResult(startId)
