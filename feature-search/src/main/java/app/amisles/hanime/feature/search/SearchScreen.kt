@@ -65,13 +65,13 @@ import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
-import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.preferences.SearchLayoutMode
+import app.amisles.hanime.domain.preferences.SearchLayoutMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +82,7 @@ fun SearchScreen(
     initialSort: String? = null,
     onAuthorClick: (String) -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val viewModel: SearchViewModel = hiltViewModel()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val videos by viewModel.videos.collectAsStateWithLifecycle()
@@ -115,7 +116,7 @@ fun SearchScreen(
 
     // 布局模式：用户显式选择优先；从未选择过时按宽度档位取默认（Compact 列表 / 平板网格）
     val sizeInfo = currentWindowSizeInfo()
-    val savedLayoutMode by Preferences.searchLayoutModeFlow.collectAsStateWithLifecycle()
+    val savedLayoutMode by appPrefs.searchLayoutModeFlow.collectAsStateWithLifecycle()
     val isGridMode = (savedLayoutMode ?: if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
         SearchLayoutMode.LIST
     } else {
@@ -421,7 +422,7 @@ fun SearchScreen(
                 LayoutModeToggle(
                     isGrid = isGridMode,
                     onToggle = { grid ->
-                        Preferences.setSearchLayoutMode(
+                        appPrefs.setSearchLayoutMode(
                             if (grid) SearchLayoutMode.GRID else SearchLayoutMode.LIST
                         )
                     }

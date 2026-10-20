@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoListItem
-import app.amisles.hanime.data.preferences.Preferences
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -60,13 +60,14 @@ fun SubscriptionsScreen(
     onVideoClick: (String) -> Unit = {},
     onNavigateToLogin: () -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val viewModel: SubscriptionsViewModel = hiltViewModel()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
     val videos by viewModel.videos.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val selectedQuery by viewModel.selectedQuery.collectAsStateWithLifecycle()
-    val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         if (isLogin) viewModel.load(initialQuery)

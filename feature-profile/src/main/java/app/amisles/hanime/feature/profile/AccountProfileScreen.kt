@@ -42,7 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import androidx.compose.material3.OutlinedTextFieldDefaults
 
@@ -51,13 +51,14 @@ fun AccountProfileScreen(
     onBackClick: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val viewModel: AccountProfileViewModel = hiltViewModel()
     val name by viewModel.name.collectAsStateWithLifecycle()
     val email by viewModel.email.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
-    val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {

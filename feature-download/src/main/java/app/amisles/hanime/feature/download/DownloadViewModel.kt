@@ -2,7 +2,7 @@ package app.amisles.hanime.feature.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.download.DownloadManager
+import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.DownloadTask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +14,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DownloadViewModel @Inject constructor(
-    private val downloadManager: DownloadManager
+    private val downloads: DownloadRepository
 ) : ViewModel() {
-    val tasks: StateFlow<List<DownloadTask>> = downloadManager.tasks
+    val tasks: StateFlow<List<DownloadTask>> = downloads.tasks
 
     private val mutationGate = Mutex()
 
@@ -26,8 +26,8 @@ class DownloadViewModel @Inject constructor(
         }
     }
 
-    fun pauseDownload(taskId: Int) = mutate { downloadManager.pauseDownload(taskId) }
-    fun resumeDownload(taskId: Int) = mutate { downloadManager.resumeDownload(taskId) }
-    fun cancelDownload(taskId: Int) = mutate { downloadManager.cancelDownload(taskId) }
-    fun retryAllFailed() = mutate { downloadManager.retryAllFailed() }
+    fun pauseDownload(taskId: Int) = mutate { downloads.pauseDownload(taskId) }
+    fun resumeDownload(taskId: Int) = mutate { downloads.resumeDownload(taskId) }
+    fun cancelDownload(taskId: Int) = mutate { downloads.cancelDownload(taskId) }
+    fun retryAllFailed() = mutate { downloads.retryAllFailed() }
 }

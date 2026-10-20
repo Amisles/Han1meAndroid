@@ -1,5 +1,10 @@
 package app.amisles.hanime.data.preferences
 
+import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.model.SessionCookie
+import app.amisles.hanime.domain.preferences.SearchLayoutMode
+import app.amisles.hanime.domain.preferences.ThemeMode
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
@@ -21,7 +26,7 @@ import androidx.security.crypto.MasterKey
 import app.amisles.hanime.core.common.util.AppLogger
 import java.io.File
 
-object Preferences {
+object Preferences : SettingsRepository, SessionRepository {
 
     // 与 Application 同生命周期的作用域，避免直接使用被标记为 delicate 的 GlobalScope
     private val preferencesScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -80,52 +85,52 @@ object Preferences {
     private var initialized = false
 
     private val _loginStateFlow = MutableStateFlow(false)
-    val loginStateFlow: StateFlow<Boolean> = _loginStateFlow.asStateFlow()
+    override val loginStateFlow: StateFlow<Boolean> = _loginStateFlow.asStateFlow()
 
-    private val _loginCookieFlow = MutableStateFlow(CookieString(""))
+    private val _loginCookieFlow = MutableStateFlow(SessionCookie(""))
     // 登录态 Cookie 的来源域名。历史版本只存 Cookie 不存域名，启动时按 baseUrl 推断一次。
     @Volatile
     private var _loginCookieDomain: String = ""
-    val loginCookieFlow: StateFlow<CookieString> = _loginCookieFlow.asStateFlow()
+    override val loginCookieFlow: StateFlow<CookieString> = _loginCookieFlow.asStateFlow()
 
-    private val _cloudFlareCookieFlow = MutableStateFlow(CookieString(""))
+    private val _cloudFlareCookieFlow = MutableStateFlow(SessionCookie(""))
     val cloudFlareCookieFlow: StateFlow<CookieString> = _cloudFlareCookieFlow.asStateFlow()
 
     private val _savedUserIdFlow = MutableStateFlow("")
-    val savedUserIdFlow: StateFlow<String> = _savedUserIdFlow.asStateFlow()
+    override val savedUserIdFlow: StateFlow<String> = _savedUserIdFlow.asStateFlow()
 
     private val _maxDownloadConcurrentFlow = MutableStateFlow(3)
-    val maxDownloadConcurrentFlow: StateFlow<Int> = _maxDownloadConcurrentFlow.asStateFlow()
+    override val maxDownloadConcurrentFlow: StateFlow<Int> = _maxDownloadConcurrentFlow.asStateFlow()
 
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
-    val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
+    override val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
 
     private val _appLanguageFlow = MutableStateFlow(LANGUAGE_ZH_CN)
-    val appLanguageFlow: StateFlow<String> = _appLanguageFlow.asStateFlow()
+    override val appLanguageFlow: StateFlow<String> = _appLanguageFlow.asStateFlow()
 
     private val _themeModeFlow = MutableStateFlow(ThemeMode.SYSTEM)
-    val themeModeFlow: StateFlow<ThemeMode> = _themeModeFlow.asStateFlow()
+    override val themeModeFlow: StateFlow<ThemeMode> = _themeModeFlow.asStateFlow()
 
     private val _playbackSpeedFlow = MutableStateFlow(1f)
-    val playbackSpeedFlow: StateFlow<Float> = _playbackSpeedFlow.asStateFlow()
+    override val playbackSpeedFlow: StateFlow<Float> = _playbackSpeedFlow.asStateFlow()
 
     private val _preferredQualityFlow = MutableStateFlow("")
-    val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
+    override val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
 
     private val _autoPlayNextFlow = MutableStateFlow(true)
-    val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
+    override val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
     // 循环播放：开启后当前视频播完自动从头重播（由 player.repeatMode 实现）
     private val _loopPlaybackFlow = MutableStateFlow(false)
-    val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
+    override val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
 
     // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
     private val _downloadStoragePathFlow = MutableStateFlow("")
-    val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
+    override val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
 
     // 搜索页布局模式：null 表示用户从未显式选择过，由界面按窗口宽度档位取默认值
     private val _searchLayoutModeFlow = MutableStateFlow<SearchLayoutMode?>(null)
-    val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
+    override val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
 
     /**
      * 初始化偏好存储。幂等，可安全重复调用。
@@ -152,9 +157,9 @@ object Preferences {
     /** 把持久化值读入各 StateFlow */
     private fun readPersistedValues() {
         _loginStateFlow.value = readBoolean(SP_ALREADY_LOGIN, false)
-        _loginCookieFlow.value = CookieString(readString(SP_LOGIN_COOKIE, "").orEmpty())
+        _loginCookieFlow.value = SessionCookie(readString(SP_LOGIN_COOKIE, "").orEmpty())
         _loginCookieDomain = readString(SP_LOGIN_COOKIE_DOMAIN, "").orEmpty().lowercase()
-        _cloudFlareCookieFlow.value = CookieString(readString(SP_CF_COOKIE, "").orEmpty())
+        _cloudFlareCookieFlow.value = SessionCookie(readString(SP_CF_COOKIE, "").orEmpty())
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
@@ -323,12 +328,15 @@ object Preferences {
             || legacy.contains(SP_BASE_URL)
     }
 
+    /** 保留旧名，供尚未迁移的调用点使用。 */
     val isAlreadyLogin: Boolean get() = _loginStateFlow.value
 
-    val loginCookie: CookieString get() = _loginCookieFlow.value
+    override val isLoggedIn: Boolean get() = _loginStateFlow.value
+
+    override val loginCookie: SessionCookie get() = _loginCookieFlow.value
 
     /** 登录态 Cookie 的来源域名（小写）；为空表示未知，此时不会向任何主机注入。 */
-    val loginCookieDomain: String get() = _loginCookieDomain
+    override val loginCookieDomain: String get() = _loginCookieDomain
 
     /**
      * 历史数据迁移：升级前的版本只持久化了 Cookie 文本，没有记录来源域名。
@@ -337,7 +345,7 @@ object Preferences {
      */
     private fun migrateLegacyLoginCookieDomain() {
         if (_loginCookieDomain.isNotBlank()) return
-        val cookie = _loginCookieFlow.value.cookie
+        val cookie = _loginCookieFlow.value.raw
         if (cookie.isBlank()) return
         val host = runCatching { android.net.Uri.parse(_baseUrlFlow.value).host?.lowercase() }
             .getOrNull() ?: return
@@ -345,23 +353,23 @@ object Preferences {
         runCatching { sp.edit { putString(SP_LOGIN_COOKIE_DOMAIN, host) } }
     }
 
-    val cloudFlareCookie: CookieString get() = _cloudFlareCookieFlow.value
+    override val cloudFlareCookie: SessionCookie get() = _cloudFlareCookieFlow.value
 
-    val savedUserId: String get() = _savedUserIdFlow.value
+    override val savedUserId: String get() = _savedUserIdFlow.value
 
-    val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
+    override val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
 
-    val baseUrl: String get() = _baseUrlFlow.value
+    override val baseUrl: String get() = _baseUrlFlow.value
 
     /**
      * 当前 baseUrl 是否为支持登录的官方域名（hanime1.me / hanimeone.me）。
      * 镜像站登录接口会返回“站点维护中”，需在 UI 层提前拦截。
      */
-    val isLoginSupported: Boolean
+    override val isLoginSupported: Boolean
         get() = isLoginSupportedHost(baseUrl)
 
     /** 登录支持状态的反应式 Flow，baseUrl 变化时自动更新。 */
-    val loginSupportedFlow: StateFlow<Boolean> = _baseUrlFlow
+    override val loginSupportedFlow: StateFlow<Boolean> = _baseUrlFlow
         .map { isLoginSupportedHost(it) }
         .stateIn(preferencesScope, SharingStarted.Eagerly, isLoginSupportedHost(_baseUrlFlow.value))
 
@@ -370,22 +378,22 @@ object Preferences {
         return host in LOGIN_SUPPORTED_DOMAINS
     }
 
-    val appLanguage: String get() = _appLanguageFlow.value
+    override val appLanguage: String get() = _appLanguageFlow.value
 
-    val themeMode: ThemeMode get() = _themeModeFlow.value
+    override val themeMode: ThemeMode get() = _themeModeFlow.value
 
-    val playbackSpeed: Float get() = _playbackSpeedFlow.value
-    val preferredQuality: String get() = _preferredQualityFlow.value
-    val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
-    val loopPlayback: Boolean get() = _loopPlaybackFlow.value
-    val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
+    override val playbackSpeed: Float get() = _playbackSpeedFlow.value
+    override val preferredQuality: String get() = _preferredQualityFlow.value
+    override val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
+    override val loopPlayback: Boolean get() = _loopPlaybackFlow.value
+    override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
-    fun setAppLanguage(lang: String) {
+    override fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
         _appLanguageFlow.value = lang
     }
 
-    fun setThemeMode(mode: ThemeMode) {
+    override fun setThemeMode(mode: ThemeMode) {
         sp.edit { putString(SP_THEME_MODE, mode.name) }
         _themeModeFlow.value = mode
     }
@@ -396,7 +404,7 @@ object Preferences {
      * @return true 表示输入被接受（可能已规范化为「https:// + host」）；
      *   false 表示输入非法，此时保持原设置不变，由调用方提示用户。
      */
-    fun setBaseUrl(url: String): Boolean {
+    override fun setBaseUrl(url: String): Boolean {
         val input = url.ifBlank { DEFAULT_BASE_URL }
         val safeUrl = sanitizeBaseUrl(input) ?: return false
         sp.edit { putString(SP_BASE_URL, safeUrl) }
@@ -424,7 +432,7 @@ object Preferences {
      * 加密存储不可用时**不落盘**：明文存储中的登录 Cookie 可被同设备上任意应用或 root 读取，
      * 代价高于「本次会话有效、重启后需重新登录」。此时登录态只在内存中保留。
      */
-    fun saveLogin(cookieString: String, userId: String? = null, sourceDomain: String? = null) {
+    override fun saveLogin(cookieString: String, userId: String?, sourceDomain: String?) {
         val safeCookie = cookieString.take(8192)
         val id = userId ?: extractUserId(safeCookie)
         // 会话必须与来源域名绑定：CookieJar 只会把它注入回这个 host。
@@ -447,7 +455,7 @@ object Preferences {
             )
         }
         _loginStateFlow.value = true
-        _loginCookieFlow.value = CookieString(safeCookie)
+        _loginCookieFlow.value = SessionCookie(safeCookie)
         _loginCookieDomain = domain
         _savedUserIdFlow.value = id
     }
@@ -456,7 +464,7 @@ object Preferences {
      * 保存当前登录用户的数字 ID（来自详情页解析），供评论/点赞等需要用户标识的接口使用。
      * 该值与登录态一并持久化，重启后由 init() 读回。
      */
-    fun saveUserId(id: String) {
+    override fun saveUserId(id: String) {
         val clean = id.trim()
         if (clean.isBlank()) return
         // 纯数字用户标识不属于凭据，无论存储是否加密都落盘，避免界面在重启后丢失展示信息
@@ -465,7 +473,7 @@ object Preferences {
     }
 
     /** 保存 Cloudflare 校验 Cookie。加密存储不可用时同样不落盘（同 [saveLogin]）。 */
-    fun saveCloudFlareCookie(cookieString: String, sourceDomain: String? = null) {
+    override fun saveCloudFlareCookie(cookieString: String, sourceDomain: String?) {
         val safe = cookieString.take(8192)
         if (secureStorageAvailable) {
             sp.edit {
@@ -481,35 +489,35 @@ object Preferences {
                 "加密存储不可用，Cloudflare Cookie 仅保留在内存中（不落盘）"
             )
         }
-        _cloudFlareCookieFlow.value = CookieString(safe)
+        _cloudFlareCookieFlow.value = SessionCookie(safe)
     }
 
-    fun setMaxDownloadConcurrent(max: Int) {
+    override fun setMaxDownloadConcurrent(max: Int) {
         val safeMax = max.coerceIn(1, 5)
         sp.edit { putInt(SP_MAX_DOWNLOAD_CONCURRENT, safeMax) }
         _maxDownloadConcurrentFlow.value = safeMax
     }
 
     /** 播放倍速偏好（0.25x–2x）。进入播放器时自动应用，切换时写回。 */
-    fun setPlaybackSpeed(speed: Float) {
+    override fun setPlaybackSpeed(speed: Float) {
         val safe = speed.coerceIn(0.25f, 2f)
         sp.edit { putFloat(SP_PLAYBACK_SPEED, safe) }
         _playbackSpeedFlow.value = safe
     }
 
     /** 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。 */
-    fun setPreferredQuality(resolution: String) {
+    override fun setPreferredQuality(resolution: String) {
         sp.edit { putString(SP_PREFERRED_QUALITY, resolution) }
         _preferredQualityFlow.value = resolution
     }
 
     /** 连播（下一集自动播放）开关。 */
-    fun setAutoPlayNext(enabled: Boolean) {
+    override fun setAutoPlayNext(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled
     }
 
-    fun setLoopPlayback(enabled: Boolean) {
+    override fun setLoopPlayback(enabled: Boolean) {
         sp.edit { putBoolean(SP_LOOP_PLAYBACK, enabled) }
         _loopPlaybackFlow.value = enabled
     }
@@ -517,7 +525,7 @@ object Preferences {
     /**
      * 搜索页布局模式。写入后即视为「用户已显式选择」，此后不再回退到按宽度档位的默认值。
      */
-    fun setSearchLayoutMode(mode: SearchLayoutMode) {
+    override fun setSearchLayoutMode(mode: SearchLayoutMode) {
         sp.edit { putString(SP_SEARCH_LAYOUT_MODE, mode.name) }
         _searchLayoutModeFlow.value = mode
     }
@@ -526,7 +534,7 @@ object Preferences {
      * 下载存储路径。空串表示「默认目录」（由 DownloadManager 解析为应用外部存储 /Downloads，
      * 不可用时回退内部存储）；非空时为用户指定的目录绝对路径。
      */
-    var downloadStoragePath: String
+    override var downloadStoragePath: String
         get() = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         set(value) {
             val safe = value.trim()
@@ -534,7 +542,7 @@ object Preferences {
             _downloadStoragePathFlow.value = safe
         }
 
-    fun logout() {
+    override fun logout() {
         HCookieJar.clearAll()
         runCatching {
             CookieManager.getInstance().removeAllCookies(null)
@@ -547,7 +555,7 @@ object Preferences {
             remove(SP_SAVED_USER_ID)
         }
         _loginStateFlow.value = false
-        _loginCookieFlow.value = CookieString("")
+        _loginCookieFlow.value = SessionCookie("")
         _loginCookieDomain = ""
         _savedUserIdFlow.value = ""
     }
@@ -568,7 +576,7 @@ object Preferences {
         return ""
     }
 
-    fun extractDisplayEmail(): String = extractDisplayEmail(loginCookie.cookie, savedUserId)
+    override fun extractDisplayEmail(): String = extractDisplayEmail(loginCookie.raw, savedUserId)
 
     fun extractDisplayEmail(cookieString: String, userId: String): String {
         if (cookieString.isBlank()) return ""

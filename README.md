@@ -23,6 +23,8 @@
 - **社区互动**：视频评论区（评论列表、回复展开、点赞数显示）、作者主页浏览（作品统计、视频分区、播放列表分区）、一键订阅作者并接入官方订阅内容页
 - **播放列表**：公开播放列表浏览、批量加入下载
 - **个性化**：多语言切换（简体中文 / 繁體中文 / English / 日本語，热切换即时生效）、主题模式切换（浅色 / 深色 / 跟随系统，Material Design 3 动态配色）
+- **界面定制**：全局字号、缩略图宽高比与圆角、列表缩略图宽度、栅格列数与目标列宽、图片解码质量档（省流 / 标准 / 高清）、首页每区显示条数；首页分区级布局（列表 / 网格 / 横滑）与顺序调整；四档预设方案；配置以文本导入导出
+- **网络诊断**：检测当前镜像站的 DNS、连接、证书、镜像与登录状态
 - **平板适配**：响应式框架适配平板导航栏 / 栅格 / 字体与触摸目标
 - **「我的」抽屉**：首页顶栏入口，左侧滑出抽屉聚合账户资料、订阅、设置等入口
 - **工程架构**：Hilt 依赖注入（全局单例统一管理、ViewModel 构造注入）
@@ -31,28 +33,28 @@
 
 | 分类 | 技术 | 版本 |
 | --- | --- | --- |
-| 构建工具 | Android Gradle Plugin | 9.2.1 |
-| 编程语言 | Kotlin | 2.4.10 |
-| UI 框架 | Jetpack Compose BOM | 2026.06.00 |
+| 构建工具 | Android Gradle Plugin | 9.4.1 |
+| 编程语言 | Kotlin | 2.4.21 |
+| UI 框架 | Jetpack Compose BOM | 2026.09.00 |
 | Material Design | Material 3 (Compose) | 随 BOM 发布 |
 | 架构 | MVVM + Repository + 单向数据流 | - |
-| 依赖注入 | Hilt (Dagger) | 2.60 |
-| 导航 | Navigation Compose | 2.9.8 |
-| Hilt 导航 | Hilt Navigation Compose | 1.2.0 |
-| 生命周期 | Lifecycle + ViewModel Compose | 2.10.0 |
+| 依赖注入 | Hilt (Dagger) | 2.60.1 |
+| 导航 | Navigation Compose | 2.10.2 |
+| Hilt 导航 | Hilt Navigation Compose | 1.4.0 |
+| 生命周期 | Lifecycle + ViewModel Compose | 2.11.0 |
 | 协程 | Kotlin Coroutines / Flow / StateFlow | 随 Kotlin 发布 |
-| 网络请求 | OkHttp | 5.4.0 |
-| HTML 解析 | Jsoup | 1.22.2 |
-| 图片加载 | Coil 3 (OkHttp 网络栈) | 3.5.0 |
-| 视频播放 | Media3 ExoPlayer (含 HLS 扩展) | 1.10.1 |
-| 数据持久化 | Room + KSP | 2.8.4 |
+| 网络请求 | OkHttp | 5.5.0 |
+| HTML 解析 | Jsoup | 1.23.2 |
+| 图片加载 | Coil 3 (OkHttp 网络栈) | 3.6.3 |
+| 视频播放 | Media3 ExoPlayer (含 HLS 扩展) | 1.11.1 |
+| 数据持久化 | Room + KSP | 2.8.5 |
 | 键值存储 | EncryptedSharedPreferences + DataStore Flow 封装 | - |
-| 安全存储 | AndroidX Security (EncryptedSharedPreferences) | 1.1.0-alpha06 |
-| 符号处理 | KSP | 2.3.10 |
-| Activity | Activity Compose | 1.12.3 |
-| Core KTX | AndroidX Core KTX | 1.13.1 |
+| 安全存储 | AndroidX Security (EncryptedSharedPreferences) | 1.1.0 |
+| 符号处理 | KSP | 2.3.12 |
+| Activity | Activity Compose | 1.13.0 |
+| Core KTX | AndroidX Core KTX | 1.19.1 |
 | 最低 SDK | Android 11 (API 30) | - |
-| 目标 SDK | Android 16 (API 36) | - |
+| 目标 SDK | Android 17 (API 37) | - |
 
 ## 项目结构
 
@@ -63,7 +65,7 @@ hanime/
 |   |-- MainActivity.kt         # @AndroidEntryPoint，NavHost 导航，Edge-to-Edge 沉浸式
 |   |-- service/                # DownloadService（前台下载通知）
 |   |-- ui/
-|   |   |-- theme/              # HanimeTheme（MD3 色板、全局禁用 ripple）
+|   |   |-- theme/              # HanimeTheme（MD3 色板、Typography、状态层点击反馈）
 |   |   |-- components/         # BottomNav（透明触摸拦截器）
 |   |   |-- screens/            # 通用 Screen（播放列表、视频列表页）
 |   |   `-- viewmodel/          # 共享 ViewModel
@@ -71,13 +73,14 @@ hanime/
 |
 |-- core/                       # 基础能力层（纯 Android Library，无业务逻辑）
 |   |-- common/                 # 通用工具：AppLogger、LocaleHelper、扩展函数
-|   |-- ui/                     # 共享 UI 资源：主题色 token、4 语言 strings.xml
-|   `-- network/                # 网络基础配置：HttpClient、HCookieJar 接口定义
+|   `-- ui/                     # 共享 UI 层：MD3 色板、4 语言 strings.xml、界面设计令牌
+|                               #   （UiConfig / UiConfigStore / UiPreset / HomeSectionConfig）、
+|                               #   响应式窗口信息、共享组件（卡片 / 缩略图 / 设置分组 …）
 |
 |-- data/                       # 数据层（单一数据源）
 |   |-- cookie/                 # HCookieJar（ConcurrentHashMap 线程安全 + 过期清理）
 |   |-- di/                     # DatabaseModule（Hilt 提供 Room DB/DAO）
-|   |-- download/               # DownloadManager（多线程分块下载 + Semaphore 并发控制 + CAS 软槽位 + ConcurrentHashMap + ReentrantLock）
+|   |-- download/               # DownloadManager（多线程分块下载 + 并发门控 + 断点续传位图 + 慢速时重建连接）
 |   |-- local/                  # Room 数据库：AppDatabase、DAO、Entity、Migration
 |   |-- parser/                 # 多个专用 HTML 解析器（首页 / 搜索 / 详情 / 下载 / 播放列表 / 作者 / 订阅 / 评论 / 账户 …）
 |   |-- preferences/            # Preferences（SharedPreferences + StateFlow 封装）
@@ -88,12 +91,12 @@ hanime/
 |   `-- model/                  # 领域模型：纯 data class，无任何 Android 依赖
 |
 `-- feature/                    # 功能模块（每个模块独立 Screen + ViewModel）
-    |-- home/                   # 首页（多区块 + 下拉刷新 + 错误重试）
-    |-- search/                 # 搜索（关键词/分类/排序三维筛选 + 历史记录）
+    |-- home/                   # 首页（多区块 + 下拉刷新 + 错误重试 + 分区级布局与顺序）
+    |-- search/                 # 搜索（关键词/分类/排序 + 标签/日期/时长筛选 + 历史记录）
     |-- detail/                 # 视频详情 + ExoPlayer 播放（全屏/倍速/下载/收藏）
     |-- download/               # 下载管理（批量选择/断点续传/完成项缩略图）
-    |-- profile/                # 个人中心、登录、收藏、观看历史
-    `-- settings/               # 设置页（多语言/主题模式/并发数/自定义 BaseURL）、关于页、作者主页
+    |-- profile/                # 个人中心、登录、收藏、观看历史、订阅
+    `-- settings/               # 设置页、界面定制页、网络诊断页、关于页、作者主页
 ```
 ## 架构设计
 
@@ -125,7 +128,7 @@ feature-* --> core:ui --> core:common
 
 - JDK 21（AGP 9.x 构建要求；源码兼容级别为 Java 11）
 - Android Studio (支持 AGP 9.x)
-- Kotlin 2.4.10
+- Kotlin 2.4.21
 
 ### 构建命令
 
@@ -139,14 +142,6 @@ feature-* --> core:ui --> core:common
 # 运行单元测试
 ./gradlew test
 ```
-
-## 未来更新计划
-
-| 优先级 | 功能 | 说明 |
-| --- | --- | --- |
-| 🟡 中 | 优化 UI 样式与交互 | 统一卡片圆角 / 间距 / 字重规范、播放页控制栏交互重构、动效与过渡动画完善 |
-
-> ✅ 近期已落地：平板响应式适配（v1.1.0）、单文件分片（字节范围）多线程下载（v1.2.0）。
 
 ---
 
@@ -180,7 +175,7 @@ feature-* --> core:ui --> core:common
 
 - 在 Issue 中提出改进建议
 - 翻译 / 校对多语言资源（简中 / 繁中 / English / 日本語）
-- 提交 PR 修复 Bug 或实现「未来更新计划」中的功能
+- 提交 PR 修复 Bug 或实现新功能
 
 ---
 

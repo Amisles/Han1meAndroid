@@ -66,7 +66,7 @@ class DownloadManager @Inject constructor(
         .build()
 
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
-    val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
+    override val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
 
     // 任务权威存储：Map 提供 O(1) 按 id 查找
     private val taskMap = ConcurrentHashMap<Int, DownloadTask>()

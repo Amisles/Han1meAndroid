@@ -37,7 +37,7 @@ ksp {
 
 dependencies {
     implementation(project(":core:common"))
-    implementation(project(":domain:model"))
+    api(project(":domain:model"))
 
     implementation(libs.androidx.core.ktx)
 

@@ -3,8 +3,9 @@ package app.amisles.hanime.feature.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -23,28 +24,18 @@ import app.amisles.hanime.core.common.util.AppLogger
 
 /** 设置页 UI 状态：聚合所有设置项当前值。 */
 data class SettingsUiState(
-    val appLanguage: String = Preferences.LANGUAGE_ZH_CN,
+    val appLanguage: String = SettingsRepository.LANGUAGE_ZH_CN,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
-    val baseUrl: String = Preferences.DEFAULT_BASE_URL,
+    val baseUrl: String = SettingsRepository.DEFAULT_BASE_URL,
     val isLoginSupported: Boolean = true,
     val downloadStoragePath: String = ""
 ) {
-    val isDefaultBaseUrl: Boolean get() = baseUrl == Preferences.DEFAULT_BASE_URL
+    val isDefaultBaseUrl: Boolean get() = baseUrl == SettingsRepository.DEFAULT_BASE_URL
 
     companion object {
-        /** 与 Preferences 的默认并发数保持一致。 */
+        /** 与持久化层的默认并发数保持一致。 */
         const val DEFAULT_MAX_DOWNLOAD_CONCURRENT = 3
-
-        /** 用当前持久化值构造初始态，只在 VM 初始化时调用一次。 */
-        fun fromPreferences(): SettingsUiState = SettingsUiState(
-            appLanguage = Preferences.appLanguage,
-            themeMode = Preferences.themeMode,
-            maxDownloadConcurrent = Preferences.maxDownloadConcurrent,
-            baseUrl = Preferences.baseUrl,
-            isLoginSupported = Preferences.isLoginSupported,
-            downloadStoragePath = Preferences.downloadStoragePathFlow.value
-        )
     }
 }
 
@@ -60,7 +51,9 @@ sealed class SettingsUiEvent {
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val app: Application
+    private val app: Application,
+    private val settings: SettingsRepository,
+    private val session: SessionRepository
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -70,11 +63,11 @@ class SettingsViewModel @Inject constructor(
     val events: SharedFlow<SettingsUiEvent> = _events.asSharedFlow()
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        Preferences.appLanguageFlow,
-        Preferences.themeModeFlow,
-        Preferences.maxDownloadConcurrentFlow,
-        Preferences.baseUrlFlow,
-        Preferences.loginSupportedFlow
+        settings.appLanguageFlow,
+        settings.themeModeFlow,
+        settings.maxDownloadConcurrentFlow,
+        settings.baseUrlFlow,
+        settings.loginSupportedFlow
     ) { language, theme, concurrent, url, loginSupported ->
         SettingsUiState(
             appLanguage = language,
@@ -82,41 +75,51 @@ class SettingsViewModel @Inject constructor(
             maxDownloadConcurrent = concurrent,
             baseUrl = url,
             isLoginSupported = loginSupported,
-            downloadStoragePath = Preferences.downloadStoragePathFlow.value
+            downloadStoragePath = settings.downloadStoragePathFlow.value
         )
-    }.combine(Preferences.downloadStoragePathFlow) { state, storagePath ->
+    }.combine(settings.downloadStoragePathFlow) { state, storagePath ->
         state.copy(downloadStoragePath = storagePath)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = SettingsUiState.fromPreferences()
+        initialValue = initialState()
+    )
+
+    /** 用当前持久化值构造初始态，只在 VM 初始化时调用一次。 */
+    private fun initialState(): SettingsUiState = SettingsUiState(
+        appLanguage = settings.appLanguage,
+        themeMode = settings.themeMode,
+        maxDownloadConcurrent = settings.maxDownloadConcurrent,
+        baseUrl = settings.baseUrl,
+        isLoginSupported = settings.isLoginSupported,
+        downloadStoragePath = settings.downloadStoragePathFlow.value
     )
 
     fun setAppLanguage(code: String) {
-        Preferences.setAppLanguage(code)
+        settings.setAppLanguage(code)
         viewModelScope.launch { _events.emit(SettingsUiEvent.RecreateActivity) }
     }
 
     fun setThemeMode(mode: ThemeMode) {
-        Preferences.setThemeMode(mode)
+        settings.setThemeMode(mode)
     }
 
     fun setMaxDownloadConcurrent(count: Int) {
-        Preferences.setMaxDownloadConcurrent(count)
+        settings.setMaxDownloadConcurrent(count)
     }
 
     /** 设置站点基址；返回 true = 已生效，false = 输入非法（非 https 域名）且原设置不变。 */
-    fun setBaseUrl(url: String): Boolean = Preferences.setBaseUrl(url)
+    fun setBaseUrl(url: String): Boolean = settings.setBaseUrl(url)
 
     fun restoreDefaultBaseUrl() {
-        Preferences.setBaseUrl(Preferences.DEFAULT_BASE_URL)
+        settings.setBaseUrl(SettingsRepository.DEFAULT_BASE_URL)
     }
 
     /** 设置下载存储路径；空串表示「默认目录」，非空路径会做可写校验，不可写则保留原设置并提示。 */
     fun setDownloadStoragePath(rawPath: String) {
         val path = rawPath.trim()
         if (path.isBlank()) {
-            Preferences.downloadStoragePath = ""
+            settings.downloadStoragePath = ""
             viewModelScope.launch { _events.emit(SettingsUiEvent.Toast(R.string.settings_download_storage_restored)) }
             return
         }
@@ -128,7 +131,7 @@ class SettingsViewModel @Inject constructor(
                     if (!dir.exists()) dir.mkdirs()
                     dir.exists() && dir.isDirectory && dir.canWrite()
                 }.getOrDefault(false)
-                if (ok) Preferences.downloadStoragePath = path
+                if (ok) settings.downloadStoragePath = path
                 ok
             }
             _events.emit(

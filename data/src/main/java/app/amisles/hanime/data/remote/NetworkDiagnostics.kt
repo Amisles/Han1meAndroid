@@ -13,40 +13,20 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 import java.security.cert.X509Certificate
 
-enum class DiagnosticType {
-    DNS,
-    CONNECTIVITY,
-    SSL_CERTIFICATE,
-    MIRROR_STATUS,
-    LOGIN_STATUS
-}
+/** 已下沉到 domain（[app.amisles.hanime.domain.model.DiagnosticResult]）；保留别名以兼容既有 import。 */
+typealias DiagnosticType = app.amisles.hanime.domain.model.DiagnosticType
 
-enum class DiagnosticStatus {
-    /** 检测通过 */
-    OK,
-    /** 检测失败 */
-    FAIL,
-    /** 检测中 */
-    RUNNING,
-    /** 未检测（如未登录时跳过登录检测） */
-    SKIPPED
-}
+/** 已下沉到 domain；保留别名。 */
+typealias DiagnosticStatus = app.amisles.hanime.domain.model.DiagnosticStatus
 
-data class DiagnosticResult(
-    val type: DiagnosticType,
-    val status: DiagnosticStatus,
-    val title: String,
-    val detail: String,
-    /** 请求耗时（毫秒），仅 OK/FAIL 状态有意义 */
-    val latencyMs: Long? = null,
-    val suggestion: String? = null
-)
+/** 已下沉到 domain；保留别名。 */
+typealias DiagnosticResult = app.amisles.hanime.domain.model.DiagnosticResult
 
 /**
  * 站点可用性诊断器：检测 DNS、连接、证书、镜像 GATE、登录 cookie 有效性等常见问题。
  * 所有检测在 IO 线程执行，按 DNS → 连接 → SSL → 镜像状态 → 登录状态的顺序返回 [DiagnosticResult]。
  */
-class NetworkDiagnostics {
+class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepository {
 
     private val uaString =
         "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
@@ -59,7 +39,7 @@ class NetworkDiagnostics {
         .build()
 
     /** 运行全部诊断项，返回按检测顺序排列的结果列表。 */
-    suspend fun runAll(): List<DiagnosticResult> = withContext(Dispatchers.IO) {
+    override suspend fun runAll(): List<DiagnosticResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<DiagnosticResult>()
         val baseUrl = Preferences.baseUrl
         val host = runCatching { URL(baseUrl).host }.getOrNull() ?: ""
@@ -399,7 +379,7 @@ class NetworkDiagnostics {
                 .url(loginUrl)
                 .get()
                 .header("User-Agent", uaString)
-                .header("Cookie", Preferences.loginCookie.cookie)
+                .header("Cookie", Preferences.loginCookie.raw)
                 .build()
             client.newCall(request).execute().use { response ->
                 val latency = System.currentTimeMillis() - start

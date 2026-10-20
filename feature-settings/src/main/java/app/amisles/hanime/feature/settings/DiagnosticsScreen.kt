@@ -47,8 +47,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.data.remote.DiagnosticResult
-import app.amisles.hanime.data.remote.DiagnosticStatus
+import app.amisles.hanime.domain.model.DiagnosticResult
+import app.amisles.hanime.domain.model.DiagnosticStatus
 
 @Composable
 fun DiagnosticsScreen(

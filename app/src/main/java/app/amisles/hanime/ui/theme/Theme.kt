@@ -34,7 +34,7 @@ import app.amisles.hanime.core.ui.theme.HanimeCardLight
 import app.amisles.hanime.core.ui.theme.HanimeBorderLight
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimaryLight
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondaryLight
-import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.domain.preferences.ThemeMode
 
 private val HanimeDarkColorScheme = darkColorScheme(
     primary = HanimePrimary,

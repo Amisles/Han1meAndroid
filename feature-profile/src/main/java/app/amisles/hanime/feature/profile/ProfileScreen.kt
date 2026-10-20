@@ -49,9 +49,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import androidx.compose.material3.MaterialTheme
 
@@ -90,10 +90,11 @@ private fun StatItem(
 fun ProfileScreen(
     onNavigate: (String) -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val context = LocalContext.current
     val profileViewModel: ProfileViewModel = hiltViewModel()
-    val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
-    val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val displayLetter by profileViewModel.displayLetter.collectAsStateWithLifecycle()
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
     val favoriteCount by profileViewModel.favoriteCount.collectAsStateWithLifecycle()

@@ -27,8 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import java.io.File
@@ -52,9 +52,10 @@ fun LocalPlayerScreen(
     filePath: String?,
     onBackClick: () -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val context = LocalContext.current
-    val autoPlayNext by Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
-    val loopPlayback by Preferences.loopPlaybackFlow.collectAsStateWithLifecycle()
+    val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
+    val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
     var isPlayerFullscreen by remember { mutableStateOf(false) }
 
@@ -62,9 +63,9 @@ fun LocalPlayerScreen(
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
     LaunchedEffect(Unit) {
-        val player = ExoPlayerFactory.buildLocalVideoPlayer(context).apply {
+        val player = ExoPlayerFactory.buildLocalVideoPlayer(context, appPrefs.antiHotlinkReferer).apply {
             // 沿用详情页持久化的倍速偏好；读 StateFlow 缓存值，避免同步解密
-            setPlaybackSpeed(Preferences.playbackSpeedFlow.value)
+            setPlaybackSpeed(appPrefs.playbackSpeedFlow.value)
         }
         // 构建期间页面可能已离开组合（快速返回）：此时无人持有该播放器，就地释放
         if (!currentCoroutineContext().isActive) {
@@ -124,12 +125,12 @@ fun LocalPlayerScreen(
                     initialSourceUrl = filePath.orEmpty(),
                     isFullscreen = isPlayerFullscreen,
                     onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                    onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },
-                    onQualityChanged = { Preferences.setPreferredQuality(it) },
+                    onPlaybackSpeedChanged = { appPrefs.setPlaybackSpeed(it) },
+                    onQualityChanged = { appPrefs.setPreferredQuality(it) },
                     autoPlayNext = autoPlayNext,
-                    onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+                    onAutoPlayNextChanged = { appPrefs.setAutoPlayNext(it) },
                     isLoopPlayback = loopPlayback,
-                    onLoopPlaybackChanged = { Preferences.setLoopPlayback(it) },
+                    onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
                     autoFullscreenEnabled = !sizeInfo.isTablet,
                     modifier = Modifier.align(Alignment.Center)
                 )

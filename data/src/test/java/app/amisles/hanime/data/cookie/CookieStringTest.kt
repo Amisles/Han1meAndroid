@@ -9,13 +9,13 @@ class CookieStringTest {
     @Test
     fun `test CookieString creation`() {
         val cookie = CookieString("session=abc123; user=test")
-        assertEquals("session=abc123; user=test", cookie.cookie)
+        assertEquals("session=abc123; user=test", cookie.raw)
     }
 
     @Test
     fun `test CookieString empty`() {
         val cookie = CookieString("")
-        assertTrue(cookie.cookie.isEmpty())
+        assertTrue(cookie.raw.isEmpty())
     }
 
     @Test

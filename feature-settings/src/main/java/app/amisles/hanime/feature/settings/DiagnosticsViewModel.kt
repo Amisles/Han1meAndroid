@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.data.remote.DiagnosticResult
-import app.amisles.hanime.data.remote.DiagnosticStatus
-import app.amisles.hanime.data.remote.NetworkDiagnostics
+import app.amisles.hanime.domain.model.DiagnosticResult
+import app.amisles.hanime.domain.model.DiagnosticStatus
+import app.amisles.hanime.domain.repository.DiagnosticsRepository
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,11 +29,9 @@ sealed class DiagnosticsUiState {
 
 @HiltViewModel
 class DiagnosticsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val diagnostics: DiagnosticsRepository
 ) : ViewModel() {
-
-    private val diagnostics = NetworkDiagnostics()
-
     private val _uiState = MutableStateFlow<DiagnosticsUiState>(DiagnosticsUiState.Idle)
     val uiState: StateFlow<DiagnosticsUiState> = _uiState.asStateFlow()
 

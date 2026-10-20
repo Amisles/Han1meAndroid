@@ -43,7 +43,7 @@ composeCompiler {
 
 dependencies {
     implementation(project(":core:common"))
-    implementation(project(":domain:model"))
+    api(project(":domain:model"))
     
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    api(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.junit)
 }

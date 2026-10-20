@@ -30,12 +30,8 @@ object ParserUtils {
         return result
     }
 
-    private val VIDEO_ID_REGEX = Regex("v=(\\d+)")
-
-    fun extractVideoId(url: String): String {
-        val match = VIDEO_ID_REGEX.find(url)
-        return match?.groupValues?.get(1) ?: ""
-    }
+    /** 已下沉到 domain（[app.amisles.hanime.domain.model.extractVideoId]）；保留供解析层内部调用。 */
+    fun extractVideoId(url: String): String = app.amisles.hanime.domain.model.extractVideoId(url)
 
     fun generatePlaceholderThumbnail(videoId: String): String {
         return "https://vdownload.hembed.com/image/thumbnail/${videoId}l.jpg"

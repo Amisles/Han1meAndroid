@@ -2,8 +2,8 @@ package app.amisles.hanime.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.download.DownloadManager
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.DownloadRepository
+import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.common.util.AppLogger
@@ -24,7 +24,8 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val library: LibraryRepository,
     private val account: AccountRepository,
-    private val downloadManager: DownloadManager
+    private val session: SessionRepository,
+    private val downloads: DownloadRepository
 ) : ViewModel() {
 
     private val _watchCount = MutableStateFlow(0)
@@ -37,10 +38,10 @@ class ProfileViewModel @Inject constructor(
     val downloadCount: StateFlow<Int> = _downloadCount.asStateFlow()
 
     val displayLetter: StateFlow<String> = combine(
-        Preferences.loginCookieFlow,
-        Preferences.savedUserIdFlow
+        session.loginCookieFlow,
+        session.savedUserIdFlow
     ) { cookie, userId ->
-        val raw = Preferences.extractDisplayEmail(cookie.cookie, userId).ifBlank { userId }
+        val raw = session.extractDisplayEmail().ifBlank { userId }
         if (raw.isBlank()) "H" else raw.take(1).uppercase()
     }.stateIn(
         scope = viewModelScope,
@@ -74,7 +75,7 @@ class ProfileViewModel @Inject constructor(
                     library.getFavoriteCount()
                 }
                 _downloadCount.value = withContext(Dispatchers.IO) {
-                    downloadManager.getCompletedDownloadCount()
+                    downloads.getCompletedDownloadCount()
                 }
                 AppLogger.d("ProfileViewModel", "Counts loaded: watch=${_watchCount.value}, fav=${_favoriteCount.value}, dl=${_downloadCount.value}")
             } catch (e: CancellationException) {

@@ -3,10 +3,10 @@ package app.amisles.hanime.data.repository
 import android.database.SQLException
 import android.util.Log
 import app.amisles.hanime.data.local.database.FavoriteDao
-import app.amisles.hanime.data.local.database.SearchHistoryDao
-import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.entity.toDomain
 import app.amisles.hanime.data.local.entity.toEntity
+import app.amisles.hanime.data.local.database.SearchHistoryDao
+import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.AccountProfileParser
@@ -29,6 +29,11 @@ import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.AccountProfile
+import app.amisles.hanime.domain.model.AuthorPageDataEvent
+import app.amisles.hanime.domain.model.PlaylistDetail
+import app.amisles.hanime.domain.model.PlaylistSummary
+import app.amisles.hanime.domain.model.SubscriptionsContent
+import app.amisles.hanime.domain.model.UserVideoListResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
@@ -663,4 +668,27 @@ class HanimeRepository @Inject constructor(
             AppLogger.logError("HanimeRepository", "Error clearing search history: ${e.message}", e)
         }
     }
+
+    // ── 作者页 / 列表页 / 订阅内容 ──────────────────────────────────────────
+    // 原先这些能力由上层直接注入 NetworkService 获得；改为在仓储层转发，
+    // 让 feature 模块只依赖 domain 接口。
+
+    override fun getAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent> =
+        networkService.fetchAuthorPageStream(authorPageUrl)
+
+    override suspend fun getVideoListPage(url: String): List<HanimeVideo> =
+        networkService.fetchVideoListPage(url)
+
+    override suspend fun getPlaylistListPage(url: String): List<PlaylistSummary> =
+        networkService.fetchPlaylistListPage(url)
+
+    override suspend fun getPlaylistDetail(url: String): PlaylistDetail? =
+        networkService.fetchPlaylistDetailPage(url)
+
+    override suspend fun getSubscriptionsPage(query: String): SubscriptionsContent =
+        networkService.fetchSubscriptionsPage(query)
+
+    override suspend fun getUserVideoList(authorId: String, page: Int): UserVideoListResult? =
+        networkService.fetchUserVideoList(authorId, page)
+
 }

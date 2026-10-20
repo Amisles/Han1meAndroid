@@ -6,7 +6,12 @@ import app.amisles.hanime.domain.model.HomePageData
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
+import app.amisles.hanime.domain.model.AuthorPageDataEvent
 import app.amisles.hanime.domain.model.DownloadQuality
+import app.amisles.hanime.domain.model.PlaylistDetail
+import app.amisles.hanime.domain.model.PlaylistSummary
+import app.amisles.hanime.domain.model.SubscriptionsContent
+import app.amisles.hanime.domain.model.UserVideoListResult
 import app.amisles.hanime.domain.result.AppResult
 import kotlinx.coroutines.flow.Flow
 
@@ -64,4 +69,26 @@ interface ContentRepository {
 
     /** 拉取某视频的可下载画质列表。 */
     suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>>
+
+    // ── 作者页 / 列表页 / 订阅内容 ──────────────────────────────────────────
+    // 这些页面同样是「站点内容」，与首页/搜索共用抓取与解析链路；原先上层直接注入
+    // NetworkService 才能拿到它们，等于让 ViewModel 依赖具体 HTTP 实现。
+
+    /** 流式拉取作者主页：资料 → 作品 → 播放列表。 */
+    fun getAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent>
+
+    /** 拉取作者的作品列表页（分页）。 */
+    suspend fun getVideoListPage(url: String): List<HanimeVideo>
+
+    /** 拉取作者的播放列表清单页。 */
+    suspend fun getPlaylistListPage(url: String): List<PlaylistSummary>
+
+    /** 拉取单个播放列表详情。 */
+    suspend fun getPlaylistDetail(url: String): PlaylistDetail?
+
+    /** 拉取已订阅作者的视频流（query 为空表示全部）。 */
+    suspend fun getSubscriptionsPage(query: String = ""): SubscriptionsContent
+
+    /** 拉取某作者的作品列表（批量下载页用，分页）。 */
+    suspend fun getUserVideoList(authorId: String, page: Int = 1): UserVideoListResult?
 }

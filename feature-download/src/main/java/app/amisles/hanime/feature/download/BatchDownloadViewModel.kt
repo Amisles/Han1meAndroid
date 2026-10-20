@@ -3,12 +3,12 @@ package app.amisles.hanime.feature.download
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.remote.NetworkService
-import app.amisles.hanime.data.download.DownloadManager
-import app.amisles.hanime.data.parser.DownloadPageParser
+import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CancellationException
@@ -49,9 +49,8 @@ data class BatchDownloadState(
 @HiltViewModel
 class BatchDownloadViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val networkService: NetworkService,
-    private val downloadManager: DownloadManager,
-    private val downloadPageParser: DownloadPageParser
+    private val content: ContentRepository,
+    private val downloads: DownloadRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(BatchDownloadState())
     val state: StateFlow<BatchDownloadState> = _state.asStateFlow()
@@ -76,7 +75,7 @@ class BatchDownloadViewModel @Inject constructor(
         // 观察下载任务变化，自动更新视频列表中的下载状态
         viewModelScope.launch {
             try {
-                downloadManager.tasks.collect { tasks ->
+                downloads.tasks.collect { tasks ->
                     syncDownloadStatuses(tasks)
                 }
             } catch (e: CancellationException) {
@@ -192,7 +191,7 @@ class BatchDownloadViewModel @Inject constructor(
 
             try {
                 val result = withContext(Dispatchers.IO) {
-                    networkService.fetchUserVideoList(authorId, page = 1)
+                    content.getUserVideoList(authorId, page = 1)
                 }
 
                 if (result == null) {
@@ -211,7 +210,7 @@ class BatchDownloadViewModel @Inject constructor(
                     return@launch
                 }
 
-                val tasksByVideoId = indexTasksByVideoId(downloadManager.tasks.value)
+                val tasksByVideoId = indexTasksByVideoId(downloads.tasks.value)
                 val batchVideos = result.videos.distinctBy { it.id }.map { video ->
                     val (downloaded, downloading) = resolveVideoFlags(video.id, tasksByVideoId)
                     BatchVideoItem(
@@ -274,11 +273,11 @@ class BatchDownloadViewModel @Inject constructor(
             try {
                 val nextPage = currentState.currentPage + 1
                 val result = withContext(Dispatchers.IO) {
-                    networkService.fetchUserVideoList(requestAuthorId, page = nextPage)
+                    content.getUserVideoList(requestAuthorId, page = nextPage)
                 }
 
                 if (result != null) {
-                    val tasksByVideoId = indexTasksByVideoId(downloadManager.tasks.value)
+                    val tasksByVideoId = indexTasksByVideoId(downloads.tasks.value)
                     val newBatchVideos = result.videos.map { video ->
                         val (downloaded, downloading) = resolveVideoFlags(video.id, tasksByVideoId)
                         BatchVideoItem(
@@ -420,12 +419,15 @@ class BatchDownloadViewModel @Inject constructor(
                 async {
                     qualitySemaphore.withPermit {
                         try {
-                            val downloadPageHtml = withContext(Dispatchers.IO) {
-                                networkService.fetchDownloadPageWithBaseUrl(video.videoId)
-                            }
-
-                            val qualities = withContext(Dispatchers.IO) {
-                                downloadPageParser.parse(downloadPageHtml.html, downloadPageHtml.baseUrl)
+                            // 接口直接返回解析后的画质列表：原先要自行取 HTML 再调解析器，
+                            // 那一步把「抓取」与「解析」两件事都泄漏到了 ViewModel。
+                            val qualities = when (val r = content.getDownloadQualities(video.videoId)) {
+                                is AppResult.Success -> r.data
+                                is AppResult.Error -> {
+                                    AppLogger.e("BatchDownloadViewModel", "获取画质失败: " + r.message)
+                                    emptyList()
+                                }
+                                is AppResult.Loading -> emptyList()
                             }
 
                             _state.update { currentState ->
@@ -520,7 +522,7 @@ class BatchDownloadViewModel @Inject constructor(
                         if (quality == null) {
                             AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
                         } else {
-                            val code = downloadManager.startDownload(
+                            val code = downloads.startDownload(
                                 title = video.title,
                                 quality = quality.quality,
                                 url = quality.downloadUrl,
@@ -543,7 +545,7 @@ class BatchDownloadViewModel @Inject constructor(
                 }
             } finally {
                 batchInitInProgress = false
-                syncDownloadStatuses(downloadManager.tasks.value)
+                syncDownloadStatuses(downloads.tasks.value)
             }
         }
     }

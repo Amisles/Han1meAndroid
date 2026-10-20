@@ -58,9 +58,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Layers
 import java.io.File
-import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsGroupDivider
 import app.amisles.hanime.core.ui.components.SettingsNavRow
@@ -73,10 +73,10 @@ data class LanguageOption(val code: String, val label: String)
 
 /** 语言选项：(语言代码, 展示文案资源 id)；返回资源 id 而非已解析字符串，便于在 Composable 内解析。 */
 private fun languageOptionRes(): List<Pair<String, Int>> = listOf(
-    Preferences.LANGUAGE_ZH_CN to R.string.settings_language_zh_cn,
-    Preferences.LANGUAGE_ZH_TW to R.string.settings_language_zh_tw,
-    Preferences.LANGUAGE_EN to R.string.settings_language_en,
-    Preferences.LANGUAGE_JA to R.string.settings_language_ja
+    SettingsRepository.LANGUAGE_ZH_CN to R.string.settings_language_zh_cn,
+    SettingsRepository.LANGUAGE_ZH_TW to R.string.settings_language_zh_tw,
+    SettingsRepository.LANGUAGE_EN to R.string.settings_language_en,
+    SettingsRepository.LANGUAGE_JA to R.string.settings_language_ja
 )
 
 @Composable
@@ -578,7 +578,7 @@ fun SettingsScreen(
                         onValueChange = { baseUrlInput = it },
                         placeholder = {
                             Text(
-                                text = Preferences.DEFAULT_BASE_URL,
+                                text = SettingsRepository.DEFAULT_BASE_URL,
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -612,7 +612,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = {
                     viewModel.restoreDefaultBaseUrl()
-                    baseUrlInput = Preferences.DEFAULT_BASE_URL
+                    baseUrlInput = SettingsRepository.DEFAULT_BASE_URL
                     showBaseUrlDialog = false
                     Toast.makeText(context, context.getString(R.string.settings_base_url_restored), Toast.LENGTH_SHORT).show()
                 }) {

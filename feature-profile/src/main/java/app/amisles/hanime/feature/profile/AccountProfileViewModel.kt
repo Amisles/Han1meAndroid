@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,8 +28,10 @@ sealed interface AccountUpdateState {
 @HiltViewModel
 class AccountProfileViewModel @Inject constructor(
     private val repository: AccountRepository,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val session: SessionRepository
 ) : ViewModel() {
+
 
     private val _name = MutableStateFlow("")
     val name: StateFlow<String> = _name.asStateFlow()
@@ -49,7 +51,7 @@ class AccountProfileViewModel @Inject constructor(
     private var csrfToken: String = ""
 
     fun load() {
-        if (Preferences.savedUserId.isBlank()) {
+        if (session.savedUserId.isBlank()) {
             // 未登录态下不能留有上一次的 CSRF 令牌，否则 update() 会发一个注定失败的请求
             csrfToken = ""
             _error.value = context.getString(R.string.account_error_not_logged_in)

@@ -3,7 +3,7 @@ package app.amisles.hanime.feature.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.AuthorPageDataEvent
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -21,7 +21,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthorViewModel @Inject constructor(
-    private val networkService: NetworkService,
+    private val content: ContentRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -49,7 +49,7 @@ class AuthorViewModel @Inject constructor(
             pendingVideos = null
             pendingPlaylists = null
             var firstEventArrived = false
-            networkService.fetchAuthorPageStream(authorPageUrl)
+            content.getAuthorPageStream(authorPageUrl)
                 .catch { e ->
                     if (!firstEventArrived) _isLoading.value = false
                     _error.value = e.message ?: context.getString(R.string.common_load_failed)

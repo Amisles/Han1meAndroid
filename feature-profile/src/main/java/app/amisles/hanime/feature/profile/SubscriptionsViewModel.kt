@@ -3,7 +3,7 @@ package app.amisles.hanime.feature.profile
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscribedArtist
 import app.amisles.hanime.core.ui.R
@@ -20,7 +20,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SubscriptionsViewModel @Inject constructor(
-    private val networkService: NetworkService,
+    private val content: ContentRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -51,7 +51,7 @@ class SubscriptionsViewModel @Inject constructor(
             _error.value = null
             _selectedQuery.value = query
             try {
-                val result = networkService.fetchSubscriptionsPage(query)
+                val result = content.getSubscriptionsPage(query)
                 _artists.value = result.artists
                 // 去重：SubscriptionsScreen 以 id 作为 LazyColumn 的 key，重复会触发 key 冲突异常
                 _videos.value = result.videos.distinctBy { it.id }

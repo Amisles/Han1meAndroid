@@ -15,7 +15,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import app.amisles.hanime.data.remote.VideoAntiHotlink
+import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -117,18 +117,19 @@ object ExoPlayerFactory {
     /**
      * 构建视频直链的上游 HTTP 数据源工厂，统一注入反 CDN 限速 / 防盗链策略：
      * - 浏览器 UA（[BROWSER_UA]）：绕过部分 CDN 对 ExoPlayer 默认 UA 的单连接限速。
-     * - Referer = 官网网址（[VideoAntiHotlink.referer]）：绕过 CDN 的 Referer 防盗链，否则返回 403。
+     * - Referer = 官网网址（[VideoAntiHotlink.refererOf]）：绕过 CDN 的 Referer 防盗链，否则返回 403。
      * - 允许跨协议重定向：部分直链会做 http→https 跳转，禁止后会直接播放失败。
      *   代价是自定义请求头（Referer）会随重定向发往跳转目标主机；头内只有官网地址、不含凭据，故接受。
      * [connectTimeoutMs]/[readTimeoutMs] 由调用方按场景（预缓存 / 正片）传入。
+     * [referer] 由调用方提供（§播放器不读配置：本类是 object，注入配置会让它依赖数据层）。
      */
-    private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int): DefaultHttpDataSource.Factory {
+    private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int, referer: String): DefaultHttpDataSource.Factory {
         return DefaultHttpDataSource.Factory()
             .setUserAgent(BROWSER_UA)
             .setConnectTimeoutMs(connectTimeoutMs)
             .setReadTimeoutMs(readTimeoutMs)
             .setAllowCrossProtocolRedirects(true)
-            .setDefaultRequestProperties(mapOf(VideoAntiHotlink.REFERER_HEADER to VideoAntiHotlink.referer))
+            .setDefaultRequestProperties(mapOf(VideoAntiHotlink.HEADER_NAME to referer))
     }
 
     /**
@@ -162,9 +163,9 @@ object ExoPlayerFactory {
      * 当前线程无 Looper 时回落到主 Looper。由主线程构建可保证播放器的应用线程就是主线程，
      * 避免后续所有 Player 访问都触发 Media3 的「跨线程访问」告警。
      */
-    fun buildVideoPlayer(context: Context, deps: VideoPlayerDeps): ExoPlayer {
+    fun buildVideoPlayer(context: Context, deps: VideoPlayerDeps, referer: String): ExoPlayer {
         // 上游直连数据源：浏览器 UA + 跨协议重定向 + 适度超时 + 官网 Referer 防盗链
-        val upstreamFactory = buildUpstreamFactory(15_000, 15_000)
+        val upstreamFactory = buildUpstreamFactory(15_000, 15_000, referer)
 
         // 缓存数据源包住直连：先读缓存，未命中再走网络并回写；缓存写入异常时回退直连，不中断播放
         val cacheDataSourceFactory = CacheDataSource.Factory()
@@ -191,10 +192,10 @@ object ExoPlayerFactory {
      * 2. 不挂 SimpleCache：文件本就在磁盘上，再叠一层缓存只会重复落盘。
      * 3. `playWhenReady = true`：用户点「播放」进来，应直接起播。
      */
-    fun buildLocalVideoPlayer(context: Context): ExoPlayer {
+    fun buildLocalVideoPlayer(context: Context, referer: String): ExoPlayer {
         val dataSourceFactory = DefaultDataSource.Factory(
             context.applicationContext,
-            buildUpstreamFactory(15_000, 15_000)
+            buildUpstreamFactory(15_000, 15_000, referer)
         )
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
         return ExoPlayer.Builder(context.applicationContext)

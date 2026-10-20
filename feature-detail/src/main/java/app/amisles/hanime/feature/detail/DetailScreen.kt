@@ -44,10 +44,10 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.data.download.DownloadManager
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
@@ -60,6 +60,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import app.amisles.hanime.feature.detail.comment.CommentContext
+import app.amisles.hanime.feature.detail.comment.CommentViewModel
 
 
 @Composable
@@ -73,35 +75,53 @@ fun DetailScreen(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val viewModel: DetailViewModel = hiltViewModel()
-    val context = LocalContext.current
+    // 评论域独立 VM。用 key 区分，避免与其它页面的 CommentViewModel 冲突。
+    val commentVm: CommentViewModel = hiltViewModel(key = "comment")
     val videoDetail by viewModel.videoDetail.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    // 评论域的调用上下文：csrfToken 与 videoId 都来自视频域，按需构造后传给评论 VM。
+    val commentCtx: () -> CommentContext = {
+        CommentContext(
+            videoId = viewModel.videoId,
+            csrfToken = videoDetail?.csrfToken.orEmpty(),
+            commentCount = videoDetail?.commentCount ?: 0
+        )
+    }
+    val context = LocalContext.current
     val downloadQualities by viewModel.downloadQualities.collectAsStateWithLifecycle()
     val isLoadingQualities by viewModel.isLoadingQualities.collectAsStateWithLifecycle()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
     val isSubscribed by viewModel.isSubscribed.collectAsStateWithLifecycle()
     val isSubscribing by viewModel.isSubscribing.collectAsStateWithLifecycle()
     val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
-    val comments by viewModel.comments.collectAsStateWithLifecycle()
-    val isLoadingComments by viewModel.isLoadingComments.collectAsStateWithLifecycle()
-    val commentsError by viewModel.commentsError.collectAsStateWithLifecycle()
-    val commentsLoaded by viewModel.commentsLoaded.collectAsStateWithLifecycle()
-    val repliesCache by viewModel.repliesCache.collectAsStateWithLifecycle()
-    val loadingReplies by viewModel.loadingReplies.collectAsStateWithLifecycle()
-    val repliesError by viewModel.repliesError.collectAsStateWithLifecycle()
-    val isPostingComment by viewModel.isPostingComment.collectAsStateWithLifecycle()
-    val postCommentError by viewModel.postCommentError.collectAsStateWithLifecycle()
-    val likingComments by viewModel.likingComments.collectAsStateWithLifecycle()
-    val commentLikeError by viewModel.commentLikeError.collectAsStateWithLifecycle()
-    val activeReplyTarget by viewModel.activeReplyTarget.collectAsStateWithLifecycle()
-    val isPostingReply by viewModel.isPostingReply.collectAsStateWithLifecycle()
-    val replyError by viewModel.replyError.collectAsStateWithLifecycle()
-    val expandedReplies by viewModel.expandedReplies.collectAsStateWithLifecycle()
-    val isLogin by Preferences.loginStateFlow.collectAsStateWithLifecycle()
-    val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
-    val autoPlayNext by Preferences.autoPlayNextFlow.collectAsStateWithLifecycle()
+    val comments by commentVm.comments.collectAsStateWithLifecycle()
+    val isLoadingComments by commentVm.isLoadingComments.collectAsStateWithLifecycle()
+    val commentsError by commentVm.commentsError.collectAsStateWithLifecycle()
+    val commentsLoaded by commentVm.commentsLoaded.collectAsStateWithLifecycle()
+    val repliesCache by commentVm.repliesCache.collectAsStateWithLifecycle()
+    val loadingReplies by commentVm.loadingReplies.collectAsStateWithLifecycle()
+    val repliesError by commentVm.repliesError.collectAsStateWithLifecycle()
+    val isPostingComment by commentVm.isPostingComment.collectAsStateWithLifecycle()
+    val postCommentError by commentVm.postCommentError.collectAsStateWithLifecycle()
+    val likingComments by commentVm.likingComments.collectAsStateWithLifecycle()
+    val commentLikeError by commentVm.commentLikeError.collectAsStateWithLifecycle()
+    val activeReplyTarget by commentVm.activeReplyTarget.collectAsStateWithLifecycle()
+    val isPostingReply by commentVm.isPostingReply.collectAsStateWithLifecycle()
+    val replyError by commentVm.replyError.collectAsStateWithLifecycle()
+
+    // 视频域切换视频时通知评论域复位：两个 VM 独立，同步走单向事件
+    LaunchedEffect(viewModel, commentVm) {
+        viewModel.videoSwitched.collect { videoId ->
+            commentVm.selectVideo(videoId)
+        }
+    }
+    val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
+    val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
 
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
@@ -139,9 +159,11 @@ fun DetailScreen(
 
     LaunchedEffect(Unit) {
         val deps = ExoPlayerFactory.prepareVideoPlayerDeps(context)
-        val player = ExoPlayerFactory.buildVideoPlayer(context, deps).apply {
+        // Referer 由本层从配置派生后传入，ExoPlayerFactory 不读配置（保持为无依赖的工具 object）
+        val referer = appPrefs.antiHotlinkReferer
+        val player = ExoPlayerFactory.buildVideoPlayer(context, deps, referer).apply {
             // 读 StateFlow 缓存值，避免在首帧路径上再触发一次加密存储解密
-            setPlaybackSpeed(Preferences.playbackSpeedFlow.value)
+            setPlaybackSpeed(appPrefs.playbackSpeedFlow.value)
         }
         // 连播切集时本页面会在构建期间离开组合：此时 exoPlayer 的 DisposableEffect 已随组合
         // 一同销毁，之后再赋值的播放器不会被任何人释放（含 CacheDataSource 持有的 SimpleCache
@@ -160,7 +182,7 @@ fun DetailScreen(
         if (player != null && !url.isNullOrEmpty()) {
             val preferredUrl = pickInitialSourceUrl(
                 detail,
-                Preferences.preferredQualityFlow.value
+                appPrefs.preferredQualityFlow.value
             )
             // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转。
             // 这里只做赋值，不再 await 数据库：起播不必等待历史记录查询完成。
@@ -242,7 +264,7 @@ fun DetailScreen(
     LaunchedEffect(commentLikeError) {
         commentLikeError?.let {
             snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
-            viewModel.clearCommentLikeError()
+            commentVm.clearCommentLikeError()
         }
     }
 
@@ -271,7 +293,7 @@ fun DetailScreen(
     val selectTab: (Int) -> Unit = { tab ->
         selectedTab = tab
         if (tab == 1 && !commentsLoaded && !isLoadingComments) {
-            viewModel.loadComments()
+            commentVm.loadComments()
         }
     }
 
@@ -311,16 +333,21 @@ fun DetailScreen(
         onAuthorClick = onAuthorClick,
         onAuthorPageClick = onAuthorPageClick,
         onVideoClick = onVideoClick,
-        onLoadComments = { force -> viewModel.loadComments(force = force) },
-        onLoadReplies = { viewModel.loadReplies(it) },
-        onToggleReplies = { viewModel.toggleReplies(it) },
-        onPostComment = { viewModel.postComment(it) },
-        onClearPostCommentError = { viewModel.clearPostCommentError() },
-        onToggleCommentLike = { viewModel.toggleCommentLike(it) },
-        onStartReply = { commentId, replyToUsername -> viewModel.startReply(commentId, replyToUsername) },
-        onSubmitReply = { viewModel.submitReply(it) },
-        onCancelReply = { viewModel.cancelReply() },
-        onClearReplyError = { viewModel.clearReplyError() },
+        onLoadComments = { force -> commentVm.loadComments(force = force) },
+        onLoadReplies = { commentVm.loadReplies(it) },
+        onToggleReplies = { commentVm.toggleReplies(it) },
+        onPostComment = { text ->
+                commentVm.postComment(text, commentCtx()) { newCount ->
+                    // 评论数变化回到视频域，保持 VideoDetail.commentCount 准确
+                    viewModel.onCommentCountUpdated(newCount)
+                }
+            },
+        onClearPostCommentError = { commentVm.clearPostCommentError() },
+        onToggleCommentLike = { commentVm.toggleCommentLike(it, commentCtx()) },
+        onStartReply = { commentId, replyToUsername -> commentVm.startReply(commentId, replyToUsername) },
+        onSubmitReply = { text -> commentVm.submitReply(text, commentCtx()) },
+        onCancelReply = { commentVm.cancelReply() },
+        onClearReplyError = { commentVm.clearReplyError() },
         onNavigateToLogin = tryNavigateToLogin
     )
 
@@ -505,11 +532,11 @@ fun DetailScreen(
     }
 }
 
-/** 把 DownloadManager.startDownload 的结果码映射为提示文案。 */
+/** 把 DownloadRepository.startDownload 的结果码映射为提示文案。 */
 private fun downloadResultMessage(result: Int): Int = when (result) {
-    DownloadManager.RESULT_INVALID_URL -> R.string.detail_download_invalid_url
-    DownloadManager.RESULT_ALREADY_ACTIVE -> R.string.detail_download_in_progress
-    DownloadManager.RESULT_ALREADY_COMPLETED -> R.string.detail_download_completed
+    DownloadRepository.RESULT_INVALID_URL -> R.string.detail_download_invalid_url
+    DownloadRepository.RESULT_ALREADY_ACTIVE -> R.string.detail_download_in_progress
+    DownloadRepository.RESULT_ALREADY_COMPLETED -> R.string.detail_download_completed
     else -> R.string.detail_download_added
 }
 

@@ -2,8 +2,8 @@ package app.amisles.hanime.data.cookie
 
 import okhttp3.Cookie
 
-@JvmInline
-value class CookieString(val cookie: String)
+/** 已下沉到 domain（[app.amisles.hanime.domain.model.SessionCookie]）；保留别名以兼容既有调用。 */
+typealias CookieString = app.amisles.hanime.domain.model.SessionCookie
 
 fun String.filterPrintableAscii(): String =
     filter { it.code in 0x20..0x7E }
@@ -20,9 +20,9 @@ fun CookieString.toLoginCookieList(domain: String): List<Cookie> {
         .path("/")
         .build()
 
-    if (cookie.isBlank()) return list
+    if (raw.isBlank()) return list
 
-    cookie.split(';').forEach { segment ->
+    raw.split(';').forEach { segment ->
         if (!segment.contains('=')) return@forEach
         val name = segment.substringBefore('=').trim().filterPrintableAscii()
         val value = segment.substringAfter('=').trim().filterPrintableAscii()

@@ -67,9 +67,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedBanner
-import app.amisles.hanime.data.preferences.Preferences
 import androidx.compose.material3.MaterialTheme
 
 private val LOGIN_URLS = listOf("https://hanime1.me/login", "https://hanimeone.me/login")
@@ -129,9 +129,10 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
+    val appPrefs = LocalAppPreferences.current
     val vm: LoginViewModel = hiltViewModel()
     val uiState by vm.uiState.collectAsStateWithLifecycle()
-    val isLoginSupported by Preferences.loginSupportedFlow.collectAsStateWithLifecycle()
+    val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState) {
         if (uiState is LoginViewModel.UiState.Success) {

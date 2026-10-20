@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -58,7 +59,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.preferences.ThemeMode
+import app.amisles.hanime.domain.preferences.ThemeMode
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.components.BottomNav
@@ -88,6 +90,7 @@ import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.core.ui.theme.HanimeBackground
 import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.ui.theme.HanimeTheme
+import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -138,12 +141,14 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+            CompositionLocalProvider(LocalAppPreferences provides PreferencesAppPreferences) {
             HanimeTheme(
                 themeMode = themeMode,
                 uiConfig = uiConfig,
                 homeSectionConfig = homeSections
             ) {
                 HanimeApp()
+            }
             }
         }
     }

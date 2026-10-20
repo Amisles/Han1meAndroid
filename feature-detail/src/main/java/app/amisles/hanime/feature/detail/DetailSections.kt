@@ -26,6 +26,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.feature.detail.comment.CommentSection
+import app.amisles.hanime.feature.detail.comment.ReplyTarget
 import app.amisles.hanime.feature.detail.components.DetailIntroSection
 import app.amisles.hanime.feature.detail.components.DetailPlaylistHeader
 import app.amisles.hanime.feature.detail.components.DetailPlaylistVideos

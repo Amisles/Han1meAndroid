@@ -18,8 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.exoplayer.ExoPlayer
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
 
@@ -42,25 +42,26 @@ internal fun DetailVideoPlayer(
     autoFullscreenEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val appPrefs = LocalAppPreferences.current
     // 循环播放完全由播放器自身完成，外层无需感知，故就地读取
-    val loopPlayback by Preferences.loopPlaybackFlow.collectAsStateWithLifecycle()
+    val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
 
     VideoPlayer(
         exoPlayer = exoPlayer,
         posterUrl = detail.posterUrl,
         videoSources = detail.videoSources,
         // 读 StateFlow 缓存值：避免每次重组都对加密存储做一次同步解密
-        initialSourceUrl = pickInitialSourceUrl(detail, Preferences.preferredQualityFlow.value),
+        initialSourceUrl = pickInitialSourceUrl(detail, appPrefs.preferredQualityFlow.value),
         initialPositionMs = initialPositionMs,
         isFullscreen = isFullscreen,
         onFullscreenToggle = onFullscreenToggle,
-        onPlaybackSpeedChanged = { Preferences.setPlaybackSpeed(it) },
-        onQualityChanged = { Preferences.setPreferredQuality(it) },
+        onPlaybackSpeedChanged = { appPrefs.setPlaybackSpeed(it) },
+        onQualityChanged = { appPrefs.setPreferredQuality(it) },
         onPlaybackEnded = { onPlaybackEnded() },
         autoPlayNext = autoPlayNext,
-        onAutoPlayNextChanged = { Preferences.setAutoPlayNext(it) },
+        onAutoPlayNextChanged = { appPrefs.setAutoPlayNext(it) },
         isLoopPlayback = loopPlayback,
-        onLoopPlaybackChanged = { Preferences.setLoopPlayback(it) },
+        onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
         autoFullscreenEnabled = autoFullscreenEnabled,
         modifier = modifier
     )
