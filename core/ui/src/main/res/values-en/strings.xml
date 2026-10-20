@@ -558,7 +558,7 @@
     <string name="settings_concurrent_count_suffix"></string>
     <string name="settings_concurrent_set_toast">Set to %1$d concurrent downloads</string>
     <string name="settings_download_storage">Download storage path</string>
-    <string name="settings_download_storage_external">App external storage (default)</string>
+    <string name="settings_download_storage_external">Public Download/Hanime folder (default)</string>
     <string name="settings_download_storage_internal">App internal storage (more private)</string>
     <string name="settings_download_storage_subfolder">Subfolder</string>
     <string name="settings_download_storage_subfolder_hint">Leave blank or Downloads; customize e.g. Hanime</string>

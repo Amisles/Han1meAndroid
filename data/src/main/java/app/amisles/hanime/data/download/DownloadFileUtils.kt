@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.download
 
+import android.os.Environment
 import java.io.File
 
 /**
@@ -32,3 +33,28 @@ internal fun ensureDirWritable(dir: File): Boolean {
         dir.exists() && dir.isDirectory && dir.canWrite()
     }.getOrDefault(false)
 }
+
+/**
+ * 默认下载目录：公开的「下载」文件夹 `Download/Hanime`。
+ *
+ * 原先落在 `getExternalFilesDir()/Downloads`（/storage/emulated/0/Android/data/<包名>/files/Downloads），
+ * 卸载应用即被系统一并删除，且多数文件管理器默认看不到 —— 对用户来说等于「下载完就找不到」。
+ * 改为公共 Download 目录下的 `Hanime` 子目录：Android 10+ 的分区存储允许应用直接在公共 Download
+ * 集合下建目录、写文件，无需申请存储权限。
+ *
+ * 主外部存储未挂载或不可写时退回应用外部目录，保证下载功能仍然可用。
+ */
+internal fun resolveDefaultDownloadDir(appExternalFilesDir: File?): File {
+    val primary = runCatching {
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+    }.getOrNull()
+    val preferred = primary?.let { File(it, DEFAULT_DOWNLOAD_SUBDIR) }
+    if (preferred != null && ensureDirWritable(preferred)) return preferred
+    val fallback = appExternalFilesDir?.let { File(it, DEFAULT_DOWNLOAD_SUBDIR) }
+    if (fallback != null && ensureDirWritable(fallback)) return fallback
+    // 极端情况（主外部存储与应用外部目录都不可用）：仍返回首选路径，由后续写文件报错走失败分支
+    return preferred ?: fallback ?: File(DEFAULT_DOWNLOAD_SUBDIR)
+}
+
+/** 默认下载目录名：公共 Download 下的子目录，避免与用户其它下载混在一起。 */
+internal const val DEFAULT_DOWNLOAD_SUBDIR = "Hanime"

@@ -582,7 +582,7 @@
     <string name="settings_concurrent_count_suffix">个</string>
     <string name="settings_concurrent_set_toast">已设置为%1$d个同时下载</string>
     <string name="settings_download_storage">下载存储路径</string>
-    <string name="settings_download_storage_external">应用外部存储（默认）</string>
+    <string name="settings_download_storage_external">公共 Download/Hanime 文件夹（默认）</string>
     <string name="settings_download_storage_internal">应用内部存储（更私密）</string>
     <string name="settings_download_storage_subfolder">子文件夹</string>
     <string name="settings_download_storage_subfolder_hint">留空或填 Downloads，可自定义如 Hanime</string>

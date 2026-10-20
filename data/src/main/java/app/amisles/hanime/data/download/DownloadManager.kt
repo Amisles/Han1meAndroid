@@ -139,13 +139,9 @@ class DownloadManager @Inject constructor(
     private val pendingPersist = ConcurrentHashMap<Int, DownloadTask>()
     private val pendingDelete: MutableSet<Int> = ConcurrentHashMap.newKeySet()
     private val persistSignal = Channel<Unit>(Channel.CONFLATED)
+    /** 默认下载目录：公共 Download/Hanime（见 [resolveDefaultDownloadDir]），卸载应用不会被清掉。 */
     private val defaultDownloadDir: File by lazy {
-
-        val base = context.getExternalFilesDir(null)
-            ?.let { File(it, "Downloads") }
-            ?: File(context.filesDir, "Downloads")
-        if (!base.exists()) base.mkdirs()
-        base
+        resolveDefaultDownloadDir(context.getExternalFilesDir(null))
     }
 
     /** 当前网络类型；供拆分出去的下载引擎判定并行连接数。 */

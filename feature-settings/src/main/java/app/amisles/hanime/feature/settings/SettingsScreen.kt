@@ -166,7 +166,7 @@ private fun <T> SettingsDropdownRow(
 /**
  * 文件夹浏览器允许向上浏览到的根目录。
  *
- * 下载目录只可能落在「主外部存储」或「应用自身的文件目录」下，因此把上溯限制在这些根之内。
+ * 下载目录可能落在「主外部存储（含公共 Download）」或「应用自身的文件目录」下，因此把上溯限制在这些根之内。
  */
 @Suppress("DEPRECATION") // 仅用 getExternalStorageDirectory 取根路径，不用于读写
 private fun pickerRoots(context: Context): List<File> = buildList {
@@ -201,8 +201,10 @@ private fun FolderPickerDialog(
                     else -> null
                 }
             }.getOrNull()
-                ?: context.getExternalFilesDir(null)?.let { File(it, "Downloads") }
-                ?: File(context.filesDir, "Downloads")
+                ?: Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    ?.let { File(it, "Hanime") }
+                ?: context.getExternalFilesDir(null)?.let { File(it, "Hanime") }
+                ?: context.filesDir
         )
     }
     var showNewFolder by remember { mutableStateOf(false) }
