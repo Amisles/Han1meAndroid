@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <b>当前版本：v1.5.0</b>· 最低支持 Android 11（API 30）· 目标 Android 17（API 37）
+  <b>当前版本：v1.6.0</b>· 最低支持 Android 11（API 30）· 目标 Android 17（API 37）
 </p>
 
 ## 功能
