@@ -551,14 +551,25 @@ object Preferences : SettingsRepository, SessionRepository {
             CookieManager.getInstance().removeAllCookies(null)
             CookieManager.getInstance().flush()
         }
-        sp.edit {
-            remove(SP_ALREADY_LOGIN)
-            remove(SP_LOGIN_COOKIE)
-            remove(SP_LOGIN_COOKIE_DOMAIN)
-            remove(SP_SAVED_USER_ID)
+        // 必须 commit 而非 apply：apply 是异步落盘，进程在写盘前被杀就会出现
+        // 「内存已登出、磁盘仍留会话」，重启后表现为已登出却仍带着旧会话。
+        // 登出是低频操作，一次同步写盘换来确定的安全语义是值得的。
+        runCatching {
+            // 不能用 androidx 的 edit { } 扩展：它返回 Unit，拿不到 Editor 也就无法 commit()。
+            @Suppress("ApplySharedPref")
+            val editor = sp.edit()
+            editor.remove(SP_ALREADY_LOGIN)
+            editor.remove(SP_LOGIN_COOKIE)
+            // Cloudflare 校验 Cookie 同属会话材料：漏删会在下次登录时被继续注入
+            editor.remove(SP_CF_COOKIE)
+            editor.remove(SP_LOGIN_COOKIE_DOMAIN)
+            editor.remove(SP_SAVED_USER_ID)
+            editor.commit()
         }
         _loginStateFlow.value = false
         _loginCookieFlow.value = SessionCookie("")
+        // 内存态同样要清：只删持久化会留下「本次进程仍带着 CF Cookie」的窗口
+        _cloudFlareCookieFlow.value = SessionCookie("")
         _loginCookieDomain = ""
         _savedUserIdFlow.value = ""
     }
