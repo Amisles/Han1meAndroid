@@ -454,6 +454,9 @@
     <string name="download_open_failed">開けませんでした: %1$s</string>
     <string name="batch_title">一括ダウンロード</string>
     <string name="batch_author_id_placeholder">作者IDを入力</string>
+    <string name="batch_search_author_placeholder">作者IDを入力</string>
+    <string name="batch_search_hint">Enterで著者の動画を検索</string>
+    <string name="batch_search_collapse">検索欄を閉じる</string>
     <string name="batch_author_name">作者：%1$s</string>
     <string name="batch_loading_page">第 %1$d ページを読み込み中...</string>
     <string name="batch_status_downloaded">ダウンロード済み</string>

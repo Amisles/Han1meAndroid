@@ -1,22 +1,32 @@
 package app.amisles.hanime.feature.download
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -24,6 +34,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,8 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -46,30 +55,44 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
-import app.amisles.hanime.domain.model.BatchVideoItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.surfaceEdge
+import app.amisles.hanime.domain.model.BatchVideoItem
 import coil3.compose.AsyncImage
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,18 +111,98 @@ fun BatchDownloadScreen(
         }
     }
 
+    // 搜索框展开态：点击工具栏右上方的搜索框后，它移动到标题下方并占满整行
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    // 收起态搜索框在根坐标中的位置与宽度，作为展开动画的起点
+    var collapsedSlot by remember { mutableStateOf(ToolbarSlot.Empty) }
+    // 标题行（含收起态搜索框）在根坐标中的位置，用于把绝对坐标换算成行内偏移
+    val density = LocalDensity.current
+    var titleRowLeft by remember { mutableIntStateOf(0) }
+    var titleRowTop by remember { mutableIntStateOf(0) }
+    val titleRowHeight = with(density) { TITLE_ROW_HEIGHT.roundToPx() }
+
+    // 返回键：展开态下先收起搜索框，而不是直接退出页面
+    BackHandler(enabled = searchExpanded) {
+        focusManager.clearFocus()
+        searchExpanded = false
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.batch_title), color = MaterialTheme.colorScheme.onBackground) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = MaterialTheme.colorScheme.onBackground)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .onGloballyPositioned { coords ->
+                        val pos = coords.positionInRoot()
+                        titleRowLeft = pos.x.toInt()
+                        titleRowTop = pos.y.toInt()
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
-            )
+                    // 容器高度始终包含展开行，避免展开动画把下方内容整体推动（行内位置由动画插值决定）
+                    .height(TITLE_ROW_HEIGHT + SEARCH_ROW_HEIGHT)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(TITLE_ROW_HEIGHT)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.batch_title),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 8.dp)
+                    )
+                    // 收起态搜索框：与搜索页同款，整块作为点击展开的触发区域
+                    CollapsedSearchTrigger(
+                        value = state.authorIdInput,
+                        isSearching = state.isSearching,
+                        onExpand = { searchExpanded = true },
+                        onPositioned = { collapsedSlot = it },
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                }
+
+                // 展开行：固定在标题行下方的整行区域，内部按动画进度从收起位插值移动到目标位
+                AnimatedVisibility(
+                    visible = searchExpanded,
+                    enter = fadeIn(tween(SEARCH_ANIM_MS)) + expandVertically(tween(SEARCH_ANIM_MS)),
+                    exit = fadeOut(tween(SEARCH_ANIM_MS)) + shrinkVertically(tween(SEARCH_ANIM_MS)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .zIndex(1f)
+                ) {
+                    ExpandedSearchRow(
+                        value = state.authorIdInput,
+                        isSearching = state.isSearching,
+                        from = collapsedSlot,
+                        rowLeftInRoot = titleRowLeft,
+                        rowTopInRoot = titleRowTop + titleRowHeight,
+                        onInputChange = { viewModel.updateAuthorIdInput(it) },
+                        onSearch = {
+                            focusManager.clearFocus()
+                            searchExpanded = false
+                            if (state.authorIdInput.isNotBlank()) viewModel.searchAuthor()
+                        },
+                        onClear = { viewModel.updateAuthorIdInput("") }
+                    )
+                }
+            }
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
@@ -128,13 +231,6 @@ fun BatchDownloadScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            SearchSection(
-                authorIdInput = state.authorIdInput,
-                isSearching = state.isSearching,
-                onInputChange = { viewModel.updateAuthorIdInput(it) },
-                onSearch = { viewModel.searchAuthor() }
-            )
-
             state.error?.let { error ->
                 ErrorBanner(
                     message = error,
@@ -165,53 +261,6 @@ fun BatchDownloadScreen(
                 )
             } else if (!state.isSearching && state.authorIdInput.isEmpty()) {
                 EmptyStateHint()
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchSection(
-    authorIdInput: String,
-    isSearching: Boolean,
-    onInputChange: (String) -> Unit,
-    onSearch: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = authorIdInput,
-            onValueChange = onInputChange,
-            label = { Text(stringResource(R.string.batch_author_id_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Button(
-            onClick = onSearch,
-            enabled = !isSearching,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            if (isSearching) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.common_search))
             }
         }
     }
@@ -690,5 +739,175 @@ private fun EmptyStateHint() {
                 fontSize = 14.sp
             )
         }
+    }
+}
+
+/** 搜索框在根坐标中的位置（px）与宽度，用于展开动画的起点插值。 */
+private data class ToolbarSlot(val offset: IntOffset, val width: Int) {
+    companion object {
+        val Empty = ToolbarSlot(IntOffset.Zero, 0)
+    }
+}
+
+private val COLLAPSED_SEARCH_WIDTH = 148.dp
+private val EXPANDED_SEARCH_HORIZONTAL_PADDING = 15.dp
+private val TITLE_ROW_HEIGHT = 64.dp
+private val SEARCH_ROW_HEIGHT = 56.dp
+private const val SEARCH_ANIM_MS = 280
+
+/**
+ * 与搜索页同款的搜索框，并叠加批量下载页需要的状态：查询中显示进度环、展开态用主色描边强调。
+ * 回车即提交（[SearchField] 把 IME 搜索键映射到 onSearch），因此不再单独放搜索按钮。
+ */
+@Composable
+private fun BatchSearchBar(
+    value: String,
+    isSearching: Boolean,
+    expanded: Boolean,
+    onInputChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
+    onPositioned: ((ToolbarSlot) -> Unit)? = null
+) {
+    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
+    Box(modifier = modifier) {
+        SearchField(
+            value = value,
+            onValueChange = onInputChange,
+            placeholder = stringResource(R.string.batch_search_author_placeholder),
+            onSearch = onSearch,
+            onClear = onClear,
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                .then(
+                    if (onFocusChanged != null) Modifier.onFocusChanged { onFocusChanged(it.isFocused) } else Modifier
+                )
+                .onGloballyPositioned { coords ->
+                    onPositioned?.invoke(
+                        ToolbarSlot(
+                            offset = coords.positionInRoot().let { IntOffset(it.x.toInt(), it.y.toInt()) },
+                            width = coords.size.width
+                        )
+                    )
+                }
+        )
+        // 展开态整行保持主色描边，和「正在搜索作者」的状态一眼可辨
+        if (expanded) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .border(1.dp, MaterialTheme.colorScheme.primary, shape)
+            )
+        }
+        if (isSearching) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(end = 12.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 收起态：与搜索页同款的小号搜索框；整块是点击区，点击后交由展开行输入（不在原位抢焦点）。
+ */
+@Composable
+private fun CollapsedSearchTrigger(
+    value: String,
+    isSearching: Boolean,
+    onExpand: () -> Unit,
+    onPositioned: (ToolbarSlot) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BatchSearchBar(
+        value = value,
+        isSearching = isSearching,
+        expanded = false,
+        onInputChange = {},
+        onSearch = {},
+        onClear = {},
+        onFocusChanged = { focused -> if (focused) onExpand() },
+        onPositioned = onPositioned,
+        modifier = modifier
+            .width(COLLAPSED_SEARCH_WIDTH)
+            .clickable(onClick = onExpand)
+    )
+}
+
+/**
+ * 展开行：占满标题下方整行，内部搜索框按动画进度从收起态的位置与宽度插值到「左右 15dp、占满整行」，
+ * 视觉上就是右上角的搜索框滑下来并展开。容器高度随 [AnimatedVisibility] 同步撑开，下方内容平滑下移。
+ */
+@Composable
+private fun ExpandedSearchRow(
+    value: String,
+    isSearching: Boolean,
+    from: ToolbarSlot,
+    rowLeftInRoot: Int,
+    rowTopInRoot: Int,
+    onInputChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit
+) {
+    val density = LocalDensity.current
+    val focusRequester = remember { FocusRequester() }
+    var targetWidthPx by remember { mutableStateOf(0f) }
+
+    val anim by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(SEARCH_ANIM_MS),
+        label = "batchSearchExpand"
+    )
+
+    // 展开后自动聚焦并弹出键盘：用户点搜索框就是为了直接输入
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+
+    val targetLeft = with(density) { EXPANDED_SEARCH_HORIZONTAL_PADDING.toPx() }
+    val startLeft = (from.offset.x - rowLeftInRoot).toFloat()
+    val startTop = (from.offset.y - rowTopInRoot).toFloat()
+    val startWidth = from.width.toFloat()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = EXPANDED_SEARCH_HORIZONTAL_PADDING)
+            .height(SEARCH_ROW_HEIGHT)
+            .onSizeChanged { targetWidthPx = it.width.toFloat() }
+    ) {
+        val interpolatedWidth = if (startWidth > 0f) {
+            startWidth + (targetWidthPx - startWidth) * anim
+        } else {
+            targetWidthPx
+        }
+        BatchSearchBar(
+            value = value,
+            isSearching = isSearching,
+            expanded = true,
+            onInputChange = onInputChange,
+            onSearch = onSearch,
+            onClear = onClear,
+            focusRequester = focusRequester,
+            modifier = Modifier
+                .offset {
+                    IntOffset(
+                        x = (startLeft + (targetLeft - startLeft) * anim).toInt() - targetLeft.toInt(),
+                        y = (startTop * (1f - anim)).toInt()
+                    )
+                }
+                .width(with(density) { interpolatedWidth.toDp() })
+        )
     }
 }
