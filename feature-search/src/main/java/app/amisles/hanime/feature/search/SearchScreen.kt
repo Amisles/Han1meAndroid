@@ -336,10 +336,12 @@ fun SearchScreen(
                 }
             }
 
+            // 排序行与上方筛选栏同属一个容器（容器 bottom 内边距 6dp），故此处不再加 top 内边距，
+            // 使排序行与筛选栏、与下方结果区之间的垂直间距一致
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 6.dp),
+                    .padding(bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
