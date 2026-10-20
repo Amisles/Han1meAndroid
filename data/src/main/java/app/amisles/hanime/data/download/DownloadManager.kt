@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Semaphore
 import okhttp3.OkHttpClient
@@ -855,13 +854,8 @@ class DownloadManager @Inject constructor(
 
     override fun cancelDownload(taskId: Int) {
         cancelTaskCalls(taskId)
-        // 先取消再 join：Job.cancel() 是协作式的，写循环里检查到取消后仍有正在进行的 write。
-        // 若此时就删文件，写入会落到已 unlink 的 inode 上，随后新建的同名任务会指向另一个
-        // inode，表现为「新任务下载到旧数据」并泄漏磁盘空间。
         val job = downloadJobs.remove(taskId)
         job?.cancel()
-        runBlocking { withTimeoutOrNull(5_000L) { job?.join() } }
-        if (job == null) taskCancelFlags.remove(taskId)
 
         // 锁内只做内存移除；文件删除移到锁外（delete 会触发 FS 元数据更新，持锁期间
         // 主线程的 pauseDownload / startDownload 会长时间等锁）
@@ -870,15 +864,6 @@ class DownloadManager @Inject constructor(
             emitTasks()
             task
         }
-        removed?.let { task ->
-            val file = File(task.filePath)
-            if (file.exists()) file.delete()
-            // 一并清理分块续传位图表与其 .tmp 中间文件，避免孤儿文件
-            val pm = File(task.filePath + PARTMAP_SUFFIX)
-            if (pm.exists()) pm.delete()
-            val pmTmp = File(task.filePath + PARTMAP_SUFFIX + ".tmp")
-            if (pmTmp.exists()) pmTmp.delete()
-        }
         // 走与 persistTask 相同的串行队列，避免 DELETE 与在途 UPSERT 竞争导致任务复活
         persistDelete(taskId)
         lastNotifiedPercent.remove(taskId)
@@ -886,6 +871,41 @@ class DownloadManager @Inject constructor(
         // 常驻通知并重算活动集合，否则通知（ongoing 不可划掉）与 dataSync 前台服务会永久残留。
         forwardRemoveToService(taskId)
         AppLogger.log("DownloadManager", "Download cancelled: $taskId")
+
+        if (removed == null) {
+            if (job == null) taskCancelFlags.remove(taskId)
+            return
+        }
+        // 文件删除必须等 Job 真正结束：Job.cancel() 是协作式的，写循环里检查到取消后仍有
+        // 正在进行的 write。若此时就删文件，写入会落到已 unlink 的 inode 上，随后新建的
+        // 同名任务会指向另一个 inode，表现为「新任务下载到旧数据」并泄漏磁盘空间。
+        // 原实现用 runBlocking { join } 在调用线程上等最多 5s：调用点虽在 IO 线程，但
+        // DownloadViewModel 用 Mutex 串行化全部下载操作，一次取消会连带卡住同一时刻的
+        // 暂停 / 恢复 / 批量重试。改为在内部作用域里等待，调用方立即返回。
+        scope.launch {
+            withTimeoutOrNull(CANCEL_JOIN_TIMEOUT_MS) { job?.join() }
+            if (job == null) taskCancelFlags.remove(taskId)
+            // 等待期间用户可能对同一部视频重新发起下载并复用了这个路径：
+            // 此时文件归新任务所有，绝不能删（新任务可能正靠它续传）。
+            val pathTaken = tasksLock.withLock {
+                taskMap.values.any { it.filePath == removed.filePath }
+            }
+            if (pathTaken) {
+                AppLogger.log(
+                    "DownloadManager",
+                    "取消后该路径已被新任务接管，跳过文件删除: ${removed.filePath}"
+                )
+                return@launch
+            }
+            deleteTaskFiles(removed)
+        }
+    }
+
+    /** 删除任务的本地文件：正片 + 分块位图表 + 其写入中间文件。幂等，失败仅记录。 */
+    private fun deleteTaskFiles(task: DownloadTask) {
+        runCatching { File(task.filePath).takeIf { it.exists() }?.delete() }
+        runCatching { File(task.filePath + PARTMAP_SUFFIX).delete() }
+        runCatching { File(task.filePath + PARTMAP_SUFFIX + ".tmp").delete() }
     }
 
     /**

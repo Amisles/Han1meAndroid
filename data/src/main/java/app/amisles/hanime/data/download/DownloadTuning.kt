@@ -35,6 +35,8 @@ internal const val PROBE_WARMUP_BYTES = 512 * 1024
 internal const val PROBE_READ_BUFFER_SIZE = 64 * 1024
 internal const val PROBE_MAX_DURATION_MS = 3000L
 internal const val PARTMAP_SUFFIX = ".partmap"
+// 取消下载后等待 Job 结束的上限：超时也继续删文件（此时写循环已检查到取消位，不再写盘）
+internal const val CANCEL_JOIN_TIMEOUT_MS = 5_000L
 // 由 1s 放宽到 5s（块完成时仍强制落盘，见 reporter）
 internal const val PARTMAP_PERSIST_MS = 5000L
 // 位图表块数的合法上界（防损坏文件撑爆数组分配），同时作为分块总数上限
