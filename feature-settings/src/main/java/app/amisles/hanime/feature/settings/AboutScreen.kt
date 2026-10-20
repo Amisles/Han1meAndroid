@@ -284,7 +284,7 @@ fun AboutScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { openUrl("https://github.com/Amisles/HanimeAndroid") }
+                                .clickable { openUrl("https://github.com/Amisles/Han1meAndroid") }
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -302,7 +302,7 @@ fun AboutScreen(
                                     color = MaterialTheme.colorScheme.onBackground
                                 )
                                 Text(
-                                    text = "github.com/Amisles/HanimeAndroid",
+                                    text = "github.com/Amisles/Han1meAndroid",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -319,7 +319,7 @@ fun AboutScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { openUrl("https://github.com/Amisles/HanimeAndroid/issues") }
+                                .clickable { openUrl("https://github.com/Amisles/Han1meAndroid/issues") }
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -337,7 +337,7 @@ fun AboutScreen(
                                     color = MaterialTheme.colorScheme.onBackground
                                 )
                                 Text(
-                                    text = "github.com/Amisles/HanimeAndroid/issues",
+                                    text = "github.com/Amisles/Han1meAndroid/issues",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
