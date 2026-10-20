@@ -454,6 +454,7 @@
     <string name="download_open_failed">Failed to open: %1$s</string>
     <string name="batch_title">Batch Download</string>
     <string name="batch_author_id_placeholder">Enter author ID</string>
+    <string name="batch_search_author_placeholder">Enter author ID or profile link</string>
     <string name="batch_author_name">Author: %1$s</string>
     <string name="batch_loading_page">Loading page %1$d...</string>
     <string name="batch_status_downloaded">Downloaded</string>

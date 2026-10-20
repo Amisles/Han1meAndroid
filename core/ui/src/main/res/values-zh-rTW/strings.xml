@@ -454,9 +454,7 @@
     <string name="download_open_failed">打開失敗: %1$s</string>
     <string name="batch_title">批次下載</string>
     <string name="batch_author_id_placeholder">輸入作者ID</string>
-    <string name="batch_search_author_placeholder">輸入作者ID</string>
-    <string name="batch_search_hint">按 Enter 搜尋此作者的全部影片</string>
-    <string name="batch_search_collapse">收起搜尋</string>
+    <string name="batch_search_author_placeholder">輸入作者ID或主頁連結</string>
     <string name="batch_author_name">作者：%1$s</string>
     <string name="batch_loading_page">載入第 %1$d 頁...</string>
     <string name="batch_status_downloaded">已下載</string>
