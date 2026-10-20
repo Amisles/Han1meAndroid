@@ -102,7 +102,9 @@ class MainActivity : ComponentActivity() {
         // 会与 EncryptedSharedPreferences 冲突并反复误触发「明文→加密」迁移，覆盖已存的主题/语言。
         // 走 Application 的语言缓存：该回调位于 Activity 创建最早期，不应在这里做加密存储解密。
         val lang = (newBase.applicationContext as? HanimeApplication)?.currentLanguage()
-            ?: runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
+            // 兜底同样不读 Preferences：Application 尚未就绪时它可能未初始化（lateinit 崩溃），
+            // 而默认语言就是唯一合理取值。
+            ?: Preferences.LANGUAGE_ZH_CN
         super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
     }
 
@@ -114,7 +116,11 @@ class MainActivity : ComponentActivity() {
         }
         super.onCreate(savedInstanceState)
 
-        (application as? HanimeApplication)?.applyLanguage(Preferences.appLanguage)
+        // 走 Application 的语言快照（onCreate 里已预热），不要直接读 Preferences.appLanguage：
+        // 那是加密存储的 getter，在 Activity 创建路径上读会把 Keystore 解密拉回主线程，
+        // 等于绕开了 HanimeApplication 专门为此建立的缓存。
+        val app = application as? HanimeApplication
+        app?.applyLanguage(app.currentLanguage())
 
         setContent {
             val themeMode by Preferences.themeModeFlow.collectAsStateWithLifecycle()
