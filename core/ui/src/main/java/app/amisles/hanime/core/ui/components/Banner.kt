@@ -6,17 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,24 +20,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.HanimeBanner
 import coil3.compose.AsyncImage
 
+/**
+ * 首页大图轮播。
+ *
+ * 点击行为作用在整张大图上（不再单独渲染播放按钮）：有直链时跳详情播放，没有直链时退回按标题搜索。
+ */
 @Composable
 fun Banner(
     bannerData: HanimeBanner,
     onPlayClick: () -> Unit = {},
     onSearchClick: (String) -> Unit = {}
 ) {
+    val clickable = bannerData.videoUrl.isNotEmpty() || bannerData.title.isNotEmpty()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(260.dp)
+            .clickable(enabled = clickable) {
+                if (bannerData.videoUrl.isNotEmpty()) {
+                    onPlayClick()
+                } else {
+                    onSearchClick(bannerData.title)
+                }
+            }
     ) {
         if (bannerData.imageUrl.isNotEmpty()) {
             AsyncImage(
@@ -110,41 +115,6 @@ fun Banner(
                             .clip(RoundedCornerShape(10.dp))
                             .background(Color.White.copy(alpha = 0.2f))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(top = 12.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .background(Color.White, RoundedCornerShape(6.dp))
-                        .clip(RoundedCornerShape(6.dp))
-                        .padding(7.dp)
-                        .clickable {
-                            if (bannerData.videoUrl.isNotEmpty()) {
-                                onPlayClick()
-                            } else {
-                                onSearchClick(bannerData.title)
-                            }
-                        }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.common_play),
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.common_play),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black
                     )
                 }
             }
