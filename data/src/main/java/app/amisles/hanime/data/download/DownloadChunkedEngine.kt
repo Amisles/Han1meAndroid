@@ -44,8 +44,9 @@ private fun evictionBackoffMs(evictedTimes: Int, chunkIndex: Int): Long {
  * 全量重建在途分块连接：取消所有活跃连接，由 worker 重新入队并建新连接重试。
  *
  * 对限速型 CDN，「换一批新请求」往往能立刻拿到整块高速投递，本函数即「用户手动暂停
- * 再恢复」的自动化版本。计数计入 [globalRebuildCount]（独立上限），不消耗 evictionTotal；
- * 但必须递增 chunkEvictCount，否则 worker 会把主动取消误判为真实 IO 失败。
+ * 再恢复」的自动化版本。三重约束：持续低位时长、冷却间隔、[globalRebuildCount] 次数上限。
+ * 每次重建的每条连接同时递增 chunkEvictCount（否则 worker 会把主动取消误判为真实 IO
+ * 失败）与 evictionTotal（共享驱逐总预算，使「反复重建仍无收益」能触发降级单连接兜底）。
  */
 private fun rebuildAllChunkConnections(
     taskId: Int,
@@ -54,12 +55,17 @@ private fun rebuildAllChunkConnections(
     chunkCount: Int,
     chunkCallRefs: Array<AtomicReference<Call?>>,
     chunkEvictCount: AtomicIntegerArray,
+    evictionTotal: AtomicInteger,
     globalRebuildCount: AtomicInteger
 ): Int {
     var rebuilt = 0
     for (i in 0 until chunkCount) {
         val call = chunkCallRefs[i].get() ?: continue
         chunkEvictCount.incrementAndGet(i)
+        // 必须同时计入驱逐总预算：worker 侧「驱逐预算耗尽 → 降级单连接」的判据只看
+        // evictionTotal，若这里不累加，全量重建就绕开了唯一的降级兜底，只受 12 次上限约束，
+        // 期间反复把所有块打回 TCP 慢启动。
+        evictionTotal.incrementAndGet()
         runCatching { call.cancel() }
         rebuilt++
     }
@@ -269,8 +275,11 @@ internal suspend fun DownloadManager.downloadFileChunked(
                                 // 驱逐总预算耗尽：判定分块路径对当前网络/本机存储无收益，降级单连接续传。
                                 // 预算是「本任务累计驱逐次数」（跨块），否则块数一多总驱逐量会随块数膨胀。
                                 if (evictionTotal.get() >= MAX_EVICTIONS_PER_TASK) {
+                                    // 两个计数含义不同：evictedNow 是「本块」被驱逐次数，
+                                    // evictionTotal 是「整任务」累计（含全量重建），排查时都要看。
                                     throw ChunkedInefficientException(
-                                        "分块下载持续无收益（已驱逐 $evictedNow 次），降级单连接续传"
+                                        "分块下载持续无收益（本块驱逐 $evictedNow 次，" +
+                                            "任务累计 ${evictionTotal.get()} 次），降级单连接续传"
                                     )
                                 }
                                 // 退避后再重连，避免「砍了立刻重连 → 又被判慢」的自激循环
@@ -420,6 +429,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
                             chunkCount = chunkCount,
                             chunkCallRefs = chunkCallRefs,
                             chunkEvictCount = chunkEvictCount,
+                            evictionTotal = evictionTotal,
                             globalRebuildCount = globalRebuildCount
                         )
                     }
@@ -466,6 +476,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
                             chunkCount = chunkCount,
                             chunkCallRefs = chunkCallRefs,
                             chunkEvictCount = chunkEvictCount,
+                            evictionTotal = evictionTotal,
                             globalRebuildCount = globalRebuildCount
                         )
                         if (watchdogRebuilt > 0) watchdogCount.incrementAndGet()
