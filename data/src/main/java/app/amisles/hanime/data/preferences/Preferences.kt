@@ -535,7 +535,10 @@ object Preferences : SettingsRepository, SessionRepository {
      * 不可用时回退内部存储）；非空时为用户指定的目录绝对路径。
      */
     override var downloadStoragePath: String
-        get() = sp.getString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
+        // 读走内存快照而非 sp：本类是 object 且 sp 为 lateinit，直接访问 getter 会在
+        // init() 之前抛 UninitializedPropertyAccessException；其余偏好项均由 Flow 支撑，
+        // 这一项此前是唯一例外，与 DownloadManager.resolveDownloadDir() 的实时读取冲突。
+        get() = _downloadStoragePathFlow.value
         set(value) {
             val safe = value.trim()
             sp.edit { putString(SP_DOWNLOAD_STORAGE_PATH, safe) }
