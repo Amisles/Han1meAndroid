@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.Environment
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -443,132 +446,140 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
 
-        // 外观：语言 / 主题 / 界面定制
-        SettingsGroupCard {
-            SettingsDropdownRow(
-                icon = Icons.Outlined.Language,
-                title = stringResource(R.string.settings_app_language),
-                selectedLabel = languageOptions.find { it.code == uiState.appLanguage }?.label
-                    ?: stringResource(R.string.settings_language_zh_cn),
-                expanded = appLanguageMenuExpanded,
-                onExpandedChange = { appLanguageMenuExpanded = it },
-                options = languageOptions.map { it.code to it.label },
-                selectedValue = uiState.appLanguage,
-                onSelect = { code -> viewModel.setAppLanguage(code) }
-            )
-            SettingsGroupDivider()
-            SettingsDropdownRow(
-                icon = Icons.Outlined.Palette,
-                title = stringResource(R.string.settings_theme_mode),
-                selectedLabel = themeModeOptions.find { it.first == uiState.themeMode }?.second
-                    ?: stringResource(R.string.settings_theme_system),
-                expanded = themeModeMenuExpanded,
-                onExpandedChange = { themeModeMenuExpanded = it },
-                options = themeModeOptions,
-                selectedValue = uiState.themeMode,
-                onSelect = { mode -> viewModel.setThemeMode(mode) }
-            )
-            SettingsGroupDivider()
-            SettingsNavRow(
-                icon = Icons.Outlined.Tune,
-                title = stringResource(R.string.settings_customize_ui),
-                subtitle = stringResource(R.string.settings_customize_ui_summary),
-                onClick = { onNavigate("customize") }
-            )
-        }
+            // 外观：语言 / 主题 / 界面定制
+            SettingsGroupCard {
+                SettingsDropdownRow(
+                    icon = Icons.Outlined.Language,
+                    title = stringResource(R.string.settings_app_language),
+                    selectedLabel = languageOptions.find { it.code == uiState.appLanguage }?.label
+                        ?: stringResource(R.string.settings_language_zh_cn),
+                    expanded = appLanguageMenuExpanded,
+                    onExpandedChange = { appLanguageMenuExpanded = it },
+                    options = languageOptions.map { it.code to it.label },
+                    selectedValue = uiState.appLanguage,
+                    onSelect = { code -> viewModel.setAppLanguage(code) }
+                )
+                SettingsGroupDivider()
+                SettingsDropdownRow(
+                    icon = Icons.Outlined.Palette,
+                    title = stringResource(R.string.settings_theme_mode),
+                    selectedLabel = themeModeOptions.find { it.first == uiState.themeMode }?.second
+                        ?: stringResource(R.string.settings_theme_system),
+                    expanded = themeModeMenuExpanded,
+                    onExpandedChange = { themeModeMenuExpanded = it },
+                    options = themeModeOptions,
+                    selectedValue = uiState.themeMode,
+                    onSelect = { mode -> viewModel.setThemeMode(mode) }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.Tune,
+                    title = stringResource(R.string.settings_customize_ui),
+                    subtitle = stringResource(R.string.settings_customize_ui_summary),
+                    onClick = { onNavigate("customize") }
+                )
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // 播放：长按倍速 / 双击快进 / 自动画质
-        SettingsGroupCard {
-            SettingsDropdownRow(
-                icon = Icons.Outlined.Speed,
-                title = stringResource(R.string.settings_long_press_speed),
-                selectedLabel = "${uiState.longPressBoostSpeed}×",
-                expanded = longPressMenuExpanded,
-                onExpandedChange = { longPressMenuExpanded = it },
-                options = longPressSpeedOptions,
-                selectedValue = uiState.longPressBoostSpeed,
-                onSelect = { speed -> viewModel.setLongPressBoostSpeed(speed) }
-            )
-            SettingsGroupDivider()
-            SettingsSwitchRow(
-                icon = Icons.Outlined.TouchApp,
-                title = stringResource(R.string.settings_double_tap_seek),
-                subtitle = stringResource(R.string.settings_double_tap_seek_summary),
-                checked = uiState.doubleTapSeek,
-                onCheckedChange = { enabled -> viewModel.setDoubleTapSeek(enabled) }
-            )
-            SettingsGroupDivider()
-            SettingsSwitchRow(
-                icon = Icons.Outlined.HighQuality,
-                title = stringResource(R.string.settings_auto_quality),
-                subtitle = stringResource(R.string.settings_auto_quality_summary),
-                checked = uiState.autoQuality,
-                onCheckedChange = { enabled -> viewModel.setAutoQuality(enabled) }
-            )
-        }
+            // 播放：长按倍速 / 双击快进 / 自动画质
+            SettingsGroupCard {
+                SettingsDropdownRow(
+                    icon = Icons.Outlined.Speed,
+                    title = stringResource(R.string.settings_long_press_speed),
+                    selectedLabel = "${uiState.longPressBoostSpeed}×",
+                    expanded = longPressMenuExpanded,
+                    onExpandedChange = { longPressMenuExpanded = it },
+                    options = longPressSpeedOptions,
+                    selectedValue = uiState.longPressBoostSpeed,
+                    onSelect = { speed -> viewModel.setLongPressBoostSpeed(speed) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.TouchApp,
+                    title = stringResource(R.string.settings_double_tap_seek),
+                    subtitle = stringResource(R.string.settings_double_tap_seek_summary),
+                    checked = uiState.doubleTapSeek,
+                    onCheckedChange = { enabled -> viewModel.setDoubleTapSeek(enabled) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.HighQuality,
+                    title = stringResource(R.string.settings_auto_quality),
+                    subtitle = stringResource(R.string.settings_auto_quality_summary),
+                    checked = uiState.autoQuality,
+                    onCheckedChange = { enabled -> viewModel.setAutoQuality(enabled) }
+                )
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // 下载：并发数 / 存储路径
-        SettingsGroupCard {
-            SettingsDropdownRow(
-                icon = Icons.Default.Layers,
-                title = stringResource(R.string.settings_max_concurrent),
-                selectedLabel = "${uiState.maxDownloadConcurrent}$concurrentCountSuffix",
-                expanded = downloadConcurrentMenuExpanded,
-                onExpandedChange = { downloadConcurrentMenuExpanded = it },
-                options = (1..5).map { it to "$it$concurrentCountSuffix" },
-                selectedValue = uiState.maxDownloadConcurrent,
-                onSelect = { count ->
-                    viewModel.setMaxDownloadConcurrent(count)
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.settings_concurrent_set_toast, count),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            )
-            SettingsGroupDivider()
-            SettingsNavRow(
-                icon = Icons.Outlined.Folder,
-                title = stringResource(R.string.settings_download_storage),
-                subtitle = if (uiState.downloadStoragePath.isBlank()) {
-                    stringResource(R.string.settings_download_storage_external)
-                } else {
-                    uiState.downloadStoragePath
-                },
-                onClick = { showStoragePathDialog = true }
-            )
-        }
+            // 下载：并发数 / 存储路径
+            SettingsGroupCard {
+                SettingsDropdownRow(
+                    icon = Icons.Default.Layers,
+                    title = stringResource(R.string.settings_max_concurrent),
+                    selectedLabel = "${uiState.maxDownloadConcurrent}$concurrentCountSuffix",
+                    expanded = downloadConcurrentMenuExpanded,
+                    onExpandedChange = { downloadConcurrentMenuExpanded = it },
+                    options = (1..5).map { it to "$it$concurrentCountSuffix" },
+                    selectedValue = uiState.maxDownloadConcurrent,
+                    onSelect = { count ->
+                        viewModel.setMaxDownloadConcurrent(count)
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.settings_concurrent_set_toast, count),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.Folder,
+                    title = stringResource(R.string.settings_download_storage),
+                    subtitle = if (uiState.downloadStoragePath.isBlank()) {
+                        stringResource(R.string.settings_download_storage_external)
+                    } else {
+                        uiState.downloadStoragePath
+                    },
+                    onClick = { showStoragePathDialog = true }
+                )
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // 网络与数据：镜像站 / 诊断 / 缓存
-        SettingsGroupCard {
-            SettingsNavRow(
-                icon = Icons.Outlined.Link,
-                title = stringResource(R.string.settings_base_url),
-                subtitle = uiState.baseUrl,
-                onClick = {
-                    baseUrlInput = uiState.baseUrl
-                    showBaseUrlDialog = true
-                }
-            )
-            SettingsGroupDivider()
-            SettingsNavRow(
-                icon = Icons.Outlined.NetworkCheck,
-                title = stringResource(R.string.settings_diagnostics),
-                onClick = { onNavigate("diagnostics") }
-            )
-            SettingsGroupDivider()
-            SettingsNavRow(
-                icon = Icons.Outlined.CleaningServices,
-                title = stringResource(R.string.settings_clear_cache),
-                onClick = { showClearCacheDialog = true }
-            )
+            // 网络与数据：镜像站 / 诊断 / 缓存
+            SettingsGroupCard {
+                SettingsNavRow(
+                    icon = Icons.Outlined.Link,
+                    title = stringResource(R.string.settings_base_url),
+                    subtitle = uiState.baseUrl,
+                    onClick = {
+                        baseUrlInput = uiState.baseUrl
+                        showBaseUrlDialog = true
+                    }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.NetworkCheck,
+                    title = stringResource(R.string.settings_diagnostics),
+                    onClick = { onNavigate("diagnostics") }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.CleaningServices,
+                    title = stringResource(R.string.settings_clear_cache),
+                    onClick = { showClearCacheDialog = true }
+                )
+            }
+
+            Spacer(modifier = Modifier.navigationBarsPadding())
         }
     }
 
