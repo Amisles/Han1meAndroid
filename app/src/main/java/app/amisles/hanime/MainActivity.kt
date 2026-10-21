@@ -38,6 +38,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -244,11 +245,19 @@ fun HanimeApp(
             runCatching { updateRepository.checkForUpdate(force = false) }
         }
     }
-    val progress by animateFloatAsState(
+    // 左滑关闭：拖拽期间的位移，以及松手时跳过的抽屉宽度占比；
+    // 关闭动画从松手位置继续，而不是回到完全展开再重播一遍
+    var drawerDragOffset by remember { mutableFloatStateOf(0f) }
+    var drawerCloseSkip by remember { mutableFloatStateOf(0f) }
+    val rawProgress by animateFloatAsState(
         targetValue = if (profileOpen) 1f else 0f,
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
         label = "profileDrawer"
     )
+    val progress = (rawProgress + drawerCloseSkip).coerceAtMost(1f)
+    LaunchedEffect(profileOpen, rawProgress) {
+        if (!profileOpen && rawProgress == 0f) drawerCloseSkip = 0f
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -628,29 +637,40 @@ fun HanimeApp(
                     indication = null
                 ) { profileOpen = false }
         )
-        var dragAccum by remember { mutableStateOf(0f) }
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(0.8f)
                 .graphicsLayer {
                     val base = -(1f - progress) * size.width
-                    translationX = base + if (dragAccum < 0f) dragAccum else 0f
+                    translationX = base + drawerDragOffset
                 }
                 .background(MaterialTheme.colorScheme.background)
                 .pointerInput(Unit) {
+                    val closeThreshold = with(density) { 120.dp.toPx() }
                     detectHorizontalDragGestures(
-                        onDragStart = { dragAccum = 0f },
+                        onDragStart = {
+                            drawerDragOffset = 0f
+                            drawerCloseSkip = 0f
+                        },
                         onHorizontalDrag = { change, dragAmount ->
-                            dragAccum += dragAmount
+                            drawerDragOffset = (drawerDragOffset + dragAmount).coerceAtMost(0f)
                             change.consume()
                         },
                         onDragEnd = {
-                            val threshold = with(density) { 120.dp.toPx() }
-                            if (dragAccum < -threshold) {
+                            val dragged = -drawerDragOffset
+                            if (dragged > closeThreshold) {
+                                drawerCloseSkip = (dragged / size.width).coerceAtMost(1f)
+                                drawerDragOffset = 0f
                                 profileOpen = false
+                            } else {
+                                drawerDragOffset = 0f
+                                drawerCloseSkip = 0f
                             }
-                            dragAccum = 0f
+                        },
+                        onDragCancel = {
+                            drawerDragOffset = 0f
+                            drawerCloseSkip = 0f
                         }
                     )
                 }
