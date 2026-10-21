@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subscriptions
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -124,6 +125,7 @@ fun ProfileScreen(
             add(ProfileMenuItem(Icons.Default.AccountCircle, stringResource(R.string.profile_account)) { onNavigate("accountEdit") })
         }
         add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_batch_download)) { onNavigate("batchDownload") })
+        add(ProfileMenuItem(Icons.Default.SystemUpdate, stringResource(R.string.profile_check_update)) { onNavigate("update") })
         add(ProfileMenuItem(Icons.Default.Settings, stringResource(R.string.profile_settings)) { onNavigate("settings") })
         add(ProfileMenuItem(Icons.Default.Info, stringResource(R.string.profile_about)) { onNavigate("about") })
         if (isLogin) {

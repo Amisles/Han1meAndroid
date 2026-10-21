@@ -2,12 +2,14 @@ package app.amisles.hanime.data.di
 
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.data.update.GitHubUpdateRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.UpdateRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -46,5 +48,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindDownloadRepository(impl: DownloadManager): DownloadRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUpdateRepository(impl: GitHubUpdateRepository): UpdateRepository
 
 }

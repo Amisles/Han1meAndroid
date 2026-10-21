@@ -51,6 +51,10 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_LOOP_PLAYBACK = "loop_playback"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
+    /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
+    private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
+    /** 是否允许启动时自动检查更新。 */
+    private const val SP_AUTO_CHECK_UPDATE = "auto_check_update"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
@@ -132,6 +136,14 @@ object Preferences : SettingsRepository, SessionRepository {
     private val _searchLayoutModeFlow = MutableStateFlow<SearchLayoutMode?>(null)
     override val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
 
+    // ── 应用更新 ────────────────────────────────────────────────────────────
+    // 「不再提示」记录的是版本号而非时间戳：跳过 1.6.0 后，1.7.0 发布时仍会重新提示。
+    private val _skippedUpdateVersionFlow = MutableStateFlow("")
+    val skippedUpdateVersionFlow: StateFlow<String> = _skippedUpdateVersionFlow.asStateFlow()
+
+    private val _autoCheckUpdateFlow = MutableStateFlow(true)
+    val autoCheckUpdateEnabledFlow: StateFlow<Boolean> = _autoCheckUpdateFlow.asStateFlow()
+
     /**
      * 初始化偏好存储。幂等，可安全重复调用。
      *
@@ -179,6 +191,8 @@ object Preferences : SettingsRepository, SessionRepository {
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
+        _skippedUpdateVersionFlow.value = readString(SP_SKIPPED_UPDATE_VERSION, "").orEmpty()
+        _autoCheckUpdateFlow.value = readBoolean(SP_AUTO_CHECK_UPDATE, true)
         migrateLegacyLoginCookieDomain()
     }
 
@@ -528,6 +542,26 @@ object Preferences : SettingsRepository, SessionRepository {
     override fun setSearchLayoutMode(mode: SearchLayoutMode) {
         sp.edit { putString(SP_SEARCH_LAYOUT_MODE, mode.name) }
         _searchLayoutModeFlow.value = mode
+    }
+
+    // ── 应用更新 ────────────────────────────────────────────────────────────
+
+    /** 被用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
+    val skippedUpdateVersion: String get() = _skippedUpdateVersionFlow.value
+
+    /** 记录「不再提示」的版本号；传空串即清除记录。 */
+    fun setSkippedUpdateVersion(versionName: String) {
+        val clean = versionName.trim()
+        sp.edit { putString(SP_SKIPPED_UPDATE_VERSION, clean) }
+        _skippedUpdateVersionFlow.value = clean
+    }
+
+    /** 是否允许启动时自动检查更新。 */
+    val autoCheckUpdateEnabled: Boolean get() = _autoCheckUpdateFlow.value
+
+    fun setAutoCheckUpdateEnabled(enabled: Boolean) {
+        sp.edit { putBoolean(SP_AUTO_CHECK_UPDATE, enabled) }
+        _autoCheckUpdateFlow.value = enabled
     }
 
     /**

@@ -41,10 +41,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +62,8 @@ import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.preferences.ThemeMode
+import app.amisles.hanime.domain.repository.UpdateRepository
+import app.amisles.hanime.feature.settings.openReleasePage
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
@@ -83,6 +87,8 @@ import app.amisles.hanime.feature.settings.AuthorScreen
 import app.amisles.hanime.ui.screens.PlaylistDetailScreen
 import app.amisles.hanime.ui.screens.PlaylistListPageScreen
 import app.amisles.hanime.feature.settings.SettingsScreen
+import app.amisles.hanime.feature.settings.UpdateScreen
+import app.amisles.hanime.feature.settings.UpdateAvailableDialog
 import app.amisles.hanime.feature.settings.CustomizeScreen
 import app.amisles.hanime.feature.settings.DiagnosticsScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
@@ -92,9 +98,14 @@ import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    /** 更新仓储：HanimeApp 需要它在启动时发起静默检查。 */
+    @Inject
+    lateinit var updateRepository: UpdateRepository
 
     /** 每个 Activity 需独立包装 Context 才能使切换语言后的资源生效；Application 级别不影响本 Activity 的 Resources。 */
     override fun attachBaseContext(newBase: Context) {
@@ -153,7 +164,7 @@ class MainActivity : ComponentActivity() {
                 uiConfig = uiConfig,
                 homeSectionConfig = homeSections
             ) {
-                HanimeApp()
+                HanimeApp(updateRepository = updateRepository)
             }
             }
         }
@@ -188,7 +199,9 @@ private fun NavController.navigateToTab(route: String) {
 }
 
 @Composable
-fun HanimeApp() {
+fun HanimeApp(
+    updateRepository: UpdateRepository,
+) {
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -199,6 +212,7 @@ fun HanimeApp() {
 
     val showBottomBar = !currentRoute.startsWith("detail") &&
         currentRoute != "about" &&
+        currentRoute != "update" &&
         currentRoute != "login" &&
         currentRoute != "settings" &&
         currentRoute != "batchDownload" &&
@@ -212,8 +226,24 @@ fun HanimeApp() {
 
     val useRail = currentWindowSizeInfo().useNavigationRail
 
+    // 打开发行版页面 / 安装包直链需要 Context；在组合期取一次即可
+    val appContext = LocalContext.current
+
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
+
+    // ── 启动时的静默更新检查 ────────────────────────────────────────────────
+    // 只在一处发起：HanimeApp 在整个进程内只组合一次，放到各个 Screen 里会重复触发。
+    // 检查本身受 6 小时节流约束，且失败完全静默 —— 用户不该因为「连不上 GitHub」看到任何提示。
+    val availableUpdate by updateRepository.availableUpdate.collectAsStateWithLifecycle()
+    val autoCheckUpdate by updateRepository.autoCheckEnabledFlow.collectAsStateWithLifecycle()
+    val currentSkippedVersion by updateRepository.skippedVersionFlow.collectAsStateWithLifecycle()
+    var dismissedUpdateVersion by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(autoCheckUpdate) {
+        if (autoCheckUpdate) {
+            runCatching { updateRepository.checkForUpdate(force = false) }
+        }
+    }
     val progress by animateFloatAsState(
         targetValue = if (profileOpen) 1f else 0f,
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
@@ -410,6 +440,11 @@ fun HanimeApp() {
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
                             }
+                        )
+                    }
+                    composable("update") {
+                        UpdateScreen(
+                            onBackClick = { navController.popBackStack() }
                         )
                     }
                     composable("about") {
@@ -628,5 +663,39 @@ fun HanimeApp() {
             )
         }
     }
+    // ── 启动时的更新提示 ──────────────────────────────────────────────────
+    // 三条件同时成立才弹：有可用更新、该版本未被用户跳过、且用户没有在本次运行里点过「稍后」。
+    // dismissedUpdateVersion 用 rememberSaveable，旋转屏幕后不会重复弹出打扰。
+    // 延后约 1.2s 再弹：更新检查是网络请求，若在冷启动的第一秒就盖住首页，
+    // 会让用户觉得「应用一打开就弹窗」。等首屏稳定后再提示，观感上更接近「打开后才提醒你」。
+    var updatePromptReady by remember { mutableStateOf(false) }
+    LaunchedEffect(availableUpdate) {
+        if (availableUpdate != null && !updatePromptReady) {
+            kotlinx.coroutines.delay(1_200L)
+            updatePromptReady = true
+        }
+    }
+    val pendingUpdate = availableUpdate
+    if (updatePromptReady &&
+        pendingUpdate != null &&
+        pendingUpdate.versionName != currentSkippedVersion &&
+        pendingUpdate.versionName != dismissedUpdateVersion
+    ) {
+        UpdateAvailableDialog(
+            update = pendingUpdate,
+            onUpdate = {
+                // 有安装包直链时直接下载，否则退到发行版页面让用户自行选择
+                val url = pendingUpdate.apkUrl.ifBlank { pendingUpdate.htmlUrl }
+                openReleasePage(appContext, url)
+                dismissedUpdateVersion = pendingUpdate.versionName
+            },
+            onSkipVersion = {
+                updateRepository.skipVersion(pendingUpdate.versionName)
+                dismissedUpdateVersion = pendingUpdate.versionName
+            },
+            onDismiss = { dismissedUpdateVersion = pendingUpdate.versionName }
+        )
+    }
+
     }
 }
