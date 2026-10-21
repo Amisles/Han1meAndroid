@@ -143,6 +143,11 @@ class HomeViewModel @Inject constructor(
             flushJob?.cancel()
             _isLoading.value = false
             _isRefreshing.value = false
+            if (!streamFailed && _error.value == null && receivedTitles.isNullOrEmpty()) {
+                _error.value = context.getString(R.string.error_load_home_empty)
+                _sections.value = emptyList()
+                return@launch
+            }
             // 出错时收到的分区只是残缺子集，不能据此剔除既有分区
             if (receivedTitles != null && !streamFailed) {
                 accumulated.keys.retainAll(receivedTitles)

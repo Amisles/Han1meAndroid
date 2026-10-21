@@ -711,6 +711,7 @@
     <string name="error_video_info_missing">视频信息缺失，无法发表评论</string>
     <string name="error_login_required_like">请先登录后再点赞评论</string>
     <string name="error_load_home_failed">加载首页失败</string>
+    <string name="error_load_home_empty">首页没有返回任何内容，请稍后重试</string>
     <string name="notify_download_progress">显示视频下载进度</string>
     <string name="common_no_videos">暂无视频</string>
     <string name="cd_author_avatar">作者头像</string>
