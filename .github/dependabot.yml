@@ -1,0 +1,50 @@
+# 依赖自动更新。
+#
+# 设计取舍：
+# 1) 分组而非逐条 —— androidx 有 30+ 构件，逐条开 PR 会淹没评审；按生态分组后每次最多 4 个 PR。
+# 2) Kotlin 与 KSP 必须同组 —— KSP 自 2.3.10 起独立版本号，但必须与 Kotlin 版本兼容，分开升级容易踩坑。
+# 3) 不自动升 AGP —— AGP 与 Gradle wrapper 有版本绑定关系（AGP 9.4 要求 Gradle >= 9.6.0），
+#    升级 AGP 必须同步改 gradle/wrapper/gradle-wrapper.properties，因此保持手工处理。
+
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      kotlin-and-ksp:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+      compose:
+        patterns:
+          - "androidx.compose*"
+      androidx:
+        patterns:
+          - "androidx.*"
+      third-party:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "com.android.tools.build:gradle"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: ci
+      include: scope
