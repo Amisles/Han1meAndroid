@@ -65,6 +65,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.feature.settings.openReleasePage
@@ -84,7 +85,6 @@ import app.amisles.hanime.feature.profile.ProfileScreen
 import app.amisles.hanime.feature.profile.AccountProfileScreen
 import app.amisles.hanime.feature.profile.SubscriptionsScreen
 import app.amisles.hanime.feature.search.SearchScreen
-import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
@@ -189,6 +189,17 @@ private const val HOME_SWIPE_SLOP_DP = 8f
 
 /** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 private fun String.baseRoute(): String = substringBefore('?')
+
+private fun HomeSection.sortApiValue(): String? =
+    moreUrl.substringAfter("/sort/", "")
+        .substringBefore('?')
+        .substringBefore('#')
+        .takeIf { it.isNotEmpty() }
+        ?.let { runCatching { Uri.decode(it) }.getOrDefault(it) }
+
+internal fun sortApiValueOf(section: HomeSection): String? =
+    section.sortApiValue()
+        ?: sortOptions.firstOrNull { it.label == section.title }?.apiValue
 
 /**
  * 切换底部导航 / 导航栏的 Tab。
@@ -377,18 +388,20 @@ fun HanimeApp(
                                 } },
                             onAuthorClick = { author ->
                                 navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true } },
-                            onViewMore = { sectionTitle ->
-                                val sortMatch = sortOptions.firstOrNull { it.label == sectionTitle }
-                                val categoryMatch = categories.firstOrNull { it.label == sectionTitle }
-                                when {
-                                    sortMatch != null -> {
-                                        navController.navigate("search?sort=${Uri.encode(sortMatch.apiValue)}")
-                                    }
-                                    categoryMatch != null -> {
-                                        navController.navigate("search?genre=${Uri.encode(categoryMatch.apiValue)}")
-                                    }
-                                    else -> {
-                                        navController.navigate("search?keyword=${Uri.encode(sectionTitle)}")
+                            onViewMore = { section ->
+                                val sortApiValue = sortApiValueOf(section)
+                                val target = when {
+                                    sortApiValue != null -> "search?sort=${Uri.encode(sortApiValue)}"
+                                    section.title.isNotEmpty() -> "search?keyword=${Uri.encode(section.title)}"
+                                    else -> null
+                                }
+                                if (target != null) {
+                                    navController.navigate(target) {
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
                                 } },
                             onProfileClick = { profileOpen = true }

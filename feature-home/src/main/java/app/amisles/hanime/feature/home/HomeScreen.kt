@@ -142,7 +142,7 @@ fun HomeScreen(
     onGenreSearch: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    onViewMore: (String) -> Unit = {},
+    onViewMore: (HomeSection) -> Unit = {},
     onProfileClick: (() -> Unit)? = null
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
@@ -182,7 +182,7 @@ fun HomeScreenContent(
     onGenreSearch: (String) -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
-    onViewMore: (String) -> Unit = {},
+    onViewMore: (HomeSection) -> Unit = {},
     onProfileClick: (() -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
@@ -354,7 +354,7 @@ fun HomeScreenContent(
                             text = "${stringResource(R.string.common_view_more)} →",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable { onViewMore(section.title) }
+                            modifier = Modifier.clickable { onViewMore(section) }
                         )
                     }
                 }
