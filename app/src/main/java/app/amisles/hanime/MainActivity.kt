@@ -21,6 +21,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -53,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -100,6 +103,7 @@ import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlin.math.abs
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -178,6 +182,11 @@ private const val TRANSITION_DURATION_MS = 220
 /** 退场时长略短于进场：让目标页更快接管画面，减少两页同时绘制的帧数。 */
 private const val TRANSITION_EXIT_DURATION_MS = 160
 
+/** 首页右滑唤出抽屉：触发距离、触发速度与横向位移消抖阈值。 */
+private const val HOME_SWIPE_OPEN_DP = 96f
+private const val HOME_SWIPE_VELOCITY_DP_PER_S = 600f
+private const val HOME_SWIPE_SLOP_DP = 8f
+
 /** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 private fun String.baseRoute(): String = substringBefore('?')
 
@@ -232,6 +241,12 @@ fun HanimeApp(
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
+    val swipeOpenProfile: () -> Unit = {
+        if (currentRoute == "home") profileOpen = true
+    }
+    val swipeTouchSlopPx = with(density) { HOME_SWIPE_SLOP_DP.dp.toPx() }
+    val swipeOpenThresholdPx = with(density) { HOME_SWIPE_OPEN_DP.dp.toPx() }
+    val swipeVelocityThresholdPx = with(density) { HOME_SWIPE_VELOCITY_DP_PER_S.dp.toPx() }
 
     // ── 启动时的静默更新检查 ────────────────────────────────────────────────
     // 只在一处发起：HanimeApp 在整个进程内只组合一次，放到各个 Screen 里会重复触发。
@@ -291,15 +306,25 @@ fun HanimeApp(
             ) { innerPadding ->
                 // 沉浸式路由（本地播放页）不预留底部导航栏与系统栏内边距，使页面的「垂直居中」相对整块屏幕
                 val immersiveRoute = currentRoute.startsWith("localPlayer")
+                val navModifier = if (immersiveRoute) {
+                    Modifier
+                } else {
+                    Modifier
+                        .navigationBarsPadding()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                }
                 NavHost(
                     navController = navController,
                     startDestination = "home",
-                    modifier = if (immersiveRoute) {
-                        Modifier
+                    modifier = if (useRail) {
+                        navModifier
                     } else {
-                        Modifier
-                            .navigationBarsPadding()
-                            .padding(bottom = innerPadding.calculateBottomPadding())
+                        navModifier.swipeToOpenDrawer(
+                            touchSlopPx = swipeTouchSlopPx,
+                            openThresholdPx = swipeOpenThresholdPx,
+                            velocityThresholdPx = swipeVelocityThresholdPx,
+                            onOpen = swipeOpenProfile
+                        )
                     },
                     enterTransition = {
                         fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)) +
@@ -717,5 +742,51 @@ fun HanimeApp(
         )
     }
 
+    }
+}
+
+/**
+ * 首页手势：单指从页面任意位置向右滑，位移或速度达到阈值即唤出「我的」抽屉。
+ *
+ * 判定为抽屉手势后持续消费事件，避免首页列表跟着位移；反向滑与竖滑直接放行给子级，
+ * 不影响原有列表滚动与下拉刷新。
+ */
+private fun Modifier.swipeToOpenDrawer(
+    touchSlopPx: Float,
+    openThresholdPx: Float,
+    velocityThresholdPx: Float,
+    onOpen: () -> Unit
+): Modifier = pointerInput(touchSlopPx, openThresholdPx, velocityThresholdPx) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        var distanceX = 0f
+        var lastX = down.position.x
+        val velocityTracker = VelocityTracker()
+        velocityTracker.addPosition(down.uptimeMillis, down.position)
+        var triggered = false
+        while (true) {
+            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+            if (!change.pressed) break
+            if (change.isConsumed) return@awaitEachGesture
+            val deltaX = change.position.x - lastX
+            lastX = change.position.x
+            distanceX += deltaX
+            velocityTracker.addPosition(change.uptimeMillis, change.position)
+            if (!triggered) {
+                // 位移必须明显压倒纵向偏移，避免与列表滚动抢手势
+                if (distanceX > touchSlopPx && abs(change.position.y - down.position.y) < distanceX) {
+                    triggered = true
+                    onOpen()
+                }
+                if (distanceX < -touchSlopPx) return@awaitEachGesture
+            }
+            if (triggered) change.consume()
+        }
+        if (triggered) return@awaitEachGesture
+        if (distanceX < openThresholdPx &&
+            velocityTracker.calculateVelocity().x >= velocityThresholdPx
+        ) {
+            onOpen()
+        }
     }
 }
