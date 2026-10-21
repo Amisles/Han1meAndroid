@@ -117,7 +117,7 @@ private fun buildPlans(
     homeConfig: HomeSectionConfig,
     isCompactWidth: Boolean,
     columns: Int
-): List<SectionPlan> = homeConfig.applyOrder(sections).map { section ->
+): List<SectionPlan> = homeConfig.applyOrder(sections).mapIndexed { index, section ->
     val mode = renderMode(homeConfig.layoutFor(section.title), isCompactWidth)
     val videos = section.videos.take(homeConfig.visibleCount)
     val rowVideos = when (mode) {
@@ -125,15 +125,19 @@ private fun buildPlans(
         SectionRenderMode.LIST_COLUMN, SectionRenderMode.CAROUSEL -> emptyList()
     }
     val rowKeyPrefix = if (mode == SectionRenderMode.GRID_ROWS) "home-grid-row" else "home-row"
+    val sectionKey = sectionKey(section, index)
     SectionPlan(
         section = section,
         mode = mode,
         videos = videos,
-        videoKeys = videos.map { "${section.title}#${it.videoUrl}" },
+        videoKeys = videos.map { "$sectionKey#${it.videoUrl}" },
         rowVideos = rowVideos,
-        rowKeys = rowVideos.indices.map { "$rowKeyPrefix-${section.title}-$it" }
+        rowKeys = rowVideos.indices.map { "$rowKeyPrefix-$sectionKey-$it" }
     )
 }
+
+/** LazyColumn 的 item key 前缀：标题不足以区分同名分区，追加下标保证全局唯一。 */
+private fun sectionKey(section: HomeSection, index: Int): String = "${section.title}-$index"
 
 @Composable
 fun HomeScreen(
@@ -335,7 +339,7 @@ fun HomeScreenContent(
 
             plans.forEachIndexed { i, plan ->
                 val section = plan.section
-                item(key = "home-section-title-${section.title}-$i", contentType = HomeItemType.SECTION_TITLE) {
+                item(key = "home-section-title-${sectionKey(section, i)}", contentType = HomeItemType.SECTION_TITLE) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -437,7 +441,7 @@ fun HomeScreenContent(
 
                     SectionRenderMode.CAROUSEL -> {
                         // 独立 LazyRow，key 只需在本行内唯一
-                        item(key = "home-carousel-${section.title}-$i", contentType = HomeItemType.CAROUSEL) {
+                        item(key = "home-carousel-${sectionKey(section, i)}", contentType = HomeItemType.CAROUSEL) {
                             LazyRow(
                                 contentPadding = PaddingValues(horizontal = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -456,7 +460,7 @@ fun HomeScreenContent(
                     }
                 }
 
-                item(key = "home-section-spacer-${section.title}-$i", contentType = HomeItemType.SPACER) {
+                item(key = "home-section-spacer-${sectionKey(section, i)}", contentType = HomeItemType.SPACER) {
                     Spacer(modifier = Modifier.height(6.dp))
                 }
             }

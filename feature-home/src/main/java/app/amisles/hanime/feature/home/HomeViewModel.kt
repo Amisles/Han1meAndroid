@@ -79,13 +79,9 @@ class HomeViewModel @Inject constructor(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             var firstEventArrived = false
-            // 刷新时记录本次流实际返回的分区标题：流正常结束后据此剔除已下线的旧分区，
-            val receivedTitles = if (hasContent) mutableSetOf<String>() else null
             var streamFailed = false
-            val accumulated = LinkedHashMap<String, HomeSection>()
-            if (hasContent) {
-                _sections.value.forEach { accumulated[it.title] = it }
-            }
+            val accumulated = _sections.value.toMutableList()
+            val receivedSections = if (hasContent) mutableListOf<HomeSection>() else null
             var firstPushDone = false
             var flushJob: Job? = null
             val flushScope: CoroutineScope = this
@@ -96,7 +92,7 @@ class HomeViewModel @Inject constructor(
             var lastPushed: List<HomeSection> = _sections.value
 
             fun pushSections() {
-                val next = accumulated.values.toList()
+                val next = accumulated.toList()
                 if (next == lastPushed) return
                 lastPushed = next
                 _sections.value = next
@@ -121,10 +117,8 @@ class HomeViewModel @Inject constructor(
                             val section = event.section.copy(
                                 videos = event.section.videos.distinctBy { it.videoUrl }
                             )
-                            receivedTitles?.add(section.title)
-                            // 按标题去重：流重放或站点重复输出同一分区时不会出现重复区块
-                            accumulated.remove(section.title)
-                            accumulated[section.title] = section
+                            receivedSections?.add(section)
+                            mergeSection(accumulated, section)
                             if (!firstPushDone) {
                                 // 首个分区立即提交，保住首屏速度
                                 firstPushDone = true
@@ -143,14 +137,15 @@ class HomeViewModel @Inject constructor(
             flushJob?.cancel()
             _isLoading.value = false
             _isRefreshing.value = false
-            if (!streamFailed && _error.value == null && receivedTitles.isNullOrEmpty()) {
+            if (!streamFailed && _error.value == null && receivedSections.isNullOrEmpty()) {
                 _error.value = context.getString(R.string.error_load_home_empty)
                 _sections.value = emptyList()
                 return@launch
             }
             // 出错时收到的分区只是残缺子集，不能据此剔除既有分区
-            if (receivedTitles != null && !streamFailed) {
-                accumulated.keys.retainAll(receivedTitles)
+            if (receivedSections != null && !streamFailed) {
+                val dropped = _sections.value.filter { old -> receivedSections.none { sameSection(it, old) } }
+                accumulated.removeAll(dropped.toSet())
             }
             pushSections()
         }
@@ -159,3 +154,12 @@ class HomeViewModel @Inject constructor(
 
 /** 分区提交合并窗口：窗口内到达的多个分区合并为一次 UI 更新，避免逐条提交触发整页重建 */
 private const val FLUSH_WINDOW_MS = 120L
+
+internal fun sameSection(a: HomeSection, b: HomeSection): Boolean =
+    a.title == b.title && a.moreUrl == b.moreUrl
+
+/** 同一分区（标题与链接都相同）原位替换；标题相同但链接不同的分区追加，互不覆盖。 */
+internal fun mergeSection(target: MutableList<HomeSection>, section: HomeSection) {
+    val at = target.indexOfFirst { sameSection(it, section) }
+    if (at >= 0) target[at] = section else target.add(section)
+}
