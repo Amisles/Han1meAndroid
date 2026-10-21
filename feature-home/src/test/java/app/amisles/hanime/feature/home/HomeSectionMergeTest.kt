@@ -8,12 +8,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 分区累积与空响应判定的回归测试。
+ * 分区累积的回归测试。
  *
- * 三条不变量：
- * 1. 同名但链接不同的分区共存（H-03：旧实现按标题作 Map 键，后者覆盖前者）；
- * 2. 同一分区重放时原位替换，不产生重复区块；
- * 3. 刷新成功但一个分区都没拿到（H-04），必须进入错误态而不是留下空白页。
+ * 两条不变量：
+ * 1. 同名但链接不同的分区共存（旧实现按标题作 Map 键，后者覆盖前者）；
+ * 2. 同一分区重放时原位替换，不产生重复区块。
  */
 class HomeSectionMergeTest {
 
@@ -78,29 +77,5 @@ class HomeSectionMergeTest {
         assertTrue(sameSection(base, base.copy(videos = emptyList())))
         assertFalse(sameSection(base, base.copy(moreUrl = "/sort/other")))
         assertFalse(sameSection(base, base.copy(title = "最新上传")))
-    }
-
-    // ---- H-04 ----
-
-    @Test
-    fun `successful response without sections counts as empty`() {
-        assertTrue(isHomeResponseEmpty(streamFailed = false, error = null, receivedSectionCount = 0))
-    }
-
-    @Test
-    fun `failed response is not treated as empty`() {
-        assertFalse(isHomeResponseEmpty(streamFailed = true, error = null, receivedSectionCount = 0))
-        assertFalse(
-            isHomeResponseEmpty(
-                streamFailed = false,
-                error = "加载首页失败",
-                receivedSectionCount = 0
-            )
-        )
-    }
-
-    @Test
-    fun `response with sections is not empty`() {
-        assertFalse(isHomeResponseEmpty(streamFailed = false, error = null, receivedSectionCount = 1))
     }
 }

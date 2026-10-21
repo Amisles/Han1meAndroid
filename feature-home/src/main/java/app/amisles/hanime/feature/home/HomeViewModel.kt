@@ -137,11 +137,6 @@ class HomeViewModel @Inject constructor(
             flushJob?.cancel()
             _isLoading.value = false
             _isRefreshing.value = false
-            if (isHomeResponseEmpty(streamFailed, _error.value, receivedSections?.size ?: 0)) {
-                _error.value = context.getString(R.string.error_load_home_empty)
-                _sections.value = emptyList()
-                return@launch
-            }
             // 出错时收到的分区只是残缺子集，不能据此剔除既有分区
             if (receivedSections != null && !streamFailed) {
                 val dropped = _sections.value.filter { old -> receivedSections.none { sameSection(it, old) } }
@@ -163,6 +158,3 @@ internal fun mergeSection(target: MutableList<HomeSection>, section: HomeSection
     val at = target.indexOfFirst { sameSection(it, section) }
     if (at >= 0) target[at] = section else target.add(section)
 }
-
-internal fun isHomeResponseEmpty(streamFailed: Boolean, error: String?, receivedSectionCount: Int): Boolean =
-    !streamFailed && error == null && receivedSectionCount == 0

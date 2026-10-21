@@ -711,7 +711,6 @@
     <string name="error_video_info_missing">Video info missing, cannot comment</string>
     <string name="error_login_required_like">Please sign in before liking</string>
     <string name="error_load_home_failed">Failed to load home</string>
-    <string name="error_load_home_empty">Home returned no content, please try again later</string>
     <string name="notify_download_progress">Showing video download progress</string>
     <string name="common_no_videos">No videos</string>
     <string name="cd_author_avatar">Author avatar</string>
