@@ -32,7 +32,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.domain.model.AppUpdate
 
@@ -252,7 +252,7 @@ fun UpdateScreen(
                                 modifier = Modifier.padding(top = 3.dp)
                             )
                         }
-                        Switch(
+                        HanimeSwitch(
                             checked = autoCheck,
                             onCheckedChange = { viewModel.setAutoCheckEnabled(it) }
                         )

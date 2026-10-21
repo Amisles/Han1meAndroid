@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import androidx.compose.runtime.key
@@ -141,7 +141,7 @@ internal fun TagFilterSheet(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                Switch(
+                HanimeSwitch(
                     checked = broad.value,
                     onCheckedChange = { broad.value = it }
                 )

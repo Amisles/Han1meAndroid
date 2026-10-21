@@ -28,6 +28,9 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,6 +66,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsGroupDivider
+import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.SettingsNavRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
@@ -394,6 +398,7 @@ fun SettingsScreen(
     var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
 
     var showStoragePathDialog by remember { mutableStateOf(false) }
+    var longPressMenuExpanded by remember { mutableStateOf(false) }
 
     val languageOptions = languageOptionRes()
         .map { LanguageOption(it.first, stringResource(it.second)) }
@@ -403,6 +408,7 @@ fun SettingsScreen(
         ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
         ThemeMode.DARK to stringResource(R.string.settings_theme_dark)
     )
+    val longPressSpeedOptions = listOf(1.5f, 2f, 2.5f, 3f).map { it to "${it}×" }
 
     Column(
         modifier = Modifier
@@ -469,6 +475,38 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_customize_ui),
                 subtitle = stringResource(R.string.settings_customize_ui_summary),
                 onClick = { onNavigate("customize") }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 播放：长按倍速 / 双击快进 / 自动画质
+        SettingsGroupCard {
+            SettingsDropdownRow(
+                icon = Icons.Outlined.Speed,
+                title = stringResource(R.string.settings_long_press_speed),
+                selectedLabel = "${uiState.longPressBoostSpeed}×",
+                expanded = longPressMenuExpanded,
+                onExpandedChange = { longPressMenuExpanded = it },
+                options = longPressSpeedOptions,
+                selectedValue = uiState.longPressBoostSpeed,
+                onSelect = { speed -> viewModel.setLongPressBoostSpeed(speed) }
+            )
+            SettingsGroupDivider()
+            SettingsSwitchRow(
+                icon = Icons.Outlined.TouchApp,
+                title = stringResource(R.string.settings_double_tap_seek),
+                subtitle = stringResource(R.string.settings_double_tap_seek_summary),
+                checked = uiState.doubleTapSeek,
+                onCheckedChange = { enabled -> viewModel.setDoubleTapSeek(enabled) }
+            )
+            SettingsGroupDivider()
+            SettingsSwitchRow(
+                icon = Icons.Outlined.HighQuality,
+                title = stringResource(R.string.settings_auto_quality),
+                subtitle = stringResource(R.string.settings_auto_quality_summary),
+                checked = uiState.autoQuality,
+                onCheckedChange = { enabled -> viewModel.setAutoQuality(enabled) }
             )
         }
 

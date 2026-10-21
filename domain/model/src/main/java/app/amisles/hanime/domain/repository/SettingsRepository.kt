@@ -58,6 +58,21 @@ interface SettingsRepository {
     val loopPlaybackFlow: StateFlow<Boolean>
     fun setLoopPlayback(enabled: Boolean)
 
+    /** 长按临时加速的目标倍速（1.5–3.0）。只影响按住期间，不写回 [playbackSpeed]。 */
+    val longPressBoostSpeed: Float
+    val longPressBoostSpeedFlow: StateFlow<Float>
+    fun setLongPressBoostSpeed(speed: Float)
+
+    /** 双击播放器左右区域快退 / 快进。 */
+    val doubleTapSeek: Boolean
+    val doubleTapSeekFlow: StateFlow<Boolean>
+    fun setDoubleTapSeek(enabled: Boolean)
+
+    /** 卡顿时自动降档、稳定后自动回升。关闭后手动选择的画质不会被自动切换覆盖。 */
+    val autoQuality: Boolean
+    val autoQualityFlow: StateFlow<Boolean>
+    fun setAutoQuality(enabled: Boolean)
+
     // ── 下载 ────────────────────────────────────────────────────────────────
     val maxDownloadConcurrent: Int
     val maxDownloadConcurrentFlow: StateFlow<Int>

@@ -45,6 +45,9 @@ internal fun DetailVideoPlayer(
     val appPrefs = LocalAppPreferences.current
     // 循环播放完全由播放器自身完成，外层无需感知，故就地读取
     val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
+    val longPressSpeed by appPrefs.longPressBoostSpeedFlow.collectAsStateWithLifecycle()
+    val doubleTapSeek by appPrefs.doubleTapSeekFlow.collectAsStateWithLifecycle()
+    val autoQuality by appPrefs.autoQualityFlow.collectAsStateWithLifecycle()
 
     VideoPlayer(
         exoPlayer = exoPlayer,
@@ -65,6 +68,9 @@ internal fun DetailVideoPlayer(
         autoFullscreenEnabled = autoFullscreenEnabled,
         mediaTitle = detail.title,
         mediaArtist = detail.author,
+        longPressBoostSpeed = longPressSpeed,
+        doubleTapSeekEnabled = doubleTapSeek,
+        autoQualityEnabled = autoQuality,
         modifier = modifier
     )
 }

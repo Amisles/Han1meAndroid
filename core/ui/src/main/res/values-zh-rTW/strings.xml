@@ -779,4 +779,9 @@
     <string name="profile_check_update">檢查更新</string>
     <string name="update_skipped_notice">已忽略此版本</string>
     <string name="playback_notification_channel">播放控制</string>
+    <string name="settings_long_press_speed">長按加速倍速</string>
+    <string name="settings_double_tap_seek">雙擊快進 / 快退</string>
+    <string name="settings_double_tap_seek_summary">雙擊播放器左 / 右兩側分別後退、前進 15 秒</string>
+    <string name="settings_auto_quality">自動調整畫質</string>
+    <string name="settings_auto_quality_summary">卡頓時自動降檔、穩定後回升；關閉後手動選擇的畫質不會被覆蓋</string>
 </resources>

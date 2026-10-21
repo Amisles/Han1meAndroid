@@ -29,7 +29,10 @@ data class SettingsUiState(
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
     val baseUrl: String = SettingsRepository.DEFAULT_BASE_URL,
     val isLoginSupported: Boolean = true,
-    val downloadStoragePath: String = ""
+    val downloadStoragePath: String = "",
+    val longPressBoostSpeed: Float = 2f,
+    val doubleTapSeek: Boolean = true,
+    val autoQuality: Boolean = true
 ) {
     val isDefaultBaseUrl: Boolean get() = baseUrl == SettingsRepository.DEFAULT_BASE_URL
 
@@ -79,6 +82,12 @@ class SettingsViewModel @Inject constructor(
         )
     }.combine(settings.downloadStoragePathFlow) { state, storagePath ->
         state.copy(downloadStoragePath = storagePath)
+    }.combine(settings.longPressBoostSpeedFlow) { state, speed ->
+        state.copy(longPressBoostSpeed = speed)
+    }.combine(settings.doubleTapSeekFlow) { state, enabled ->
+        state.copy(doubleTapSeek = enabled)
+    }.combine(settings.autoQualityFlow) { state, enabled ->
+        state.copy(autoQuality = enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -92,7 +101,10 @@ class SettingsViewModel @Inject constructor(
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         baseUrl = settings.baseUrl,
         isLoginSupported = settings.isLoginSupported,
-        downloadStoragePath = settings.downloadStoragePathFlow.value
+        downloadStoragePath = settings.downloadStoragePathFlow.value,
+        longPressBoostSpeed = settings.longPressBoostSpeed,
+        doubleTapSeek = settings.doubleTapSeek,
+        autoQuality = settings.autoQuality
     )
 
     fun setAppLanguage(code: String) {
@@ -106,6 +118,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setMaxDownloadConcurrent(count: Int) {
         settings.setMaxDownloadConcurrent(count)
+    }
+
+    fun setLongPressBoostSpeed(speed: Float) {
+        settings.setLongPressBoostSpeed(speed)
+    }
+
+    fun setDoubleTapSeek(enabled: Boolean) {
+        settings.setDoubleTapSeek(enabled)
+    }
+
+    fun setAutoQuality(enabled: Boolean) {
+        settings.setAutoQuality(enabled)
     }
 
     /** 设置站点基址；返回 true = 已生效，false = 输入非法（非 https 域名）且原设置不变。 */

@@ -49,6 +49,9 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
     private const val SP_LOOP_PLAYBACK = "loop_playback"
+    private const val SP_LONG_PRESS_SPEED = "long_press_boost_speed"
+    private const val SP_DOUBLE_TAP_SEEK = "double_tap_seek"
+    private const val SP_AUTO_QUALITY = "auto_quality"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
@@ -57,6 +60,13 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_AUTO_CHECK_UPDATE = "auto_check_update"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
+
+    // 播放器相关取值范围：倍速档位与长按加速共用同一上下界，避免出现 3x 档位却被写回 2x
+    const val MIN_PLAYBACK_SPEED = 0.25f
+    const val MAX_PLAYBACK_SPEED = 3f
+    const val DEFAULT_LONG_PRESS_SPEED = 2f
+    const val MIN_LONG_PRESS_SPEED = 1.5f
+    const val MAX_LONG_PRESS_SPEED = 3f
 
     // 基址校验：只接受 https + 形如域名/IP 的 host（可带端口）。视频防盗链 Referer 与登录 Cookie
     // 都会发往该地址，放开 http 会让它们在网络中以明文传输。
@@ -128,6 +138,17 @@ object Preferences : SettingsRepository, SessionRepository {
     private val _loopPlaybackFlow = MutableStateFlow(false)
     override val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
 
+    // 长按临时加速倍率：只影响按住期间，不覆盖用户选择的常驻倍速
+    private val _longPressBoostSpeedFlow = MutableStateFlow(DEFAULT_LONG_PRESS_SPEED)
+    override val longPressBoostSpeedFlow: StateFlow<Float> = _longPressBoostSpeedFlow.asStateFlow()
+
+    private val _doubleTapSeekFlow = MutableStateFlow(true)
+    override val doubleTapSeekFlow: StateFlow<Boolean> = _doubleTapSeekFlow.asStateFlow()
+
+    private val _autoQualityFlow = MutableStateFlow(true)
+    override val autoQualityFlow: StateFlow<Boolean> = _autoQualityFlow.asStateFlow()
+
+
     // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
     private val _downloadStoragePathFlow = MutableStateFlow("")
     override val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
@@ -188,6 +209,10 @@ object Preferences : SettingsRepository, SessionRepository {
         _preferredQualityFlow.value = readString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = readBoolean(SP_AUTO_PLAY_NEXT, true)
         _loopPlaybackFlow.value = readBoolean(SP_LOOP_PLAYBACK, false)
+        _longPressBoostSpeedFlow.value = readFloat(SP_LONG_PRESS_SPEED, DEFAULT_LONG_PRESS_SPEED)
+            .coerceIn(MIN_LONG_PRESS_SPEED, MAX_LONG_PRESS_SPEED)
+        _doubleTapSeekFlow.value = readBoolean(SP_DOUBLE_TAP_SEEK, true)
+        _autoQualityFlow.value = readBoolean(SP_AUTO_QUALITY, true)
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
@@ -400,6 +425,9 @@ object Preferences : SettingsRepository, SessionRepository {
     override val preferredQuality: String get() = _preferredQualityFlow.value
     override val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
     override val loopPlayback: Boolean get() = _loopPlaybackFlow.value
+    override val longPressBoostSpeed: Float get() = _longPressBoostSpeedFlow.value
+    override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
+    override val autoQuality: Boolean get() = _autoQualityFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
     override fun setAppLanguage(lang: String) {
@@ -512,11 +540,27 @@ object Preferences : SettingsRepository, SessionRepository {
         _maxDownloadConcurrentFlow.value = safeMax
     }
 
-    /** 播放倍速偏好（0.25x–2x）。进入播放器时自动应用，切换时写回。 */
+    /** 播放倍速偏好（0.25x–3x）。进入播放器时自动应用，切换时写回。 */
     override fun setPlaybackSpeed(speed: Float) {
-        val safe = speed.coerceIn(0.25f, 2f)
+        val safe = speed.coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED)
         sp.edit { putFloat(SP_PLAYBACK_SPEED, safe) }
         _playbackSpeedFlow.value = safe
+    }
+
+    override fun setLongPressBoostSpeed(speed: Float) {
+        val safe = speed.coerceIn(MIN_LONG_PRESS_SPEED, MAX_LONG_PRESS_SPEED)
+        sp.edit { putFloat(SP_LONG_PRESS_SPEED, safe) }
+        _longPressBoostSpeedFlow.value = safe
+    }
+
+    override fun setDoubleTapSeek(enabled: Boolean) {
+        sp.edit { putBoolean(SP_DOUBLE_TAP_SEEK, enabled) }
+        _doubleTapSeekFlow.value = enabled
+    }
+
+    override fun setAutoQuality(enabled: Boolean) {
+        sp.edit { putBoolean(SP_AUTO_QUALITY, enabled) }
+        _autoQualityFlow.value = enabled
     }
 
     /** 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。 */

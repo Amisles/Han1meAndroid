@@ -18,12 +18,18 @@ object PreferencesAppPreferences : AppPreferences {
     override val autoPlayNextFlow = Preferences.autoPlayNextFlow
     override val loopPlaybackFlow = Preferences.loopPlaybackFlow
     override val searchLayoutModeFlow = Preferences.searchLayoutModeFlow
+    override val longPressBoostSpeedFlow = Preferences.longPressBoostSpeedFlow
+    override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
+    override val autoQualityFlow = Preferences.autoQualityFlow
 
     override fun setPlaybackSpeed(speed: Float) = Preferences.setPlaybackSpeed(speed)
     override fun setPreferredQuality(resolution: String) = Preferences.setPreferredQuality(resolution)
     override fun setAutoPlayNext(enabled: Boolean) = Preferences.setAutoPlayNext(enabled)
     override fun setLoopPlayback(enabled: Boolean) = Preferences.setLoopPlayback(enabled)
     override fun setSearchLayoutMode(mode: SearchLayoutMode) = Preferences.setSearchLayoutMode(mode)
+    override fun setLongPressBoostSpeed(speed: Float) = Preferences.setLongPressBoostSpeed(speed)
+    override fun setDoubleTapSeek(enabled: Boolean) = Preferences.setDoubleTapSeek(enabled)
+    override fun setAutoQuality(enabled: Boolean) = Preferences.setAutoQuality(enabled)
 
     override val antiHotlinkReferer: String =
         VideoAntiHotlink.refererOf(Preferences.baseUrl)

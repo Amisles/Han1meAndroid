@@ -28,6 +28,9 @@ interface AppPreferences {
     val autoPlayNextFlow: StateFlow<Boolean>
     val loopPlaybackFlow: StateFlow<Boolean>
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
+    val longPressBoostSpeedFlow: StateFlow<Float>
+    val doubleTapSeekFlow: StateFlow<Boolean>
+    val autoQualityFlow: StateFlow<Boolean>
 
     // ── 写入 ────────────────────────────────────────────────────────────────
     // 播放器与搜索页需要就地改设置（例如倍速菜单、布局切换）。若把这些留在 Composable
@@ -38,6 +41,9 @@ interface AppPreferences {
     fun setAutoPlayNext(enabled: Boolean)
     fun setLoopPlayback(enabled: Boolean)
     fun setSearchLayoutMode(mode: SearchLayoutMode)
+    fun setLongPressBoostSpeed(speed: Float)
+    fun setDoubleTapSeek(enabled: Boolean)
+    fun setAutoQuality(enabled: Boolean)
 
     /**
      * 当前站点应注入的防盗链 Referer（结尾带 /）。

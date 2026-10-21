@@ -779,4 +779,9 @@
     <string name="profile_check_update">アップデートを確認</string>
     <string name="update_skipped_notice">このバージョンは無視されています</string>
     <string name="playback_notification_channel">再生コントロール</string>
+    <string name="settings_long_press_speed">長押し倍速</string>
+    <string name="settings_double_tap_seek">ダブルタップでシーク</string>
+    <string name="settings_double_tap_seek_summary">プレーヤーの左半分をダブルタップで 15 秒戻る、右半分で 15 秒進む</string>
+    <string name="settings_auto_quality">画質の自動調整</string>
+    <string name="settings_auto_quality_summary">再生が止まると自動で下げ、安定後に戻す。オフにすると手動選択した画質は上書きされない</string>
 </resources>

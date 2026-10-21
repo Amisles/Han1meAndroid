@@ -42,7 +42,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -91,6 +90,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
@@ -107,9 +107,6 @@ import kotlin.math.abs
 
 // ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
-
-// 长按临时加速的目标倍速（仅作用于播放器与展示，不写回偏好）
-private const val LONG_PRESS_BOOST_SPEED = 2f
 
 // 视频缩放模式：SCALE_TO_FIT
 private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
@@ -142,7 +139,13 @@ fun VideoPlayer(
     autoFullscreenEnabled: Boolean = true,
     // 媒体通知 / 锁屏 / 蓝牙控件展示的标题与作者；为空时通知只显示应用名
     mediaTitle: String = "",
-    mediaArtist: String = ""
+    mediaArtist: String = "",
+    // 长按临时加速倍率（1.5–3.0），只在按住期间生效
+    longPressBoostSpeed: Float = 2f,
+    // 双击左右区域快退 / 快进；关闭后双击不再触发跳转，也不会误切控制栏
+    doubleTapSeekEnabled: Boolean = true,
+    // 卡顿自动降档 / 回升；关闭后手动选择的画质不会被覆盖
+    autoQualityEnabled: Boolean = true
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -213,6 +216,8 @@ fun VideoPlayer(
     var rebufferCount by remember { mutableStateOf(0) }
     var autoSwitched by remember { mutableStateOf(false) }
     var stableTicks by remember { mutableStateOf(0) }
+    // 用户从清晰度菜单手动选择后置位：本次播放内不再被 ABR 覆盖（切集进入新页面时自然复位）
+    var manualQualityOverride by remember { mutableStateOf(false) }
     // 上一次播放状态：用于区分「首次起播 / 换源的缓冲」与「播放中重新缓冲」
     var lastPlaybackState by remember { mutableStateOf(Player.STATE_IDLE) }
     // 播放失败：非空即进入可重试的失败态
@@ -238,10 +243,17 @@ fun VideoPlayer(
         return MediaItem.Builder().setUri(url).setMediaMetadata(metadata).build()
     }
 
-    fun switchQuality(source: VideoSource) {
+    fun switchQuality(source: VideoSource, userInitiated: Boolean = false) {
         if (source.url == currentSourceUrl || isSwitchingQuality) {
             showQualityMenu = false
             return
+        }
+        // 只有菜单点选才算「手动锁定」；ABR 自动换源走默认参数，不能把自己锁死
+        if (userInitiated) {
+            manualQualityOverride = true
+            autoSwitched = false
+            stableTicks = 0
+            rebufferCount = 0
         }
         isSwitchingQuality = true
         val wasPlaying = exoPlayer.isPlaying
@@ -284,7 +296,7 @@ fun VideoPlayer(
                         // STATE_BUFFERING，以它为条件会让计数恒为 0。首次起播与换画质均不计入。
                         val isRebuffer = previousState == Player.STATE_READY &&
                             exoPlayer.playWhenReady && !isSwitchingQuality
-                        if (isRebuffer && !autoSwitched) {
+                        if (isRebuffer && !autoSwitched && autoQualityEnabled && !manualQualityOverride) {
                             rebufferCount++
                             if (rebufferCount >= 2) {
                                 val sources = sourcesRef.value
@@ -314,7 +326,7 @@ fun VideoPlayer(
                         // 不调用 setForegroundMode(true)：前台状态由 PlaybackService 的媒体通知承担，
                         // 播放器本身无需再为后台保活另开一条路径。
                         // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
-                        if (autoSwitched) {
+                        if (autoSwitched && autoQualityEnabled && !manualQualityOverride) {
                             stableTicks++
                             val sources = sourcesRef.value
                             val idx = sources.indexOfFirst { it.url == currentSourceUrl }
@@ -420,6 +432,11 @@ fun VideoPlayer(
         showPoster = posterUrl.isNotEmpty()
     }
 
+    // 换片源即视为新视频：手动画质锁定不应跨视频生效
+    LaunchedEffect(initialSourceUrl) {
+        manualQualityOverride = false
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             // 先停服务（会话随之释放），调用方随后才释放播放器
@@ -488,7 +505,7 @@ fun VideoPlayer(
         if (active) {
             if (!isLongPressBoost) {
                 isLongPressBoost = true
-                exoPlayer.setPlaybackSpeed(LONG_PRESS_BOOST_SPEED)
+                exoPlayer.setPlaybackSpeed(longPressBoostSpeed)
             }
         } else {
             if (isLongPressBoost) {
@@ -499,7 +516,7 @@ fun VideoPlayer(
     }
 
     /** 界面上展示的倍速：加速期间显示 2x，其余显示用户选择的档位。 */
-    val effectiveSpeed: Float = if (isLongPressBoost) LONG_PRESS_BOOST_SPEED else playbackSpeed
+    val effectiveSpeed: Float = if (isLongPressBoost) longPressBoostSpeed else playbackSpeed
 
     fun toggleFullscreen() {
         onFullscreenToggle(!isFullscreen)
@@ -711,7 +728,8 @@ fun VideoPlayer(
                                     val now = System.currentTimeMillis()
                                     if (now - lastTapTime < 300L) {
                                         lastTapTime = 0L
-                                        if (!isInPip) {
+                                        // 关闭双击快进时：既不跳转也不切换控制栏，否则连点会让显隐抖动
+                                        if (doubleTapSeekEnabled && !isInPip) {
                                             val rewind = downX < playerWidth / 2f
                                             if (rewind) seekBackward() else seekForward()
                                             gestureHint = if (rewind)
@@ -1188,7 +1206,7 @@ fun VideoPlayer(
                                 )
                             },
                             trailingIcon = {
-                                Switch(
+                                HanimeSwitch(
                                     checked = autoPlayNext,
                                     onCheckedChange = { onAutoPlayNextChanged(it) },
                                     modifier = Modifier.scale(0.78f)
@@ -1210,7 +1228,7 @@ fun VideoPlayer(
                                 )
                             },
                             trailingIcon = {
-                                Switch(
+                                HanimeSwitch(
                                     checked = isLoopPlayback,
                                     onCheckedChange = { onLoopPlaybackChanged(it) },
                                     modifier = Modifier.scale(0.78f)
@@ -1272,7 +1290,7 @@ fun VideoPlayer(
                         playerPos = playerPos,
                         sources = sortedSources,
                         currentSourceUrl = currentSourceUrl,
-                        onSourceSelected = { switchQuality(it) },
+                        onSourceSelected = { switchQuality(it, userInitiated = true) },
                         onControlTap = { markControlTap() }
                     )
                 )
