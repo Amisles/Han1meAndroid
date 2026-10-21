@@ -1,16 +1,67 @@
 <p align="center">
-  <img src="docs/logo.png" width="120" height="120" alt="HanimeAndroid Logo">
+  <img src="docs/logo.png" width="120" height="120" alt="Han1meAndroid Logo">
 </p>
 
-<h1 align="center">HanimeAndroid</h1>
+<h1 align="center">Han1meAndroid</h1>
 
 <p align="center">
   第三方 Han1me Android 客户端，基于 Jetpack Compose 构建原生界面，采用 MVVM + Repository 架构与多模块化设计。
 </p>
 
 <p align="center">
-  <b>当前版本：v1.6.0</b>· 最低支持 Android 11（API 30）· 目标 Android 17（API 37）
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Amisles/Han1meAndroid"></a>
+  <a href="../../actions/workflows/android-ci.yml"><img alt="CI" src="https://github.com/Amisles/Han1meAndroid/actions/workflows/android-ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Amisles/Han1meAndroid"></a>
+  <img alt="Android 11+" src="https://img.shields.io/badge/Android-11%2B-3DDC84?logo=android&amp;logoColor=white">
 </p>
+
+<p align="center">
+  <b>简体中文</b> · <a href="README.en.md">English</a>
+</p>
+
+## 下载安装
+
+**最新版本：v1.6.0** · 最低支持 Android 11（API 30）· 目标 Android 17（API 37）
+
+| 项目 | 说明 |
+| --- | --- |
+| 下载地址 | [GitHub Releases](https://github.com/Amisles/Han1meAndroid/releases/latest) |
+| 安装包 | `Han1meAndroid-v<版本>.apk`，约 6 MB |
+| 分发渠道 | 仅通过 GitHub Releases 分发，未上架任何应用商店 |
+| 升级方式 | 同签名覆盖安装，收藏、历史与下载记录均保留 |
+
+侧载安装前建议校验签名，确认 APK 由本仓库维护者构建。使用 Android SDK `build-tools` 提供的 `apksigner`：
+
+```bash
+apksigner verify --print-certs Han1meAndroid-v1.6.0.apk
+```
+
+输出中的证书 SHA-256 指纹应为：
+
+```text
+57f0e2d9c9c76da75fdda64761b00c76a4e894d83150f9ea31f05ba30d5f35fe
+```
+
+该指纹在后续版本中保持不变。若不一致，说明安装包并非来自本仓库，请勿安装。
+
+> 应用需要能够访问对应站点。若默认站点不可用，可在「设置 → 官网网址」中填写可用的镜像站。
+
+<!-- 界面预览：截图放入 docs/screenshots/ 后，删除本段注释的起止标记即可启用。
+## 界面预览
+
+<p align="center">
+  <img src="docs/screenshots/01-home.png" width="24%" alt="首页">
+  <img src="docs/screenshots/02-detail.png" width="24%" alt="详情与播放">
+  <img src="docs/screenshots/03-search.png" width="24%" alt="搜索与筛选">
+  <img src="docs/screenshots/04-download.png" width="24%" alt="下载管理">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/05-customize.png" width="24%" alt="界面定制">
+  <img src="docs/screenshots/06-settings.png" width="24%" alt="设置">
+  <img src="docs/screenshots/07-dark.png" width="24%" alt="深色模式">
+</p>
+-->
 
 ## 功能
 

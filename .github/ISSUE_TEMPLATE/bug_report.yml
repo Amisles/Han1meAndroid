@@ -1,0 +1,105 @@
+name: Bug 报告
+description: 报告可复现的功能缺陷（安全漏洞请勿使用此模板）
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。为了提高处理效率，请尽量把信息填完整。
+        安全漏洞请通过 https://github.com/Amisles/Han1meAndroid/blob/main/SECURITY.md 说明的私密渠道提交，不要在 Issue 中公开。
+
+  - type: checkboxes
+    id: precheck
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已在最新 Release 版本上复现
+          required: true
+        - label: 已检索过现有 Issue，未发现相同问题
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本
+      description: 设置 → 关于我们 可查看 versionName 与 versionCode
+      placeholder: 1.6.0 (versionCode 13)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: 安装来源
+      options:
+        - GitHub Releases
+        - 自行构建
+        - 其他（请在补充说明中注明）
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: 设备与系统
+      description: 机型 / Android 版本 / 是否为平板或折叠屏
+      placeholder: 小米 14 / Android 15 / HyperOS 2.0 / 非平板
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mirror
+    attributes:
+      label: 是否配置了镜像站
+      options:
+        - 否（使用默认站点）
+        - 是
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 越具体越好，包含页面、操作顺序与必要的前置条件
+      placeholder: |
+        1. 打开首页
+        2. 点击某个视频进入详情
+        3. 切换到「评论」标签
+        4. 观察到 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期表现
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际表现
+      description: 如果是崩溃，请附上崩溃时间点与操作
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: |
+        日志文件位于应用私有目录 `filesDir/hanime_app.log`，网络问题也可先跑一次「设置 → 网络诊断」。
+        **贴出前请删除账号信息、Cookie 与不希望公开的站点地址。**
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: redact
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我已确认日志与截图中不含账号、Cookie 等敏感信息
+          required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全漏洞（请勿公开提交）
+    url: https://github.com/Amisles/Han1meAndroid/security/advisories/new
+    about: 通过 GitHub 私密漏洞报告提交，避免在公开 Issue 中暴露细节。
+  - name: 使用与构建问题
+    url: https://github.com/Amisles/Han1meAndroid/blob/main/README.md
+    about: 构建命令、环境要求与常见限制见 README；提问前请先阅读。

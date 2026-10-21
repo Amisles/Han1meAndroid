@@ -1,0 +1,64 @@
+name: 功能建议
+description: 提出新功能或改进现有体验
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先说明「要解决什么问题」，再说明「希望做成什么样」。
+        与本项目定位无关的请求（例如账号代充、内容搬运、绕过付费）会被直接关闭。
+
+  - type: checkboxes
+    id: precheck
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已检索过现有 Issue 与 Release 说明，确认这不是已有功能
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 描述当前的不便，而不是直接给方案
+      placeholder: 每次进入下载页都要手动排序，找不到刚加的任务
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的方案
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考虑过的替代方案
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影响范围
+      options:
+        - 首页
+        - 搜索与筛选
+        - 详情与播放
+        - 下载
+        - 收藏 / 历史 / 订阅
+        - 设置与界面定制
+        - 其他
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: 参与意愿
+      options:
+        - label: 我愿意提交 PR 实现这个功能
+          required: false
