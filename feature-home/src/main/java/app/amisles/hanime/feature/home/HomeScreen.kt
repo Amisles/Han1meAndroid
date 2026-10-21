@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -71,6 +72,7 @@ import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.UiConfig
 import kotlinx.coroutines.launch
 
 /** 横滑布局的卡片宽度。 */
@@ -80,6 +82,28 @@ private val CAROUSEL_CARD_WIDTH = 200.dp
 private const val LIST_ROW_SPACING_DP = 10f
 private const val LIST_ITEM_H_PADDING_DP = 5f
 private const val LIST_ROW_THUMB_RATIO = 0.42f
+
+private const val SKELETON_SECTION_COUNT = 3
+private const val SKELETON_CAROUSEL_CARDS = 2
+private val SKELETON_SECTION_TITLES = listOf("最新上市", "最新上传", "本日排行")
+
+internal fun skeletonRowCount(itemCount: Int, columns: Int): Int =
+    (itemCount + columns - 1) / columns.coerceAtLeast(1)
+
+internal fun rowThumbnailWidth(
+    cfg: UiConfig,
+    widthDp: Int,
+    contentMaxWidth: Dp,
+    columns: Int,
+    isCompactWidth: Boolean
+): Dp {
+    if (isCompactWidth) return cfg.listThumbnailWidth
+    val contentWidth = minOf(widthDp.toFloat(), contentMaxWidth.value)
+    val rowWidth = (contentWidth - (columns - 1) * LIST_ROW_SPACING_DP) / columns - 2 * LIST_ITEM_H_PADDING_DP
+    return (rowWidth * LIST_ROW_THUMB_RATIO)
+        .coerceAtMost(cfg.listThumbnailWidth.value)
+        .coerceAtLeast(56f).dp
+}
 
 /** 分区在 LazyColumn 中的实际渲染形态；[HomeSectionLayout.AUTO] 由窗口宽度决定，故需与用户可选模式区分。 */
 private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
@@ -206,15 +230,7 @@ fun HomeScreenContent(
     // 多列时缩略图须按列宽等比缩小：固定 150dp 会把文字区压到几 dp。比例取 0.42，
     // 与手机单列下缩略图占卡宽的比例（150 / 340）一致
     val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
-        if (isCompactWidth) {
-            cfg.listThumbnailWidth
-        } else {
-            val contentWidth = minOf(sizeInfo.widthDp.toFloat(), sizeInfo.contentMaxWidth.value)
-            val rowWidth = (contentWidth - (columns - 1) * LIST_ROW_SPACING_DP) / columns - 2 * LIST_ITEM_H_PADDING_DP
-            (rowWidth * LIST_ROW_THUMB_RATIO)
-                .coerceAtMost(cfg.listThumbnailWidth.value)
-                .coerceAtLeast(56f).dp
-        }
+        rowThumbnailWidth(cfg, sizeInfo.widthDp, sizeInfo.contentMaxWidth, columns, isCompactWidth)
     }
     val sectionTitleToIndex: Map<String, Int> = remember(plans, banner, isLoading, error, sections) {
         val map = mutableMapOf<String, Int>()
@@ -504,9 +520,17 @@ private fun HomeSkeletonScreen() {
                 .graphicsLayer { alpha = shimmerAlpha.value }
         )
 
-        // 区块骨架（共 3 个）：标题 + 紧凑列表行
-        repeat(3) {
-            // 区块标题骨架
+        val cfg = LocalUiConfig.current
+        val homeConfig = LocalHomeSectionConfig.current
+        val sizeInfo = currentWindowSizeInfo()
+        val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+        val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
+        val modes = remember(homeConfig, isCompactWidth) {
+            (SKELETON_SECTION_TITLES + homeConfig.order).distinct()
+                .map { renderMode(homeConfig.layoutFor(it), isCompactWidth) }
+        }
+
+        repeat(SKELETON_SECTION_COUNT) { index ->
             Box(
                 modifier = Modifier
                     .padding(horizontal = 15.dp, vertical = 8.dp)
@@ -516,9 +540,19 @@ private fun HomeSkeletonScreen() {
                     .graphicsLayer { alpha = shimmerAlpha.value }
             )
 
-            // 紧凑列表行骨架
-            repeat(5) {
-                SkeletonVideoRow(shimmerAlpha = shimmerAlpha)
+            val mode = modes.getOrElse(index) { SectionRenderMode.LIST_COLUMN }
+            val items = homeConfig.visibleCount
+            when (mode) {
+                SectionRenderMode.LIST_COLUMN -> repeat(items) {
+                    SkeletonVideoRow(shimmerAlpha = shimmerAlpha)
+                }
+                SectionRenderMode.LIST_ROWS -> repeat(skeletonRowCount(items, columns)) {
+                    SkeletonCompactRow(shimmerAlpha = shimmerAlpha, columns = columns)
+                }
+                SectionRenderMode.GRID_ROWS -> repeat(skeletonRowCount(items, columns)) {
+                    SkeletonGridRow(shimmerAlpha = shimmerAlpha, columns = columns)
+                }
+                SectionRenderMode.CAROUSEL -> SkeletonCarousel(shimmerAlpha = shimmerAlpha)
             }
             Spacer(modifier = Modifier.height(6.dp))
         }
@@ -570,6 +604,113 @@ private fun SkeletonVideoRow(shimmerAlpha: State<Float>) {
                     .background(MaterialTheme.colorScheme.surface)
                     .graphicsLayer { alpha = shimmerAlpha.value }
             )
+        }
+    }
+}
+
+@Composable
+private fun SkeletonCompactRow(shimmerAlpha: State<Float>, columns: Int) {
+    val cfg = LocalUiConfig.current
+    val sizeInfo = currentWindowSizeInfo()
+    val thumbnailWidth = rowThumbnailWidth(
+        cfg = cfg,
+        widthDp = sizeInfo.widthDp,
+        contentMaxWidth = sizeInfo.contentMaxWidth,
+        columns = columns,
+        isCompactWidth = false
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = LIST_ITEM_H_PADDING_DP.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(LIST_ROW_SPACING_DP.dp)
+    ) {
+        repeat(columns) {
+            Column(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .width(thumbnailWidth)
+                        .aspectRatio(cfg.thumbnailAspectRatio)
+                        .clip(RoundedCornerShape(cfg.listThumbnailCornerRadius))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonGridRow(shimmerAlpha: State<Float>, columns: Int) {
+    val cfg = LocalUiConfig.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        repeat(columns) {
+            Column(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(cfg.thumbnailAspectRatio)
+                        .clip(RoundedCornerShape(cfg.cardCornerRadius))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonCarousel(shimmerAlpha: State<Float>) {
+    val cfg = LocalUiConfig.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        repeat(SKELETON_CAROUSEL_CARDS) {
+            Column(modifier = Modifier.width(CAROUSEL_CARD_WIDTH)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(cfg.thumbnailAspectRatio)
+                        .clip(RoundedCornerShape(cfg.cardCornerRadius))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .graphicsLayer { alpha = shimmerAlpha.value }
+                )
+            }
         }
     }
 }
