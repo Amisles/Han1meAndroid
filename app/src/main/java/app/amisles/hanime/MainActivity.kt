@@ -190,31 +190,58 @@ private const val HOME_SWIPE_SLOP_DP = 8f
 /** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 private fun String.baseRoute(): String = substringBefore('?')
 
-private fun HomeSection.sortApiValue(): String? =
-    moreUrl.substringAfter("/sort/", "")
+internal fun moreUrlSortToken(moreUrl: String): String? {
+    val at = moreUrl.indexOf("/sort/")
+    if (at < 0) return null
+    return moreUrl.substring(at + "/sort/".length)
         .substringBefore('?')
         .substringBefore('#')
+        .trimEnd('/')
         .takeIf { it.isNotEmpty() }
-        ?.let { runCatching { Uri.decode(it) }.getOrDefault(it) }
+        ?.let(::percentDecode)
+}
 
 internal fun sortApiValueOf(section: HomeSection): String? =
-    section.sortApiValue()
+    moreUrlSortToken(section.moreUrl)
         ?: sortOptions.firstOrNull { it.label == section.title }?.apiValue
 
 internal fun moreUrlPageRoute(moreUrl: String): String? {
-    val uri = runCatching { Uri.parse(moreUrl) }.getOrNull() ?: return null
-    val segments = uri.pathSegments.filter { it.isNotEmpty() }
+    val path = moreUrl.substringAfter("://", moreUrl)
+        .substringAfter('/', "")
+        .substringBefore('?')
+        .substringBefore('#')
+    val segments = path.split('/').filter { it.isNotEmpty() }
     val head = segments.firstOrNull() ?: return null
     val tail = segments.getOrNull(1)
-    val encoded = Uri.encode(uri.toString())
+    val encoded = Uri.encode(moreUrl)
     return when (head) {
-        "tag", "tags" -> tail?.let { "search?keyword=${Uri.encode(it)}" }
+        "tag", "tags" -> tail?.let { "search?keyword=${Uri.encode(percentDecode(it))}" }
         "author", "authors" -> "author?authorPageUrl=$encoded"
         "playlist", "playlists" -> "playlistDetail?url=$encoded"
-        "playlists-index" -> "playlistListPage?url=$encoded"
         "sort", "search", "genre", "genres" -> "videoListPage?url=$encoded"
         else -> null
     }
+}
+
+internal fun percentDecode(raw: String): String {
+    if ('%' !in raw) return raw
+    val bytes = java.io.ByteArrayOutputStream()
+    var i = 0
+    while (i < raw.length) {
+        val c = raw[i]
+        if (c == '%' && i + 2 < raw.length) {
+            val hex = raw.substring(i + 1, i + 3).toIntOrNull(16)
+            if (hex != null) {
+                bytes.write(hex)
+                i += 3
+                continue
+            }
+        }
+        val encoded = c.toString().toByteArray(Charsets.UTF_8)
+        bytes.write(encoded, 0, encoded.size)
+        i++
+    }
+    return bytes.toByteArray().toString(Charsets.UTF_8)
 }
 
 /**

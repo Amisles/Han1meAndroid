@@ -87,8 +87,10 @@ private const val SKELETON_SECTION_COUNT = 3
 private const val SKELETON_CAROUSEL_CARDS = 2
 private val SKELETON_SECTION_TITLES = listOf("最新上市", "最新上传", "本日排行")
 
-internal fun skeletonRowCount(itemCount: Int, columns: Int): Int =
-    (itemCount + columns - 1) / columns.coerceAtLeast(1)
+internal fun skeletonRowCount(itemCount: Int, columns: Int): Int {
+    val safeColumns = columns.coerceAtLeast(1)
+    return (itemCount + safeColumns - 1) / safeColumns
+}
 
 internal fun rowThumbnailWidth(
     cfg: UiConfig,
