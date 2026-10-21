@@ -84,6 +84,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -92,6 +93,7 @@ import androidx.media3.ui.PlayerView
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.model.VideoSource
+import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -137,7 +139,10 @@ fun VideoPlayer(
     isLoopPlayback: Boolean = false,
     onLoopPlaybackChanged: (Boolean) -> Unit = {},
     // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
-    autoFullscreenEnabled: Boolean = true
+    autoFullscreenEnabled: Boolean = true,
+    // 媒体通知 / 锁屏 / 蓝牙控件展示的标题与作者；为空时通知只显示应用名
+    mediaTitle: String = "",
+    mediaArtist: String = ""
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -220,6 +225,19 @@ fun VideoPlayer(
     val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
 
     // ── 清晰度切换 ──────────────────────────────────────────────────────────
+    /**
+     * 带元数据的媒体项。媒体通知、锁屏与蓝牙控件展示的标题/作者/封面都从这里来；
+     * 换源与重试必须复用同一构造，否则通知会退回「未知曲目」。
+     */
+    fun buildMediaItem(url: String): MediaItem {
+        val metadata = MediaMetadata.Builder()
+            .setTitle(mediaTitle)
+            .setArtist(mediaArtist)
+            .apply { if (posterUrl.isNotBlank()) setArtworkUri(Uri.parse(posterUrl)) }
+            .build()
+        return MediaItem.Builder().setUri(url).setMediaMetadata(metadata).build()
+    }
+
     fun switchQuality(source: VideoSource) {
         if (source.url == currentSourceUrl || isSwitchingQuality) {
             showQualityMenu = false
@@ -231,7 +249,7 @@ fun VideoPlayer(
         currentSourceUrl = source.url
         isBuffering = true
         showQualityMenu = false
-        exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(source.url)))
+        exoPlayer.setMediaItem(buildMediaItem(source.url))
         exoPlayer.prepare()
         exoPlayer.seekTo(position)
         if (wasPlaying) exoPlayer.play()
@@ -246,7 +264,7 @@ fun VideoPlayer(
         isBuffering = true
         // 媒体项被清空（极端路径）时按当前源重建
         if (exoPlayer.mediaItemCount == 0 && currentSourceUrl.isNotBlank()) {
-            exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(currentSourceUrl)))
+            exoPlayer.setMediaItem(buildMediaItem(currentSourceUrl))
         }
         exoPlayer.prepare()
         if (position > 0L) exoPlayer.seekTo(position)
@@ -293,8 +311,8 @@ fun VideoPlayer(
                             }
                             initialSeekAppliedRef.value = true
                         }
-                        // 不调用 setForegroundMode(true)：其语义是「为后台播放保活」，本应用没有播放用的
-                        // 前台服务，可见播放器并不需要它。后台继续观看由画中画承担。
+                        // 不调用 setForegroundMode(true)：前台状态由 PlaybackService 的媒体通知承担，
+                        // 播放器本身无需再为后台保活另开一条路径。
                         // ABR 升档：之前因卡顿降档且播放稳定一段时间，则尝试回升一档
                         if (autoSwitched) {
                             stableTicks++
@@ -324,6 +342,8 @@ fun VideoPlayer(
 
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                // 首次真正开始播放时才拉起前台服务：提前启动会让一个永不进入前台的服务常驻
+                if (playing) PlaybackSessionBridge.ensureService(context)
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -354,6 +374,7 @@ fun VideoPlayer(
     }
 
     LaunchedEffect(Unit) {
+        PlaybackSessionBridge.bind(exoPlayer)
         exoPlayer.addListener(listener)
         val currentVol = exoPlayer.volume
         if (currentVol == 0f) {
@@ -401,6 +422,8 @@ fun VideoPlayer(
 
     DisposableEffect(Unit) {
         onDispose {
+            // 先停服务（会话随之释放），调用方随后才释放播放器
+            PlaybackSessionBridge.unbind(context)
             exoPlayer.removeListener(listener)
         }
     }

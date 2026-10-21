@@ -778,4 +778,5 @@
     <string name="update_do_not_remind">このバージョンを通知しない</string>
     <string name="profile_check_update">アップデートを確認</string>
     <string name="update_skipped_notice">このバージョンは無視されています</string>
+    <string name="playback_notification_channel">再生コントロール</string>
 </resources>

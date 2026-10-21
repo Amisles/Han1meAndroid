@@ -778,4 +778,5 @@
     <string name="update_do_not_remind">Skip this version</string>
     <string name="profile_check_update">Check for updates</string>
     <string name="update_skipped_notice">This version is ignored</string>
+    <string name="playback_notification_channel">Playback controls</string>
 </resources>

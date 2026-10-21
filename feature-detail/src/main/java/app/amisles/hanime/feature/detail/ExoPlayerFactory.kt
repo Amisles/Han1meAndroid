@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -46,6 +48,16 @@ object ExoPlayerFactory {
 
     // 播放器请求头日志的 TAG：logcat 过滤 HanimePlayer 即可只看这些日志
     private const val TAG = "HanimePlayer"
+
+    /**
+     * 视频类音频属性。第二个构造参数 handleAudioFocus=true 让 ExoPlayer 自行申请音频焦点：
+     * 来电/其他应用播放时自动暂停，失去瞬时焦点时按系统策略降音量；配合
+     * [ExoPlayer.Builder.setHandleAudioBecomingNoisy] 实现拔耳机即暂停。
+     */
+    private val VIDEO_AUDIO_ATTRIBUTES = AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA)
+        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+        .build()
 
     private val cacheRef = AtomicReference<SimpleCache?>(null)
 
@@ -197,6 +209,8 @@ object ExoPlayerFactory {
         return ExoPlayer.Builder(context.applicationContext)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(deps.loadControl)
+            .setAudioAttributes(VIDEO_AUDIO_ATTRIBUTES, true)
+            .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
                 playWhenReady = false
@@ -220,6 +234,8 @@ object ExoPlayerFactory {
         return ExoPlayer.Builder(context.applicationContext)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(buildLoadControlForNetwork(context))
+            .setAudioAttributes(VIDEO_AUDIO_ATTRIBUTES, true)
+            .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
                 playWhenReady = true

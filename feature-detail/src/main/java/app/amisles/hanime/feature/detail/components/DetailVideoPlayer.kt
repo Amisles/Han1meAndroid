@@ -63,6 +63,8 @@ internal fun DetailVideoPlayer(
         isLoopPlayback = loopPlayback,
         onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
         autoFullscreenEnabled = autoFullscreenEnabled,
+        mediaTitle = detail.title,
+        mediaArtist = detail.author,
         modifier = modifier
     )
 }

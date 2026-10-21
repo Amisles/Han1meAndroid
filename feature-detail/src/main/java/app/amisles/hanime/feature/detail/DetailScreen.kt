@@ -40,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
@@ -190,7 +191,22 @@ fun DetailScreen(
             // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转。
             // 这里只做赋值，不再 await 数据库：起播不必等待历史记录查询完成。
             initialSeekMs = savedSeekMs
-            player.setMediaItem(MediaItem.fromUri(Uri.parse(preferredUrl)))
+            player.setMediaItem(
+                MediaItem.Builder()
+                    .setUri(preferredUrl)
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(detail.title)
+                            .setArtist(detail.author)
+                            .apply {
+                                if (detail.posterUrl.isNotBlank()) {
+                                    setArtworkUri(Uri.parse(detail.posterUrl))
+                                }
+                            }
+                            .build()
+                    )
+                    .build()
+            )
             player.prepare()
         }
     }

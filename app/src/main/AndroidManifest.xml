@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- 播放期间的前台服务：媒体会话通知、锁屏与耳机控制 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 下载期间持有 CPU 锁与 Wi-Fi 锁，避免息屏后 Wi-Fi 进入省电模式导致长视频下载降速 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />

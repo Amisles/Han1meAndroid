@@ -132,6 +132,7 @@ fun LocalPlayerScreen(
                     isLoopPlayback = loopPlayback,
                     onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
                     autoFullscreenEnabled = !sizeInfo.isTablet,
+                    mediaTitle = File(filePath.orEmpty()).name,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
