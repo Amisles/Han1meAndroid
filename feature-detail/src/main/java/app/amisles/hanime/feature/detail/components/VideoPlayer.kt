@@ -515,7 +515,7 @@ fun VideoPlayer(
         }
     }
 
-    /** 界面上展示的倍速：加速期间显示 2x，其余显示用户选择的档位。 */
+    /** 界面上展示的倍速：加速期间显示长按加速倍率，其余显示用户选择的档位。 */
     val effectiveSpeed: Float = if (isLongPressBoost) longPressBoostSpeed else playbackSpeed
 
     fun toggleFullscreen() {
@@ -799,7 +799,7 @@ fun VideoPlayer(
                                     isControlTap = false
                                     // 手势开始即重置自动隐藏倒计时
                                     controlsActivityRef.value = controlsActivityRef.value + 1
-                                    // 启动长按加速定时器：单指静止按住满 1s 才触发 2x，松手/移动/缩放即取消
+                                    // 启动长按加速定时器：单指静止按住满 1s 才触发加速，松手/移动/缩放即取消
                                     longPressJob = gestureScope.launch {
                                         delay(1000L)
                                         if (!longPressFired && !moved && !isZoom && dragMode == null) {
@@ -807,7 +807,10 @@ fun VideoPlayer(
                                             setLongPressBoost(true)
                                             showSpeedMenu = false
                                             showQualityMenu = false
-                                            gestureHint = context.getString(R.string.player_long_press_boost)
+                                            gestureHint = context.getString(
+                                                R.string.player_long_press_boost,
+                                                trimSpeedText(longPressBoostSpeed)
+                                            )
                                         }
                                     }
                                     event.changes.forEach { it.consume() }

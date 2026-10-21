@@ -35,7 +35,7 @@ import app.amisles.hanime.domain.model.VideoSource
 internal data class PlayerMenuUi(
     /** 播放器容器在根坐标下的位置，用于把按钮根坐标换算成浮层局部坐标。 */
     val playerPos: Offset,
-    /** 当前倍速档位；与播放器实际倍速一致（长按加速期间为 2f）。 */
+    /** 当前倍速档位；与播放器实际倍速一致（长按加速期间为设置的长按加速倍率）。 */
     val effectiveSpeed: Float,
     val playbackSpeeds: List<Float>,
     val onSpeedSelected: (Float) -> Unit,

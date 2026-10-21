@@ -13,6 +13,10 @@ internal tailrec fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
+/** 倍速去掉多余的小数位：3.0 → "3"，3.5 → "3.5"。 */
+internal fun trimSpeedText(speed: Float): String =
+    if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString()
+
 /** 毫秒转 mm:ss / hh:mm:ss；按 Locale.getDefault() 格式化以保持各语言的数字形状。 */
 internal fun formatTime(ms: Long): String {
     if (ms <= 0) return "00:00"

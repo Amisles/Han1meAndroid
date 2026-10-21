@@ -727,7 +727,7 @@
     <string name="player_rewind_15s">« Rewind 15s</string>
     <string name="player_forward_15s">Forward 15s »</string>
     <string name="player_zoom">Zoom: %sx</string>
-    <string name="player_long_press_boost">Long-press to boost 2x</string>
+    <string name="player_long_press_boost">Long-press to boost %sx</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
