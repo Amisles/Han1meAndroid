@@ -86,7 +86,7 @@ jobs:
           echo "VERSION_CODE=$code" >> "$GITHUB_ENV"
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -223,7 +223,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ env.TAG }}
           path: dist/
