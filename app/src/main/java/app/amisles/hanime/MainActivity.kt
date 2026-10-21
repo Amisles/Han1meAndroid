@@ -201,6 +201,22 @@ internal fun sortApiValueOf(section: HomeSection): String? =
     section.sortApiValue()
         ?: sortOptions.firstOrNull { it.label == section.title }?.apiValue
 
+internal fun moreUrlPageRoute(moreUrl: String): String? {
+    val uri = runCatching { Uri.parse(moreUrl) }.getOrNull() ?: return null
+    val segments = uri.pathSegments.filter { it.isNotEmpty() }
+    val head = segments.firstOrNull() ?: return null
+    val tail = segments.getOrNull(1)
+    val encoded = Uri.encode(uri.toString())
+    return when (head) {
+        "tag", "tags" -> tail?.let { "search?keyword=${Uri.encode(it)}" }
+        "author", "authors" -> "author?authorPageUrl=$encoded"
+        "playlist", "playlists" -> "playlistDetail?url=$encoded"
+        "playlists-index" -> "playlistListPage?url=$encoded"
+        "sort", "search", "genre", "genres" -> "videoListPage?url=$encoded"
+        else -> null
+    }
+}
+
 /**
  * 切换底部导航 / 导航栏的 Tab。
  *
@@ -392,7 +408,7 @@ fun HanimeApp(
                                 val sortApiValue = sortApiValueOf(section)
                                 val target = when {
                                     sortApiValue != null -> "search?sort=${Uri.encode(sortApiValue)}"
-                                    section.title.isNotEmpty() -> "search?keyword=${Uri.encode(section.title)}"
+                                    section.moreUrl.isNotBlank() -> moreUrlPageRoute(section.moreUrl)
                                     else -> null
                                 }
                                 if (target != null) {
