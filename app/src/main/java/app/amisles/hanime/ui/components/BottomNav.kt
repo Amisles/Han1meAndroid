@@ -66,7 +66,10 @@ fun BottomNav(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clickable { onNavigate(screen.route) },
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onNavigate(screen.route) },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
