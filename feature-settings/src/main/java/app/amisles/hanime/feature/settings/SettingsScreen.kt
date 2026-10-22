@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -573,6 +574,19 @@ fun SettingsScreen(
                         uiState.downloadStoragePath
                     },
                     onClick = { showStoragePathDialog = true }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 通知：订阅更新提醒
+            SettingsGroupCard {
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.NotificationsActive,
+                    title = stringResource(R.string.settings_subscription_reminder),
+                    subtitle = stringResource(R.string.settings_subscription_reminder_summary),
+                    checked = uiState.subscriptionReminder,
+                    onCheckedChange = { enabled -> viewModel.setSubscriptionReminder(enabled) }
                 )
             }
 

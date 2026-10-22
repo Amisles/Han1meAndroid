@@ -54,6 +54,8 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_AUTO_QUALITY = "auto_quality"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_DOWNLOAD_RATE_LIMIT = "download_rate_limit_mbps"
+    private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
+    private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
     private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
@@ -119,6 +121,9 @@ object Preferences : SettingsRepository, SessionRepository {
 
     private val _downloadRateLimitFlow = MutableStateFlow(0)
     override val downloadRateLimitFlow: StateFlow<Int> = _downloadRateLimitFlow.asStateFlow()
+
+    private val _subscriptionReminderFlow = MutableStateFlow(false)
+    override val subscriptionReminderFlow: StateFlow<Boolean> = _subscriptionReminderFlow.asStateFlow()
 
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
     override val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
@@ -200,6 +205,7 @@ object Preferences : SettingsRepository, SessionRepository {
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _downloadRateLimitFlow.value = readInt(SP_DOWNLOAD_RATE_LIMIT, 0)
+        _subscriptionReminderFlow.value = readBoolean(SP_SUBSCRIPTION_REMINDER, false)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
         // 清洗失败时回退默认地址
         val rawBaseUrl = readString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
@@ -405,6 +411,8 @@ object Preferences : SettingsRepository, SessionRepository {
 
     override val downloadRateLimit: Int get() = _downloadRateLimitFlow.value
 
+    override val subscriptionReminder: Boolean get() = _subscriptionReminderFlow.value
+
     override val baseUrl: String get() = _baseUrlFlow.value
 
     /**
@@ -551,6 +559,22 @@ object Preferences : SettingsRepository, SessionRepository {
         val safe = megabytesPerSecond.coerceIn(0, 20)
         sp.edit { putInt(SP_DOWNLOAD_RATE_LIMIT, safe) }
         _downloadRateLimitFlow.value = safe
+    }
+
+    override fun setSubscriptionReminder(enabled: Boolean) {
+        sp.edit { putBoolean(SP_SUBSCRIPTION_REMINDER, enabled) }
+        _subscriptionReminderFlow.value = enabled
+    }
+
+    override val subscriptionSeenVideoIds: Set<String>
+        get() = readString(SP_SUBSCRIPTION_SEEN_IDS, "")
+            .orEmpty()
+            .split('\n')
+            .filter { it.isNotBlank() }
+            .toSet()
+
+    override fun setSubscriptionSeenVideoIds(ids: Set<String>) {
+        sp.edit { putString(SP_SUBSCRIPTION_SEEN_IDS, ids.joinToString("\n")) }
     }
 
     /** 播放倍速偏好（0.25x–3x）。进入播放器时自动应用，切换时写回。 */

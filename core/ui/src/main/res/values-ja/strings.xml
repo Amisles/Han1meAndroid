@@ -797,4 +797,9 @@
     <string name="download_storage_clean">整理</string>
     <string name="home_continue_watching">続きを見る</string>
     <string name="home_continue_remaining">残り %1$s</string>
+    <string name="subscription_reminder_channel">登録チャンネルの更新</string>
+    <string name="subscription_reminder_title">登録に新しい動画</string>
+    <string name="subscription_reminder_body">登録中の作者が %1$d 本の動画を更新しました</string>
+    <string name="settings_subscription_reminder">更新通知</string>
+    <string name="settings_subscription_reminder_summary">1 日 1 回登録内容を確認し、新着があれば通知します</string>
 </resources>

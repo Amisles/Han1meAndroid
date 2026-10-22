@@ -83,6 +83,15 @@ interface SettingsRepository {
     val downloadRateLimitFlow: StateFlow<Int>
     fun setDownloadRateLimit(megabytesPerSecond: Int)
 
+    /** 订阅更新提醒总开关，默认关闭：定时抓页面会带来站点限流风险。 */
+    val subscriptionReminder: Boolean
+    val subscriptionReminderFlow: StateFlow<Boolean>
+    fun setSubscriptionReminder(enabled: Boolean)
+
+    /** 已通知过的订阅视频 id 快照，用于判断「哪些是新片」。 */
+    val subscriptionSeenVideoIds: Set<String>
+    fun setSubscriptionSeenVideoIds(ids: Set<String>)
+
     /** 空串表示默认目录，由下载子系统解析。 */
     var downloadStoragePath: String
     val downloadStoragePathFlow: StateFlow<String>

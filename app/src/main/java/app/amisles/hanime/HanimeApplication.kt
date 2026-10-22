@@ -7,7 +7,11 @@ import android.content.res.Resources
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.core.ui.theme.UiConfigStore
+import app.amisles.hanime.app.work.SubscriptionReminderWorker
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.subscription.SubscriptionReminderScheduler
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import app.amisles.hanime.feature.detail.ExoPlayerFactory
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -15,9 +19,19 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
-class HanimeApplication : Application(), SingletonImageLoader.Factory {
+class HanimeApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    /** WorkManager 延迟初始化时由此提供工厂，使 Worker 能注入依赖。 */
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     /**
      * 语言包装后的 Context。
@@ -140,5 +154,22 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory {
         applyLanguage(persistedLanguage())
         AppLogger.init(this)
         ExoPlayerFactory.prewarmCache(this)
+        syncSubscriptionReminder()
+    }
+
+    /**
+     * 让 WorkManager 的调度状态与设置项保持一致。
+     *
+     * 放在 Application 而非设置页：用户可能在系统设置里清掉后台任务，
+     * 每次启动重建一次才能保证「开着就真的在跑」。
+     */
+    private fun syncSubscriptionReminder() {
+        runCatching {
+            if (Preferences.subscriptionReminder) {
+                SubscriptionReminderScheduler.schedule(this, SubscriptionReminderWorker::class.java)
+            } else {
+                SubscriptionReminderScheduler.cancel(this)
+            }
+        }
     }
 }

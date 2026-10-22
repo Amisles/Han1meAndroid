@@ -797,4 +797,9 @@
     <string name="download_storage_clean">Clean</string>
     <string name="home_continue_watching">Continue watching</string>
     <string name="home_continue_remaining">%1$s left</string>
+    <string name="subscription_reminder_channel">Subscription updates</string>
+    <string name="subscription_reminder_title">New from subscriptions</string>
+    <string name="subscription_reminder_body">%1$d new videos from artists you follow</string>
+    <string name="settings_subscription_reminder">Subscription reminders</string>
+    <string name="settings_subscription_reminder_summary">Check subscriptions once a day and notify about new videos</string>
 </resources>

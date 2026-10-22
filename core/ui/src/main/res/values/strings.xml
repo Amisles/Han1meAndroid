@@ -828,4 +828,9 @@
     <string name="download_storage_clean">清理</string>
     <string name="home_continue_watching">继续观看</string>
     <string name="home_continue_remaining">剩余 %1$s</string>
+    <string name="subscription_reminder_channel">订阅更新</string>
+    <string name="subscription_reminder_title">订阅有更新</string>
+    <string name="subscription_reminder_body">你订阅的作者更新了 %1$d 个视频</string>
+    <string name="settings_subscription_reminder">订阅更新提醒</string>
+    <string name="settings_subscription_reminder_summary">每天检查一次订阅内容，发现新视频时通知</string>
 </resources>
