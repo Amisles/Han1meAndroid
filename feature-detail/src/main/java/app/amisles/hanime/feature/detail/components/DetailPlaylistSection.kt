@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -138,7 +137,7 @@ internal fun DetailPlaylistVideos(
                         .fillMaxWidth()
                         .padding(top = 6.dp)
                         .height(titleBlockHeight),
-                    contentAlignment = Alignment.TopStart
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = video.title,
@@ -148,9 +147,7 @@ internal fun DetailPlaylistVideos(
                         color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight(align = Alignment.CenterVertically)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
