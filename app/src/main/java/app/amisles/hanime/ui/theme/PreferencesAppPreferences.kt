@@ -31,8 +31,8 @@ object PreferencesAppPreferences : AppPreferences {
     override fun setDoubleTapSeek(enabled: Boolean) = Preferences.setDoubleTapSeek(enabled)
     override fun setAutoQuality(enabled: Boolean) = Preferences.setAutoQuality(enabled)
 
-    override val antiHotlinkReferer: String =
-        VideoAntiHotlink.refererOf(Preferences.baseUrl)
+    override val antiHotlinkReferer: String
+        get() = VideoAntiHotlink.refererOf(Preferences.baseUrl)
 }
 
 private typealias SearchLayoutMode = app.amisles.hanime.domain.preferences.SearchLayoutMode
