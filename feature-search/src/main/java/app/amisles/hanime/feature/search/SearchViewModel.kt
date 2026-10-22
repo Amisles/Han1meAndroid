@@ -25,6 +25,16 @@ class SearchViewModel @Inject constructor(
     private val library: LibraryRepository
 ) : ViewModel() {
 
+    /**
+     * 导航入参是否已注入。
+     *
+     * 用 ViewModel 而非 Composable 的 LaunchedEffect(Unit) 记账：从详情页返回时
+     * 搜索页会重新进入组合，LaunchedEffect(Unit) 随之再次执行，把用户后来输入的
+     * 关键词覆盖回导航参数里的旧值。ViewModel 的生命周期覆盖整个导航条目，
+     * 才真正表达「只注入一次」。
+     */
+    private var initialArgsApplied = false
+
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
@@ -95,6 +105,29 @@ class SearchViewModel @Inject constructor(
                 _searchHistory.value = emptyList()
             }
         }
+    }
+
+    /**
+     * 应用导航入参（关键词 / 分类 / 排序），只生效一次。
+     *
+     * @return true 表示本次调用实际注入了初值，false 表示此前已注入过、本次忽略。
+     */
+    fun applyInitialArgs(keyword: String?, genre: String?, sort: String?): Boolean {
+        if (initialArgsApplied) return false
+        initialArgsApplied = true
+
+        val cleaned = keyword?.trimStart('#')?.trim().orEmpty()
+        if (cleaned.isNotEmpty()) {
+            _query.value = cleaned
+        }
+        if (!genre.isNullOrBlank()) {
+            _genre.value = genre
+        }
+        if (!sort.isNullOrBlank()) {
+            _sort.value = sort
+        }
+        if (hasAnyCriteria()) executeSearch()
+        return true
     }
 
     fun setQuery(newQuery: String) {

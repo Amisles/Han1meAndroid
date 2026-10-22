@@ -101,12 +101,25 @@ fun SearchScreen(
     val durationValue by viewModel.duration.collectAsStateWithLifecycle()
 
     var localQuery by rememberSaveable { mutableStateOf(query) }
-    // ViewModel 的 query 是「已生效的搜索词」，页面重建后据此校正输入框。
-    // 只在 query 本身变化时同步：若同时盯着 localQuery，用户清空输入框会被旧值弹回。
+    // 上一次已同步给输入框的 query。两者都走 rememberSaveable，随导航条目一起保存。
+    //
+    // 只在「ViewModel 的 query 真的变了」时才回写输入框：用户可能只输入未提交就点进
+    // 详情页，返回时输入框应保留其草稿。若无条件用 query 覆盖，草稿会被上一次已生效的
+    // 关键词顶掉；而完全不覆盖，点搜索历史 / 注入初值时输入框又不会更新。
+    var lastSyncedQuery by rememberSaveable { mutableStateOf(query) }
     androidx.compose.runtime.LaunchedEffect(query) {
-        localQuery = query
+        if (query != lastSyncedQuery) {
+            localQuery = query
+            lastSyncedQuery = query
+        }
     }
-    val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
+    // 分类同样以 ViewModel 的 genre 为准，否则从详情页返回后胶囊回到「全部」、
+    // 而请求仍带着旧的 genre 参数，界面与结果再次分裂。
+    val selectedFilter = remember(genreValue) {
+        mutableStateOf(
+            categories.firstOrNull { it.apiValue == genreValue } ?: allCategory
+        )
+    }
     // 排序以 ViewModel 为准：它同时决定请求参数，本地副本在页面重建后会与请求脱节。
     // 用派生值而非独立 state，避免「界面显示 A、请求实际用 B」的分裂。
     val selectedSort = remember(sortValue) {
@@ -163,39 +176,26 @@ fun SearchScreen(
         }
     }
 
-    // 初值只注入一次。此前以 initialKeyword 为 key，从详情页返回、页面重建时会再次执行，
-    // 把用户后来输入的搜索词覆盖回首页大图标题，表现为「搜索框自己变回原标题」。
+    // 导航入参只注入一次，且由 ViewModel 记账。
+    // 用 LaunchedEffect(Unit) 不够：从详情页返回时本页会重新进入组合，
+    // 该 effect 会再次执行，把用户后来输入的词覆盖回导航参数里的旧值。
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        if (!initialKeyword.isNullOrEmpty()) {
-            val cleanedKeyword = initialKeyword.trimStart('#').trim()
-            localQuery = cleanedKeyword
-            viewModel.submitSearch(cleanedKeyword)
-        }
-    }
-
-    androidx.compose.runtime.LaunchedEffect(initialGenre) {
-        if (!initialGenre.isNullOrBlank()) {
-            val match = categories.firstOrNull {
-                it.label.equals(initialGenre, ignoreCase = true) || it.apiValue.equals(initialGenre, ignoreCase = true)
-            }
-            if (match != null) {
-                selectedFilter.value = match
-                // setGenre 在值变化时会自行触发搜索，此处不再重复调用
-                viewModel.setGenre(match.apiValue)
-            }
-        }
-    }
-
-    androidx.compose.runtime.LaunchedEffect(initialSort) {
-        if (!initialSort.isNullOrBlank()) {
-            // 按 label（如 "最新上市"）或 apiValue（如 "最新上傳"）匹配
-            val match = sortOptions.firstOrNull {
-                it.label == initialSort || it.apiValue == initialSort
-            }
-            if (match != null) {
-                // setSort 在值变化时会自行触发搜索，此处不再重复调用
-                viewModel.setSort(match.apiValue)
-            }
+        val genreArg = categories.firstOrNull {
+            it.label.equals(initialGenre.orEmpty(), ignoreCase = true) ||
+                it.apiValue.equals(initialGenre.orEmpty(), ignoreCase = true)
+        }?.apiValue
+        val sortArg = sortOptions.firstOrNull {
+            it.label == initialSort || it.apiValue == initialSort
+        }?.apiValue
+        val applied = viewModel.applyInitialArgs(
+            keyword = initialKeyword,
+            genre = genreArg,
+            sort = sortArg
+        )
+        if (applied) {
+            // 只对齐输入框；分类与排序胶囊已由 ViewModel 的 genre / sort 派生，无需手动同步
+            localQuery = viewModel.query.value
+            lastSyncedQuery = viewModel.query.value
         }
     }
 
@@ -506,6 +506,7 @@ fun SearchScreen(
                             history = history,
                             onSearch = { keyword ->
                                 localQuery = keyword
+                                lastSyncedQuery = keyword
                                 viewModel.submitSearch(keyword)
                             },
                             onRemove = { viewModel.removeSearchHistory(it) }
