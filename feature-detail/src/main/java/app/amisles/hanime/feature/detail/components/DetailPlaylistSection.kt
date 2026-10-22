@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,6 +34,9 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.PlaylistInfo
 
 private val CELL_WIDTH = 140.dp
+
+private val CELL_TITLE_FONT_SIZE = 11.sp
+private val CELL_TITLE_LINE_HEIGHT = 15.sp
 
 /** 播放集合头部：集合名、作者（可点击）与集数。 */
 @Composable
@@ -124,15 +130,29 @@ internal fun DetailPlaylistVideos(
                         targetWidth = CELL_WIDTH
                     )
                 }
-                Text(
-                    text = video.title,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
+                val titleBlockHeight = with(LocalDensity.current) {
+                    (CELL_TITLE_LINE_HEIGHT * 2).toDp()
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .height(titleBlockHeight),
+                    contentAlignment = Alignment.TopStart
+                ) {
+                    Text(
+                        text = video.title,
+                        fontSize = CELL_TITLE_FONT_SIZE,
+                        lineHeight = CELL_TITLE_LINE_HEIGHT,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight(align = Alignment.CenterVertically)
+                    )
+                }
             }
         }
     }
