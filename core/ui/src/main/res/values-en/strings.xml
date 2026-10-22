@@ -778,10 +778,13 @@
     <string name="update_do_not_remind">Skip this version</string>
     <string name="profile_check_update">Check for updates</string>
     <string name="update_skipped_notice">This version is ignored</string>
-    <string name="playback_notification_channel">Playback controls</string>
     <string name="settings_long_press_speed">Long-press speed</string>
     <string name="settings_double_tap_seek">Double-tap seek</string>
     <string name="settings_double_tap_seek_summary">Double-tap the left or right half of the player to skip back or forward 15 seconds</string>
     <string name="settings_auto_quality">Adaptive quality</string>
     <string name="settings_auto_quality_summary">Downgrade on stutter and recover when stable; when off, a manually selected quality is never overridden</string>
+    <string name="playback_notification_channel">Playback controls</string>
+    <string name="playback_seek_back">Back 15 seconds</string>
+    <string name="playback_seek_forward">Forward 15 seconds</string>
+    <string name="playback_stop">Remove player</string>
 </resources>

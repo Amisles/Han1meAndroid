@@ -1,7 +1,13 @@
 package app.amisles.hanime.feature.detail
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -127,6 +133,26 @@ fun DetailScreen(
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
 
+    // 播放通知需要 POST_NOTIFICATIONS（Android 13+）。此前只有下载页申请过，
+    // 用户在详情页直接播放时通知会被静默丢弃，而前台服务仍在运行，表现为「功能坏了」。
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* 拒绝也不阻断播放：只是没有媒体通知 */ }
+    var notificationPermissionAsked by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!notificationPermissionAsked) {
+            notificationPermissionAsked = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
     var showDescription by remember { mutableStateOf(false) }
@@ -191,6 +217,7 @@ fun DetailScreen(
             // 有效续播点（>5s）由 VideoPlayer 在首帧就绪后执行跳转。
             // 这里只做赋值，不再 await 数据库：起播不必等待历史记录查询完成。
             initialSeekMs = savedSeekMs
+            // 元数据供媒体通知 / 锁屏展示；VideoPlayer 换源与重试会复用同一套元数据
             player.setMediaItem(
                 MediaItem.Builder()
                     .setUri(preferredUrl)

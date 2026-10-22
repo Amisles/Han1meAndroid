@@ -132,9 +132,10 @@ fun LocalPlayerScreen(
                     isLoopPlayback = loopPlayback,
                     onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
                     autoFullscreenEnabled = !sizeInfo.isTablet,
-                    mediaTitle = File(filePath.orEmpty()).name,
                     longPressBoostSpeed = appPrefs.longPressBoostSpeedFlow.value,
                     doubleTapSeekEnabled = appPrefs.doubleTapSeekFlow.value,
+                    // 本地播放没有作品信息：用去掉扩展名的文件名做通知标题
+                    mediaTitle = File(filePath.orEmpty()).nameWithoutExtension,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }

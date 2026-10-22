@@ -137,15 +137,15 @@ fun VideoPlayer(
     onLoopPlaybackChanged: (Boolean) -> Unit = {},
     // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
     autoFullscreenEnabled: Boolean = true,
-    // 媒体通知 / 锁屏 / 蓝牙控件展示的标题与作者；为空时通知只显示应用名
-    mediaTitle: String = "",
-    mediaArtist: String = "",
     // 长按临时加速倍率（1.5–3.0），只在按住期间生效
     longPressBoostSpeed: Float = 2f,
     // 双击左右区域快退 / 快进；关闭后双击不再触发跳转，也不会误切控制栏
     doubleTapSeekEnabled: Boolean = true,
     // 卡顿自动降档 / 回升；关闭后手动选择的画质不会被覆盖
-    autoQualityEnabled: Boolean = true
+    autoQualityEnabled: Boolean = true,
+    // 媒体通知 / 锁屏 / 蓝牙控件展示的标题与作者；为空时通知只显示应用名
+    mediaTitle: String = "",
+    mediaArtist: String = ""
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -233,7 +233,7 @@ fun VideoPlayer(
 
     // ── 清晰度切换 ──────────────────────────────────────────────────────────
     /**
-     * 带元数据的媒体项。媒体通知、锁屏与蓝牙控件展示的标题/作者/封面都从这里来；
+     * 带元数据的媒体项。媒体通知、锁屏与蓝牙控件展示的标题 / 作者 / 封面都从这里来；
      * 换源与重试必须复用同一构造，否则通知会退回「未知曲目」。
      */
     fun buildMediaItem(url: String): MediaItem {
@@ -356,7 +356,7 @@ fun VideoPlayer(
 
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
-                // 首次真正开始播放时才拉起前台服务：提前启动会让一个永不进入前台的服务常驻
+                // 真正开始播放时才拉起前台服务：提前启动会让一个永不进入前台的服务常驻
                 if (playing) PlaybackSessionBridge.ensureService(context)
             }
 
@@ -388,7 +388,7 @@ fun VideoPlayer(
     }
 
     LaunchedEffect(Unit) {
-        PlaybackSessionBridge.bind(exoPlayer)
+        PlaybackSessionBridge.bind(exoPlayer, context)
         exoPlayer.addListener(listener)
         val currentVol = exoPlayer.volume
         if (currentVol == 0f) {
@@ -441,8 +441,8 @@ fun VideoPlayer(
 
     DisposableEffect(Unit) {
         onDispose {
-            // 先停服务（会话随之释放），调用方随后才释放播放器
-            PlaybackSessionBridge.unbind(context)
+            // 先解绑播放服务（会话随之释放），调用方随后才释放播放器
+            PlaybackSessionBridge.unbind(exoPlayer)
             exoPlayer.removeListener(listener)
         }
     }

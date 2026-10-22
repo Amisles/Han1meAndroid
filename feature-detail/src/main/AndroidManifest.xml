@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
+        <!-- 播放前台服务：会话由系统媒体组件连接，故 exported=true 并声明 MediaSessionService action -->
         <service
             android:name=".playback.PlaybackService"
             android:exported="true"
