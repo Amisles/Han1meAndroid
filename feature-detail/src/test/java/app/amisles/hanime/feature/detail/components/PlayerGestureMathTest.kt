@@ -12,7 +12,7 @@ import org.junit.Test
  */
 class PlayerGestureMathTest {
 
-    private val math = PlayerGestureMath()
+    private val math = PlayerGestureMath(slopPx = 8f)
 
     // ── 阈值 ────────────────────────────────────────────────────────────────
 
@@ -83,6 +83,62 @@ class PlayerGestureMathTest {
         assertNull(math.onMove(x = 7f, y = 0f, lastX = 7f, lastY = 0f, downX = 0f, playerWidth = 1000f))
     }
 
+    // ── 跨手势残留 ──────────────────────────────────────────────────────────
+
+    @Test
+    fun `stale horizontal movement does not force next vertical drag into seek`() {
+        assertEquals(
+            DragMode.SEEK,
+            math.onMove(x = 300f, y = 0f, lastX = 0f, lastY = 0f, downX = 100f, playerWidth = 1000f)
+        )
+
+        math.reset()
+
+        assertEquals(
+            DragMode.BRIGHTNESS,
+            math.onMove(x = 100f, y = 60f, lastX = 100f, lastY = 0f, downX = 400f, playerWidth = 1000f)
+        )
+    }
+
+    @Test
+    fun `stale vertical movement does not force next horizontal drag into volume`() {
+        assertEquals(
+            DragMode.VOLUME,
+            math.onMove(x = 800f, y = 400f, lastX = 800f, lastY = 0f, downX = 800f, playerWidth = 1000f)
+        )
+
+        math.reset()
+
+        assertEquals(
+            DragMode.SEEK,
+            math.onMove(x = 200f, y = 100f, lastX = 0f, lastY = 100f, downX = 100f, playerWidth = 1000f)
+        )
+    }
+
+    // ── 垂直方向抖动 ────────────────────────────────────────────────────────
+
+    @Test
+    fun `perpendicular jitter does not postpone drag start`() {
+        // 竖向位移 5px 已越过 8px 阈值的一半但未过阈值，横向抖动 6px；
+        // 两个方向都没到阈值时不应开始拖动，无论哪种比较方式
+        assertNull(math.onMove(x = 806f, y = 5f, lastX = 800f, lastY = 0f, downX = 800f, playerWidth = 1000f))
+
+        // 再竖向移动 4px：竖向累计 9px 已过阈值，横向仍为 6px，必须判定为纵向
+        assertEquals(
+            DragMode.VOLUME,
+            math.onMove(x = 806f, y = 9f, lastX = 806f, lastY = 5f, downX = 800f, playerWidth = 1000f)
+        )
+    }
+
+    @Test
+    fun `horizontal drag is not delayed by vertical jitter`() {
+        assertNull(math.onMove(x = 6f, y = 5f, lastX = 0f, lastY = 0f, downX = 100f, playerWidth = 1000f))
+
+        assertEquals(
+            DragMode.SEEK,
+            math.onMove(x = 12f, y = 5f, lastX = 6f, lastY = 5f, downX = 100f, playerWidth = 1000f)
+        )
+    }
     // ── 进度换算 ────────────────────────────────────────────────────────────
 
     @Test

@@ -686,9 +686,9 @@ fun VideoPlayer(
             // 统一手势处理：单一 pointerInput 接管双指缩放、单指滑动（进度/亮度/音量）与点击/双击；
             // 以指针数为唯一真相源，避免多检测器竞争与状态卡死
             .pointerInput(Unit) {
-                // 拖动判定与位移换算已抽为纯类：阈值、方向优先级、左右半屏分界都在
-                // PlayerGestureMath 内，便于单测覆盖（见 PlayerGestureMathTest）。
-                val gestureMath = PlayerGestureMath(PlayerGestureMath.DEFAULT_SLOP_PX)
+                // 阈值按屏幕密度换算成像素：固定 8px 在高密度屏上只有约 3dp，远低于系统 touch slop，
+                // 轻微抖动即可决定方向，表现为上下滑却触发快进。
+                val gestureMath = PlayerGestureMath(with(density) { PlayerGestureMath.SLOP_DP.dp.toPx() })
                 while (true) {
                     awaitPointerEventScope {
                         var pointerCount = 0
@@ -794,6 +794,9 @@ fun VideoPlayer(
                                     lastY = y
                                     initialized = true
                                     longPressFired = false
+                                    // 每段手势开始必须清零：gestureMath 跨手势复用，
+                                    // 残留的累计位移会让本次方向判定沿用上一次手势的结果
+                                    gestureMath.reset()
                                     // 每次手势开始都清空「落在控件上」标记：控件 onClick 要到抬起才置位，
                                     // 若上次手势残留该标记会吞掉下一次空白点击
                                     isControlTap = false

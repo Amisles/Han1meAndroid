@@ -27,7 +27,7 @@ internal enum class DragMode {
  *
  * @param slopPx 触摸抖动阈值：累计位移超过它才认为用户开始拖动。
  */
-internal class PlayerGestureMath(private val slopPx: Float = DEFAULT_SLOP_PX) {
+internal class PlayerGestureMath(private val slopPx: Float) {
 
     private var accDx = 0f
     private var accDy = 0f
@@ -84,8 +84,8 @@ internal class PlayerGestureMath(private val slopPx: Float = DEFAULT_SLOP_PX) {
     }
 
     companion object {
-        /** 触摸抖动阈值：8px 与原实现保持一致。 */
-        const val DEFAULT_SLOP_PX = 8f
+        /** 触摸抖动阈值（dp）：与系统 touch slop 量级一致，调用方按屏幕密度换算成像素。 */
+        const val SLOP_DP = 8f
     }
 }
 
