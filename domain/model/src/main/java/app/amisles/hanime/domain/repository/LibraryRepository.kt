@@ -31,6 +31,14 @@ interface LibraryRepository {
     suspend fun updateWatchProgress(videoId: String, position: Long, duration: Long): Boolean
 
     suspend fun getWatchHistory(videoId: String): WatchHistory?
+    /**
+     * 「继续观看」候选：有播放进度、且尚未看完的条目，按最近观看倒序。
+     *
+     * 过滤放在 SQL 层而非 UI：历史表会随使用无限增长，全量取出再过滤会让首页首帧
+     * 随历史条数线性变慢。
+     */
+    fun getContinueWatchingFlow(): Flow<List<WatchHistory>>
+
     fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>>
     suspend fun removeWatchHistory(videoId: String)
     suspend fun removeWatchHistories(videoIds: List<String>)

@@ -795,4 +795,6 @@
     <string name="download_storage_used">使用中 %1$s</string>
     <string name="download_storage_orphans">残留ファイル %1$d 件（%2$s）</string>
     <string name="download_storage_clean">整理</string>
+    <string name="home_continue_watching">続きを見る</string>
+    <string name="home_continue_remaining">残り %1$s</string>
 </resources>

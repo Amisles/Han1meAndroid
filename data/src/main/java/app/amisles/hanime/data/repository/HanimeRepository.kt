@@ -158,6 +158,10 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+    override fun getContinueWatchingFlow(): Flow<List<WatchHistory>> {
+        return watchHistoryDao.getContinueWatching().map { list -> list.map { it.toDomain() } }
+    }
+
     override fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>> {
         return watchHistoryDao.getAllWatchHistory().map { list -> list.map { it.toDomain() } }
     }

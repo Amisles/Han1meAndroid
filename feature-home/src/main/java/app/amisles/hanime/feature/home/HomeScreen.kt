@@ -55,6 +55,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
+import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
@@ -177,6 +178,7 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
+    val continueWatching by viewModel.continueWatching.collectAsStateWithLifecycle()
     val banner by viewModel.banner.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -184,6 +186,7 @@ fun HomeScreen(
 
     HomeScreenContent(
         sections = sections,
+        continueWatching = continueWatching,
         banner = banner,
         isLoading = isLoading,
         isRefreshing = isRefreshing,
@@ -202,6 +205,7 @@ fun HomeScreen(
 @Composable
 fun HomeScreenContent(
     sections: List<HomeSection>,
+    continueWatching: List<WatchHistory> = emptyList(),
     banner: HanimeBanner?,
     isLoading: Boolean,
     isRefreshing: Boolean = false,
@@ -242,6 +246,7 @@ fun HomeScreenContent(
         if (!isLoading) {
             if (error != null && sections.isNotEmpty()) idx++ // 刷新失败提示行
             if (banner != null) idx++ // banner
+            if (continueWatching.isNotEmpty()) idx++ // 继续观看
             plans.forEach { plan ->
                 map[plan.section.title] = idx // 标题 item 的索引
                 // 标题 + 视频区（条数由 plan.itemCount 给出，与渲染分支同源）+ 分区之间的 spacer
@@ -351,6 +356,16 @@ fun HomeScreenContent(
                         bannerData = it,
                         onPlayClick = { onVideoClick(it.videoUrl) },
                         onSearchClick = onSearchClick
+                    )
+                }
+            }
+
+            if (continueWatching.isNotEmpty()) {
+                item(key = "home-continue-watching", contentType = HomeItemType.BANNER) {
+                    ContinueWatchingSection(
+                        items = continueWatching,
+                        onItemClick = { history -> onVideoClick(history.videoUrl) },
+                        modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
             }

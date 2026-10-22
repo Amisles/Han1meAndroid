@@ -12,6 +12,22 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
     fun getAllWatchHistory(): Flow<List<WatchHistoryEntity>>
 
+    /**
+     * 「继续观看」：有进度且未看完（< 95%）。
+     *
+     * 时长未知（duration <= 0）时按「未看完」处理：此时无法判断完成度，
+     * 但用户确实看到过进度，重新进入应能续播。
+     */
+    @Query(
+        """
+        SELECT * FROM watch_history
+        WHERE playback_position > 0
+          AND (playback_duration <= 0 OR playback_position * 100 < playback_duration * 95)
+        ORDER BY watchedAt DESC
+        """
+    )
+    fun getContinueWatching(): Flow<List<WatchHistoryEntity>>
+
     @Query("SELECT * FROM watch_history WHERE id = :videoId")
     suspend fun getWatchHistoryById(videoId: String): WatchHistoryEntity?
 

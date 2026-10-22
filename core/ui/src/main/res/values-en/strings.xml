@@ -795,4 +795,6 @@
     <string name="download_storage_used">%1$s used</string>
     <string name="download_storage_orphans">%1$d leftover files (%2$s)</string>
     <string name="download_storage_clean">Clean</string>
+    <string name="home_continue_watching">Continue watching</string>
+    <string name="home_continue_remaining">%1$s left</string>
 </resources>

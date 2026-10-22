@@ -6,15 +6,19 @@ import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,8 +28,19 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: ContentRepository,
+    private val libraryRepository: LibraryRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    /**
+     * 「继续观看」条目。
+     *
+     * 直接暴露仓储的 Flow：播放进度每 5 秒落库一次，用 StateFlow 中转会多一层
+     * 重订阅与去重开销，而界面只需要最新的列表。
+     */
+    val continueWatching: StateFlow<List<WatchHistory>> = libraryRepository
+        .getContinueWatchingFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _sections = MutableStateFlow<List<HomeSection>>(emptyList())
     val sections: StateFlow<List<HomeSection>> = _sections.asStateFlow()
