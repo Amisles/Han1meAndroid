@@ -78,6 +78,11 @@ interface SettingsRepository {
     val maxDownloadConcurrentFlow: StateFlow<Int>
     fun setMaxDownloadConcurrent(max: Int)
 
+    /** 全局下载限速（MB/s），0 表示不限速。所有任务共享同一份带宽预算。 */
+    val downloadRateLimit: Int
+    val downloadRateLimitFlow: StateFlow<Int>
+    fun setDownloadRateLimit(megabytesPerSecond: Int)
+
     /** 空串表示默认目录，由下载子系统解析。 */
     var downloadStoragePath: String
     val downloadStoragePathFlow: StateFlow<String>

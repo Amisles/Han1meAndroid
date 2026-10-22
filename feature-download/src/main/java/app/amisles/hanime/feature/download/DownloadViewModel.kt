@@ -2,14 +2,18 @@ package app.amisles.hanime.feature.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.domain.repository.DownloadRepository
+import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.domain.repository.DownloadRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -17,6 +21,23 @@ class DownloadViewModel @Inject constructor(
     private val downloads: DownloadRepository
 ) : ViewModel() {
     val tasks: StateFlow<List<DownloadTask>> = downloads.tasks
+
+    private val _storageInfo = MutableStateFlow<DownloadStorageInfo?>(null)
+    val storageInfo: StateFlow<DownloadStorageInfo?> = _storageInfo.asStateFlow()
+
+    fun refreshStorageInfo() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _storageInfo.value = runCatching { downloads.getStorageInfo() }.getOrNull()
+        }
+    }
+
+    fun clearOrphanPartmaps(onDone: (Long) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val freed = runCatching { downloads.clearOrphanPartmaps() }.getOrDefault(0L)
+            _storageInfo.value = runCatching { downloads.getStorageInfo() }.getOrNull()
+            withContext(Dispatchers.Main) { onDone(freed) }
+        }
+    }
 
     private val mutationGate = Mutex()
 

@@ -679,6 +679,7 @@ private suspend fun DownloadManager.downloadChunkInternal(
                         io.readNanos.addAndGet(System.nanoTime() - readStartedAt)
                         if (bytesRead == -1) break
                         io.readBytes.addAndGet(bytesRead.toLong())
+                        GlobalDownloadRateLimiter.instance.acquire(bytesRead)
                         // 直接写入会越过 end 覆盖「下一个分块」的区域，造成跨块数据错乱。
                         val toWrite = minOf(bytesRead.toLong(), expected - written).toInt()
                         if (toWrite > 0) {

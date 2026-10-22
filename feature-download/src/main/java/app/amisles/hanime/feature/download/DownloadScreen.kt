@@ -60,6 +60,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.outlined.Storage
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
@@ -126,6 +127,12 @@ fun DownloadScreen(
     val context = LocalContext.current
     val viewModel: DownloadViewModel = hiltViewModel()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val storageInfo by viewModel.storageInfo.collectAsStateWithLifecycle()
+    var showStoragePanel by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(showStoragePanel) {
+        if (showStoragePanel) viewModel.refreshStorageInfo()
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -319,7 +326,36 @@ fun DownloadScreen(
                         onQueryChange = { nameQuery = it },
                         modifier = Modifier.weight(1f)
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = { showStoragePanel = !showStoragePanel },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Storage,
+                            contentDescription = stringResource(R.string.download_storage_title),
+                            tint = if (showStoragePanel) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
+            }
+        }
+
+        if (showStoragePanel) {
+            storageInfo?.let { info ->
+                DownloadStoragePanel(
+                    info = info,
+                    onClearOrphans = {
+                        viewModel.clearOrphanPartmaps {
+                            viewModel.refreshStorageInfo()
+                        }
+                    }
+                )
             }
         }
 

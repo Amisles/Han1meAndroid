@@ -223,6 +223,7 @@ private suspend fun DownloadManager.downloadSingleConnectionAttempt(taskId: Int,
                     if (currentCoroutineContext()[Job]?.isActive != true) break
                     val bytesRead = input.read(buffer)
                     if (bytesRead == -1) break
+                    GlobalDownloadRateLimiter.instance.acquire(bytesRead)
 
                     output.write(buffer, 0, bytesRead)
                     downloadedBytes += bytesRead

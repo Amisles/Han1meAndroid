@@ -3,6 +3,7 @@ package app.amisles.hanime.data.download
 import android.content.Context
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.data.local.entity.DownloadEntity
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Semaphore
 import okhttp3.OkHttpClient
@@ -194,6 +196,12 @@ class DownloadManager @Inject constructor(
 
         scope.launch {
             Preferences.maxDownloadConcurrentFlow.collect { updateConcurrencyLimit(it) }
+        }
+
+        scope.launch {
+            Preferences.downloadRateLimitFlow.collect { megabytesPerSecond ->
+                GlobalDownloadRateLimiter.instance.setLimit(megabytesPerSecond.toLong() * 1024L * 1024L)
+            }
         }
 
         scope.launch {
@@ -899,6 +907,18 @@ class DownloadManager @Inject constructor(
             }
             deleteTaskFiles(removed)
         }
+    }
+
+    override suspend fun getStorageInfo(): DownloadStorageInfo = withContext(Dispatchers.IO) {
+        val dir = DownloadStorageInspector.currentDirectory(context.getExternalFilesDir(null))
+        val activePaths = tasks.value.mapTo(HashSet()) { it.filePath }
+        DownloadStorageInspector.inspect(dir, activePaths)
+    }
+
+    override suspend fun clearOrphanPartmaps(): Long = withContext(Dispatchers.IO) {
+        val dir = DownloadStorageInspector.currentDirectory(context.getExternalFilesDir(null))
+        val activePaths = tasks.value.mapTo(HashSet()) { it.filePath }
+        DownloadStorageInspector.clearOrphanPartmaps(dir, activePaths)
     }
 
     /** 删除任务的本地文件：正片 + 分块位图表 + 其写入中间文件。幂等，失败仅记录。 */

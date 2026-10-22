@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HighQuality
@@ -396,6 +397,7 @@ fun SettingsScreen(
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var appLanguageMenuExpanded by remember { mutableStateOf(false) }
     var downloadConcurrentMenuExpanded by remember { mutableStateOf(false) }
+    var downloadRateLimitMenuExpanded by remember { mutableStateOf(false) }
     var themeModeMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
@@ -406,6 +408,7 @@ fun SettingsScreen(
     val languageOptions = languageOptionRes()
         .map { LanguageOption(it.first, stringResource(it.second)) }
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
+    val rateLimitSuffix = stringResource(R.string.settings_download_rate_limit_suffix)
     val themeModeOptions = listOf(
         ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
         ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
@@ -538,6 +541,27 @@ fun SettingsScreen(
                             Toast.LENGTH_SHORT
                         ).show()
                     }
+                )
+                SettingsGroupDivider()
+                SettingsDropdownRow(
+                    icon = Icons.Outlined.Speed,
+                    title = stringResource(R.string.settings_download_rate_limit),
+                    selectedLabel = if (uiState.downloadRateLimit == 0) {
+                        stringResource(R.string.settings_download_rate_limit_unlimited)
+                    } else {
+                        "${uiState.downloadRateLimit}$rateLimitSuffix"
+                    },
+                    expanded = downloadRateLimitMenuExpanded,
+                    onExpandedChange = { downloadRateLimitMenuExpanded = it },
+                    options = listOf(0, 1, 2, 5, 10, 20).map {
+                        it to if (it == 0) {
+                            stringResource(R.string.settings_download_rate_limit_unlimited)
+                        } else {
+                            "$it$rateLimitSuffix"
+                        }
+                    },
+                    selectedValue = uiState.downloadRateLimit,
+                    onSelect = { viewModel.setDownloadRateLimit(it) }
                 )
                 SettingsGroupDivider()
                 SettingsNavRow(

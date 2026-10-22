@@ -27,6 +27,7 @@ data class SettingsUiState(
     val appLanguage: String = SettingsRepository.LANGUAGE_ZH_CN,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
+    val downloadRateLimit: Int = 0,
     val baseUrl: String = SettingsRepository.DEFAULT_BASE_URL,
     val isLoginSupported: Boolean = true,
     val downloadStoragePath: String = "",
@@ -80,6 +81,8 @@ class SettingsViewModel @Inject constructor(
             isLoginSupported = loginSupported,
             downloadStoragePath = settings.downloadStoragePathFlow.value
         )
+    }.combine(settings.downloadRateLimitFlow) { state, rateLimit ->
+        state.copy(downloadRateLimit = rateLimit)
     }.combine(settings.downloadStoragePathFlow) { state, storagePath ->
         state.copy(downloadStoragePath = storagePath)
     }.combine(settings.longPressBoostSpeedFlow) { state, speed ->
@@ -99,6 +102,7 @@ class SettingsViewModel @Inject constructor(
         appLanguage = settings.appLanguage,
         themeMode = settings.themeMode,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
+        downloadRateLimit = settings.downloadRateLimit,
         baseUrl = settings.baseUrl,
         isLoginSupported = settings.isLoginSupported,
         downloadStoragePath = settings.downloadStoragePathFlow.value,
@@ -118,6 +122,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setMaxDownloadConcurrent(count: Int) {
         settings.setMaxDownloadConcurrent(count)
+    }
+
+    fun setDownloadRateLimit(megabytesPerSecond: Int) {
+        settings.setDownloadRateLimit(megabytesPerSecond)
     }
 
     fun setLongPressBoostSpeed(speed: Float) {

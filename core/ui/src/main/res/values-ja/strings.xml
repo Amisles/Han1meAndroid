@@ -787,4 +787,12 @@
     <string name="playback_seek_back">15 秒戻る</string>
     <string name="playback_seek_forward">15 秒進む</string>
     <string name="playback_stop">プレーヤーを閉じる</string>
+    <string name="settings_download_rate_limit">ダウンロード速度制限</string>
+    <string name="settings_download_rate_limit_unlimited">制限なし</string>
+    <string name="settings_download_rate_limit_suffix"> MB/s</string>
+    <string name="download_storage_title">ストレージ</string>
+    <string name="download_storage_free">空き %1$s</string>
+    <string name="download_storage_used">使用中 %1$s</string>
+    <string name="download_storage_orphans">残留ファイル %1$d 件（%2$s）</string>
+    <string name="download_storage_clean">整理</string>
 </resources>

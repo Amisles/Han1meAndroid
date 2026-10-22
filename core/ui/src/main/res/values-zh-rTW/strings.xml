@@ -787,4 +787,12 @@
     <string name="playback_seek_back">後退 15 秒</string>
     <string name="playback_seek_forward">前進 15 秒</string>
     <string name="playback_stop">移除播放器</string>
+    <string name="settings_download_rate_limit">下載限速</string>
+    <string name="settings_download_rate_limit_unlimited">不限速</string>
+    <string name="settings_download_rate_limit_suffix"> MB/s</string>
+    <string name="download_storage_title">儲存空間</string>
+    <string name="download_storage_free">剩餘 %1$s</string>
+    <string name="download_storage_used">已用 %1$s</string>
+    <string name="download_storage_orphans">發現 %1$d 個殘留檔案（%2$s）</string>
+    <string name="download_storage_clean">清理</string>
 </resources>

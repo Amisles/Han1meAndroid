@@ -1,6 +1,7 @@
 package app.amisles.hanime.domain.repository
 
 import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
 import kotlinx.coroutines.flow.StateFlow
 
@@ -47,6 +48,12 @@ interface DownloadRepository {
     fun retryAllFailed()
 
     suspend fun getCompletedDownloadCount(): Int
+
+    /** 存储面板数据：目录、已用 / 剩余空间、孤儿位图统计。 */
+    suspend fun getStorageInfo(): DownloadStorageInfo
+
+    /** 清理无任务引用的位图文件，返回释放字节数。 */
+    suspend fun clearOrphanPartmaps(): Long
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean
     fun isVideoDownloading(videoId: String, quality: String = ""): Boolean
     fun getDownloadStatus(videoId: String): DownloadStatus?
