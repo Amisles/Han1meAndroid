@@ -5,6 +5,10 @@ import kotlinx.coroutines.delay
 /**
  * 全局限速器：令牌桶，所有下载任务共享同一份带宽预算。
  *
+ * 关键约束：只有**真正拿到令牌**时才扣减。原实现无论是否足够都先扣 `need`，
+ * 令牌不足时留下负值，下一轮重试再扣一次，`tokens` 恒定为一个不断加深的负数，
+ * 等待时间算出来永远为正 —— 表现为下载卡死在第一个 buffer 上，一个字节都不写。
+ *
  * 单次最多睡 [MAX_SLEEP_MS]，超出的额度留到下一轮，保证暂停 / 取消能及时响应。
  */
 internal class DownloadRateLimiter {
@@ -20,7 +24,6 @@ internal class DownloadRateLimiter {
     fun setLimit(bytesPerSecond: Long) {
         synchronized(lock) {
             this.bytesPerSecond = bytesPerSecond.coerceAtLeast(0L)
-            // 调高限额时立即补充令牌，避免用户等了半天还在按旧速率走
             if (this.bytesPerSecond > 0L && tokens <= 0.0) {
                 tokens = this.bytesPerSecond.toDouble()
             }
@@ -31,13 +34,14 @@ internal class DownloadRateLimiter {
     suspend fun acquire(bytes: Int) {
         if (bytes <= 0) return
         while (true) {
-            val waitNanos = synchronized(lock) { reserve(bytes.toLong()) }
+            val waitNanos = synchronized(lock) { reserveOrWait(bytes.toLong()) }
             if (waitNanos <= 0L) return
             delay(minOf(waitNanos / 1_000_000L + 1L, MAX_SLEEP_MS))
         }
     }
 
-    private fun reserve(need: Long): Long {
+    /** @return 0 表示令牌已扣减、可以放行；>0 表示还需等待的纳秒数（不扣减）。 */
+    private fun reserveOrWait(need: Long): Long {
         if (bytesPerSecond <= 0L) {
             tokens = 0.0
             lastRefillNanos = System.nanoTime()
@@ -52,9 +56,11 @@ internal class DownloadRateLimiter {
             )
             lastRefillNanos = now
         }
-        tokens -= need
-        if (tokens >= 0.0) return 0L
-        return ((-tokens) / bytesPerSecond * 1_000_000_000.0).toLong()
+        if (tokens >= need) {
+            tokens -= need
+            return 0L
+        }
+        return ((need - tokens) / bytesPerSecond * 1_000_000_000.0).toLong()
     }
 
     private companion object {
