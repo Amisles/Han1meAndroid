@@ -3,6 +3,7 @@ package app.amisles.hanime.data.repository
 import android.database.SQLException
 import android.util.Log
 import app.amisles.hanime.data.local.database.FavoriteDao
+import app.amisles.hanime.data.local.database.FavoriteGroupDao
 import app.amisles.hanime.data.local.entity.toDomain
 import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.data.local.database.SearchHistoryDao
@@ -20,6 +21,7 @@ import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
+import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -63,6 +65,7 @@ class HanimeRepository @Inject constructor(
     private val subscribeParser: SubscribeParser,
     private val accountProfileParser: AccountProfileParser,
     private val favoriteDao: FavoriteDao,
+    private val favoriteGroupDao: FavoriteGroupDao,
     private val watchHistoryDao: WatchHistoryDao,
     private val searchHistoryDao: SearchHistoryDao
 ) : ContentRepository, LibraryRepository, AccountRepository {
@@ -124,6 +127,48 @@ class HanimeRepository @Inject constructor(
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error getting favorite count: ${e.message}", e)
             0
+        }
+    }
+
+    override fun getAllFavoriteGroupsFlow(): Flow<List<FavoriteGroup>> =
+        favoriteGroupDao.getAllGroups().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun upsertFavoriteGroup(group: FavoriteGroup) {
+        try {
+            favoriteGroupDao.upsertGroup(group.toEntity())
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error saving favorite group: ${e.message}", e)
+        }
+    }
+
+    /** 删除分组并把其下收藏移回「未分组」，避免条目失去归属后不可见。 */
+    override suspend fun deleteFavoriteGroup(groupId: String) {
+        try {
+            favoriteGroupDao.detachFavoritesOfGroup(groupId)
+            favoriteGroupDao.deleteGroup(groupId)
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error deleting favorite group: ${e.message}", e)
+        }
+    }
+
+    override suspend fun moveFavoriteToGroup(videoId: String, groupId: String) {
+        try {
+            favoriteDao.setFavoriteGroup(videoId, groupId)
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error moving favorite: ${e.message}", e)
+        }
+    }
+
+    override suspend fun setFavoriteTags(videoId: String, tags: List<String>) {
+        try {
+            val normalized = tags
+                .map { it.trim().replace(',', ' ') }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .take(MAX_TAGS_PER_FAVORITE)
+            favoriteDao.setFavoriteTags(videoId, normalized.joinToString(","))
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error saving favorite tags: ${e.message}", e)
         }
     }
 
@@ -695,4 +740,8 @@ class HanimeRepository @Inject constructor(
     override suspend fun getUserVideoList(authorId: String, page: Int): UserVideoListResult? =
         networkService.fetchUserVideoList(authorId, page)
 
+    private companion object {
+        /** 单个收藏最多保留的标签数：超出后输入体验与展示都会失控。 */
+        const val MAX_TAGS_PER_FAVORITE = 10
+    }
 }

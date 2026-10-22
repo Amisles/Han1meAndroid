@@ -802,4 +802,12 @@
     <string name="subscription_reminder_body">你訂閱的作者更新了 %1$d 個影片</string>
     <string name="settings_subscription_reminder">訂閱更新提醒</string>
     <string name="settings_subscription_reminder_summary">每天檢查一次訂閱內容，發現新影片時通知</string>
+    <string name="favorite_search_hint">搜尋收藏</string>
+    <string name="favorite_search_empty">沒有符合的收藏</string>
+    <string name="favorite_group_all">全部</string>
+    <string name="favorite_group_new">新增分組</string>
+    <string name="favorite_group_none">未分組</string>
+    <string name="favorite_group_label">所屬分組</string>
+    <string name="favorite_tags_label">標籤</string>
+    <string name="favorite_tags_add">新增標籤</string>
 </resources>

@@ -5,17 +5,19 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.amisles.hanime.data.local.entity.DownloadEntity
+import app.amisles.hanime.data.local.entity.FavoriteGroupEntity
 import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
 import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.entity.WatchHistoryEntity
 
 @Database(
-    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class],
-    version = 6,
+    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class, FavoriteGroupEntity::class],
+    version = 7,
     exportSchema = true
 )
 abstract class FavoriteDatabase : RoomDatabase() {
     abstract fun favoriteDao(): FavoriteDao
+    abstract fun favoriteGroupDao(): FavoriteGroupDao
     abstract fun watchHistoryDao(): WatchHistoryDao
     abstract fun downloadDao(): DownloadDao
     abstract fun searchHistoryDao(): SearchHistoryDao
@@ -76,6 +78,21 @@ abstract class FavoriteDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "ALTER TABLE download_tasks ADD COLUMN errorMessage TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        // 收藏分组与自定义标签：favorites 增加 group_id / tags，另建 favorite_groups 表
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE favorites ADD COLUMN group_id TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE favorites ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS favorite_groups (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )""".trimIndent()
                 )
             }
         }

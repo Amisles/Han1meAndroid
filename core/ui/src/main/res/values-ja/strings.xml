@@ -802,4 +802,12 @@
     <string name="subscription_reminder_body">登録中の作者が %1$d 本の動画を更新しました</string>
     <string name="settings_subscription_reminder">更新通知</string>
     <string name="settings_subscription_reminder_summary">1 日 1 回登録内容を確認し、新着があれば通知します</string>
+    <string name="favorite_search_hint">お気に入りを検索</string>
+    <string name="favorite_search_empty">一致するお気に入りがありません</string>
+    <string name="favorite_group_all">すべて</string>
+    <string name="favorite_group_new">新しいグループ</string>
+    <string name="favorite_group_none">未分類</string>
+    <string name="favorite_group_label">グループ</string>
+    <string name="favorite_tags_label">タグ</string>
+    <string name="favorite_tags_add">タグを追加</string>
 </resources>

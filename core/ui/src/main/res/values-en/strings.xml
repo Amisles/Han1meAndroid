@@ -802,4 +802,12 @@
     <string name="subscription_reminder_body">%1$d new videos from artists you follow</string>
     <string name="settings_subscription_reminder">Subscription reminders</string>
     <string name="settings_subscription_reminder_summary">Check subscriptions once a day and notify about new videos</string>
+    <string name="favorite_search_hint">Search favorites</string>
+    <string name="favorite_search_empty">No matching favorites</string>
+    <string name="favorite_group_all">All</string>
+    <string name="favorite_group_new">New group</string>
+    <string name="favorite_group_none">Ungrouped</string>
+    <string name="favorite_group_label">Group</string>
+    <string name="favorite_tags_label">Tags</string>
+    <string name="favorite_tags_add">Add tag</string>
 </resources>

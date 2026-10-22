@@ -29,4 +29,12 @@ interface FavoriteDao {
 
     @Query("SELECT COUNT(*) FROM favorites")
     suspend fun getFavoriteCount(): Int
+
+    /** 移动收藏到分组；[groupId] 为空串表示移回「未分组」。 */
+    @Query("UPDATE favorites SET group_id = :groupId WHERE id = :videoId")
+    suspend fun setFavoriteGroup(videoId: String, groupId: String)
+
+    /** 更新自定义标签（逗号分隔，已由调用方规范化）。 */
+    @Query("UPDATE favorites SET tags = :tags WHERE id = :videoId")
+    suspend fun setFavoriteTags(videoId: String, tags: String)
 }

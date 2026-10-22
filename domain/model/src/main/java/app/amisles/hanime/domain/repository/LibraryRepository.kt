@@ -1,5 +1,6 @@
 package app.amisles.hanime.domain.repository
 
+import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.WatchHistory
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,13 @@ interface LibraryRepository {
     suspend fun isFavorite(videoId: String): Boolean
     suspend fun getAllFavorites(): List<FavoriteVideo>
     suspend fun getFavoriteCount(): Int
+
+    // ── 收藏分组 ────────────────────────────────────────────────────────────
+    fun getAllFavoriteGroupsFlow(): Flow<List<FavoriteGroup>>
+    suspend fun upsertFavoriteGroup(group: FavoriteGroup)
+    suspend fun deleteFavoriteGroup(groupId: String)
+    suspend fun moveFavoriteToGroup(videoId: String, groupId: String)
+    suspend fun setFavoriteTags(videoId: String, tags: List<String>)
 
     // ── 观看历史 ────────────────────────────────────────────────────────────
     suspend fun addWatchHistory(history: WatchHistory)

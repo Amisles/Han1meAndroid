@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +67,34 @@ fun FavoriteScreen(
     val viewModel: FavoriteViewModel = hiltViewModel()
     val context = LocalContext.current
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    // null 表示「全部分组」；空串表示「未分组」
+    var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var showCreateGroup by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editingVideoId by remember { mutableStateOf("") }
+    var editingVideoTitle by remember { mutableStateOf("") }
+    var editingTags by remember { mutableStateOf<List<String>>(emptyList()) }
+    var editingGroupId by remember { mutableStateOf("") }
+    var newTagInput by remember { mutableStateOf("") }
+
+    val visibleFavorites = remember(favorites, selectedGroupId, searchQuery) {
+        val keyword = searchQuery.trim()
+        favorites.filter { video ->
+            val groupOk = when (selectedGroupId) {
+                null -> true
+                else -> video.groupId == selectedGroupId
+            }
+            val queryOk = keyword.isEmpty() ||
+                video.title.contains(keyword, ignoreCase = true) ||
+                video.author.contains(keyword, ignoreCase = true) ||
+                video.tags.any { it.contains(keyword, ignoreCase = true) }
+            groupOk && queryOk
+        }
+    }
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -77,6 +105,7 @@ fun FavoriteScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
+        viewModel.loadGroups()
     }
 
     LaunchedEffect(isSelectionMode) {
@@ -156,6 +185,25 @@ fun FavoriteScreen(
             }
         }
 
+        FavoriteSearchField(
+            query = searchQuery,
+            onQueryChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FavoriteGroupBar(
+            groups = groups,
+            selectedGroupId = selectedGroupId,
+            onSelect = { selectedGroupId = it },
+            onCreateGroup = { showCreateGroup = true }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -198,7 +246,24 @@ fun FavoriteScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(favorites, key = { it.id }) { video ->
+                if (visibleFavorites.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 60.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.favorite_search_empty),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                items(visibleFavorites, key = { it.id }) { video ->
                     val isSelected = video.id in selectedIds
 
                     FavoriteVideoItem(
@@ -218,9 +283,11 @@ fun FavoriteScreen(
                         },
                         onLongClick = {
                             if (!isSelectionMode) {
-                                deleteTargetId = video.id
-                                deleteTargetTitle = video.title
-                                showDeleteConfirm = true
+                                editingVideoId = video.id
+                                editingVideoTitle = video.title
+                                editingTags = video.tags
+                                editingGroupId = video.groupId
+                                showEditDialog = true
                             }
                         },
                         onCheckedChange = { checked ->
@@ -238,6 +305,34 @@ fun FavoriteScreen(
                 }
             }
         }
+    }
+
+    if (showCreateGroup) {
+        GroupNameDialog(
+            title = stringResource(R.string.favorite_group_new),
+            onDismiss = { showCreateGroup = false },
+            onConfirm = { name ->
+                viewModel.createGroup(name)
+                showCreateGroup = false
+            }
+        )
+    }
+
+    if (showEditDialog) {
+        FavoriteEditDialog(
+            title = editingVideoTitle,
+            tags = editingTags,
+            groups = groups,
+            selectedGroupId = editingGroupId,
+            onDismiss = { showEditDialog = false },
+            onTagsChange = { editingTags = it },
+            onGroupChange = { editingGroupId = it },
+            onSave = {
+                viewModel.setTags(editingVideoId, editingTags)
+                viewModel.moveToGroup(editingVideoId, editingGroupId)
+                showEditDialog = false
+            }
+        )
     }
 
     if (isSelectionMode && selectedIds.isNotEmpty()) {

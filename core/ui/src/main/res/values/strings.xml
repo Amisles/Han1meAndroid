@@ -833,4 +833,12 @@
     <string name="subscription_reminder_body">你订阅的作者更新了 %1$d 个视频</string>
     <string name="settings_subscription_reminder">订阅更新提醒</string>
     <string name="settings_subscription_reminder_summary">每天检查一次订阅内容，发现新视频时通知</string>
+    <string name="favorite_search_hint">搜索收藏</string>
+    <string name="favorite_search_empty">没有匹配的收藏</string>
+    <string name="favorite_group_all">全部</string>
+    <string name="favorite_group_new">新建分组</string>
+    <string name="favorite_group_none">未分组</string>
+    <string name="favorite_group_label">所属分组</string>
+    <string name="favorite_tags_label">标签</string>
+    <string name="favorite_tags_add">添加标签</string>
 </resources>
