@@ -1,6 +1,7 @@
 package app.amisles.hanime
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -288,10 +289,26 @@ fun HanimeApp(
         !currentRoute.startsWith("accountEdit") &&
         !currentRoute.startsWith("localPlayer")
 
-    val useRail = currentWindowSizeInfo().useNavigationRail
+    val sizeInfo = currentWindowSizeInfo()
+    val useRail = sizeInfo.useNavigationRail
 
     // 打开发行版页面 / 安装包直链需要 Context；在组合期取一次即可
     val appContext = LocalContext.current
+
+    val activity = LocalContext.current as? ComponentActivity
+    val landscapeAllowed = sizeInfo.isTablet || currentRoute.startsWith("detail") ||
+        currentRoute.startsWith("localPlayer")
+    LaunchedEffect(currentRoute) {
+        val act = activity ?: return@LaunchedEffect
+        if (sizeInfo.isTablet) return@LaunchedEffect
+        runCatching {
+            act.requestedOrientation = if (landscapeAllowed) {
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+    }
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
