@@ -810,4 +810,5 @@
     <string name="favorite_group_label">所屬分組</string>
     <string name="favorite_tags_label">標籤</string>
     <string name="favorite_tags_add">新增標籤</string>
+    <string name="favorite_tags_hint">輸入標籤後按 Enter</string>
 </resources>

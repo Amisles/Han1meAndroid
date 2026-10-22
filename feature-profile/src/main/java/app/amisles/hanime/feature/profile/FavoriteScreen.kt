@@ -514,6 +514,9 @@ private fun FavoriteVideoItem(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
+            if (video.tags.isNotEmpty()) {
+                FavoriteTagChips(tags = video.tags)
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.padding(top = 2.dp)

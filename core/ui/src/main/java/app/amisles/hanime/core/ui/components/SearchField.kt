@@ -44,7 +44,9 @@ fun SearchField(
     modifier: Modifier = Modifier,
     onSearch: (() -> Unit)? = null,
     singleLine: Boolean = false,
-    onClear: (() -> Unit)? = null
+    onClear: (() -> Unit)? = null,
+    /** 复用同一套边框样式但语义不是「搜索」时（如标签输入）可隐藏前置放大镜。 */
+    showSearchIcon: Boolean = true
 ) {
     val cfg = LocalUiConfig.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -83,13 +85,17 @@ fun SearchField(
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface
         ),
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = stringResource(R.string.common_search),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
+        leadingIcon = if (showSearchIcon) {
+            {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = stringResource(R.string.common_search),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        } else {
+            null
         },
         trailingIcon = {
             if (value.isNotEmpty()) {

@@ -810,4 +810,5 @@
     <string name="favorite_group_label">Group</string>
     <string name="favorite_tags_label">Tags</string>
     <string name="favorite_tags_add">Add tag</string>
+    <string name="favorite_tags_hint">Type a tag and press enter</string>
 </resources>

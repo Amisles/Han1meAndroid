@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.AlertDialog
@@ -31,14 +31,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.domain.model.FavoriteGroup
 
 /**
@@ -62,22 +61,22 @@ internal fun FavoriteEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp),
         title = {
             Text(
                 text = title,
                 fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         },
         text = {
             Column {
-                Text(
-                    text = stringResource(R.string.favorite_group_label),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+                SectionLabel(stringResource(R.string.favorite_group_label))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -98,14 +97,10 @@ internal fun FavoriteEditDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = stringResource(R.string.favorite_tags_label),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+                SectionLabel(stringResource(R.string.favorite_tags_label))
+                Spacer(modifier = Modifier.height(8.dp))
                 if (tags.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -118,7 +113,12 @@ internal fun FavoriteEditDialog(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                                    .padding(start = 8.dp, end = 4.dp, top = 3.dp, bottom = 3.dp),
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(start = 8.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -130,7 +130,7 @@ internal fun FavoriteEditDialog(
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
                                     modifier = Modifier
                                         .size(12.dp)
                                         .clickable { onTagsChange(tags - tag) }
@@ -138,25 +138,27 @@ internal fun FavoriteEditDialog(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                BasicTextField(
+                SearchField(
                     value = input,
                     onValueChange = { input = it },
+                    placeholder = stringResource(R.string.favorite_tags_hint),
                     singleLine = true,
-                    textStyle = TextStyle(
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                    showSearchIcon = false,
+                    onSearch = {
+                        val tag = input.trim()
+                        if (tag.isNotEmpty() && tag !in tags) {
+                            onTagsChange(tags + tag)
+                            input = ""
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 TextButton(
                     onClick = {
                         val tag = input.trim()
@@ -165,22 +167,42 @@ internal fun FavoriteEditDialog(
                             input = ""
                         }
                     },
-                    enabled = input.isNotBlank()
+                    enabled = input.isNotBlank(),
+                    modifier = Modifier.align(Alignment.End)
                 ) {
-                    Text(stringResource(R.string.favorite_tags_add))
+                    Text(
+                        text = stringResource(R.string.favorite_tags_add),
+                        fontSize = 13.sp
+                    )
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onSave) {
-                Text(stringResource(R.string.common_save))
+                Text(
+                    text = stringResource(R.string.common_save),
+                    fontWeight = FontWeight.Medium
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
+                Text(
+                    text = stringResource(R.string.common_cancel),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
+    )
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -195,14 +217,20 @@ private fun GroupChoiceChip(
             .clip(RoundedCornerShape(14.dp))
             .background(
                 if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            )
+            .border(
+                1.dp,
+                if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
             color = if (selected) MaterialTheme.colorScheme.onPrimary
             else MaterialTheme.colorScheme.onSurfaceVariant,

@@ -1,8 +1,10 @@
 package app.amisles.hanime.feature.download
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,14 +34,16 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 
 /**
- * 存储面板：展示下载目录占用与剩余空间，并提供孤儿位图清理入口。
+ * 存储用量气泡。
  *
- * 所有颜色取自 [MaterialTheme.colorScheme]，深浅色主题下自动适配。
+ * 用 surface + 描边 + 阴影从页面内容中浮起；颜色全部取自 colorScheme，
+ * 深浅色主题下都有足够对比度。
  */
 @Composable
-internal fun DownloadStoragePanel(
+internal fun DownloadStorageBubble(
     info: DownloadStorageInfo,
     onClearOrphans: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val capacity = info.usedBytes + info.freeBytes
@@ -52,35 +55,30 @@ internal fun DownloadStoragePanel(
 
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .shadow(8.dp, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                RoundedCornerShape(14.dp)
+            )
+            .clickable(enabled = false) {}
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Outlined.Storage,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.download_storage_title),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = stringResource(
-                    R.string.download_storage_free,
-                    formatFileSize(info.freeBytes)
-                ),
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                text = stringResource(R.string.download_storage_free, formatFileSize(info.freeBytes)),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -91,22 +89,19 @@ internal fun DownloadStoragePanel(
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp)),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surface
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
 
         Text(
-            text = stringResource(
-                R.string.download_storage_used,
-                formatFileSize(info.usedBytes)
-            ),
-            fontSize = 12.sp,
+            text = stringResource(R.string.download_storage_used, formatFileSize(info.usedBytes)),
+            fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Text(
             text = info.directory,
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+            fontSize = 10.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -116,32 +111,38 @@ internal fun DownloadStoragePanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.08f))
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.25f),
+                        RoundedCornerShape(8.dp)
+                    )
                     .clickable(onClick = onClearOrphans)
-                    .padding(vertical = 6.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Outlined.DeleteSweep,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = stringResource(
                         R.string.download_storage_orphans,
                         info.orphanPartmapCount,
                         formatFileSize(info.orphanPartmapBytes)
                     ),
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = stringResource(R.string.download_storage_clean),
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.error
                 )
             }
         }

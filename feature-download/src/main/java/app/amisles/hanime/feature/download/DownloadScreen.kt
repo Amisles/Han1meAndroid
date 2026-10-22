@@ -32,6 +32,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -251,6 +252,11 @@ fun DownloadScreen(
         }
     }
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -326,36 +332,7 @@ fun DownloadScreen(
                         onQueryChange = { nameQuery = it },
                         modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    IconButton(
-                        onClick = { showStoragePanel = !showStoragePanel },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Storage,
-                            contentDescription = stringResource(R.string.download_storage_title),
-                            tint = if (showStoragePanel) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
                 }
-            }
-        }
-
-        if (showStoragePanel) {
-            storageInfo?.let { info ->
-                DownloadStoragePanel(
-                    info = info,
-                    onClearOrphans = {
-                        viewModel.clearOrphanPartmaps {
-                            viewModel.refreshStorageInfo()
-                        }
-                    }
-                )
             }
         }
 
@@ -828,6 +805,51 @@ fun DownloadScreen(
                 }
             }
         }
+    }
+
+    // 存储面板入口：悬浮在内容之上，不占用列表空间；点开后以气泡形式展示用量
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(end = 18.dp, bottom = 86.dp)
+    ) {
+        if (showStoragePanel) {
+            storageInfo?.let { info ->
+                DownloadStorageBubble(
+                    info = info,
+                    onClearOrphans = {
+                        viewModel.clearOrphanPartmaps { viewModel.refreshStorageInfo() }
+                    },
+                    onDismiss = { showStoragePanel = false },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 56.dp)
+                        .widthIn(max = 300.dp)
+                )
+            }
+        }
+
+        FloatingActionButton(
+            onClick = { showStoragePanel = !showStoragePanel },
+            containerColor = if (showStoragePanel) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+            contentColor = if (showStoragePanel) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.align(Alignment.BottomEnd)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Storage,
+                contentDescription = stringResource(R.string.download_storage_title),
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
     }
 }
 

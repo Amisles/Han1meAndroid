@@ -810,4 +810,5 @@
     <string name="favorite_group_label">グループ</string>
     <string name="favorite_tags_label">タグ</string>
     <string name="favorite_tags_add">タグを追加</string>
+    <string name="favorite_tags_hint">タグを入力して Enter</string>
 </resources>

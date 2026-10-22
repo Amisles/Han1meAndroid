@@ -841,4 +841,5 @@
     <string name="favorite_group_label">所属分组</string>
     <string name="favorite_tags_label">标签</string>
     <string name="favorite_tags_add">添加标签</string>
+    <string name="favorite_tags_hint">输入标签后回车</string>
 </resources>
