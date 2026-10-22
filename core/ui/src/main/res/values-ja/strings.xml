@@ -811,4 +811,7 @@
     <string name="favorite_tags_label">タグ</string>
     <string name="favorite_tags_add">タグを追加</string>
     <string name="favorite_tags_hint">タグを入力して Enter</string>
+    <string name="download_quality_1080p">フル HD (1080p)</string>
+    <string name="download_quality_720p">HD (720p)</string>
+    <string name="download_quality_480p">SD (480p)</string>
 </resources>

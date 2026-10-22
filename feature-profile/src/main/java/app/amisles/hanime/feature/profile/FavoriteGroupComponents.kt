@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.domain.model.FavoriteGroup
 
 /** 收藏页搜索框：本地即时过滤，不发网络请求。 */
@@ -51,52 +52,14 @@ internal fun FavoriteSearchField(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    SearchField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = stringResource(R.string.favorite_search_hint),
+        singleLine = true,
+        onClear = { onQueryChange("") },
         modifier = modifier
-            .height(36.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Search,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Box(modifier = Modifier.weight(1f)) {
-            if (query.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.favorite_search_hint),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = TextStyle(
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (query.isNotEmpty()) {
-            Icon(
-                imageVector = Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.common_cancel),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(16.dp)
-                    .clickable { onQueryChange("") }
-            )
-        }
-    }
+    )
 }
 
 /**

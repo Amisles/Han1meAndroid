@@ -842,4 +842,7 @@
     <string name="favorite_tags_label">标签</string>
     <string name="favorite_tags_add">添加标签</string>
     <string name="favorite_tags_hint">输入标签后回车</string>
+    <string name="download_quality_1080p">全高清画质 (1080p)</string>
+    <string name="download_quality_720p">高清画质 (720p)</string>
+    <string name="download_quality_480p">标准画质 (480p)</string>
 </resources>

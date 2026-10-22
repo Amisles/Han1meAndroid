@@ -476,18 +476,32 @@ private fun FavoriteVideoItem(
             )
         }
 
-        VideoThumbnail(
-            thumbnailUrl = video.thumbnailUrl,
-            duration = video.duration,
-            likeRate = video.likeRate,
-            viewCount = video.viewCount,
-            crop = true,
-            targetWidth = ROW_THUMB_WIDTH,
+        Box(
             modifier = Modifier
                 .width(ROW_THUMB_WIDTH)
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(6.dp))
-        )
+        ) {
+            VideoThumbnail(
+                thumbnailUrl = video.thumbnailUrl,
+                duration = video.duration,
+                likeRate = video.likeRate,
+                viewCount = video.viewCount,
+                crop = true,
+                targetWidth = ROW_THUMB_WIDTH,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(6.dp))
+            )
+            // 标签叠在缩略图底部：不占用文字列高度，有标签与无标签的卡片高度一致
+            if (video.tags.isNotEmpty()) {
+                FavoriteTagOverlay(
+                    tags = video.tags,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(4.dp)
+                )
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -513,9 +527,6 @@ private fun FavoriteVideoItem(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-            }
-            if (video.tags.isNotEmpty()) {
-                FavoriteTagChips(tags = video.tags)
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),

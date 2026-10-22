@@ -84,7 +84,7 @@ internal fun DetailDownloadDialog(
                     ) {
                         Column {
                             Text(
-                                text = quality.quality,
+                                text = localizedQualityName(quality),
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onBackground,
                                 fontWeight = FontWeight.Medium

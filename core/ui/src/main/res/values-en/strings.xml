@@ -811,4 +811,7 @@
     <string name="favorite_tags_label">Tags</string>
     <string name="favorite_tags_add">Add tag</string>
     <string name="favorite_tags_hint">Type a tag and press enter</string>
+    <string name="download_quality_1080p">Full HD (1080p)</string>
+    <string name="download_quality_720p">HD (720p)</string>
+    <string name="download_quality_480p">SD (480p)</string>
 </resources>

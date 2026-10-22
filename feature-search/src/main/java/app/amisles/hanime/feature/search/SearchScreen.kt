@@ -101,9 +101,17 @@ fun SearchScreen(
     val durationValue by viewModel.duration.collectAsStateWithLifecycle()
 
     var localQuery by rememberSaveable { mutableStateOf(query) }
+    // ViewModel 的 query 是「已生效的搜索词」，页面重建后据此校正输入框。
+    // 只在 query 本身变化时同步：若同时盯着 localQuery，用户清空输入框会被旧值弹回。
+    androidx.compose.runtime.LaunchedEffect(query) {
+        localQuery = query
+    }
     val selectedFilter = remember { mutableStateOf<Category>(allCategory) }
-    // 未选择排序时为 null：此时请求不带 sort 参数，界面显示「默认排序」，避免下拉宣称一个未生效的值
-    val selectedSort = remember { mutableStateOf<SortOption?>(null) }
+    // 排序以 ViewModel 为准：它同时决定请求参数，本地副本在页面重建后会与请求脱节。
+    // 用派生值而非独立 state，避免「界面显示 A、请求实际用 B」的分裂。
+    val selectedSort = remember(sortValue) {
+        sortOptions.firstOrNull { it.apiValue == sortValue }
+    }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var showTagSheet by remember { mutableStateOf(false) }
     var showDateSheet by remember { mutableStateOf(false) }
@@ -155,7 +163,9 @@ fun SearchScreen(
         }
     }
 
-    androidx.compose.runtime.LaunchedEffect(initialKeyword) {
+    // 初值只注入一次。此前以 initialKeyword 为 key，从详情页返回、页面重建时会再次执行，
+    // 把用户后来输入的搜索词覆盖回首页大图标题，表现为「搜索框自己变回原标题」。
+    androidx.compose.runtime.LaunchedEffect(Unit) {
         if (!initialKeyword.isNullOrEmpty()) {
             val cleanedKeyword = initialKeyword.trimStart('#').trim()
             localQuery = cleanedKeyword
@@ -183,7 +193,6 @@ fun SearchScreen(
                 it.label == initialSort || it.apiValue == initialSort
             }
             if (match != null) {
-                selectedSort.value = match
                 // setSort 在值变化时会自行触发搜索，此处不再重复调用
                 viewModel.setSort(match.apiValue)
             }
@@ -383,7 +392,7 @@ fun SearchScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = selectedSort.value?.let { stringResource(it.labelRes) }
+                            text = selectedSort?.let { stringResource(it.labelRes) }
                                 ?: stringResource(R.string.search_sort_default),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.primary,
@@ -407,9 +416,8 @@ fun SearchScreen(
                         transition = menuTransition,
                         width = sortWidth,
                         shape = menuShape,
-                        selected = selectedSort.value,
+                        selected = selectedSort,
                         onSelect = { option ->
-                            selectedSort.value = option
                             sortMenuExpanded = false
                             viewModel.setSort(option.apiValue)
                         },
