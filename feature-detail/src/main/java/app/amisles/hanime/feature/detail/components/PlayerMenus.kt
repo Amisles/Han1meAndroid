@@ -84,11 +84,11 @@ internal fun SpeedMenuPopup(
             .width(48.dp)
             .height(120.dp)
             .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-            .verticalScroll(scrollState)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { /* 拦截点击，避免穿透到遮罩关闭 */ }
+            .verticalScroll(scrollState)
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -134,11 +134,11 @@ internal fun QualityMenuPopup(
             .width(56.dp)
             .height(120.dp)
             .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-            .verticalScroll(scrollState)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { /* 拦截点击，避免穿透到遮罩关闭 */ }
+            .verticalScroll(scrollState)
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

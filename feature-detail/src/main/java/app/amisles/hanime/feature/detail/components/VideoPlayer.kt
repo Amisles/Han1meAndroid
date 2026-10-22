@@ -227,6 +227,8 @@ fun VideoPlayer(
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
     val isLoopPlaybackRef = rememberUpdatedState(isLoopPlayback)
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
+    // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
+    val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu)
     val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
 
     // ── 清晰度切换 ──────────────────────────────────────────────────────────
@@ -805,7 +807,7 @@ fun VideoPlayer(
                                     // 启动长按加速定时器：单指静止按住满 1s 才触发加速，松手/移动/缩放即取消
                                     longPressJob = gestureScope.launch {
                                         delay(1000L)
-                                        if (!longPressFired && !moved && !isZoom && dragMode == null) {
+                                        if (!menuOpenRef.value && !longPressFired && !moved && !isZoom && dragMode == null) {
                                             longPressFired = true
                                             setLongPressBoost(true)
                                             showSpeedMenu = false
@@ -816,7 +818,15 @@ fun VideoPlayer(
                                             )
                                         }
                                     }
-                                    event.changes.forEach { it.consume() }
+                                    if (!menuOpenRef.value) {
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                    continue
+                                }
+                                if (menuOpenRef.value) {
+                                    // 浮层打开期间不判定拖动：滑动应由浮层自身消费
+                                    lastX = x
+                                    lastY = y
                                     continue
                                 }
                                 if (dragMode == null) {
@@ -872,8 +882,12 @@ fun VideoPlayer(
                                 lastY = y
                             }
 
-                            // 消费事件，避免父级（如页面/列表）误响应本播放器手势
-                            event.changes.forEach { it.consume() }
+                            // 浮层打开时不接管手势：弹层是本 Box 的子节点，父级先消费会让
+                            // 子级的垂直滚动收不到未消费事件，表现为浮层无法上下滑动。
+                            if (!menuOpenRef.value) {
+                                // 消费事件，避免父级（如页面/列表）误响应本播放器手势
+                                event.changes.forEach { it.consume() }
+                            }
                         }
                     }
                 }
