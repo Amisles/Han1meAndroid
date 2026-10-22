@@ -725,7 +725,9 @@ fun VideoPlayer(
                                 }
                                 // 普通抬起：取消尚未到期的定时器，确保快速点击绝不误加速
                                 longPressJob?.cancel()
-                                if (!moved && !isZoom) {
+                                // 浮层打开期间不处理点击：滑动浮层时父级未判定拖动，moved 仍为 false，
+                                // 松手会被当成空白点击而隐藏控件，浮层随之关闭
+                                if (!moved && !isZoom && !menuOpenRef.value) {
                                     // 视为一次点击
                                     val now = System.currentTimeMillis()
                                     if (now - lastTapTime < 300L) {
