@@ -594,6 +594,7 @@ fun HanimeApp(
                                     "about" -> navController.navigate("about")
                                     "diagnostics" -> navController.navigate("diagnostics")
                                     "customize" -> navController.navigate("customize")
+                                    "backup" -> navController.navigate("backup")
                                 }
                             }
                         )
