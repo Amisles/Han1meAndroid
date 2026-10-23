@@ -847,4 +847,26 @@
     <string name="download_quality_480p">标准画质 (480p)</string>
     <string name="favorite_group_name_label">分组名称</string>
     <string name="favorite_group_name_hint">输入分组名称</string>
+    <string name="backup_title">备份与恢复</string>
+    <string name="backup_entry">备份与恢复</string>
+    <string name="backup_entry_summary">导出或导入收藏、历史、下载列表与设置</string>
+    <string name="backup_export_section">导出备份</string>
+    <string name="backup_export_desc">包含收藏与分组、观看历史、下载列表、搜索历史、设置与界面配置；不含登录凭据</string>
+    <string name="backup_export_action">导出到文件</string>
+    <string name="backup_import_section">恢复备份</string>
+    <string name="backup_import_desc">导入前会自动在本机留存一份当前数据的快照，可随时回退</string>
+    <string name="backup_import_action">选择备份文件</string>
+    <string name="backup_export_done">备份已导出</string>
+    <string name="backup_export_failed">导出失败</string>
+    <string name="backup_import_failed">导入失败</string>
+    <string name="backup_error_package">该备份不属于本应用</string>
+    <string name="backup_error_schema">备份版本比当前应用新，请先升级应用</string>
+    <string name="backup_error_format">文件不是有效的备份包</string>
+    <string name="backup_pending_title">确认导入</string>
+    <string name="backup_pending_from">导出于 %1$s</string>
+    <string name="backup_pending_counts">收藏 %1$d · 历史 %2$d · 下载 %3$d</string>
+    <string name="backup_policy_merge">合并：保留现有数据，同一条目以备份为准</string>
+    <string name="backup_policy_overwrite">覆盖：先清空现有数据</string>
+    <string name="backup_import_confirm">导入</string>
+    <string name="backup_imported">导入完成</string>
 </resources>

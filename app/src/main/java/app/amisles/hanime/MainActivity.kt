@@ -89,6 +89,7 @@ import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
+import app.amisles.hanime.feature.settings.BackupScreen
 import app.amisles.hanime.ui.screens.PlaylistDetailScreen
 import app.amisles.hanime.ui.screens.PlaylistListPageScreen
 import app.amisles.hanime.feature.settings.SettingsScreen
@@ -280,6 +281,7 @@ fun HanimeApp(
         currentRoute != "update" &&
         currentRoute != "login" &&
         currentRoute != "settings" &&
+        currentRoute != "backup" &&
         currentRoute != "batchDownload" &&
         !currentRoute.startsWith("subscriptions") &&
         !currentRoute.startsWith("author") &&
@@ -591,6 +593,11 @@ fun HanimeApp(
                     }
                     composable("diagnostics") {
                         DiagnosticsScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                    composable("backup") {
+                        BackupScreen(
                             onBackClick = { navController.popBackStack() }
                         )
                     }

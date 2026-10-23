@@ -12,6 +12,9 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
     fun getAllWatchHistory(): Flow<List<WatchHistoryEntity>>
 
+    @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
+    suspend fun getAllOnce(): List<WatchHistoryEntity>
+
     /**
      * 「继续观看」：有进度且未看完（< 95%）。
      *

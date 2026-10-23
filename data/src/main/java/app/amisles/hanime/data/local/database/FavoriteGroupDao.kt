@@ -19,6 +19,12 @@ interface FavoriteGroupDao {
     suspend fun deleteGroup(groupId: String)
 
     /** 删除分组时把其下收藏移回「未分组」，避免条目失去归属后不可见。 */
+    @Query("SELECT * FROM favorite_groups ORDER BY createdAt ASC")
+    suspend fun getAllGroupsOnce(): List<FavoriteGroupEntity>
+
+    @Query("DELETE FROM favorite_groups")
+    suspend fun clearAll()
+
     @Query("UPDATE favorites SET group_id = '' WHERE group_id = :groupId")
     suspend fun detachFavoritesOfGroup(groupId: String)
 }

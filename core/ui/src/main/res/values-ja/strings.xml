@@ -816,4 +816,26 @@
     <string name="download_quality_480p">SD (480p)</string>
     <string name="favorite_group_name_label">グループ名</string>
     <string name="favorite_group_name_hint">グループ名を入力</string>
+    <string name="backup_title">バックアップと復元</string>
+    <string name="backup_entry">バックアップと復元</string>
+    <string name="backup_entry_summary">お気に入り・履歴・ダウンロード・設定を入出力</string>
+    <string name="backup_export_section">バックアップを書き出す</string>
+    <string name="backup_export_desc">お気に入りとグループ、視聴履歴、ダウンロード一覧、検索履歴、設定、画面設定を含みます（認証情報は含みません）</string>
+    <string name="backup_export_action">ファイルに書き出す</string>
+    <string name="backup_import_section">バックアップから復元</string>
+    <string name="backup_import_desc">インポート前に現在のデータをこの端末に退避するため、いつでも戻せます</string>
+    <string name="backup_import_action">バックアップファイルを選択</string>
+    <string name="backup_export_done">バックアップを書き出しました</string>
+    <string name="backup_export_failed">書き出しに失敗しました</string>
+    <string name="backup_import_failed">インポートに失敗しました</string>
+    <string name="backup_error_package">このバックアップは別のアプリのものです</string>
+    <string name="backup_error_schema">バックアップがアプリより新しいため、先に更新してください</string>
+    <string name="backup_error_format">有効なバックアップではありません</string>
+    <string name="backup_pending_title">インポートの確認</string>
+    <string name="backup_pending_from">%1$s に書き出し</string>
+    <string name="backup_pending_counts">お気に入り %1$d · 履歴 %2$d · ダウンロード %3$d</string>
+    <string name="backup_policy_merge">統合：既存を残し、同一項目はバックアップを優先</string>
+    <string name="backup_policy_overwrite">上書き：既存データを削除してから復元</string>
+    <string name="backup_import_confirm">インポート</string>
+    <string name="backup_imported">インポートが完了しました</string>
 </resources>

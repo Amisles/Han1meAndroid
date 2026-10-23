@@ -18,6 +18,9 @@ interface SearchHistoryDao {
     @Query("DELETE FROM search_history WHERE query = :query")
     suspend fun removeSearch(query: String)
 
+    @Query("SELECT * FROM search_history ORDER BY searchedAt DESC LIMIT 20")
+    suspend fun getAllOnce(): List<SearchHistoryEntity>
+
     @Query("DELETE FROM search_history")
     suspend fun clearAllSearch()
 }

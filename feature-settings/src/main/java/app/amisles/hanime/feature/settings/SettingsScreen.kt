@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
@@ -614,6 +615,13 @@ fun SettingsScreen(
                     icon = Icons.Outlined.CleaningServices,
                     title = stringResource(R.string.settings_clear_cache),
                     onClick = { showClearCacheDialog = true }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.Backup,
+                    title = stringResource(R.string.backup_entry),
+                    subtitle = stringResource(R.string.backup_entry_summary),
+                    onClick = { onNavigate("backup") }
                 )
             }
 

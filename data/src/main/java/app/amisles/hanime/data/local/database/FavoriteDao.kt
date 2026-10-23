@@ -37,4 +37,7 @@ interface FavoriteDao {
     /** 更新自定义标签（逗号分隔，已由调用方规范化）。 */
     @Query("UPDATE favorites SET tags = :tags WHERE id = :videoId")
     suspend fun setFavoriteTags(videoId: String, tags: String)
+
+    @Query("DELETE FROM favorites")
+    suspend fun clearAll()
 }

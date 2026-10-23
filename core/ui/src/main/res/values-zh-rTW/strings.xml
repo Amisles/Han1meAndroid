@@ -816,4 +816,26 @@
     <string name="download_quality_480p">標準畫質 (480p)</string>
     <string name="favorite_group_name_label">分組名稱</string>
     <string name="favorite_group_name_hint">輸入分組名稱</string>
+    <string name="backup_title">備份與還原</string>
+    <string name="backup_entry">備份與還原</string>
+    <string name="backup_entry_summary">匯出或匯入收藏、歷史、下載清單與設定</string>
+    <string name="backup_export_section">匯出備份</string>
+    <string name="backup_export_desc">包含收藏與分組、觀看歷史、下載清單、搜尋歷史、設定與介面配置；不含登入憑證</string>
+    <string name="backup_export_action">匯出到檔案</string>
+    <string name="backup_import_section">還原備份</string>
+    <string name="backup_import_desc">匯入前會先在本機留存一份現有資料的快照，可隨時回復</string>
+    <string name="backup_import_action">選擇備份檔案</string>
+    <string name="backup_export_done">備份已匯出</string>
+    <string name="backup_export_failed">匯出失敗</string>
+    <string name="backup_import_failed">匯入失敗</string>
+    <string name="backup_error_package">此備份不屬於本應用程式</string>
+    <string name="backup_error_schema">備份版本較新，請先更新應用程式</string>
+    <string name="backup_error_format">檔案不是有效的備份包</string>
+    <string name="backup_pending_title">確認匯入</string>
+    <string name="backup_pending_from">匯出於 %1$s</string>
+    <string name="backup_pending_counts">收藏 %1$d · 歷史 %2$d · 下載 %3$d</string>
+    <string name="backup_policy_merge">合併：保留現有資料，同一項目以備份為準</string>
+    <string name="backup_policy_overwrite">覆蓋：先清空現有資料</string>
+    <string name="backup_import_confirm">匯入</string>
+    <string name="backup_imported">匯入完成</string>
 </resources>

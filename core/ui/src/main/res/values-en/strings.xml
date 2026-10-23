@@ -816,4 +816,26 @@
     <string name="download_quality_480p">SD (480p)</string>
     <string name="favorite_group_name_label">Group name</string>
     <string name="favorite_group_name_hint">Enter a group name</string>
+    <string name="backup_title">Backup &amp; restore</string>
+    <string name="backup_entry">Backup &amp; restore</string>
+    <string name="backup_entry_summary">Export or import favorites, history, downloads and settings</string>
+    <string name="backup_export_section">Export backup</string>
+    <string name="backup_export_desc">Includes favorites and groups, watch history, downloads, search history, settings and UI config; credentials excluded</string>
+    <string name="backup_export_action">Export to file</string>
+    <string name="backup_import_section">Restore backup</string>
+    <string name="backup_import_desc">A snapshot of current data is saved on this device before importing, so you can roll back</string>
+    <string name="backup_import_action">Choose backup file</string>
+    <string name="backup_export_done">Backup exported</string>
+    <string name="backup_export_failed">Export failed</string>
+    <string name="backup_import_failed">Import failed</string>
+    <string name="backup_error_package">This backup belongs to another app</string>
+    <string name="backup_error_schema">Backup is newer than this app; please update first</string>
+    <string name="backup_error_format">Not a valid backup package</string>
+    <string name="backup_pending_title">Confirm import</string>
+    <string name="backup_pending_from">Exported at %1$s</string>
+    <string name="backup_pending_counts">%1$d favorites · %2$d history · %3$d downloads</string>
+    <string name="backup_policy_merge">Merge: keep existing data, backup wins on conflicts</string>
+    <string name="backup_policy_overwrite">Overwrite: clear existing data first</string>
+    <string name="backup_import_confirm">Import</string>
+    <string name="backup_imported">Import completed</string>
 </resources>
