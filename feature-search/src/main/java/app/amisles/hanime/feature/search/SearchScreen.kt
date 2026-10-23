@@ -50,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -140,6 +142,25 @@ fun SearchScreen(
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
 
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+    // 输入过程中才展开建议；提交 / 清除 / 点选后收起，直到用户再次输入
+    var suggestionsOpen by remember { mutableStateOf(false) }
+    // 标签目录只随语言变化重建：每次按键都重新解析上百条文案是纯浪费
+    val suggestionTags = remember(context) {
+        SearchTagCatalog.groups.flatMap { group ->
+            group.tags.map { SuggestionTag(it.value, context.getString(it.labelRes)) }
+        }
+    }
+    val matchedHistory = remember(localQuery, searchHistory) {
+        SearchSuggestions.history(localQuery, searchHistory.orEmpty())
+    }
+    val matchedTags = remember(localQuery, suggestionTags) {
+        SearchSuggestions.tags(localQuery, suggestionTags)
+    }
+    val showSuggestions = suggestionsOpen && localQuery.isNotBlank() &&
+        (matchedHistory.isNotEmpty() || matchedTags.isNotEmpty())
+
     // 布局模式：用户显式选择优先；从未选择过时按宽度档位取默认（Compact 列表 / 平板网格）
     val sizeInfo = currentWindowSizeInfo()
     val savedLayoutMode by appPrefs.searchLayoutModeFlow.collectAsStateWithLifecycle()
@@ -229,12 +250,17 @@ fun SearchScreen(
                 value = localQuery,
                 onValueChange = {
                     localQuery = it
+                    suggestionsOpen = it.isNotBlank()
                 },
                 placeholder = stringResource(R.string.search_placeholder),
                 onSearch = {
+                    suggestionsOpen = false
                     viewModel.submitSearch(localQuery)
                 },
-                onClear = { viewModel.setQuery("") },
+                onClear = {
+                    suggestionsOpen = false
+                    viewModel.setQuery("")
+                },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -454,7 +480,28 @@ fun SearchScreen(
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 
-        if (isLoading && videos.isEmpty()) {
+        if (showSuggestions) {
+            SearchSuggestionPanel(
+                history = matchedHistory,
+                tags = matchedTags,
+                onHistoryClick = { keyword ->
+                    keyboardController?.hide()
+                    suggestionsOpen = false
+                    localQuery = keyword
+                    lastSyncedQuery = keyword
+                    viewModel.submitSearch(keyword)
+                },
+                onTagClick = { tag ->
+                    keyboardController?.hide()
+                    suggestionsOpen = false
+                    // 面板内的本地态同步重置，否则筛选胶囊会停留在已被清空的旧条件上
+                    selectedTags.value = setOf(tag.value)
+                    broadLocal.value = false
+                    selectedFilter.value = allCategory
+                    viewModel.submitTagSuggestion(tag.value)
+                }
+            )
+        } else if (isLoading && videos.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -30,6 +30,7 @@
     <string name="home_load_failed">Failed to load home page</string>
     <string name="search_placeholder">Enter keywords to search</string>
     <string name="search_history">Search History</string>
+    <string name="search_suggest_tags">Popular Tags</string>
     <string name="search_no_results">No search results</string>
     <string name="search_sort">Sort</string>
     <string name="search_sort_default">Default</string>

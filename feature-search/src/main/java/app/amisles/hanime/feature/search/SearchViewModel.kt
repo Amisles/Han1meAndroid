@@ -174,6 +174,22 @@ class SearchViewModel @Inject constructor(
         _broad.value = newBroad
     }
 
+    /**
+     * 点选搜索建议里的标签：该标签作为唯一条件重搜，只发一次请求。
+     *
+     * 关键词一并清空 —— 建议里的标签本来就是「按输入匹配出来的」，输入内容多半只是标签名的前缀，
+     * 再拿它当关键词做 AND 只会搜空；分类 / 日期 / 时长同理，叠加旧条件都不是用户的这次意图。
+     */
+    fun submitTagSuggestion(tagValue: String) {
+        _query.value = ""
+        _genre.value = null
+        _tags.value = listOf(tagValue)
+        _broad.value = false
+        _date.value = ""
+        _duration.value = ""
+        resetSearch()
+    }
+
     /** 设置发布日期筛选值（官网原值，空串 = 全部）；单值筛选，变更后立即提交搜索。 */
     fun setDate(newDate: String) {
         if (_date.value != newDate) {
