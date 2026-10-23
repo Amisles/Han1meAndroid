@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.common.extension.findActivity
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.BackupConflictPolicy
 import java.text.SimpleDateFormat
@@ -80,10 +81,14 @@ fun BackupScreen(
         val current = message ?: return@LaunchedEffect
         val text = when (current) {
             is BackupMessage.Text -> context.getString(current.resId)
-            BackupMessage.Imported -> context.getString(R.string.backup_imported)
+            is BackupMessage.Imported -> context.getString(R.string.backup_imported)
         }
         Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
         viewModel.consumeMessage()
+        // 语言属于资源级配置，改了必须重建 Activity 才会生效
+        if (current is BackupMessage.Imported && current.languageChanged) {
+            context.findActivity()?.recreate()
+        }
     }
 
     Column(

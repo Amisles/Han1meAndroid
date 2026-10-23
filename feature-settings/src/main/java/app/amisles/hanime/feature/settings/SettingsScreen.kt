@@ -75,6 +75,7 @@ import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsGroupDivider
 import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.SettingsNavRow
+import app.amisles.hanime.core.common.extension.findActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -391,7 +392,7 @@ fun SettingsScreen(
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
                 SettingsUiEvent.RecreateActivity -> {
-                    (context as? android.app.Activity)?.recreate()
+                    context.findActivity()?.recreate()
                 }
             }
         }

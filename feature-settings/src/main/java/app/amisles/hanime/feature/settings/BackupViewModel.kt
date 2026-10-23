@@ -13,6 +13,7 @@ import app.amisles.hanime.domain.model.BackupConflictPolicy
 import app.amisles.hanime.domain.model.BackupError
 import app.amisles.hanime.domain.model.BackupManifest
 import app.amisles.hanime.domain.repository.BackupRepository
+import app.amisles.hanime.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,13 +30,14 @@ data class PendingBackup(val manifest: BackupManifest, val bytes: ByteArray)
 
 sealed interface BackupMessage {
     data class Text(val resId: Int, val arg: String? = null) : BackupMessage
-    data object Imported : BackupMessage
+    data class Imported(val languageChanged: Boolean = false) : BackupMessage
 }
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     app: Application,
-    private val backup: BackupRepository
+    private val backup: BackupRepository,
+    private val settings: SettingsRepository
 ) : AndroidViewModel(app) {
 
     private val _isBusy = MutableStateFlow(false)
@@ -115,15 +117,16 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
+                    val languageBefore = settings.appLanguage
                     val (contents, summary) = backup.importBackup(current.bytes, policy)
                     contents.uiConfigText?.let { UiConfigStore.importFromText(it) }
-                    summary
+                    summary to (settings.appLanguage != languageBefore)
                 }
             }
             _isBusy.value = false
             if (result.isSuccess) _pending.value = null
             _message.value = result.fold(
-                onSuccess = { BackupMessage.Imported },
+                onSuccess = { (_, languageChanged) -> BackupMessage.Imported(languageChanged) },
                 onFailure = { e ->
                     AppLogger.logError("BackupViewModel", "导入失败: " + e.message, e)
                     BackupMessage.Text(messageFor(e))

@@ -52,24 +52,14 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
     private var appliedLanguage: String? = null
 
     /**
-     * Activity.attachBaseContext 阶段要读取的语言缓存。
+     * 供 Activity.attachBaseContext 使用的语言快照。
      *
      * 该回调发生在 Activity 创建的最早期，此时读 Preferences.appLanguage 是读 StateFlow，
      * 正常情况下只是一次内存读取；但若 Preferences 尚未初始化（例如系统在极早期拉起 Activity），
      * 就会退化为一次「加密存储解密」，把主线程卡在 Activity 创建路径上。
-     * 这里由 onCreate 在主线程外预热一次，之后读取只走内存。
+     * 快照统一托管在 LocaleHelper：启动时预热，Preferences 写入语言时同步刷新。
      */
-    @Volatile
-    private var cachedLanguage: String? = null
-
-    /** 供 Activity.attachBaseContext 使用的语言快照；未预热时回退到当前值并缓存。 */
-    fun currentLanguage(): String {
-        cachedLanguage?.let { return it }
-        val lang = runCatching { Preferences.appLanguage }
-            .getOrDefault(Preferences.LANGUAGE_ZH_CN)
-        cachedLanguage = lang
-        return lang
-    }
+    fun currentLanguage(): String = LocaleHelper.languageSnapshot { persistedLanguage() }
 
     /**
      * 只记录原始 base context，供 [applyLanguage] 重新包装。
@@ -92,7 +82,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
      * （Application 的 attachBaseContext 每进程只执行一次）。
      */
     fun applyLanguage(lang: String) {
-        cachedLanguage = lang
+        LocaleHelper.rememberLanguage(lang)
         val base = rawBaseContext ?: return
         if (lang == appliedLanguage) return
         runCatching {
@@ -148,8 +138,6 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
     override fun onCreate() {
         super.onCreate()
         Preferences.init(this)
-        // 预热语言快照：Activity.attachBaseContext 会读它，避免在创建关键路径上触发解密
-        cachedLanguage = persistedLanguage()
         UiConfigStore.init(this)
         applyLanguage(persistedLanguage())
         AppLogger.init(this)

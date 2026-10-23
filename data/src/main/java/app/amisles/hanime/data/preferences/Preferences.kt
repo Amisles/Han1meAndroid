@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.LocaleHelper
 import java.io.File
 
 object Preferences : SettingsRepository, SessionRepository {
@@ -463,6 +464,7 @@ object Preferences : SettingsRepository, SessionRepository {
     override fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
         _appLanguageFlow.value = lang
+        LocaleHelper.rememberLanguage(lang)
     }
 
     override fun setThemeMode(mode: ThemeMode) {

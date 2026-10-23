@@ -11,6 +11,22 @@ import java.util.Locale
  */
 object LocaleHelper {
 
+    /**
+     * 语言快照。Activity.attachBaseContext 需要同步取值，但那里不能读加密存储，
+     * 因此由 Application 启动时预热、语言写入时刷新，全进程共享一份。
+     */
+    @Volatile
+    private var cachedLanguage: String? = null
+
+    /** 写入语言后必须调用，否则 Activity 重建时仍会按旧语言包装 Resources。 */
+    fun rememberLanguage(lang: String) {
+        cachedLanguage = lang
+    }
+
+    /** 读取语言快照；未预热时用 [load] 取值并缓存。 */
+    fun languageSnapshot(load: () -> String): String =
+        cachedLanguage ?: load().also { cachedLanguage = it }
+
     /** Application 与 Activity 的 attachBaseContext 中都必须调用。 */
     fun wrapContext(context: Context, lang: String): Context {
         val safeLang = lang.ifBlank { LANGUAGE_ZH_CN }
