@@ -38,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -56,11 +57,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.Storage
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
@@ -129,10 +130,16 @@ fun DownloadScreen(
     val viewModel: DownloadViewModel = hiltViewModel()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val storageInfo by viewModel.storageInfo.collectAsStateWithLifecycle()
-    var showStoragePanel by rememberSaveable { mutableStateOf(false) }
+    // 不用 rememberSaveable：面板是一次性的浮层，离开页面再回来不应保持展开
+    var showStoragePanel by remember { mutableStateOf(false) }
 
     LaunchedEffect(showStoragePanel) {
         if (showStoragePanel) viewModel.refreshStorageInfo()
+    }
+
+    // 离开下载页时收起面板，避免返回后仍停留在一个过期的浮层上
+    DisposableEffect(Unit) {
+        onDispose { showStoragePanel = false }
     }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -370,7 +377,7 @@ fun DownloadScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Sort,
+                            imageVector = Icons.AutoMirrored.Outlined.Sort,
                             contentDescription = stringResource(R.string.download_sort_title),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
@@ -805,6 +812,19 @@ fun DownloadScreen(
                 }
             }
         }
+    }
+
+    // 面板展开时铺一层透明遮罩：点击空白处即收起。
+    // 遮罩不拦截内容的滚动（只是吞掉点击），所以列表仍可正常滑动。
+    if (showStoragePanel) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { showStoragePanel = false }
+        )
     }
 
     // 存储面板入口：悬浮在内容之上，不占用列表空间；点开后以气泡形式展示用量

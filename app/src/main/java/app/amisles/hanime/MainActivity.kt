@@ -422,8 +422,17 @@ fun HanimeApp(
                         HomeScreen(
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                            // 保持 saveState / launchSingleTop / restoreState 不变：
+                            // 它们是底部 Tab 状态保存机制的一部分，navigateToTab 依赖这套配对。
+                            //
+                            // 附带 ts 时间戳：条目可能被 launchSingleTop / restoreState 复用，
+                            // 此时参数相同会被 ViewModel 的指纹判为「已注入」而跳过。
+                            // 时间戳让每次「点大图」都是一次可区分的新意图，
+                            // 而「从详情页返回」参数不变，仍会被正确跳过。
                             onSearchClick = { keyword ->
-                                navController.navigate("search?keyword=${Uri.encode(keyword)}") {
+                                navController.navigate(
+                                    "search?keyword=${Uri.encode(keyword)}&ts=${System.currentTimeMillis()}"
+                                ) {
                                     popUpTo(navController.graph.startDestinationId) {
                                         saveState = true
                                     }
@@ -431,7 +440,9 @@ fun HanimeApp(
                                     restoreState = true
                                 } },
                             onGenreSearch = { genre ->
-                                navController.navigate("search?genre=${Uri.encode(genre)}") {
+                                navController.navigate(
+                                    "search?genre=${Uri.encode(genre)}&ts=${System.currentTimeMillis()}"
+                                ) {
                                     popUpTo(navController.graph.startDestinationId) {
                                         saveState = true
                                     }
@@ -468,7 +479,7 @@ fun HanimeApp(
                         )
                     }
                     composable(
-                        route = "search?keyword={keyword}&genre={genre}&sort={sort}",
+                        route = "search?keyword={keyword}&genre={genre}&sort={sort}&ts={ts}",
                         arguments = listOf(
                             navArgument("keyword") {
                                 type = NavType.StringType
@@ -481,6 +492,11 @@ fun HanimeApp(
                             navArgument("sort") {
                                 type = NavType.StringType
                                 nullable = true
+                                defaultValue = null },
+                            // 仅用于区分「同参数的新一次点按」，不参与搜索条件
+                            navArgument("ts") {
+                                type = NavType.StringType
+                                nullable = true
                                 defaultValue = null
                             }
                         )
@@ -488,10 +504,12 @@ fun HanimeApp(
                         val keyword = backStackEntry.arguments?.getString("keyword")
                         val genre = backStackEntry.arguments?.getString("genre")
                         val sort = backStackEntry.arguments?.getString("sort")
+                        val ts = backStackEntry.arguments?.getString("ts")
                         SearchScreen(
                             initialKeyword = keyword,
                             initialGenre = genre,
                             initialSort = sort,
+                            initialToken = ts,
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                             onAuthorClick = { author ->

@@ -814,4 +814,6 @@
     <string name="download_quality_1080p">フル HD (1080p)</string>
     <string name="download_quality_720p">HD (720p)</string>
     <string name="download_quality_480p">SD (480p)</string>
+    <string name="favorite_group_name_label">グループ名</string>
+    <string name="favorite_group_name_hint">グループ名を入力</string>
 </resources>

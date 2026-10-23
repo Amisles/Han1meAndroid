@@ -26,14 +26,18 @@ class SearchViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
-     * 导航入参是否已注入。
+     * 已注入过的导航入参指纹。
      *
      * 用 ViewModel 而非 Composable 的 LaunchedEffect(Unit) 记账：从详情页返回时
      * 搜索页会重新进入组合，LaunchedEffect(Unit) 随之再次执行，把用户后来输入的
-     * 关键词覆盖回导航参数里的旧值。ViewModel 的生命周期覆盖整个导航条目，
-     * 才真正表达「只注入一次」。
+     * 关键词覆盖回导航参数里的旧值。
+     *
+     * 记录**参数内容**而非布尔标记：带参导航若命中 launchSingleTop，会复用同一个
+     * NavBackStackEntry 与其 ViewModel，布尔标记会让新参数被当成「已注入过」而忽略，
+     * 表现为再次点大图时搜索框不填充。按内容去重则两种情况都正确：
+     * 参数未变（返回页面）不重复注入，参数变了（新的点按）重新注入。
      */
-    private var initialArgsApplied = false
+    private var appliedArgsFingerprint: String? = null
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -108,24 +112,28 @@ class SearchViewModel @Inject constructor(
     }
 
     /**
-     * 应用导航入参（关键词 / 分类 / 排序），只生效一次。
+     * 应用导航入参（关键词 / 分类 / 排序），每次导航意图只生效一次。
      *
+     * @param token 导航意图标识，由调用方为每次点按生成新值。它让「同参数的新一次点按」
+     *   与「从详情页返回」可以区分：前者 token 变化需要重新注入，后者不变应跳过。
      * @return true 表示本次调用实际注入了初值，false 表示此前已注入过、本次忽略。
      */
-    fun applyInitialArgs(keyword: String?, genre: String?, sort: String?): Boolean {
-        if (initialArgsApplied) return false
-        initialArgsApplied = true
+    fun applyInitialArgs(
+        keyword: String?,
+        genre: String?,
+        sort: String?,
+        token: String? = null
+    ): Boolean {
+        val fingerprint = "$token|$keyword|$genre|$sort"
+        if (appliedArgsFingerprint == fingerprint) return false
+        appliedArgsFingerprint = fingerprint
 
         val cleaned = keyword?.trimStart('#')?.trim().orEmpty()
-        if (cleaned.isNotEmpty()) {
-            _query.value = cleaned
-        }
-        if (!genre.isNullOrBlank()) {
-            _genre.value = genre
-        }
-        if (!sort.isNullOrBlank()) {
-            _sort.value = sort
-        }
+        // 无关键词时也要显式清空：否则复用条目场景下，上一次的关键词会残留在输入框，
+        // 与「点大图只想按标题搜索」的意图不符。
+        _query.value = cleaned
+        _genre.value = genre?.takeIf { it.isNotBlank() }
+        _sort.value = sort?.takeIf { it.isNotBlank() }
         if (hasAnyCriteria()) executeSearch()
         return true
     }

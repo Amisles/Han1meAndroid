@@ -610,7 +610,9 @@ class NetworkService @Inject constructor(
                 if (!response.isSuccessful) {
                     throw IOException("订阅作者失败 (HTTP $code)")
                 }
-                body ?: throw IOException("订阅作者返回空响应")
+                // body 由 response.body.string() 返回，类型非空；空串才是「无内容」的判据
+                if (body.isEmpty()) throw IOException("订阅作者返回空响应")
+                body
             }
         }
     }

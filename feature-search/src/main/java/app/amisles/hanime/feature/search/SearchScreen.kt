@@ -57,7 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
@@ -80,6 +80,11 @@ fun SearchScreen(
     initialKeyword: String? = null,
     initialGenre: String? = null,
     initialSort: String? = null,
+    /**
+     * 导航意图标识：每次「点大图 / 点分类」都带一个不同值，用于区分
+     * 「同参数的新一次点按」与「从详情页返回」。不参与搜索条件。
+     */
+    initialToken: String? = null,
     onAuthorClick: (String) -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
@@ -176,10 +181,15 @@ fun SearchScreen(
         }
     }
 
-    // 导航入参只注入一次，且由 ViewModel 记账。
-    // 用 LaunchedEffect(Unit) 不够：从详情页返回时本页会重新进入组合，
-    // 该 effect 会再次执行，把用户后来输入的词覆盖回导航参数里的旧值。
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    // 以导航参数为 key 重新注入，由 ViewModel 按参数内容去重。
+    //
+    // 为什么不是 LaunchedEffect(Unit)：带参导航命中 launchSingleTop / restoreState 时
+    // 会复用同一个 NavBackStackEntry，ViewModel 不重建；若 effect 只跑一次，
+    // 再次点大图时新参数就进不来，搜索框不会填充。
+    //
+    // 为什么 ViewModel 侧还要去重：从详情页返回时本页会重新进入组合，effect 会再跑一次，
+    // 参数没变就必须跳过，否则会把用户后来输入的词覆盖回导航参数里的旧值。
+    androidx.compose.runtime.LaunchedEffect(initialToken, initialKeyword, initialGenre, initialSort) {
         val genreArg = categories.firstOrNull {
             it.label.equals(initialGenre.orEmpty(), ignoreCase = true) ||
                 it.apiValue.equals(initialGenre.orEmpty(), ignoreCase = true)
@@ -190,7 +200,8 @@ fun SearchScreen(
         val applied = viewModel.applyInitialArgs(
             keyword = initialKeyword,
             genre = genreArg,
-            sort = sortArg
+            sort = sortArg,
+            token = initialToken
         )
         if (applied) {
             // 只对齐输入框；分类与排序胶囊已由 ViewModel 的 genre / sort 派生，无需手动同步

@@ -249,7 +249,14 @@ object Preferences : SettingsRepository, SessionRepository {
      * - 首次从明文旧文件迁移：读取旧值 → 删除旧文件 → 写入加密文件，避免明文会话残留。
      * - Android Keystore 不可用（极端设备）时回退明文存储，但不再落盘会话凭据。
      * - 换机恢复后旧密文无法解密时清空重建，而不是把加密文件当明文读写。
+     *
+     * 局部抑制 DEPRECATION：EncryptedSharedPreferences 与 MasterKey 在
+     * security-crypto 1.1.0 被标记弃用，但 AndroidX 没有给出替代 API（官方建议
+     * 自行基于 Keystore 实现）。自行替换意味着重做密钥管理与既有密文的迁移路径，
+     * 一旦出错会直接导致用户登录态与全部配置丢失，风险与收益不成比例。
+     * 待上游给出迁移方案，或本模块整体更换存储方案时再处理。
      */
+    @Suppress("DEPRECATION")
     private fun provideSecurePreferences(context: Context): SharedPreferences {
         // Application.attachBaseContext 阶段 applicationContext 仍为 null，直接使用传入的 context
         val appCtx = context.applicationContext ?: context
@@ -340,6 +347,7 @@ object Preferences : SettingsRepository, SessionRepository {
         return createEncrypted(appCtx, masterKey) ?: plainFallback(context)
     }
 
+    @Suppress("DEPRECATION")
     private fun createEncrypted(context: Context, masterKey: MasterKey): SharedPreferences? = runCatching {
         EncryptedSharedPreferences.create(
             context,

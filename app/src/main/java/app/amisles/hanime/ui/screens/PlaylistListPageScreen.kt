@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.theme.HanimeBackground

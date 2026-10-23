@@ -178,7 +178,7 @@ internal fun FavoriteTagsRow(
     }
 }
 
-/** 分组名称输入对话框，用于新建与重命名。 */
+/** 分组名称输入对话框，用于新建与重命名；样式与收藏管理弹窗保持一致。 */
 @Composable
 internal fun GroupNameDialog(
     title: String,
@@ -189,35 +189,55 @@ internal fun GroupNameDialog(
     var value by remember { mutableStateOf(initialValue) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            BasicTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                textStyle = TextStyle(
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp),
+        title = {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
+        },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.favorite_group_name_label),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SearchField(
+                    value = value,
+                    onValueChange = { value = it },
+                    placeholder = stringResource(R.string.favorite_group_name_hint),
+                    singleLine = true,
+                    showSearchIcon = false,
+                    onSearch = { if (value.isNotBlank()) onConfirm(value) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(value) },
                 enabled = value.isNotBlank()
             ) {
-                Text(stringResource(R.string.common_confirm))
+                Text(
+                    text = stringResource(R.string.common_confirm),
+                    fontWeight = FontWeight.Medium
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
+                Text(
+                    text = stringResource(R.string.common_cancel),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     )

@@ -845,4 +845,6 @@
     <string name="download_quality_1080p">全高清画质 (1080p)</string>
     <string name="download_quality_720p">高清画质 (720p)</string>
     <string name="download_quality_480p">标准画质 (480p)</string>
+    <string name="favorite_group_name_label">分组名称</string>
+    <string name="favorite_group_name_hint">输入分组名称</string>
 </resources>

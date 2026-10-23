@@ -814,4 +814,6 @@
     <string name="download_quality_1080p">Full HD (1080p)</string>
     <string name="download_quality_720p">HD (720p)</string>
     <string name="download_quality_480p">SD (480p)</string>
+    <string name="favorite_group_name_label">Group name</string>
+    <string name="favorite_group_name_hint">Enter a group name</string>
 </resources>

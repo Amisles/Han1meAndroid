@@ -105,7 +105,7 @@ class PlaybackService : MediaSessionService() {
                 .add(SESSION_COMMAND_SEEK_FORWARD)
                 .add(SESSION_COMMAND_STOP)
                 .build()
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+            return MediaSession.ConnectionResult.AcceptedResultBuilder()
                 .setAvailableSessionCommands(sessionCommands)
                 .build()
         }

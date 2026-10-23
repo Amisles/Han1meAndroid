@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.download
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +65,12 @@ internal fun DownloadStorageBubble(
                 MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                 RoundedCornerShape(14.dp)
             )
-            .clickable(enabled = false) {}
+            // 吞掉点击，避免点气泡内部时穿透到下层遮罩把面板关掉。
+            // 必须用 enabled=true 的 clickable：enabled=false 不参与命中测试，点击仍会穿透。
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {}
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {

@@ -75,7 +75,7 @@ import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.SettingsNavRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 data class LanguageOption(val code: String, val label: String)

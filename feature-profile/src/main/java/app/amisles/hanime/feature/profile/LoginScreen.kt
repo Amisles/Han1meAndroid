@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
