@@ -6,6 +6,7 @@ import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -25,8 +26,11 @@ class ProfileViewModel @Inject constructor(
     private val library: LibraryRepository,
     private val account: AccountRepository,
     private val session: SessionRepository,
-    private val downloads: DownloadRepository
+    private val downloads: DownloadRepository,
+    settings: SettingsRepository
 ) : ViewModel() {
+
+    val watchStatsEnabled: StateFlow<Boolean> = settings.watchStatsEnabledFlow
 
     private val _watchCount = MutableStateFlow(0)
     val watchCount: StateFlow<Int> = _watchCount.asStateFlow()

@@ -3,6 +3,7 @@ package app.amisles.hanime.data.di
 import app.amisles.hanime.data.backup.BackupManager
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.repository.HanimeRepository
+import app.amisles.hanime.data.stats.StatsManager
 import app.amisles.hanime.data.update.GitHubUpdateRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.BackupRepository
@@ -10,6 +11,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.repository.StatsRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.repository.UpdateRepository
 import dagger.Binds
@@ -58,5 +60,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindBackupRepository(impl: BackupManager): BackupRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindStatsRepository(impl: StatsManager): StatsRepository
 
 }

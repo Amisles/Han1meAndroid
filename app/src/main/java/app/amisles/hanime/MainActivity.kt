@@ -85,6 +85,7 @@ import app.amisles.hanime.feature.profile.LoginScreen
 import app.amisles.hanime.feature.profile.ProfileScreen
 import app.amisles.hanime.feature.profile.AccountProfileScreen
 import app.amisles.hanime.feature.profile.SubscriptionsScreen
+import app.amisles.hanime.feature.profile.WatchStatsScreen
 import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.feature.settings.AboutScreen
@@ -282,6 +283,7 @@ fun HanimeApp(
         currentRoute != "login" &&
         currentRoute != "settings" &&
         currentRoute != "backup" &&
+        currentRoute != "watchStats" &&
         currentRoute != "batchDownload" &&
         !currentRoute.startsWith("subscriptions") &&
         !currentRoute.startsWith("author") &&
@@ -559,6 +561,11 @@ fun HanimeApp(
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
                             }
+                        )
+                    }
+                    composable("watchStats") {
+                        WatchStatsScreen(
+                            onBackClick = { navController.popBackStack() }
                         )
                     }
                     composable("history") {

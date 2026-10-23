@@ -838,4 +838,19 @@
     <string name="backup_policy_overwrite">覆蓋：先清空現有資料</string>
     <string name="backup_import_confirm">匯入</string>
     <string name="backup_imported">匯入完成</string>
+    <string name="watch_stats_title">觀看統計</string>
+    <string name="watch_stats_empty">還沒有觀看紀錄</string>
+    <string name="watch_stats_week">本週觀看</string>
+    <string name="watch_stats_total">累計條目</string>
+    <string name="watch_stats_entries">條</string>
+    <string name="watch_stats_completion">完成率</string>
+    <string name="watch_stats_completion_detail">已看完 %1$d / %2$d 條</string>
+    <string name="watch_stats_daily">近 7 天</string>
+    <string name="watch_stats_top_authors">常看作者</string>
+    <string name="watch_stats_no_author">暫無作者資訊</string>
+    <string name="watch_stats_author_count">%1$d 次</string>
+    <string name="watch_stats_minutes">%1$d 分鐘</string>
+    <string name="watch_stats_hours">%1$d 小時 %2$d 分</string>
+    <string name="settings_watch_stats">觀看統計</string>
+    <string name="settings_watch_stats_summary">純本機計算本週觀看時長、常看作者與完成率；關閉後不顯示入口</string>
 </resources>

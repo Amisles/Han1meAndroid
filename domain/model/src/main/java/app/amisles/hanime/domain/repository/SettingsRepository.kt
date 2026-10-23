@@ -102,6 +102,12 @@ interface SettingsRepository {
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
     fun setSearchLayoutMode(mode: SearchLayoutMode)
 
+    // ── 统计 ────────────────────────────────────────────────────────────────
+    /** 观看统计开关。关闭后不展示入口，也不做任何统计计算。 */
+    val watchStatsEnabled: Boolean
+    val watchStatsEnabledFlow: StateFlow<Boolean>
+    fun setWatchStatsEnabled(enabled: Boolean)
+
     companion object {
         const val DEFAULT_BASE_URL = "https://hanime1.me"
 

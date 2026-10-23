@@ -838,4 +838,19 @@
     <string name="backup_policy_overwrite">上書き：既存データを削除してから復元</string>
     <string name="backup_import_confirm">インポート</string>
     <string name="backup_imported">インポートが完了しました</string>
+    <string name="watch_stats_title">視聴統計</string>
+    <string name="watch_stats_empty">視聴履歴がまだありません</string>
+    <string name="watch_stats_week">今週の視聴</string>
+    <string name="watch_stats_total">累計件数</string>
+    <string name="watch_stats_entries">件</string>
+    <string name="watch_stats_completion">完走率</string>
+    <string name="watch_stats_completion_detail">%1$d / %2$d 件を完走</string>
+    <string name="watch_stats_daily">直近 7 日</string>
+    <string name="watch_stats_top_authors">よく見る作者</string>
+    <string name="watch_stats_no_author">作者情報なし</string>
+    <string name="watch_stats_author_count">%1$d 回</string>
+    <string name="watch_stats_minutes">%1$d 分</string>
+    <string name="watch_stats_hours">%1$d 時間 %2$d 分</string>
+    <string name="settings_watch_stats">視聴統計</string>
+    <string name="settings_watch_stats_summary">今週の視聴時間・よく見る作者・完走率を端末内で計算します。オフにすると入口を隠します</string>
 </resources>

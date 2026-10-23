@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
@@ -588,6 +589,14 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_subscription_reminder_summary),
                     checked = uiState.subscriptionReminder,
                     onCheckedChange = { enabled -> viewModel.setSubscriptionReminder(enabled) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.Insights,
+                    title = stringResource(R.string.settings_watch_stats),
+                    subtitle = stringResource(R.string.settings_watch_stats_summary),
+                    checked = uiState.watchStatsEnabled,
+                    onCheckedChange = { enabled -> viewModel.setWatchStatsEnabled(enabled) }
                 )
             }
 

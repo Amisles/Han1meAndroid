@@ -56,6 +56,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_DOWNLOAD_RATE_LIMIT = "download_rate_limit_mbps"
     private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
+    private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
     private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
@@ -124,6 +125,9 @@ object Preferences : SettingsRepository, SessionRepository {
 
     private val _subscriptionReminderFlow = MutableStateFlow(false)
     override val subscriptionReminderFlow: StateFlow<Boolean> = _subscriptionReminderFlow.asStateFlow()
+
+    private val _watchStatsEnabledFlow = MutableStateFlow(true)
+    override val watchStatsEnabledFlow: StateFlow<Boolean> = _watchStatsEnabledFlow.asStateFlow()
 
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
     override val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
@@ -206,6 +210,7 @@ object Preferences : SettingsRepository, SessionRepository {
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _downloadRateLimitFlow.value = readInt(SP_DOWNLOAD_RATE_LIMIT, 0)
         _subscriptionReminderFlow.value = readBoolean(SP_SUBSCRIPTION_REMINDER, false)
+        _watchStatsEnabledFlow.value = readBoolean(SP_WATCH_STATS_ENABLED, true)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
         // 清洗失败时回退默认地址
         val rawBaseUrl = readString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
@@ -421,6 +426,8 @@ object Preferences : SettingsRepository, SessionRepository {
 
     override val subscriptionReminder: Boolean get() = _subscriptionReminderFlow.value
 
+    override val watchStatsEnabled: Boolean get() = _watchStatsEnabledFlow.value
+
     override val baseUrl: String get() = _baseUrlFlow.value
 
     /**
@@ -572,6 +579,11 @@ object Preferences : SettingsRepository, SessionRepository {
     override fun setSubscriptionReminder(enabled: Boolean) {
         sp.edit { putBoolean(SP_SUBSCRIPTION_REMINDER, enabled) }
         _subscriptionReminderFlow.value = enabled
+    }
+
+    override fun setWatchStatsEnabled(enabled: Boolean) {
+        sp.edit { putBoolean(SP_WATCH_STATS_ENABLED, enabled) }
+        _watchStatsEnabledFlow.value = enabled
     }
 
     override val subscriptionSeenVideoIds: Set<String>

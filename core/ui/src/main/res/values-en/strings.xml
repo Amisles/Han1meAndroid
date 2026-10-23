@@ -838,4 +838,19 @@
     <string name="backup_policy_overwrite">Overwrite: clear existing data first</string>
     <string name="backup_import_confirm">Import</string>
     <string name="backup_imported">Import completed</string>
+    <string name="watch_stats_title">Watch stats</string>
+    <string name="watch_stats_empty">No watch history yet</string>
+    <string name="watch_stats_week">This week</string>
+    <string name="watch_stats_total">Total entries</string>
+    <string name="watch_stats_entries">items</string>
+    <string name="watch_stats_completion">Completion rate</string>
+    <string name="watch_stats_completion_detail">%1$d of %2$d finished</string>
+    <string name="watch_stats_daily">Last 7 days</string>
+    <string name="watch_stats_top_authors">Top authors</string>
+    <string name="watch_stats_no_author">No author info</string>
+    <string name="watch_stats_author_count">%1$d times</string>
+    <string name="watch_stats_minutes">%1$d min</string>
+    <string name="watch_stats_hours">%1$d h %2$d min</string>
+    <string name="settings_watch_stats">Watch stats</string>
+    <string name="settings_watch_stats_summary">Computes weekly watch time, top authors and completion rate locally; hide the entry when off</string>
 </resources>

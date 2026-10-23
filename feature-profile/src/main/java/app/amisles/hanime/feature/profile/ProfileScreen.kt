@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
@@ -100,6 +101,7 @@ fun ProfileScreen(
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
     val favoriteCount by profileViewModel.favoriteCount.collectAsStateWithLifecycle()
     val downloadCount by profileViewModel.downloadCount.collectAsStateWithLifecycle()
+    val watchStatsEnabled by profileViewModel.watchStatsEnabled.collectAsStateWithLifecycle()
 
     var showLoginUnsupportedDialog by remember { mutableStateOf(false) }
 
@@ -123,6 +125,9 @@ fun ProfileScreen(
         if (isLogin) {
             add(ProfileMenuItem(Icons.Default.Subscriptions, stringResource(R.string.subscriptions)) { onNavigate("subscriptions") })
             add(ProfileMenuItem(Icons.Default.AccountCircle, stringResource(R.string.profile_account)) { onNavigate("accountEdit") })
+        }
+        if (watchStatsEnabled) {
+            add(ProfileMenuItem(Icons.Default.Insights, stringResource(R.string.watch_stats_title)) { onNavigate("watchStats") })
         }
         add(ProfileMenuItem(Icons.Default.Download, stringResource(R.string.profile_batch_download)) { onNavigate("batchDownload") })
         add(ProfileMenuItem(Icons.Default.SystemUpdate, stringResource(R.string.profile_check_update)) { onNavigate("update") })

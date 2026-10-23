@@ -34,7 +34,8 @@ data class SettingsUiState(
     val downloadStoragePath: String = "",
     val longPressBoostSpeed: Float = 2f,
     val doubleTapSeek: Boolean = true,
-    val autoQuality: Boolean = true
+    val autoQuality: Boolean = true,
+    val watchStatsEnabled: Boolean = true
 ) {
     val isDefaultBaseUrl: Boolean get() = baseUrl == SettingsRepository.DEFAULT_BASE_URL
 
@@ -86,6 +87,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(downloadRateLimit = rateLimit)
     }.combine(settings.subscriptionReminderFlow) { state, enabled ->
         state.copy(subscriptionReminder = enabled)
+    }.combine(settings.watchStatsEnabledFlow) { state, enabled ->
+        state.copy(watchStatsEnabled = enabled)
     }.combine(settings.downloadStoragePathFlow) { state, storagePath ->
         state.copy(downloadStoragePath = storagePath)
     }.combine(settings.longPressBoostSpeedFlow) { state, speed ->
@@ -107,6 +110,7 @@ class SettingsViewModel @Inject constructor(
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         downloadRateLimit = settings.downloadRateLimit,
         subscriptionReminder = settings.subscriptionReminder,
+        watchStatsEnabled = settings.watchStatsEnabled,
         baseUrl = settings.baseUrl,
         isLoginSupported = settings.isLoginSupported,
         downloadStoragePath = settings.downloadStoragePathFlow.value,
@@ -134,6 +138,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setSubscriptionReminder(enabled: Boolean) {
         settings.setSubscriptionReminder(enabled)
+    }
+
+    fun setWatchStatsEnabled(enabled: Boolean) {
+        settings.setWatchStatsEnabled(enabled)
     }
 
     fun setLongPressBoostSpeed(speed: Float) {
