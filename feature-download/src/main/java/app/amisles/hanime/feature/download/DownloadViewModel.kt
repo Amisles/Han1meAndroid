@@ -51,6 +51,10 @@ class DownloadViewModel @Inject constructor(
         }
     }
 
+    fun pauseAll() = mutate { downloads.pauseAll() }
+    fun resumeAll() = mutate { downloads.resumeAll() }
+    fun moveToFront(taskId: Int) = mutate { downloads.moveToFront(taskId) }
+
     fun pauseDownload(taskId: Int) = mutate { downloads.pauseDownload(taskId) }
     fun resumeDownload(taskId: Int) = mutate { downloads.resumeDownload(taskId) }
     fun cancelDownload(taskId: Int) = mutate { downloads.cancelDownload(taskId) }

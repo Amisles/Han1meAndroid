@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -60,6 +61,7 @@ internal data class DownloadItemActions(
     val onRetryClick: () -> Unit = {},
     val onPlayClick: () -> Unit = {},
     val onDeleteClick: () -> Unit = {},
+    val onMoveToFront: () -> Unit = {},
 )
 
 @Composable
@@ -311,6 +313,19 @@ internal fun DownloadTaskItem(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = stringResource(R.string.common_retry),
                                 tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    task.status == DownloadStatus.PENDING -> {
+                        IconButton(
+                            onClick = actions.onMoveToFront,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VerticalAlignTop,
+                                contentDescription = stringResource(R.string.download_queue_move_front),
+                                tint = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.size(20.dp)
                             )
                         }

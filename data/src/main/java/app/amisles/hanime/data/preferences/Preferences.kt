@@ -59,6 +59,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_DOWNLOAD_WIFI_ONLY = "download_wifi_only"
     private const val SP_DOWNLOAD_CHARGING_ONLY = "download_charging_only"
     private const val SP_DOWNLOAD_NIGHT_ONLY = "download_night_only"
+    private const val SP_DOWNLOAD_QUEUE_ORDER = "download_queue_order"
     private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
@@ -625,6 +626,17 @@ object Preferences : SettingsRepository, SessionRepository {
     override fun setDownloadNightOnly(enabled: Boolean) {
         sp.edit { putBoolean(SP_DOWNLOAD_NIGHT_ONLY, enabled) }
         _downloadNightOnlyFlow.value = enabled
+    }
+
+    override val downloadQueueOrder: List<Int>
+        get() = runCatching {
+            readString(SP_DOWNLOAD_QUEUE_ORDER, "").orEmpty()
+                .split(',')
+                .mapNotNull { it.trim().toIntOrNull() }
+        }.getOrDefault(emptyList())
+
+    override fun setDownloadQueueOrder(ids: List<Int>) {
+        sp.edit { putString(SP_DOWNLOAD_QUEUE_ORDER, ids.joinToString(",")) }
     }
 
     override fun setSubscriptionReminder(enabled: Boolean) {

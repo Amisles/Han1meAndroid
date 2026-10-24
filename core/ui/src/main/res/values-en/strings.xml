@@ -809,6 +809,10 @@
     <string name="download_gate_blocked_charging">Waiting for charging</string>
     <string name="download_gate_blocked_night">Waiting for night window</string>
     <string name="download_gate_hint">Resumes automatically once conditions are met</string>
+    <string name="download_queue_pause_all">Pause all</string>
+    <string name="download_queue_resume_all">Resume all</string>
+    <string name="download_queue_move_front">Move to top</string>
+    <string name="download_queue_toast_paused">Paused %1$d tasks</string>
     <string name="download_storage_title">Storage</string>
     <string name="download_storage_free">%1$s free</string>
     <string name="download_storage_used">%1$s used</string>

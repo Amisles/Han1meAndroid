@@ -840,6 +840,10 @@
     <string name="download_gate_blocked_charging">等待充电</string>
     <string name="download_gate_blocked_night">等待夜间时段</string>
     <string name="download_gate_hint">条件满足后自动继续</string>
+    <string name="download_queue_pause_all">全部暂停</string>
+    <string name="download_queue_resume_all">全部恢复</string>
+    <string name="download_queue_move_front">置顶</string>
+    <string name="download_queue_toast_paused">已暂停 %1$d 个任务</string>
     <string name="download_storage_title">存储空间</string>
     <string name="download_storage_free">剩余 %1$s</string>
     <string name="download_storage_used">已用 %1$s</string>

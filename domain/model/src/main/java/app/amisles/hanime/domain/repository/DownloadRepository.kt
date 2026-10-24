@@ -62,6 +62,15 @@ interface DownloadRepository {
     /** 处于 PENDING 的任务数，用于判断是否值得展示阻塞提示。 */
     fun pendingCount(): Int
 
+    /** 把任务提到队首（下次有空闲槽位时优先启动）。 */
+    fun moveToFront(taskId: Int)
+
+    /** 暂停全部进行中与排队中的任务。 */
+    fun pauseAll()
+
+    /** 恢复全部已暂停的任务，受并发上限与调度闸门约束。 */
+    fun resumeAll()
+
     /** 清理无任务引用的位图文件，返回释放字节数。 */
     suspend fun clearOrphanPartmaps(): Long
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean

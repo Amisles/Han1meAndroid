@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -68,6 +70,7 @@ import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.theme.HanimeDanger
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.R
 
 enum class DownloadFilter {
@@ -344,6 +347,40 @@ fun DownloadScreen(
             }
         }
 
+        // 队列批量操作：仅在确有进行中 / 排队 / 暂停任务时出现，避免空列表下无意义
+        if (!isSelectionMode && (downloadingTasks.isNotEmpty() || pausedTasks.isNotEmpty())) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                if (downloadingTasks.isNotEmpty()) {
+                    QueueActionButton(
+                        label = stringResource(R.string.download_queue_pause_all),
+                        onClick = {
+                            viewModel.pauseAll()
+                            Toast.makeText(
+                                context,
+                                context.getString(
+                                    R.string.download_queue_toast_paused,
+                                    downloadingTasks.size
+                                ),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    )
+                }
+                if (pausedTasks.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    QueueActionButton(
+                        label = stringResource(R.string.download_queue_resume_all),
+                        onClick = { viewModel.resumeAll() }
+                    )
+                }
+            }
+        }
+
         // 筛选 + 排序控制栏（非选择模式且有任务时展示）
         if (!isSelectionMode && tasks.isNotEmpty()) {
             Row(
@@ -474,7 +511,8 @@ fun DownloadScreen(
                                     }
                                 },
                                 onPauseClick = { viewModel.pauseDownload(task.id) },
-                                onCancelClick = { viewModel.cancelDownload(task.id) }
+                                onCancelClick = { viewModel.cancelDownload(task.id) },
+                                onMoveToFront = { viewModel.moveToFront(task.id) }
                             )
                         )
                     }
@@ -877,6 +915,22 @@ fun DownloadScreen(
         }
     }
     }
+}
+
+@Composable
+private fun QueueActionButton(label: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
+    Text(
+        text = label,
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    )
 }
 
 private fun downloadFilterLabel(filter: DownloadFilter): Int = when (filter) {

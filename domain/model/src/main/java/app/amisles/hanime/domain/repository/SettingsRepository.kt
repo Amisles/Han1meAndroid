@@ -96,6 +96,10 @@ interface SettingsRepository {
     val downloadNightOnlyFlow: StateFlow<Boolean>
     fun setDownloadNightOnly(enabled: Boolean)
 
+    /** 下载队列顺序：任务 id 按执行先后排列，逗号分隔。未列出的任务排在其后。 */
+    val downloadQueueOrder: List<Int>
+    fun setDownloadQueueOrder(ids: List<Int>)
+
     /** 订阅更新提醒总开关，默认关闭：定时抓页面会带来站点限流风险。 */
     val subscriptionReminder: Boolean
     val subscriptionReminderFlow: StateFlow<Boolean>

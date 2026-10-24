@@ -613,10 +613,51 @@ class DownloadManager @Inject constructor(
         if (task.totalBytes > 0) (task.downloadedBytes * 100 / task.totalBytes).toInt() else 0
 
     private fun pickPendingTaskLocked(exclude: Set<Int>): DownloadTask? {
-        val pendingTask = taskMap.values.firstOrNull {
+        val pending = taskMap.values.filter {
             it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id) && it.id !in exclude
         }
+        if (pending.isEmpty()) return null
+        // 队列顺序优先，未列入的自定义顺序按 id 升序（先加的排前面），保证行为可预期
+        val order = queueOrder
+        val pendingTask = pending.minWithOrNull(
+            compareBy({ order.indexOf(it.id).takeIf { i -> i >= 0 } ?: Int.MAX_VALUE }, { it.id })
+        )
         return pendingTask?.takeIf { activeSlots.get() < concurrencyLimit }
+    }
+
+    @Volatile
+    private var queueOrder: List<Int> = Preferences.downloadQueueOrder
+
+    override fun moveToFront(taskId: Int) {
+        val current = queueOrder.toMutableList()
+        current.remove(taskId)
+        current.add(0, taskId)
+        queueOrder = current
+        Preferences.setDownloadQueueOrder(current)
+        // 只是把该任务提前，不打断已经在跑的任务
+        val task = taskMap[taskId] ?: return
+        if (task.status == DownloadStatus.PENDING) startNextPendingTask()
+    }
+
+    override fun pauseAll() {
+        val active = tasksLock.withLock {
+            taskMap.values.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
+                .map { it.id }
+        }
+        active.forEach { pauseDownload(it) }
+        AppLogger.log("DownloadManager", "pauseAll: 已暂停 " + active.size + " 个任务")
+    }
+
+    override fun resumeAll() {
+        val paused = tasksLock.withLock {
+            taskMap.values.filter { it.status == DownloadStatus.PAUSED }.map { it.id }
+        }
+        paused.forEach { id ->
+            val task = taskMap[id] ?: return@forEach
+            val (rb, rm) = deriveResumeState(task)
+            tasksLock.withLock { startDownloadWithConcurrencyInternal(task, rb, rm) }
+        }
+        AppLogger.log("DownloadManager", "resumeAll: 已恢复 " + paused.size + " 个任务")
     }
 
     private val _gateState = MutableStateFlow(DownloadGateState.OPEN)
