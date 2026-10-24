@@ -799,6 +799,16 @@
     <string name="settings_download_rate_limit">下載限速</string>
     <string name="settings_download_rate_limit_unlimited">不限速</string>
     <string name="settings_download_rate_limit_suffix"> MB/s</string>
+    <string name="settings_download_wifi_only">僅在 Wi-Fi 下下載</string>
+    <string name="settings_download_wifi_only_summary">行動網路下不啟動新任務</string>
+    <string name="settings_download_charging_only">僅在充電時下載</string>
+    <string name="settings_download_charging_only_summary">未接電源時不啟動新任務</string>
+    <string name="settings_download_night_only">僅在夜間下載</string>
+    <string name="settings_download_night_only_summary">0:00–6:00 之外不啟動新任務</string>
+    <string name="download_gate_blocked_wifi">等待 Wi-Fi</string>
+    <string name="download_gate_blocked_charging">等待充電</string>
+    <string name="download_gate_blocked_night">等待夜間時段</string>
+    <string name="download_gate_hint">條件滿足後自動繼續</string>
     <string name="download_storage_title">儲存空間</string>
     <string name="download_storage_free">剩餘 %1$s</string>
     <string name="download_storage_used">已用 %1$s</string>

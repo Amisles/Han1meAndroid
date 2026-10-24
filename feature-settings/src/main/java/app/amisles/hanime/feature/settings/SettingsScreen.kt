@@ -31,7 +31,10 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
+import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.Nightlight
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
@@ -567,6 +570,30 @@ fun SettingsScreen(
                     },
                     selectedValue = uiState.downloadRateLimit,
                     onSelect = { viewModel.setDownloadRateLimit(it) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.Wifi,
+                    title = stringResource(R.string.settings_download_wifi_only),
+                    subtitle = stringResource(R.string.settings_download_wifi_only_summary),
+                    checked = uiState.downloadWifiOnly,
+                    onCheckedChange = { viewModel.setDownloadWifiOnly(it) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.BatteryChargingFull,
+                    title = stringResource(R.string.settings_download_charging_only),
+                    subtitle = stringResource(R.string.settings_download_charging_only_summary),
+                    checked = uiState.downloadChargingOnly,
+                    onCheckedChange = { viewModel.setDownloadChargingOnly(it) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.Nightlight,
+                    title = stringResource(R.string.settings_download_night_only),
+                    subtitle = stringResource(R.string.settings_download_night_only_summary),
+                    checked = uiState.downloadNightOnly,
+                    onCheckedChange = { viewModel.setDownloadNightOnly(it) }
                 )
                 SettingsGroupDivider()
                 SettingsNavRow(

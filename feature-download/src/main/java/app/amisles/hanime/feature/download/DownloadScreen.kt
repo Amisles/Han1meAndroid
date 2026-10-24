@@ -130,6 +130,7 @@ fun DownloadScreen(
     val viewModel: DownloadViewModel = hiltViewModel()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val storageInfo by viewModel.storageInfo.collectAsStateWithLifecycle()
+    val gateState by viewModel.gateState.collectAsStateWithLifecycle()
     // 不用 rememberSaveable：面板是一次性的浮层，离开页面再回来不应保持展开
     var showStoragePanel by remember { mutableStateOf(false) }
 
@@ -438,6 +439,11 @@ fun DownloadScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
+                if (gateState.blocked && downloadingTasks.isNotEmpty()) {
+                    item(key = "download-gate-banner") {
+                        DownloadGateBanner(gateState)
+                    }
+                }
                 if (useGroupedView && downloadingTasks.isNotEmpty()) {
                     item {
                         SectionHeader(

@@ -83,6 +83,19 @@ interface SettingsRepository {
     val downloadRateLimitFlow: StateFlow<Int>
     fun setDownloadRateLimit(megabytesPerSecond: Int)
 
+    /** 下载调度条件：仅在 Wi-Fi 下 / 仅在充电时 / 仅在夜间闲时（0–6 点）。三者可组合。 */
+    val downloadWifiOnly: Boolean
+    val downloadWifiOnlyFlow: StateFlow<Boolean>
+    fun setDownloadWifiOnly(enabled: Boolean)
+
+    val downloadChargingOnly: Boolean
+    val downloadChargingOnlyFlow: StateFlow<Boolean>
+    fun setDownloadChargingOnly(enabled: Boolean)
+
+    val downloadNightOnly: Boolean
+    val downloadNightOnlyFlow: StateFlow<Boolean>
+    fun setDownloadNightOnly(enabled: Boolean)
+
     /** 订阅更新提醒总开关，默认关闭：定时抓页面会带来站点限流风险。 */
     val subscriptionReminder: Boolean
     val subscriptionReminderFlow: StateFlow<Boolean>

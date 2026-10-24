@@ -799,6 +799,16 @@
     <string name="settings_download_rate_limit">Download speed limit</string>
     <string name="settings_download_rate_limit_unlimited">Unlimited</string>
     <string name="settings_download_rate_limit_suffix"> MB/s</string>
+    <string name="settings_download_wifi_only">Wi-Fi only</string>
+    <string name="settings_download_wifi_only_summary">Hold new tasks on mobile data</string>
+    <string name="settings_download_charging_only">While charging only</string>
+    <string name="settings_download_charging_only_summary">Hold new tasks when unplugged</string>
+    <string name="settings_download_night_only">Night only</string>
+    <string name="settings_download_night_only_summary">Hold new tasks outside 0:00-6:00</string>
+    <string name="download_gate_blocked_wifi">Waiting for Wi-Fi</string>
+    <string name="download_gate_blocked_charging">Waiting for charging</string>
+    <string name="download_gate_blocked_night">Waiting for night window</string>
+    <string name="download_gate_hint">Resumes automatically once conditions are met</string>
     <string name="download_storage_title">Storage</string>
     <string name="download_storage_free">%1$s free</string>
     <string name="download_storage_used">%1$s used</string>

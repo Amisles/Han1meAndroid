@@ -56,6 +56,9 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_AUTO_QUALITY = "auto_quality"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_DOWNLOAD_RATE_LIMIT = "download_rate_limit_mbps"
+    private const val SP_DOWNLOAD_WIFI_ONLY = "download_wifi_only"
+    private const val SP_DOWNLOAD_CHARGING_ONLY = "download_charging_only"
+    private const val SP_DOWNLOAD_NIGHT_ONLY = "download_night_only"
     private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
@@ -128,6 +131,15 @@ object Preferences : SettingsRepository, SessionRepository {
 
     private val _downloadRateLimitFlow = MutableStateFlow(0)
     override val downloadRateLimitFlow: StateFlow<Int> = _downloadRateLimitFlow.asStateFlow()
+
+    private val _downloadWifiOnlyFlow = MutableStateFlow(false)
+    override val downloadWifiOnlyFlow: StateFlow<Boolean> = _downloadWifiOnlyFlow.asStateFlow()
+
+    private val _downloadChargingOnlyFlow = MutableStateFlow(false)
+    override val downloadChargingOnlyFlow: StateFlow<Boolean> = _downloadChargingOnlyFlow.asStateFlow()
+
+    private val _downloadNightOnlyFlow = MutableStateFlow(false)
+    override val downloadNightOnlyFlow: StateFlow<Boolean> = _downloadNightOnlyFlow.asStateFlow()
 
     private val _subscriptionReminderFlow = MutableStateFlow(false)
     override val subscriptionReminderFlow: StateFlow<Boolean> = _subscriptionReminderFlow.asStateFlow()
@@ -216,6 +228,9 @@ object Preferences : SettingsRepository, SessionRepository {
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _downloadRateLimitFlow.value = readInt(SP_DOWNLOAD_RATE_LIMIT, 0)
+        _downloadWifiOnlyFlow.value = readBoolean(SP_DOWNLOAD_WIFI_ONLY, false)
+        _downloadChargingOnlyFlow.value = readBoolean(SP_DOWNLOAD_CHARGING_ONLY, false)
+        _downloadNightOnlyFlow.value = readBoolean(SP_DOWNLOAD_NIGHT_ONLY, false)
         _subscriptionReminderFlow.value = readBoolean(SP_SUBSCRIPTION_REMINDER, false)
         _watchStatsEnabledFlow.value = readBoolean(SP_WATCH_STATS_ENABLED, true)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
@@ -591,6 +606,25 @@ object Preferences : SettingsRepository, SessionRepository {
         val safe = megabytesPerSecond.coerceIn(0, 20)
         sp.edit { putInt(SP_DOWNLOAD_RATE_LIMIT, safe) }
         _downloadRateLimitFlow.value = safe
+    }
+
+    override val downloadWifiOnly: Boolean get() = _downloadWifiOnlyFlow.value
+    override val downloadChargingOnly: Boolean get() = _downloadChargingOnlyFlow.value
+    override val downloadNightOnly: Boolean get() = _downloadNightOnlyFlow.value
+
+    override fun setDownloadWifiOnly(enabled: Boolean) {
+        sp.edit { putBoolean(SP_DOWNLOAD_WIFI_ONLY, enabled) }
+        _downloadWifiOnlyFlow.value = enabled
+    }
+
+    override fun setDownloadChargingOnly(enabled: Boolean) {
+        sp.edit { putBoolean(SP_DOWNLOAD_CHARGING_ONLY, enabled) }
+        _downloadChargingOnlyFlow.value = enabled
+    }
+
+    override fun setDownloadNightOnly(enabled: Boolean) {
+        sp.edit { putBoolean(SP_DOWNLOAD_NIGHT_ONLY, enabled) }
+        _downloadNightOnlyFlow.value = enabled
     }
 
     override fun setSubscriptionReminder(enabled: Boolean) {

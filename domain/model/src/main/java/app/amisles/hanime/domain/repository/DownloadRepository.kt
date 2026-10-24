@@ -1,5 +1,6 @@
 package app.amisles.hanime.domain.repository
 
+import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
@@ -51,6 +52,15 @@ interface DownloadRepository {
 
     /** 存储面板数据：目录、已用 / 剩余空间、孤儿位图统计。 */
     suspend fun getStorageInfo(): DownloadStorageInfo
+
+    /** 调度闸门状态：因「仅 Wi-Fi / 仅充电 / 仅夜间」中的哪些条件而暂停启动新任务。 */
+    val gateState: StateFlow<DownloadGateState>
+
+    /** 重新求值闸门并尝试继续排队任务（设置变更后调用）。 */
+    fun reevaluateGate()
+
+    /** 处于 PENDING 的任务数，用于判断是否值得展示阻塞提示。 */
+    fun pendingCount(): Int
 
     /** 清理无任务引用的位图文件，返回释放字节数。 */
     suspend fun clearOrphanPartmaps(): Long

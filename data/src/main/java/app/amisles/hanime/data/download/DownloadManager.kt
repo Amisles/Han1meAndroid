@@ -3,6 +3,7 @@ package app.amisles.hanime.data.download
 import android.content.Context
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.data.local.entity.DownloadEntity
 import app.amisles.hanime.domain.model.DownloadStatus
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
@@ -202,6 +204,17 @@ class DownloadManager @Inject constructor(
             Preferences.downloadRateLimitFlow.collect { megabytesPerSecond ->
                 GlobalDownloadRateLimiter.instance.setLimit(megabytesPerSecond.toLong() * 1024L * 1024L)
             }
+        }
+
+        scope.launch {
+            combine(
+                Preferences.downloadWifiOnlyFlow,
+                Preferences.downloadChargingOnlyFlow,
+                Preferences.downloadNightOnlyFlow
+            ) { wifi, charging, night -> Triple(wifi, charging, night) }
+                .collect {
+                    if (refreshGateState().allowed) startNextPendingTask()
+                }
         }
 
         scope.launch {
@@ -454,6 +467,21 @@ class DownloadManager @Inject constructor(
         // 一个原子步骤：否则并发重入会让同一任务登记两个 Job，前一个被覆盖后其 finally 的
         // activeSlots -1 就不再对应任何真实占位，计数被减成负数，并发上限永久失效。
         if (downloadJobs.containsKey(task.id)) return
+        // 闸门关闭时不占槽位、不启动：任务保持 PENDING，由条件变化或网络恢复重新拾起
+        val gate = refreshGateState()
+        if (!gate.allowed) {
+            if (task.status != DownloadStatus.PENDING) {
+                updateTask(task.id) { it.copy(status = DownloadStatus.PENDING) }
+            }
+            // 通知栏说明等待原因，避免用户以为下载卡死
+            onProgressUpdate?.invoke(
+                task.id,
+                task.title,
+                gateProgress(task),
+                DownloadStatus.PENDING
+            )
+            return
+        }
         // 占不到槽位则退回 PENDING，由 finally 的链式调度重新推导续传起点后拾起
         if (!tryAcquireSoftSlot()) {
             if (task.status != DownloadStatus.PENDING) {
@@ -555,6 +583,8 @@ class DownloadManager @Inject constructor(
     }
 
     private fun startNextPendingTask() {
+        // 闸门判定含跨进程读取（粘性广播 / ConnectivityManager），必须在锁外
+        if (!refreshGateState().allowed) return
         // 只在锁内做内存判定（挑任务 + 快速失败），磁盘 I/O 全部移到锁外。
         // taskMap / downloadJobs 均为 ConcurrentHashMap，分散读取不会撕裂。
         val tried = HashSet<Int>()
@@ -579,11 +609,37 @@ class DownloadManager @Inject constructor(
      * 只读 ConcurrentHashMap，不做任何磁盘 I/O —— 这是持锁执行的关键约束：
      * 持锁做 I/O 会让主线程上的 pauseDownload / cancelDownload / startDownload 长时间等锁。
      */
+    private fun gateProgress(task: DownloadTask): Int =
+        if (task.totalBytes > 0) (task.downloadedBytes * 100 / task.totalBytes).toInt() else 0
+
     private fun pickPendingTaskLocked(exclude: Set<Int>): DownloadTask? {
         val pendingTask = taskMap.values.firstOrNull {
             it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id) && it.id !in exclude
         }
         return pendingTask?.takeIf { activeSlots.get() < concurrencyLimit }
+    }
+
+    private val _gateState = MutableStateFlow(DownloadGateState.OPEN)
+    /** 调度闸门状态。任一条件不满足则新任务不启动，已运行的任务不受影响。 */
+    override val gateState: StateFlow<DownloadGateState> = _gateState.asStateFlow()
+
+    override fun reevaluateGate() {
+        if (refreshGateState().allowed) startNextPendingTask()
+    }
+
+    /** 因闸门阻塞的等待任务数；0 表示当前没有任务在等条件。 */
+    override fun pendingCount(): Int = taskMap.values.count { it.status == DownloadStatus.PENDING }
+
+    /** 重新求值并广播；返回本次结论。 */
+    internal fun refreshGateState(): DownloadGateState {
+        val state = DownloadGate.evaluate(
+            context,
+            Preferences.downloadWifiOnly,
+            Preferences.downloadChargingOnly,
+            Preferences.downloadNightOnly
+        )
+        _gateState.value = state
+        return state
     }
 
     fun updateConcurrencyLimit(maxConcurrent: Int) {
@@ -947,6 +1003,8 @@ class DownloadManager @Inject constructor(
             override fun onAvailable(network: android.net.Network) {
                 // 只在真的可用时才触发；onCapabilitiesChanged 会更晚且频繁，onAvailable 足够
                 scope.launch {
+                    // 换到 Wi-Fi 后闸门可能刚好放行，先重算再决定要不要续传
+                    if (refreshGateState().allowed) startNextPendingTask()
                     val paused = tasksLock.withLock {
                         // 只恢复「因断网自动暂停」的那些，手动暂停的不动
                         taskMap.values.filter {

@@ -29,6 +29,9 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
     val downloadRateLimit: Int = 0,
+    val downloadWifiOnly: Boolean = false,
+    val downloadChargingOnly: Boolean = false,
+    val downloadNightOnly: Boolean = false,
     val subscriptionReminder: Boolean = false,
     val baseUrl: String = SettingsRepository.DEFAULT_BASE_URL,
     val isLoginSupported: Boolean = true,
@@ -98,6 +101,12 @@ class SettingsViewModel @Inject constructor(
         state.copy(doubleTapSeek = enabled)
     }.combine(settings.autoQualityFlow) { state, enabled ->
         state.copy(autoQuality = enabled)
+    }.combine(settings.downloadWifiOnlyFlow) { state, enabled ->
+        state.copy(downloadWifiOnly = enabled)
+    }.combine(settings.downloadChargingOnlyFlow) { state, enabled ->
+        state.copy(downloadChargingOnly = enabled)
+    }.combine(settings.downloadNightOnlyFlow) { state, enabled ->
+        state.copy(downloadNightOnly = enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -110,6 +119,9 @@ class SettingsViewModel @Inject constructor(
         themeMode = settings.themeMode,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         downloadRateLimit = settings.downloadRateLimit,
+        downloadWifiOnly = settings.downloadWifiOnly,
+        downloadChargingOnly = settings.downloadChargingOnly,
+        downloadNightOnly = settings.downloadNightOnly,
         subscriptionReminder = settings.subscriptionReminder,
         watchStatsEnabled = settings.watchStatsEnabled,
         baseUrl = settings.baseUrl,
@@ -149,6 +161,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setDownloadRateLimit(megabytesPerSecond: Int) {
         settings.setDownloadRateLimit(megabytesPerSecond)
+    }
+
+    fun setDownloadWifiOnly(enabled: Boolean) {
+        settings.setDownloadWifiOnly(enabled)
+    }
+
+    fun setDownloadChargingOnly(enabled: Boolean) {
+        settings.setDownloadChargingOnly(enabled)
+    }
+
+    fun setDownloadNightOnly(enabled: Boolean) {
+        settings.setDownloadNightOnly(enabled)
     }
 
     fun setSubscriptionReminder(enabled: Boolean) {

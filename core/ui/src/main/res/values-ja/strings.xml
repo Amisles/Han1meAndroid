@@ -799,6 +799,16 @@
     <string name="settings_download_rate_limit">ダウンロード速度制限</string>
     <string name="settings_download_rate_limit_unlimited">制限なし</string>
     <string name="settings_download_rate_limit_suffix"> MB/s</string>
+    <string name="settings_download_wifi_only">Wi-Fi 接続時のみ</string>
+    <string name="settings_download_wifi_only_summary">モバイル通信では新しいタスクを開始しない</string>
+    <string name="settings_download_charging_only">充電中のみ</string>
+    <string name="settings_download_charging_only_summary">電源未接続では新しいタスクを開始しない</string>
+    <string name="settings_download_night_only">夜間のみ</string>
+    <string name="settings_download_night_only_summary">0:00-6:00 以外は新しいタスクを開始しない</string>
+    <string name="download_gate_blocked_wifi">Wi-Fi 待ち</string>
+    <string name="download_gate_blocked_charging">充電待ち</string>
+    <string name="download_gate_blocked_night">夜間帯待ち</string>
+    <string name="download_gate_hint">条件を満たすと自動的に再開します</string>
     <string name="download_storage_title">ストレージ</string>
     <string name="download_storage_free">空き %1$s</string>
     <string name="download_storage_used">使用中 %1$s</string>

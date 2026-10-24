@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.domain.repository.DownloadRepository
@@ -21,6 +22,9 @@ class DownloadViewModel @Inject constructor(
     private val downloads: DownloadRepository
 ) : ViewModel() {
     val tasks: StateFlow<List<DownloadTask>> = downloads.tasks
+
+    /** 调度闸门：非空表示正因条件不满足而等待，用于列表顶部提示。 */
+    val gateState: StateFlow<DownloadGateState> = downloads.gateState
 
     private val _storageInfo = MutableStateFlow<DownloadStorageInfo?>(null)
     val storageInfo: StateFlow<DownloadStorageInfo?> = _storageInfo.asStateFlow()
