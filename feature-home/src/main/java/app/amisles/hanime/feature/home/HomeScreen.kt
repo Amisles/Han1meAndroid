@@ -35,6 +35,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +66,7 @@ import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
+import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
@@ -183,6 +185,11 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    // 人机校验通过后自动重拉：否则用户要手动下拉一次才知道已经能用了
+    val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
+    LaunchedEffect(solvedTick) {
+        if (solvedTick > 0) viewModel.loadHomeData()
+    }
 
     HomeScreenContent(
         sections = sections,

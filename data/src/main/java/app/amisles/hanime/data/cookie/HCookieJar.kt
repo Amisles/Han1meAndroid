@@ -51,6 +51,11 @@ object HCookieJar : CookieJar {
             AppLogger.d("HCookieJar", "登录 Cookie 缺少来源域名，已跳过注入以避免跨域泄漏")
         } else if (host.equals(sessionHost, ignoreCase = true)) {
             out += Preferences.loginCookie.toLoginCookieList(host)
+        }
+
+        // 人机校验 Cookie 与登录态无关：未登录用户也可能需要它，因此按自己的域名单独判定
+        val challengeHost = Preferences.cloudFlareCookieDomain
+        if (challengeHost.isNotBlank() && host.equals(challengeHost, ignoreCase = true)) {
             out += Preferences.cloudFlareCookie.toLoginCookieList(host)
         }
 

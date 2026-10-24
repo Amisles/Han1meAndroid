@@ -41,6 +41,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -66,6 +67,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
@@ -73,6 +75,7 @@ import app.amisles.hanime.feature.settings.openReleasePage
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.ui.CloudflareChallengeDialog
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.NavRail
 import app.amisles.hanime.feature.detail.DetailScreen
@@ -814,6 +817,20 @@ fun HanimeApp(
             )
         }
     }
+    // ── 人机校验弹窗 ──────────────────────────────────────────────────────
+    // 请求被 Cloudflare 拦成挑战页时由网络层登记，这里统一承载：任意页面触发都能引导用户，
+    // 不必给每个页面单独接一条链路。校验通过后由各页面监听 solvedTick 自行重试。
+    val challenge by CloudflareChallenge.request.collectAsStateWithLifecycle()
+    challenge?.let { pending ->
+        key(pending.id) {
+            CloudflareChallengeDialog(
+                host = pending.host,
+                onDismiss = { CloudflareChallenge.dismiss() },
+                onSolved = { CloudflareChallenge.markSolved() }
+            )
+        }
+    }
+
     // ── 启动时的更新提示 ──────────────────────────────────────────────────
     // 三条件同时成立才弹：有可用更新、该版本未被用户跳过、且用户没有在本次运行里点过「稍后」。
     // dismissedUpdateVersion 用 rememberSaveable，旋转屏幕后不会重复弹出打扰。

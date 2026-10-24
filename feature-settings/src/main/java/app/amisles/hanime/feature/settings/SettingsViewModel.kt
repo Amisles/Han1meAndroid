@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.settings
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -118,6 +119,20 @@ class SettingsViewModel @Inject constructor(
         doubleTapSeek = settings.doubleTapSeek,
         autoQuality = settings.autoQuality
     )
+
+    /**
+     * 打开人机校验窗口。
+     *
+     * 站点要求校验时普通请求一律被拦成 403，界面自己无法通过，只能让用户在 WebView 里点一次。
+     */
+    fun verifyCloudflare() {
+        val host = runCatching { android.net.Uri.parse(settings.baseUrl).host?.lowercase() }.getOrNull()
+        if (host.isNullOrBlank()) {
+            _events.tryEmit(SettingsUiEvent.Toast(R.string.settings_cloudflare_verify_no_host))
+            return
+        }
+        CloudflareChallenge.request(host)
+    }
 
     fun setAppLanguage(code: String) {
         settings.setAppLanguage(code)

@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.BrowserUserAgent
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedBanner
@@ -452,8 +453,8 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         // 导致渲染异常，再评估放宽为 MIXED_CONTENT_COMPATIBILITY_MODE。
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         settings.javaScriptCanOpenWindowsAutomatically = false
-                        settings.userAgentString =
-                            "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
+                        // 与后台请求同一串 UA：cf_clearance 与 UA 绑定，不一致则校验结果不生效
+                        settings.userAgentString = BrowserUserAgent.VALUE
                         loadUrl(LOGIN_URLS.first())
                     }
                 }.also { webViewRef.value = it }

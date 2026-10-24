@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -619,6 +620,13 @@ fun SettingsScreen(
                     icon = Icons.Outlined.NetworkCheck,
                     title = stringResource(R.string.settings_diagnostics),
                     onClick = { onNavigate("diagnostics") }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.VerifiedUser,
+                    title = stringResource(R.string.settings_cloudflare_verify),
+                    subtitle = stringResource(R.string.settings_cloudflare_verify_summary),
+                    onClick = { viewModel.verifyCloudflare() }
                 )
                 SettingsGroupDivider()
                 SettingsNavRow(

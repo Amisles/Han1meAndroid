@@ -37,6 +37,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_ALREADY_LOGIN = "already_login"
     private const val SP_LOGIN_COOKIE = "login_cookie"
     private const val SP_CF_COOKIE = "cloudflare_cookie"
+    private const val SP_CF_COOKIE_DOMAIN = "cloudflare_cookie_domain"
     /** 登录态 Cookie 的来源域名（小写 host）。会话只能注入回该域名，见 [saveLogin]。 */
     private const val SP_LOGIN_COOKIE_DOMAIN = "login_cookie_domain"
     /** 明文→加密迁移已完成的标记。写进加密存储，避免每次启动都重新做明文探测。 */
@@ -114,6 +115,10 @@ object Preferences : SettingsRepository, SessionRepository {
 
     private val _cloudFlareCookieFlow = MutableStateFlow(SessionCookie(""))
     val cloudFlareCookieFlow: StateFlow<CookieString> = _cloudFlareCookieFlow.asStateFlow()
+
+    /** 人机校验 Cookie 自己的来源域名；与登录态解耦，未登录的用户也要能带上它。 */
+    @Volatile
+    private var _cloudFlareCookieDomain: String = ""
 
     private val _savedUserIdFlow = MutableStateFlow("")
     override val savedUserIdFlow: StateFlow<String> = _savedUserIdFlow.asStateFlow()
@@ -207,6 +212,7 @@ object Preferences : SettingsRepository, SessionRepository {
         _loginCookieFlow.value = SessionCookie(readString(SP_LOGIN_COOKIE, "").orEmpty())
         _loginCookieDomain = readString(SP_LOGIN_COOKIE_DOMAIN, "").orEmpty().lowercase()
         _cloudFlareCookieFlow.value = SessionCookie(readString(SP_CF_COOKIE, "").orEmpty())
+        _cloudFlareCookieDomain = readString(SP_CF_COOKIE_DOMAIN, "").orEmpty().lowercase()
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _downloadRateLimitFlow.value = readInt(SP_DOWNLOAD_RATE_LIMIT, 0)
@@ -419,6 +425,15 @@ object Preferences : SettingsRepository, SessionRepository {
 
     override val cloudFlareCookie: SessionCookie get() = _cloudFlareCookieFlow.value
 
+    /**
+     * 注入人机校验 Cookie 的目标域名。
+     *
+     * 历史版本把它借存在登录域名上（当时校验只能从登录页顺带产生），因此这里保留回退，
+     * 让老用户的 `cf_clearance` 不至于因为改字段名而失效。
+     */
+    override val cloudFlareCookieDomain: String
+        get() = _cloudFlareCookieDomain.ifBlank { _loginCookieDomain }
+
     override val savedUserId: String get() = _savedUserIdFlow.value
 
     override val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
@@ -549,13 +564,12 @@ object Preferences : SettingsRepository, SessionRepository {
     /** 保存 Cloudflare 校验 Cookie。加密存储不可用时同样不落盘（同 [saveLogin]）。 */
     override fun saveCloudFlareCookie(cookieString: String, sourceDomain: String?) {
         val safe = cookieString.take(8192)
+        // 域名只认这次校验实际发生的站点：改了 baseUrl 换镜像后，旧 Cookie 不应被发到新域名
+        val domain = sourceDomain?.trim()?.lowercase()?.ifBlank { null }
         if (secureStorageAvailable) {
             sp.edit {
                 putString(SP_CF_COOKIE, safe)
-                // Cloudflare 校验 Cookie 与登录 Cookie 同源，共用来源域名。
-                // 未传入时保留原有域名，避免把手动 Cookie 登录得到的正式会话域名清空。
-                val domain = sourceDomain?.trim()?.lowercase()?.ifBlank { null } ?: _loginCookieDomain
-                if (domain.isNotBlank()) putString(SP_LOGIN_COOKIE_DOMAIN, domain)
+                if (domain != null) putString(SP_CF_COOKIE_DOMAIN, domain)
             }
         } else {
             AppLogger.logError(
@@ -563,6 +577,7 @@ object Preferences : SettingsRepository, SessionRepository {
                 "加密存储不可用，Cloudflare Cookie 仅保留在内存中（不落盘）"
             )
         }
+        if (domain != null) _cloudFlareCookieDomain = domain
         _cloudFlareCookieFlow.value = SessionCookie(safe)
     }
 
@@ -699,6 +714,7 @@ object Preferences : SettingsRepository, SessionRepository {
             editor.remove(SP_LOGIN_COOKIE)
             // Cloudflare 校验 Cookie 同属会话材料：漏删会在下次登录时被继续注入
             editor.remove(SP_CF_COOKIE)
+            editor.remove(SP_CF_COOKIE_DOMAIN)
             editor.remove(SP_LOGIN_COOKIE_DOMAIN)
             editor.remove(SP_SAVED_USER_ID)
             editor.commit()
@@ -707,6 +723,7 @@ object Preferences : SettingsRepository, SessionRepository {
         _loginCookieFlow.value = SessionCookie("")
         // 内存态同样要清：只删持久化会留下「本次进程仍带着 CF Cookie」的窗口
         _cloudFlareCookieFlow.value = SessionCookie("")
+        _cloudFlareCookieDomain = ""
         _loginCookieDomain = ""
         _savedUserIdFlow.value = ""
     }

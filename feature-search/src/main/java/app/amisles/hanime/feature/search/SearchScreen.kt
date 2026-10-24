@@ -67,6 +67,7 @@ import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
@@ -141,6 +142,12 @@ fun SearchScreen(
     val broadLocal = remember { mutableStateOf(broadValue) }
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
+
+    // 人机校验通过后自动重搜，与首页一致
+    val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(solvedTick) {
+        if (solvedTick > 0) viewModel.resetSearch()
+    }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current

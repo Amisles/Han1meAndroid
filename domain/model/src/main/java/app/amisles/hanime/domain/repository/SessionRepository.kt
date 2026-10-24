@@ -23,6 +23,14 @@ interface SessionRepository {
     /** 登录 Cookie 的来源域名（小写）；为空表示未知，此时不会向任何主机注入。 */
     val loginCookieDomain: String
 
+    /**
+     * 人机校验 Cookie 的来源域名（小写）。
+     *
+     * 与 [loginCookieDomain] 分开：校验是匿名也能触发的，把两者绑在一起会导致
+     * 未登录用户过完验证却永远带不上 `cf_clearance`。
+     */
+    val cloudFlareCookieDomain: String
+
     /** 当前登录用户的数字 ID（评论 / 点赞接口需要）。 */
     val savedUserId: String
     val savedUserIdFlow: StateFlow<String>

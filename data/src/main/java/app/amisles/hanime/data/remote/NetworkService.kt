@@ -18,6 +18,7 @@ import app.amisles.hanime.domain.model.PlaylistDetail
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.BrowserUserAgent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -75,8 +76,7 @@ class NetworkService @Inject constructor(
         return Preferences.baseUrl
     }
 
-    private val uaString
-        get() = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
+    private val uaString get() = BrowserUserAgent.VALUE
 
     private fun buildRequest(url: String): Request {
         // 脱敏：query 可能含用户搜索词或带签名的直链参数，不得落盘
@@ -95,6 +95,13 @@ class NetworkService @Inject constructor(
         client.newCall(request).execute().use { response ->
             AppLogger.log("NetworkService", "Response code: ${response.code}")
             if (!response.isSuccessful) {
+                val body = response.body.string()
+                val host = request.url.host
+                if (isCloudflareChallenge(response.code, response.header("cf-mitigated"), body)) {
+                    AppLogger.w("NetworkService", "命中 Cloudflare 人机校验: host=$host code=${response.code}")
+                    CloudflareChallenge.requestOnFailure(host)
+                    throw CloudflareChallengeException(host)
+                }
                 throw IOException("Request failed with code ${response.code}")
             }
             val body = response.body.string()
@@ -102,6 +109,21 @@ class NetworkService @Inject constructor(
             if (body.isEmpty()) throw IOException("Empty response body")
             body
         }
+    }
+
+    /**
+     * 是否为 Cloudflare 的人机校验响应（而不是普通的 403 / 地区限制）。
+     *
+     * 判据只看响应本身：挑战页由 Cloudflare 注入，必然带 `_cf_chl_opt` 等特征串，
+     * 或直接给出 `cf-mitigated: challenge` 头；站点自己的 403 页面不含这些标记。
+     */
+    private fun isCloudflareChallenge(code: Int, mitigated: String?, body: String): Boolean {
+        if (code != 403 && code != 503) return false
+        if (mitigated.equals("challenge", ignoreCase = true)) return true
+        return body.contains("_cf_chl_opt", ignoreCase = true) ||
+            body.contains("cf-browser-verification", ignoreCase = true) ||
+            body.contains("challenge-platform", ignoreCase = true) ||
+            body.contains("cf_chl_", ignoreCase = true)
     }
 
     data class LoginFormResult(val code: Int, val setCookies: List<String>, val body: String?)
