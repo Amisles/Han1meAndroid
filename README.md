@@ -21,26 +21,14 @@
 
 ## 下载安装
 
-**最新版本：v1.6.0** · 最低支持 Android 11（API 30）· 目标 Android 17（API 37）
+**最新版本：v1.7.0** · 最低支持 Android 11（API 30）· 目标 Android 17（API 37）
 
 | 项目 | 说明 |
 | --- | --- |
 | 下载地址 | [GitHub Releases](https://github.com/Amisles/Han1meAndroid/releases/latest) |
-| 安装包 | `Han1meAndroid-v<版本>.apk`，约 6 MB |
+| 安装包 | `Han1meAndroid-v<版本>.apk`，约 7 MB |
 | 分发渠道 | 仅通过 GitHub Releases 分发，未上架任何应用商店 |
 | 升级方式 | 同签名覆盖安装，收藏、历史与下载记录均保留 |
-
-侧载安装前建议校验签名，确认 APK 由本仓库维护者构建。使用 Android SDK `build-tools` 提供的 `apksigner`：
-
-```bash
-apksigner verify --print-certs Han1meAndroid-v1.6.0.apk
-```
-
-输出中的证书 SHA-256 指纹应为：
-
-```text
-57f0e2d9c9c76da75fdda64761b00c76a4e894d83150f9ea31f05ba30d5f35fe
-```
 
 该指纹在后续版本中保持不变。若不一致，说明安装包并非来自本仓库，请勿安装。
 
@@ -65,11 +53,15 @@ apksigner verify --print-certs Han1meAndroid-v1.6.0.apk
 
 ## 功能
 
-- **首页与发现**：多区块首页浏览、下拉刷新与错误重试
-- **搜索与筛选**：多维度搜索（关键词 / 分类 / 排序，支持任意组合）+ 搜索历史自动记录（最多 20 条，本地持久化）
-- **在线播放**：多画质 HLS 流媒体播放，支持全屏、倍速、画中画（PiP）、后台播放、双击快进/快退、双指缩放
-- **离线下载**：后台下载与离线缓存（前台服务通知、断点续传、多线程分块并行下载、并发控制）、批量下载管理（一键批量选择、多任务同时下载）
-- **收藏与历史**：本地收藏与观看历史（Room 持久化、自动去重）
+- **首页与发现**：多区块首页浏览、下拉刷新与错误重试；「继续观看」横滑分区展示未看完的条目，点击直达并续播（可关闭）
+- **搜索与筛选**：多维度搜索（关键词 / 分类 / 排序，支持任意组合）+ 标签 / 日期 / 时长筛选 + 搜索历史自动记录（最多 20 条，本地持久化）
+- **在线播放**：多画质 HLS 流媒体播放，支持全屏、倍速、画中画（PiP）、双击快进/快退、双指缩放
+- **离线下载**：后台下载与离线缓存（前台服务通知、断点续传、多线程分块并行下载、并发控制）、批量下载管理
+- **收藏与历史**：本地收藏与观看历史（Room 持久化、自动去重）；收藏支持自建分组、移动、自定义标签（最多 10 个）与按标题本地搜索
+- **观看统计**：本周与累计观看时长、完成率、常看作者 Top 5、近 7 天分布，纯本地计算，可在设置中关闭
+- **数据备份**：一键导出 / 导入收藏、分组、历史、下载列表、搜索历史、设置与界面定制，支持「合并」或「覆盖」策略，导入前自动留快照
+- **订阅提醒**：每日检查订阅页更新，发现新片时发送本地通知（默认关闭）
+- **人机校验**：站点要求 Cloudflare 校验时弹出内置浏览器，完成校验后自动保存并重试；也可在设置页手动触发
 - **账号体系**：账号登录与 Cookie 管理（EncryptedSharedPreferences 加密存储）、账户资料编辑（修改昵称与邮箱）
 - **社区互动**：视频评论区（评论列表、回复展开、点赞数显示）、作者主页浏览（作品统计、视频分区、播放列表分区）、一键订阅作者并接入官方订阅内容页
 - **播放列表**：公开播放列表浏览、批量加入下载
@@ -97,8 +89,9 @@ apksigner verify --print-certs Han1meAndroid-v1.6.0.apk
 | 网络请求 | OkHttp | 5.5.0 |
 | HTML 解析 | Jsoup | 1.23.2 |
 | 图片加载 | Coil 3 (OkHttp 网络栈) | 3.6.3 |
-| 视频播放 | Media3 ExoPlayer (含 HLS 扩展) | 1.11.1 |
+| 视频播放 | Media3 ExoPlayer（HLS 扩展 + Session） | 1.11.1 |
 | 数据持久化 | Room + KSP | 2.8.5 |
+| 后台任务 | WorkManager + Hilt Work | 2.12.0 |
 | 键值存储 | EncryptedSharedPreferences + DataStore Flow 封装 | - |
 | 安全存储 | AndroidX Security (EncryptedSharedPreferences) | 1.1.0 |
 | 符号处理 | KSP | 2.3.12 |
@@ -115,11 +108,13 @@ hanime/
 |   |-- HanimeApplication.kt    # @HiltAndroidApp 入口，LocaleHelper 多语言包装
 |   |-- MainActivity.kt         # @AndroidEntryPoint，NavHost 导航，Edge-to-Edge 沉浸式
 |   |-- service/                # DownloadService（前台下载通知）
+|   |-- app/work/               # SubscriptionReminderWorker（订阅更新检查）
 |   |-- ui/
 |   |   |-- theme/              # HanimeTheme（MD3 色板、Typography、状态层点击反馈）
 |   |   |-- components/         # BottomNav（透明触摸拦截器）
 |   |   |-- screens/            # 通用 Screen（播放列表、视频列表页）
-|   |   `-- viewmodel/          # 共享 ViewModel
+|   |   |-- viewmodel/          # 共享 ViewModel
+|   |   `-- CloudflareChallengeDialog.kt  # 人机校验弹窗
 |   `-- res/                    # 应用级资源（图标、通知渠道、FileProvider）
 |
 |-- core/                       # 基础能力层（纯 Android Library，无业务逻辑）
@@ -129,25 +124,28 @@ hanime/
 |                               #   响应式窗口信息、共享组件（卡片 / 缩略图 / 设置分组 …）
 |
 |-- data/                       # 数据层（单一数据源）
+|   |-- backup/                 # BackupManager（zip 导出导入、冲突策略、自动快照）
 |   |-- cookie/                 # HCookieJar（ConcurrentHashMap 线程安全 + 过期清理）
 |   |-- di/                     # DatabaseModule（Hilt 提供 Room DB/DAO）
-|   |-- download/               # DownloadManager（多线程分块下载 + 并发门控 + 断点续传位图 + 慢速时重建连接）
+|   |-- download/               # DownloadManager（多线程分块下载 + 并发门控 + 断点续传位图 + 限速令牌桶 + 存储统计）
 |   |-- local/                  # Room 数据库：AppDatabase、DAO、Entity、Migration
 |   |-- parser/                 # 多个专用 HTML 解析器（首页 / 搜索 / 详情 / 下载 / 播放列表 / 作者 / 订阅 / 评论 / 账户 …）
 |   |-- preferences/            # Preferences（SharedPreferences + StateFlow 封装）
-|   |-- remote/                 # NetworkService（OkHttp + Hilt 单例 + HCookieJar）
-|   `-- repository/             # HanimeRepository（协程 IO 线程调度 + 结果封装）
+|   |-- remote/                 # NetworkService（OkHttp + Hilt 单例 + HCookieJar）、CloudflareChallenge
+|   |-- repository/             # HanimeRepository（协程 IO 线程调度 + 结果封装）
+|   |-- stats/                  # StatsManager（观看统计计算）
+|   `-- subscription/           # 订阅更新检测与 WorkManager 调度
 |
 |-- domain/
 |   `-- model/                  # 领域模型：纯 data class，无任何 Android 依赖
 |
 `-- feature/                    # 功能模块（每个模块独立 Screen + ViewModel）
-    |-- home/                   # 首页（多区块 + 下拉刷新 + 错误重试 + 分区级布局与顺序）
-    |-- search/                 # 搜索（关键词/分类/排序 + 标签/日期/时长筛选 + 历史记录）
-    |-- detail/                 # 视频详情 + ExoPlayer 播放（全屏/倍速/下载/收藏）
-    |-- download/               # 下载管理（批量选择/断点续传/完成项缩略图）
-    |-- profile/                # 个人中心、登录、收藏、观看历史、订阅
-    `-- settings/               # 设置页、界面定制页、网络诊断页、关于页、作者主页
+    |-- home/                   # 首页（多区块 + 下拉刷新 + 继续观看 + 分区级布局与顺序）
+    |-- search/                 # 搜索（关键词/分类/排序 + 筛选 + 历史 + 输入建议）
+    |-- detail/                 # 视频详情 + ExoPlayer 播放（全屏/倍速/下载/收藏/媒体会话）
+    |-- download/               # 下载管理（批量选择/断点续传/限速/存储面板）
+    |-- profile/                # 个人中心、登录、收藏分组、观看历史、订阅、观看统计
+    `-- settings/               # 设置页、界面定制、网络诊断、备份恢复、关于、作者主页
 ```
 ## 架构设计
 
