@@ -46,7 +46,6 @@ internal fun computeWatchStats(
     var weekWatch = 0L
     var totalWatch = 0L
     var finished = 0
-    var measurable = 0
     val authorCount = linkedMapOf<String, Int>()
     val authorWatch = linkedMapOf<String, Long>()
 
@@ -55,9 +54,10 @@ internal fun computeWatchStats(
         totalWatch += watched
         if (row.watchedAt >= weekStart) weekWatch += watched
 
-        if (row.playbackDuration > 0L) {
-            measurable++
-            if (row.playbackPosition * 100L >= row.playbackDuration * COMPLETION_PERCENT) finished++
+        if (row.playbackDuration > 0L &&
+            row.playbackPosition * 100L >= row.playbackDuration * COMPLETION_PERCENT
+        ) {
+            finished++
         }
 
         val author = row.author.trim()
@@ -77,7 +77,7 @@ internal fun computeWatchStats(
         totalWatchMillis = totalWatch,
         totalEntries = rows.size,
         completedCount = finished,
-        completionRate = if (measurable > 0) finished.toFloat() / measurable else 0f,
+        completionRate = if (rows.isNotEmpty()) finished.toFloat() / rows.size else 0f,
         topAuthors = topAuthors,
         dailyWatch = buildDailyBuckets(rows, nowMillis)
     )

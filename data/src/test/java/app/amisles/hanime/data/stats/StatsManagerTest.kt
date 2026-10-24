@@ -52,7 +52,7 @@ class StatsManagerTest {
     }
 
     @Test
-    fun completionCountsOnlyEntriesWithKnownDuration() {
+    fun completionRateUsesAllEntriesAsDenominator() {
         val finished = row("f", "A", now, 95, 100)
         val unfinished = row("u", "A", now, 50, 100)
         val unknown = row("x", "A", now, 500, 0)
@@ -60,7 +60,7 @@ class StatsManagerTest {
         val stats = computeWatchStats(listOf(finished, unfinished, unknown), now)
 
         assertEquals(1, stats.completedCount)
-        assertEquals(0.5f, stats.completionRate, 0.0001f)
+        assertEquals(1f / 3f, stats.completionRate, 0.0001f)
     }
 
     @Test
