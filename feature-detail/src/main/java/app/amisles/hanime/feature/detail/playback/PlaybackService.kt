@@ -107,6 +107,7 @@ class PlaybackService : MediaSessionService() {
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder()
                 .setAvailableSessionCommands(sessionCommands)
+                .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
                 .build()
         }
 
