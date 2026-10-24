@@ -862,6 +862,7 @@
     <string name="crash_notice_title">上次异常退出</string>
     <string name="crash_notice_body">应用上次未正常退出，已记录崩溃信息。可以查看并决定是否反馈给开发者。</string>
     <string name="crash_notice_view">查看</string>
+    <string name="backup_error_checksum">备份文件已损坏或不完整，请重新导出后再试</string>
     <string name="download_storage_title">存储空间</string>
     <string name="download_storage_free">剩余 %1$s</string>
     <string name="download_storage_used">已用 %1$s</string>

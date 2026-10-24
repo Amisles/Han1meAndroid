@@ -831,6 +831,7 @@
     <string name="crash_notice_title">前回は異常終了しました</string>
     <string name="crash_notice_body">前回アプリが正常に終了しませんでした。クラッシュ情報を記録しましたので、確認して共有するかご判断ください。</string>
     <string name="crash_notice_view">表示</string>
+    <string name="backup_error_checksum">バックアップファイルが破損しているか不完全です。再度書き出してください。</string>
     <string name="download_storage_title">ストレージ</string>
     <string name="download_storage_free">空き %1$s</string>
     <string name="download_storage_used">使用中 %1$s</string>

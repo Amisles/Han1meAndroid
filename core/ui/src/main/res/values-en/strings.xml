@@ -831,6 +831,7 @@
     <string name="crash_notice_title">Last exit was abnormal</string>
     <string name="crash_notice_body">The app did not exit normally last time. Crash details were recorded so you can review and decide whether to share them.</string>
     <string name="crash_notice_view">View</string>
+    <string name="backup_error_checksum">The backup file is corrupted or incomplete. Please export it again.</string>
     <string name="download_storage_title">Storage</string>
     <string name="download_storage_free">%1$s free</string>
     <string name="download_storage_used">%1$s used</string>

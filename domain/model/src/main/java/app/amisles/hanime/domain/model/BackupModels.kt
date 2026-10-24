@@ -71,4 +71,7 @@ sealed class BackupError : Exception() {
     data object MissingManifest : BackupError()
     data class UnsupportedSchema(val found: Int, val supported: Int) : BackupError()
     data class WrongPackage(val found: String) : BackupError()
+
+    /** 校验和不匹配：文件在传输或存储中损坏，导入会写入残缺数据。 */
+    data object ChecksumMismatch : BackupError()
 }

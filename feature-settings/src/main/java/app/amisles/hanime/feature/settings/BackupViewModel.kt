@@ -158,6 +158,7 @@ class BackupViewModel @Inject constructor(
         is BackupError.WrongPackage -> R.string.backup_error_package
         is BackupError.UnsupportedSchema -> R.string.backup_error_schema
         is BackupError.MissingManifest, is BackupError.NotASupportedArchive -> R.string.backup_error_format
+        is BackupError.ChecksumMismatch -> R.string.backup_error_checksum
         else -> R.string.backup_import_failed
     }
 }

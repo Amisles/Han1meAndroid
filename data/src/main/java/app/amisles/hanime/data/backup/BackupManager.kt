@@ -86,6 +86,9 @@ class BackupManager @Inject constructor(
                 ENTRY_SETTINGS to settingsToJson(readSettings()).toString()
             )
             files.putAll(extraFiles)
+            // 校验值覆盖除自身以外的全部条目，写入后再落盘
+            val checksum = BackupChecksum.compute(files)
+            files[BackupChecksum.ENTRY_CHECKSUM] = BackupChecksum.format(checksum)
             zip(files)
         }
 
@@ -98,6 +101,11 @@ class BackupManager @Inject constructor(
     ): Pair<BackupContents, BackupImportSummary> = withContext(Dispatchers.IO) {
         val files = unzip(bytes)
         val manifest = parseManifest(files)
+        // 先验完整性再动数据库：半截文件解出的 JSON 可能恰好能被解析成残缺数据
+        val payload = files.filterKeys { it != BackupChecksum.ENTRY_CHECKSUM }
+        if (!BackupChecksum.matches(payload, files[BackupChecksum.ENTRY_CHECKSUM])) {
+            throw BackupError.ChecksumMismatch
+        }
         val contents = parseContents(files, manifest)
         val autoBackupName = writeAutoBackup(policy)
 
@@ -169,6 +177,8 @@ class BackupManager @Inject constructor(
         val schema = obj.optInt("schemaVersion", -1)
         val pkg = obj.optString("packageName", "")
         if (pkg != context.packageName) throw BackupError.WrongPackage(pkg)
+        // 低于当前版本一律可读：解析侧全部使用 opt* 带默认值，缺失字段自动落到默认值。
+        // 只有「未来版本」才拒绝——旧代码无法理解新语义，强行导入可能写出错误状态。
         if (schema < 1 || schema > SCHEMA_VERSION) {
             throw BackupError.UnsupportedSchema(schema, SCHEMA_VERSION)
         }
@@ -503,6 +513,13 @@ class BackupManager @Inject constructor(
     )
 
     companion object {
+        /**
+         * 备份 schema 版本。
+         *
+         * 对外契约：**字段只增不改**。新增字段一律给默认值，读取旧版本时缺失字段按默认值处理；
+         * 只有「旧版本无法正确理解」的语义变更才允许升版本，且必须在 parseManifest 里
+         * 保留读取旧版本的路径（见下方兼容说明）。
+         */
         const val SCHEMA_VERSION = 1
         private const val MAX_ENTRY_BYTES = 16L * 1024 * 1024
         private const val MAX_TOTAL_BYTES = 48L * 1024 * 1024
