@@ -71,6 +71,20 @@ interface DownloadRepository {
     /** 恢复全部已暂停的任务，受并发上限与调度闸门约束。 */
     fun resumeAll()
 
+    /**
+     * 导出下载列表迁移包（zip：manifest.json + 各任务续传位图）。
+     *
+     * @return zip 字节；没有可迁移任务时返回 null。
+     */
+    suspend fun exportMigration(): ByteArray?
+
+    /**
+     * 导入迁移包。任务一律落到 PAUSED，位图按新目录重定位，需用户确认后再继续。
+     *
+     * @return 成功导入的任务数。
+     */
+    suspend fun importMigration(bytes: ByteArray): Int
+
     /** 清理无任务引用的位图文件，返回释放字节数。 */
     suspend fun clearOrphanPartmaps(): Long
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean

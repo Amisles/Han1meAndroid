@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.download
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.DownloadGateState
@@ -48,6 +50,48 @@ class DownloadViewModel @Inject constructor(
     private fun mutate(block: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             mutationGate.withLock { block() }
+        }
+    }
+
+    private val _migrationBytes = MutableStateFlow<ByteArray?>(null)
+    /** 待写入的迁移包；由界面取出后写入用户选定的位置，写完调用 [consumeMigrationBytes]。 */
+    val migrationBytes: StateFlow<ByteArray?> = _migrationBytes.asStateFlow()
+
+    fun consumeMigrationBytes() {
+        _migrationBytes.value = null
+    }
+
+    fun exportMigration(onEmpty: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val bytes = runCatching { downloads.exportMigration() }.getOrNull()
+            withContext(Dispatchers.Main) {
+                if (bytes == null) onEmpty() else _migrationBytes.value = bytes
+            }
+        }
+    }
+
+    /** 把已导出的迁移包写到用户选定的位置；写完清空内存中的副本。 */
+    fun writeMigrationTo(uri: Uri, context: Context) {
+        val bytes = _migrationBytes.value ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+            }
+            withContext(Dispatchers.Main) { consumeMigrationBytes() }
+        }
+    }
+
+    fun readMigrationFrom(uri: Uri, context: Context, onDone: (Int) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }.getOrNull()
+            val count = if (bytes == null) {
+                0
+            } else {
+                runCatching { downloads.importMigration(bytes) }.getOrDefault(0)
+            }
+            withContext(Dispatchers.Main) { onDone(count) }
         }
     }
 

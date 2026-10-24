@@ -165,6 +165,39 @@ fun DownloadScreen(
         }
     }
 
+    val migrationExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        // 用户取消时也要清掉内存副本，否则会一直占着几 MB 直到下次导出
+        if (uri == null) viewModel.consumeMigrationBytes()
+        else viewModel.writeMigrationTo(uri, context)
+    }
+
+    val migrationImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            viewModel.readMigrationFrom(it, context) { count ->
+                Toast.makeText(
+                    context,
+                    context.getString(
+                        if (count > 0) R.string.download_migration_import_done
+                        else R.string.download_migration_import_failed,
+                        count
+                    ),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    val migrationBytes by viewModel.migrationBytes.collectAsStateWithLifecycle()
+    LaunchedEffect(migrationBytes) {
+        migrationBytes?.let {
+            migrationExportLauncher.launch("hanime-downloads-" + System.currentTimeMillis() + ".zip")
+        }
+    }
+
     var downloadFilter by remember { mutableStateOf(DownloadFilter.ALL) }
     var downloadSort by remember { mutableStateOf(DownloadSort.ADDED) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -355,6 +388,26 @@ fun DownloadScreen(
                     .padding(horizontal = 15.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.End
             ) {
+                QueueActionButton(
+                    label = stringResource(R.string.download_migration_export),
+                    onClick = {
+                        viewModel.exportMigration {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.download_migration_export_empty),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                QueueActionButton(
+                    label = stringResource(R.string.download_migration_import),
+                    onClick = {
+                        migrationImportLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 if (downloadingTasks.isNotEmpty()) {
                     QueueActionButton(
                         label = stringResource(R.string.download_queue_pause_all),

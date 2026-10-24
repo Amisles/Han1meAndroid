@@ -97,3 +97,9 @@ internal const val MIN_PARALLEL_PER_TASK = 2
 // 取略高于软预算以容纳在途重连与探测。
 internal const val MAX_CONCURRENT_CONNECTIONS = 12
 internal const val DOWNLOAD_UA = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36"
+
+// 下载列表迁移包：清单条目名与位图子目录
+internal const val MANIFEST_ENTRY = "manifest.json"
+internal const val PARTMAP_DIR = "partmap/"
+// 单个位图上限：块数上限 4096，按每块 1 bit 也远小于此值，留足余量防异常压缩包
+internal const val MAX_MIGRATION_ENTRY_BYTES = 4 * 1024 * 1024

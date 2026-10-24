@@ -30,8 +30,13 @@ import okhttp3.Dispatcher
 import okhttp3.ConnectionPool
 import okhttp3.Protocol
 import okhttp3.Call
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
@@ -1101,6 +1106,69 @@ class DownloadManager @Inject constructor(
         taskCancelFlags.clear()
         activeSlots.set(0)
         AppLogger.log("DownloadManager", "shutdown: 已取消下载作用域并清理在途状态")
+    }
+
+    override suspend fun exportMigration(): ByteArray? = withContext(Dispatchers.IO) {
+        val migratable = taskMap.values.filter {
+            it.status != DownloadStatus.COMPLETED && File(it.filePath + PARTMAP_SUFFIX).exists()
+        }
+        if (migratable.isEmpty()) return@withContext null
+        val manifest = DownloadMigrationCodec.encode(migratable) { path ->
+            File(path + PARTMAP_SUFFIX).exists()
+        }
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
+            zip.write(manifest.toByteArray())
+            zip.closeEntry()
+            migratable.forEach { task ->
+                val partmap = File(task.filePath + PARTMAP_SUFFIX)
+                if (!partmap.exists()) return@forEach
+                zip.putNextEntry(ZipEntry(PARTMAP_DIR + partmap.name))
+                partmap.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
+        }
+        AppLogger.log("DownloadManager", "导出迁移包: " + migratable.size + " 个任务")
+        out.toByteArray()
+    }
+
+    override suspend fun importMigration(bytes: ByteArray): Int = withContext(Dispatchers.IO) {
+        val dir = resolveDownloadDir()
+        val entries = LinkedHashMap<String, ByteArray>()
+        ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.isDirectory) continue
+                if (entry.size > MAX_MIGRATION_ENTRY_BYTES) continue
+                entries[entry.name] = zip.readBytes()
+            }
+        }
+        val manifest = entries[MANIFEST_ENTRY]?.let { String(it) }
+            ?: return@withContext 0
+        val migrated = DownloadMigrationCodec.decode(manifest)
+        if (migrated.isEmpty()) return@withContext 0
+
+        var imported = 0
+        tasksLock.withLock {
+            migrated.forEach { entry ->
+                val newPath = File(dir, File(entry.filePath).name).absolutePath
+                if (taskMap.values.any { it.filePath == newPath }) return@forEach
+                // 位图写到新路径旁，文件名沿用清单里的名字
+                val partmapBytes = entry.partmapName?.let { entries[PARTMAP_DIR + it] }
+                if (partmapBytes != null) {
+                    runCatching { File(newPath + PARTMAP_SUFFIX).writeBytes(partmapBytes) }
+                }
+                val id = taskIdCounter.incrementAndGet()
+                val task = DownloadMigrationCodec.toTask(entry, newPath).copy(id = id)
+                taskMap[id] = task
+                persistTask(task)
+                imported++
+            }
+            if (imported > 0) emitTasks()
+        }
+        AppLogger.log("DownloadManager", "导入迁移包: 成功 " + imported + "/" + migrated.size)
+        imported
     }
 
     fun getCompletedDownloads(): List<DownloadTask> {

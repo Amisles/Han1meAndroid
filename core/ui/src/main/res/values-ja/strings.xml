@@ -813,6 +813,12 @@
     <string name="download_queue_resume_all">すべて再開</string>
     <string name="download_queue_move_front">先頭へ</string>
     <string name="download_queue_toast_paused">%1$d 件のタスクを一時停止しました</string>
+    <string name="download_migration_export">ダウンロード一覧を書き出す</string>
+    <string name="download_migration_import">ダウンロード一覧を読み込む</string>
+    <string name="download_migration_export_done">%1$d 件のタスクを書き出しました</string>
+    <string name="download_migration_export_empty">移行できるタスクがありません</string>
+    <string name="download_migration_import_done">%1$d 件のタスクを読み込みました（すべて一時停止）</string>
+    <string name="download_migration_import_failed">読み込みに失敗しました：ファイルを認識できません</string>
     <string name="download_storage_title">ストレージ</string>
     <string name="download_storage_free">空き %1$s</string>
     <string name="download_storage_used">使用中 %1$s</string>
