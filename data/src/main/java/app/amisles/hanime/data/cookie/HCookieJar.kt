@@ -56,7 +56,12 @@ object HCookieJar : CookieJar {
         // 人机校验 Cookie 与登录态无关：未登录用户也可能需要它，因此按自己的域名单独判定
         val challengeHost = Preferences.cloudFlareCookieDomain
         if (challengeHost.isNotBlank() && host.equals(challengeHost, ignoreCase = true)) {
-            out += Preferences.cloudFlareCookie.toLoginCookieList(host)
+            val challengeCookies = Preferences.cloudFlareCookie.toLoginCookieList(host)
+            // 登录 Cookie 里可能残留同一时刻的旧 cf_clearance，两条同名 Cookie 一起下发时
+            // 服务端通常只认第一条（旧值），刚校验到的新值就永远不起作用
+            val names = challengeCookies.mapTo(HashSet()) { it.name }
+            out.removeAll { it.name in names }
+            out += challengeCookies
         }
 
         AppLogger.d("HCookieJar", "loadForRequest host=$host cookies=${out.size}")

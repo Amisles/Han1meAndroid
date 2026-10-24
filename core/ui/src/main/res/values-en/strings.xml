@@ -586,6 +586,7 @@
     <string name="cloudflare_verify_loading">Loading verification page…</string>
     <string name="cloudflare_verify_hint">Complete the check below. It is saved automatically so later requests go through.</string>
     <string name="cloudflare_verify_success">Verification complete</string>
+    <string name="cloudflare_verify_ineffective">Verification did not take effect. Please retry or switch network.</string>
     <string name="settings_cloudflare_verify">Human Verification</string>
     <string name="settings_cloudflare_verify_summary">Complete it manually when the site asks</string>
     <string name="settings_cloudflare_verify_no_host">Invalid site address, please set it in settings first</string>

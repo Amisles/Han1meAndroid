@@ -33,6 +33,8 @@ object CloudflareChallenge {
     private var nextId = 0L
 
     fun requestOnFailure(host: String) {
+        // 校验窗口正开着（尤其是它自己发起的复查请求又被拦），不要再换一个新请求把它顶掉
+        if (_request.value?.host == host) return
         synchronized(autoShownHosts) {
             if (!autoShownHosts.add(host)) return
         }

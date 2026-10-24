@@ -586,6 +586,7 @@
     <string name="cloudflare_verify_loading">正在載入驗證頁…</string>
     <string name="cloudflare_verify_hint">請在下方頁面完成驗證。通過後會自動儲存，之後的請求即可正常存取。</string>
     <string name="cloudflare_verify_success">驗證完成</string>
+    <string name="cloudflare_verify_ineffective">驗證未生效，請重試或更換網路後再試</string>
     <string name="settings_cloudflare_verify">人機驗證</string>
     <string name="settings_cloudflare_verify_summary">站點要求驗證時，在此手動完成</string>
     <string name="settings_cloudflare_verify_no_host">官網網址無效，請先在設定中填寫站點位址</string>

@@ -610,6 +610,7 @@
     <string name="cloudflare_verify_loading">正在加载验证页…</string>
     <string name="cloudflare_verify_hint">请在下方页面完成验证。通过后会自动保存，之后的请求即可正常访问。</string>
     <string name="cloudflare_verify_success">验证完成</string>
+    <string name="cloudflare_verify_ineffective">校验未生效，请重试或更换网络后再试</string>
     <string name="settings_cloudflare_verify">人机验证</string>
     <string name="settings_cloudflare_verify_summary">站点要求验证时，在此手动完成</string>
     <string name="settings_cloudflare_verify_no_host">官网网址无效，请先在设置中填写站点地址</string>

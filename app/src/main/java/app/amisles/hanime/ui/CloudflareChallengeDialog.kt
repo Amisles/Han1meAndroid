@@ -1,6 +1,5 @@
 package app.amisles.hanime.ui
 
-import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.webkit.CookieManager
@@ -48,18 +47,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.ViewModel
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.BrowserUserAgent
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.remote.EntryInterceptor
+import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.repository.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -73,20 +71,21 @@ private val CHALLENGE_AUXILIARY_HOSTS = listOf("cloudflare.com", "cloudflarechal
 
 @HiltViewModel
 class CloudflareChallengeViewModel @Inject constructor(
-    application: Application,
-    private val session: SessionRepository
-) : AndroidViewModel(application) {
+    private val session: SessionRepository,
+    private val network: NetworkService
+) : ViewModel() {
 
-    /** 保存校验结果；只有真正落盘成功才关窗，否则用户会以为过了却继续 403。 */
-    fun save(host: String, cookie: String, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val saved = runCatching {
-                withContext(Dispatchers.IO) { session.saveCloudFlareCookie(cookie, host) }
-            }.onFailure { e ->
+    suspend fun save(host: String, cookie: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching { session.saveCloudFlareCookie(cookie, host) }
+            .onFailure { e ->
                 AppLogger.logError("CloudflareChallenge", "保存校验 Cookie 失败: ${e.message}", e)
-            }.isSuccess
-            onResult(saved)
-        }
+            }
+            .isSuccess
+    }
+
+    /** 用后台同一套请求栈复查：只有不再被判为挑战页，才算真的过了。 */
+    suspend fun verify(): Boolean = withContext(Dispatchers.IO) {
+        runCatching { network.fetchHomePageWithBaseUrl() }.isSuccess
     }
 }
 
@@ -108,6 +107,15 @@ fun CloudflareChallengeDialog(
 ) {
     val context = LocalContext.current
     val entryUrl = remember(host) { "https://$host" + EntryInterceptor.entryPathFor(host) }
+    // 先清掉旧的 cf_clearance：留着它，内置浏览器会直接跳过校验，下面的轮询也会立刻判成功，
+    // 表现就是窗口一闪而过、提示验证成功，而保存下来的是一张早就失效的 Cookie
+    val staleCookie = remember(host) {
+        val manager = CookieManager.getInstance()
+        val existing = manager.getCookie(entryUrl)?.let(::clearanceCookie)
+        manager.setCookie(entryUrl, CLEARANCE_COOKIE + "; Max-Age=0; Path=/")
+        manager.flush()
+        existing
+    }
     var loading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
@@ -196,22 +204,29 @@ fun CloudflareChallengeDialog(
 
     LaunchedEffect(entryUrl) {
         val cookieManager = CookieManager.getInstance()
+        var lastSeen = staleCookie
         while (true) {
             delay(COOKIE_POLL_INTERVAL_MS)
             val clearance = cookieManager.getCookie(entryUrl)?.let(::clearanceCookie) ?: continue
+            if (clearance == lastSeen) continue
             saving = true
-            viewModel.save(host, clearance) { saved ->
-                saving = false
-                if (saved) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.cloudflare_verify_success),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    onSolved()
-                }
+            val works = viewModel.save(host, clearance) && viewModel.verify()
+            saving = false
+            lastSeen = clearance
+            if (works) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.cloudflare_verify_success),
+                    Toast.LENGTH_SHORT
+                ).show()
+                onSolved()
+                return@LaunchedEffect
             }
-            break
+            Toast.makeText(
+                context,
+                context.getString(R.string.cloudflare_verify_ineffective),
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
