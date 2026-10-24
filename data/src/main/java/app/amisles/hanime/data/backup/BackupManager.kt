@@ -1,9 +1,11 @@
 package app.amisles.hanime.data.backup
 
 import android.content.Context
+import androidx.room.withTransaction
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.local.database.FavoriteDao
+import app.amisles.hanime.data.local.database.FavoriteDatabase
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
@@ -43,6 +45,7 @@ import javax.inject.Singleton
 @Singleton
 class BackupManager @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val db: FavoriteDatabase,
     private val favoriteDao: FavoriteDao,
     private val favoriteGroupDao: FavoriteGroupDao,
     private val watchHistoryDao: WatchHistoryDao,
@@ -98,25 +101,27 @@ class BackupManager @Inject constructor(
         val contents = parseContents(files, manifest)
         val autoBackupName = writeAutoBackup(policy)
 
-        if (policy == BackupConflictPolicy.OVERWRITE) {
-            favoriteDao.clearAll()
-            favoriteGroupDao.clearAll()
-            watchHistoryDao.clearWatchHistory()
-            downloadDao.clearAll()
-            searchHistoryDao.clearAllSearch()
-        }
+        db.withTransaction {
+            if (policy == BackupConflictPolicy.OVERWRITE) {
+                favoriteDao.clearAll()
+                favoriteGroupDao.clearAll()
+                watchHistoryDao.clearWatchHistory()
+                downloadDao.clearAll()
+                searchHistoryDao.clearAllSearch()
+            }
 
-        val existingGroups = favoriteGroupDao.getAllGroupsOnce().mapTo(mutableSetOf()) { it.id }
-        contents.groups.filter { it.id !in existingGroups }.forEach {
-            favoriteGroupDao.upsertGroup(it.toEntity())
-        }
-        contents.favorites.forEach { favoriteDao.addFavorite(it.toEntity()) }
-        contents.history.forEach { watchHistoryDao.addWatchHistory(it.toEntity()) }
-        if (contents.downloads.isNotEmpty()) {
-            downloadDao.upsertAll(contents.downloads.map { it.toEntity() })
-        }
-        contents.searchHistory.forEach { entry ->
-            searchHistoryDao.addSearch(SearchHistoryEntity(query = entry.first, searchedAt = entry.second))
+            val existingGroups = favoriteGroupDao.getAllGroupsOnce().mapTo(mutableSetOf()) { it.id }
+            contents.groups.filter { it.id !in existingGroups }.forEach {
+                favoriteGroupDao.upsertGroup(it.toEntity())
+            }
+            contents.favorites.forEach { favoriteDao.addFavorite(it.toEntity()) }
+            contents.history.forEach { watchHistoryDao.addWatchHistory(it.toEntity()) }
+            if (contents.downloads.isNotEmpty()) {
+                downloadDao.upsertAll(contents.downloads.map { it.toEntity() })
+            }
+            contents.searchHistory.forEach { entry ->
+                searchHistoryDao.addSearch(SearchHistoryEntity(query = entry.first, searchedAt = entry.second))
+            }
         }
 
         val settingsApplied = contents.settings?.let { applySettings(it); true } ?: false

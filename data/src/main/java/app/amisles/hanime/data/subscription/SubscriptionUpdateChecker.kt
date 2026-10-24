@@ -19,8 +19,7 @@ class SubscriptionUpdateChecker(
 
     /** 拉取订阅页并返回新出现的视频（按页面顺序）。首次运行只记录基线，不报更新。 */
     suspend fun detectUpdates(): List<HanimeVideo> = withContext(Dispatchers.IO) {
-        val page = runCatching { repository.getSubscriptionsPage() }.getOrNull()
-            ?: return@withContext emptyList()
+        val page = repository.getSubscriptionsPage()
         val currentIds = page.videos.map { it.id }.toSet()
         if (currentIds.isEmpty()) return@withContext emptyList()
 

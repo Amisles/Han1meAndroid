@@ -21,10 +21,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+
+private const val MAX_IMPORT_BYTES = 64L * 1024 * 1024
 
 data class PendingBackup(val manifest: BackupManifest, val bytes: ByteArray)
 
@@ -89,9 +92,7 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    val bytes = getApplication<Application>().contentResolver
-                        .openInputStream(uri)?.use { it.readBytes() }
-                        ?: error("无法读取所选文件")
+                    val bytes = readLimited(uri)
                     PendingBackup(backup.inspectBackup(bytes), bytes)
                 }
             }
@@ -103,6 +104,24 @@ class BackupViewModel @Inject constructor(
                     _message.value = BackupMessage.Text(messageFor(e))
                 }
             )
+        }
+    }
+
+    private fun readLimited(uri: Uri): ByteArray {
+        val resolver = getApplication<Application>().contentResolver
+        val input = resolver.openInputStream(uri) ?: error("无法读取所选文件")
+        return input.use { stream ->
+            val out = ByteArrayOutputStream()
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
+            while (true) {
+                val read = stream.read(buffer)
+                if (read < 0) break
+                total += read
+                if (total > MAX_IMPORT_BYTES) throw BackupError.NotASupportedArchive
+                out.write(buffer, 0, read)
+            }
+            out.toByteArray()
         }
     }
 

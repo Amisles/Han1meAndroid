@@ -10,8 +10,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -25,8 +27,8 @@ class FavoriteViewModel @Inject constructor(
     private val _favorites = MutableStateFlow<List<FavoriteVideo>>(emptyList())
     val favorites: StateFlow<List<FavoriteVideo>> = _favorites.asStateFlow()
 
-    private val _groups = MutableStateFlow<List<FavoriteGroup>>(emptyList())
-    val groups: StateFlow<List<FavoriteGroup>> = _groups.asStateFlow()
+    val groups: StateFlow<List<FavoriteGroup>> = repository.getAllFavoriteGroupsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -48,19 +50,11 @@ class FavoriteViewModel @Inject constructor(
         }
     }
 
-    fun loadGroups() {
-        viewModelScope.launch {
-            repository.getAllFavoriteGroupsFlow().collect { groups ->
-                _groups.value = groups
-            }
-        }
-    }
-
     /** 新建分组；[name] 为空或重名时直接忽略，避免产生无法区分的条目。 */
     fun createGroup(name: String) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        if (_groups.value.any { it.name.equals(trimmed, ignoreCase = true) }) return
+        if (groups.value.any { it.name.equals(trimmed, ignoreCase = true) }) return
         viewModelScope.launch(Dispatchers.IO) {
             repository.upsertFavoriteGroup(
                 FavoriteGroup(
@@ -75,7 +69,7 @@ class FavoriteViewModel @Inject constructor(
     fun renameGroup(groupId: String, name: String) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        val target = _groups.value.firstOrNull { it.id == groupId } ?: return
+        val target = groups.value.firstOrNull { it.id == groupId } ?: return
         viewModelScope.launch(Dispatchers.IO) {
             repository.upsertFavoriteGroup(target.copy(name = trimmed))
         }

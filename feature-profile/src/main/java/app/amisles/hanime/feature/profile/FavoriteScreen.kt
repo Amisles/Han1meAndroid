@@ -105,7 +105,6 @@ fun FavoriteScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
-        viewModel.loadGroups()
     }
 
     LaunchedEffect(isSelectionMode) {

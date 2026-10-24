@@ -17,6 +17,7 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.subscription.SubscriptionUpdateChecker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 
 /**
  * 订阅更新检测任务。
@@ -33,11 +34,13 @@ class SubscriptionReminderWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         if (!Preferences.subscriptionReminder) return Result.success()
-        return runCatching {
+        return try {
             val updates = checker.detectUpdates()
             if (updates.isNotEmpty()) notify(updates.size, updates.first().title)
             Result.success()
-        }.getOrElse { e ->
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             AppLogger.logError("SubscriptionReminder", "检测失败: ${e.message}", e)
             Result.retry()
         }
