@@ -603,8 +603,8 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 15.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
                 ) {
                     items(items = videos, key = { it.id }) { video ->
@@ -631,7 +631,7 @@ fun SearchScreen(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 items(items = videos, key = { it.id }) { video ->
