@@ -792,6 +792,7 @@
     <string name="settings_auto_quality">自動調整畫質</string>
     <string name="settings_auto_quality_summary">卡頓時自動降檔、穩定後回升；關閉後手動選擇的畫質不會被覆蓋</string>
     <string name="playback_notification_channel">播放控制</string>
+    <string name="playback_notification_disabled">通知權限未開啟，播放控制不會出現在通知欄；可在系統設定中開啟</string>
     <string name="playback_seek_back">後退 15 秒</string>
     <string name="playback_seek_forward">前進 15 秒</string>
     <string name="playback_stop">移除播放器</string>

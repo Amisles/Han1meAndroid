@@ -47,6 +47,7 @@ class SubscriptionReminderWorker @AssistedInject constructor(
     }
 
     private fun notify(count: Int, firstTitle: String) {
+        if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) return
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             manager.createNotificationChannel(

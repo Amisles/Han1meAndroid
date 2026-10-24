@@ -3,6 +3,7 @@ package app.amisles.hanime.feature.detail.playback
 import android.content.Context
 import android.content.Intent
 import androidx.media3.exoplayer.ExoPlayer
+import app.amisles.hanime.core.common.util.AppLogger
 
 /**
  * 播放器与播放服务之间的进程内桥接。
@@ -33,15 +34,15 @@ object PlaybackSessionBridge {
     @Volatile
     private var serviceStarted = false
 
+    /** 本次播放是否请求过前台服务：bind 晚于起播时用它补一次拉起。 */
+    @Volatile
+    private var serviceRequested = false
+
     /** 记录当前页面的播放器实例；必须在主线程调用（与播放器构建同一线程）。 */
     fun bind(player: ExoPlayer, context: Context) {
         this.player = player
         appContext = context.applicationContext
-        // 服务已起但当时没拿到播放器（见 PlaybackService.ensureSession 的失败分支）：
-        // 这里补一次启动，避免通知永久缺席
-        if (serviceStarted) {
-            startServiceSafely()
-        }
+        if (serviceRequested) startServiceSafely()
     }
 
     /**
@@ -49,8 +50,8 @@ object PlaybackSessionBridge {
      * 提前启动会让一个永远不会进入前台的服务挂在后台，且 Android 12+ 对后台启动前台服务有限制。
      */
     fun ensureService(context: Context) {
-        if (serviceStarted) return
         appContext = context.applicationContext
+        serviceRequested = true
         startServiceSafely()
     }
 
@@ -63,8 +64,11 @@ object PlaybackSessionBridge {
     private fun startServiceSafely() {
         val ctx = appContext ?: return
         runCatching {
-            ctx.startService(Intent(ctx, PlaybackService::class.java))
-            serviceStarted = true
+            // startService 解析不到组件时返回 null 而不抛异常，不能无条件认为服务已起
+            serviceStarted = ctx.startService(Intent(ctx, PlaybackService::class.java)) != null
+        }.onFailure { e ->
+            serviceStarted = false
+            AppLogger.logError("PlaybackSessionBridge", "启动播放服务失败: " + e.message, e)
         }
     }
 
@@ -77,6 +81,7 @@ object PlaybackSessionBridge {
     fun unbind(player: ExoPlayer) {
         if (this.player !== player) return
         this.player = null
+        serviceRequested = false
         if (!serviceStarted) return
         serviceStarted = false
         val ctx = appContext ?: return
@@ -91,6 +96,7 @@ object PlaybackSessionBridge {
      */
     fun stopPlayback() {
         player?.let { p -> runCatching { p.pause() } }
+        serviceRequested = false
         if (!serviceStarted) return
         serviceStarted = false
         val ctx = appContext ?: return

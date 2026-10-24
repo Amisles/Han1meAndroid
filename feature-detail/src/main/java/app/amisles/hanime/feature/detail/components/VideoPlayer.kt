@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Rational
 import android.view.OrientationEventListener
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -162,6 +164,7 @@ fun VideoPlayer(
 
     // ── 状态声明 ────────────────────────────────────────────────────────────
     var isPlaying by remember { mutableStateOf(false) }
+    var notificationHintShown by remember { mutableStateOf(false) }
     var isBuffering by remember { mutableStateOf(false) }
     var isReady by remember { mutableStateOf(false) }
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -357,7 +360,19 @@ fun VideoPlayer(
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
                 // 真正开始播放时才拉起前台服务：提前启动会让一个永不进入前台的服务常驻
-                if (playing) PlaybackSessionBridge.ensureService(context)
+                if (playing) {
+                    PlaybackSessionBridge.ensureService(context)
+                    if (!notificationHintShown &&
+                        !NotificationManagerCompat.from(context).areNotificationsEnabled()
+                    ) {
+                        notificationHintShown = true
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.playback_notification_disabled),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {

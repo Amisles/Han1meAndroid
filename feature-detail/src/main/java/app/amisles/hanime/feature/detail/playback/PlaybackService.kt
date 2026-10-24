@@ -11,6 +11,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -69,6 +70,7 @@ class PlaybackService : MediaSessionService() {
         if (session != null) return
         val player = PlaybackSessionBridge.player
         if (player == null) {
+            AppLogger.w("PlaybackService", "尚未登记播放器，停止服务")
             stopSelf()
             return
         }
@@ -83,6 +85,7 @@ class PlaybackService : MediaSessionService() {
             .build()
         session = newSession
         addSession(newSession)
+        AppLogger.log("PlaybackService", "媒体会话已建立, playing=" + player.isPlaying)
         // 快进 / 快退按钮只对能 seek 的播放器有意义；不可 seek 时不下发，避免出现点了没反应的按钮
         if (player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) {
             newSession.setMediaButtonPreferences(buildSeekButtons(this))
