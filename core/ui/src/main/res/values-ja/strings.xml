@@ -792,7 +792,6 @@
     <string name="settings_auto_quality">画質の自動調整</string>
     <string name="settings_auto_quality_summary">再生が止まると自動で下げ、安定後に戻す。オフにすると手動選択した画質は上書きされない</string>
     <string name="playback_notification_channel">再生コントロール</string>
-    <string name="playback_notification_disabled">通知が許可されていないため、再生コントロールが通知シェードに表示されません。システム設定で有効にしてください。</string>
     <string name="playback_seek_back">15 秒戻る</string>
     <string name="playback_seek_forward">15 秒進む</string>
     <string name="playback_stop">プレーヤーを閉じる</string>

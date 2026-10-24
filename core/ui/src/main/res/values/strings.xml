@@ -823,7 +823,6 @@
     <string name="settings_auto_quality">自动调整画质</string>
     <string name="settings_auto_quality_summary">卡顿时自动降档、稳定后回升；关闭后手动选择的画质不会被覆盖</string>
     <string name="playback_notification_channel">播放控制</string>
-    <string name="playback_notification_disabled">通知权限未开启，播放控制不会出现在通知栏；可在系统设置中开启</string>
     <string name="playback_seek_back">后退 15 秒</string>
     <string name="playback_seek_forward">前进 15 秒</string>
     <string name="playback_stop">移除播放器</string>

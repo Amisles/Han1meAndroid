@@ -792,7 +792,6 @@
     <string name="settings_auto_quality">Adaptive quality</string>
     <string name="settings_auto_quality_summary">Downgrade on stutter and recover when stable; when off, a manually selected quality is never overridden</string>
     <string name="playback_notification_channel">Playback controls</string>
-    <string name="playback_notification_disabled">Notifications are off, so playback controls will not appear in the notification shade. Enable them in system settings.</string>
     <string name="playback_seek_back">Back 15 seconds</string>
     <string name="playback_seek_forward">Forward 15 seconds</string>
     <string name="playback_stop">Remove player</string>
