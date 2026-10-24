@@ -22,9 +22,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
+private fun brandParts(siteUrl: String?): Triple<String, String, String> {
+    val host = runCatching { android.net.Uri.parse(siteUrl).host?.lowercase() }.getOrNull()
+        ?.removePrefix("www.")
+    if (host.isNullOrBlank() || !host.contains('.')) return Triple("H", "anime1", ".me")
+    val name = host.substringBeforeLast('.')
+    val tld = host.substringAfterLast('.')
+    if (name.isEmpty() || tld.isEmpty()) return Triple("H", "anime1", ".me")
+    return Triple(name.first().uppercaseChar().toString(), name.drop(1), ".$tld")
+}
+
 @Composable
 fun Header(
     title: String? = null,
+    siteUrl: String? = null,
     onSearchNavigate: () -> Unit = {},
     onProfileClick: (() -> Unit)? = null
 ) {
@@ -54,21 +65,22 @@ fun Header(
                 color = MaterialTheme.colorScheme.onBackground
             )
         } else {
+            val (initial, name, tld) = brandParts(siteUrl)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "H",
+                    text = initial,
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "anime1",
+                    text = name,
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = ".me",
+                    text = tld,
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold

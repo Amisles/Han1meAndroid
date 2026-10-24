@@ -21,6 +21,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val longPressBoostSpeedFlow = Preferences.longPressBoostSpeedFlow
     override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
     override val autoQualityFlow = Preferences.autoQualityFlow
+    override val baseUrlFlow = Preferences.baseUrlFlow
 
     override fun setPlaybackSpeed(speed: Float) = Preferences.setPlaybackSpeed(speed)
     override fun setPreferredQuality(resolution: String) = Preferences.setPreferredQuality(resolution)

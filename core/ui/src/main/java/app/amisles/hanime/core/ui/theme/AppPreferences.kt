@@ -31,6 +31,7 @@ interface AppPreferences {
     val longPressBoostSpeedFlow: StateFlow<Float>
     val doubleTapSeekFlow: StateFlow<Boolean>
     val autoQualityFlow: StateFlow<Boolean>
+    val baseUrlFlow: StateFlow<String>
 
     // ── 写入 ────────────────────────────────────────────────────────────────
     // 播放器与搜索页需要就地改设置（例如倍速菜单、布局切换）。若把这些留在 Composable

@@ -68,6 +68,7 @@ import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
@@ -185,6 +186,7 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val siteUrl by LocalAppPreferences.current.baseUrlFlow.collectAsStateWithLifecycle()
     // 人机校验通过后自动重拉：否则用户要手动下拉一次才知道已经能用了
     val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
     LaunchedEffect(solvedTick) {
@@ -198,6 +200,7 @@ fun HomeScreen(
         isLoading = isLoading,
         isRefreshing = isRefreshing,
         error = error,
+        siteUrl = siteUrl,
         onRefresh = { viewModel.loadHomeData() },
         onVideoClick = onVideoClick,
         onSearchClick = onSearchClick,
@@ -217,6 +220,7 @@ fun HomeScreenContent(
     isLoading: Boolean,
     isRefreshing: Boolean = false,
     error: String? = null,
+    siteUrl: String? = null,
     onRefresh: () -> Unit = {},
     onVideoClick: (String) -> Unit = {},
     onSearchClick: (String) -> Unit = {},
@@ -286,6 +290,7 @@ fun HomeScreenContent(
         ) {
         item(key = "home-header", contentType = HomeItemType.HEADER) {
             Header(
+                siteUrl = siteUrl,
                 onSearchNavigate = onNavigateToSearch,
                 onProfileClick = onProfileClick
             )
