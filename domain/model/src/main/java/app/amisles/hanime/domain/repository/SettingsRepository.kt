@@ -100,6 +100,10 @@ interface SettingsRepository {
     val downloadQueueOrder: List<Int>
     fun setDownloadQueueOrder(ids: List<Int>)
 
+    /** 已提示过的崩溃记录文件名；为空表示尚未提示过任何崩溃。 */
+    val acknowledgedCrashFile: String
+    fun setAcknowledgedCrashFile(name: String)
+
     /** 订阅更新提醒总开关，默认关闭：定时抓页面会带来站点限流风险。 */
     val subscriptionReminder: Boolean
     val subscriptionReminderFlow: StateFlow<Boolean>

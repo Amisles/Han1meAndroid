@@ -34,7 +34,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -53,6 +56,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
@@ -65,6 +69,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.amisles.hanime.core.common.util.CrashLogger
+import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.CloudflareChallenge
@@ -72,6 +78,7 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.feature.settings.openReleasePage
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
@@ -94,6 +101,7 @@ import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
 import app.amisles.hanime.feature.settings.BackupScreen
+import app.amisles.hanime.feature.settings.CrashLogScreen
 import app.amisles.hanime.ui.screens.PlaylistDetailScreen
 import app.amisles.hanime.ui.screens.PlaylistListPageScreen
 import app.amisles.hanime.feature.settings.SettingsScreen
@@ -286,6 +294,7 @@ fun HanimeApp(
         currentRoute != "login" &&
         currentRoute != "settings" &&
         currentRoute != "backup" &&
+        currentRoute != "crashLog" &&
         currentRoute != "watchStats" &&
         currentRoute != "batchDownload" &&
         !currentRoute.startsWith("subscriptions") &&
@@ -598,12 +607,18 @@ fun HanimeApp(
                                     "diagnostics" -> navController.navigate("diagnostics")
                                     "customize" -> navController.navigate("customize")
                                     "backup" -> navController.navigate("backup")
+                                    "crashLog" -> navController.navigate("crashLog")
                                 }
                             }
                         )
                     }
                     composable("diagnostics") {
                         DiagnosticsScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                    composable("crashLog") {
+                        CrashLogScreen(
                             onBackClick = { navController.popBackStack() }
                         )
                     }
@@ -829,6 +844,49 @@ fun HanimeApp(
                 onSolved = { CloudflareChallenge.markSolved() }
             )
         }
+    }
+
+    // ── 上次异常退出提示 ──────────────────────────────────────────────────
+    // 每次崩溃只提示一次：用崩溃文件名作已读标记，文件名带时间戳天然唯一。
+    var crashNotice by remember { mutableStateOf<CrashRecord?>(null) }
+    LaunchedEffect(Unit) {
+        crashNotice = CrashLogger.takeUnseen(Preferences.acknowledgedCrashFile)
+    }
+    crashNotice?.let { record ->
+        AlertDialog(
+            onDismissRequest = {
+                Preferences.setAcknowledgedCrashFile(record.file.name)
+                crashNotice = null
+            },
+            title = { Text(stringResource(R.string.crash_notice_title)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.crash_notice_body),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    Preferences.setAcknowledgedCrashFile(record.file.name)
+                    crashNotice = null
+                    navController.navigate("crashLog")
+                }) {
+                    Text(stringResource(R.string.crash_notice_view))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    Preferences.setAcknowledgedCrashFile(record.file.name)
+                    crashNotice = null
+                }) {
+                    Text(
+                        text = stringResource(R.string.common_close),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     }
 
     // ── 启动时的更新提示 ──────────────────────────────────────────────────

@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.NetworkCheck
 import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Nightlight
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Wifi
@@ -660,6 +661,13 @@ fun SettingsScreen(
                     icon = Icons.Outlined.CleaningServices,
                     title = stringResource(R.string.settings_clear_cache),
                     onClick = { showClearCacheDialog = true }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.BugReport,
+                    title = stringResource(R.string.crash_log_entry),
+                    subtitle = stringResource(R.string.crash_log_entry_summary),
+                    onClick = { onNavigate("crashLog") }
                 )
                 SettingsGroupDivider()
                 SettingsNavRow(

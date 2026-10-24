@@ -60,6 +60,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_DOWNLOAD_CHARGING_ONLY = "download_charging_only"
     private const val SP_DOWNLOAD_NIGHT_ONLY = "download_night_only"
     private const val SP_DOWNLOAD_QUEUE_ORDER = "download_queue_order"
+    private const val SP_ACKNOWLEDGED_CRASH = "acknowledged_crash_file"
     private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
@@ -637,6 +638,13 @@ object Preferences : SettingsRepository, SessionRepository {
 
     override fun setDownloadQueueOrder(ids: List<Int>) {
         sp.edit { putString(SP_DOWNLOAD_QUEUE_ORDER, ids.joinToString(",")) }
+    }
+
+    override val acknowledgedCrashFile: String
+        get() = readString(SP_ACKNOWLEDGED_CRASH, "").orEmpty()
+
+    override fun setAcknowledgedCrashFile(name: String) {
+        sp.edit { putString(SP_ACKNOWLEDGED_CRASH, name) }
     }
 
     override fun setSubscriptionReminder(enabled: Boolean) {
