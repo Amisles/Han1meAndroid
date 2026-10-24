@@ -19,6 +19,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+/** 迁移包读入上限：与解压后的条目上限同量级，正常包只有几百 KB。 */
+private const val MAX_MIGRATION_BYTES = 64L * 1024 * 1024
+
 @HiltViewModel
 class DownloadViewModel @Inject constructor(
     private val downloads: DownloadRepository
@@ -83,8 +86,21 @@ class DownloadViewModel @Inject constructor(
 
     fun readMigrationFrom(uri: Uri, context: Context, onDone: (Int) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
+            // 限制读入量：SAF 的 MIME 过滤挡不住用户选错文件，一次性读整个视频会 OOM
             val bytes = runCatching {
-                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val out = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val read = stream.read(buffer)
+                        if (read < 0) break
+                        total += read
+                        if (total > MAX_MIGRATION_BYTES) error("迁移包过大")
+                        out.write(buffer, 0, read)
+                    }
+                    out.toByteArray()
+                }
             }.getOrNull()
             val count = if (bytes == null) {
                 0

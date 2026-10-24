@@ -380,35 +380,37 @@ fun DownloadScreen(
             }
         }
 
-        // 队列批量操作：仅在确有进行中 / 排队 / 暂停任务时出现，避免空列表下无意义
-        if (!isSelectionMode && (downloadingTasks.isNotEmpty() || pausedTasks.isNotEmpty())) {
+        // 导入入口始终可用：换机后列表为空正是最需要导入的时候
+        if (!isSelectionMode) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 15.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                QueueActionButton(
-                    label = stringResource(R.string.download_migration_export),
-                    onClick = {
-                        viewModel.exportMigration {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.download_migration_export_empty),
-                                Toast.LENGTH_SHORT
-                            ).show()
+                if (tasks.isNotEmpty()) {
+                    QueueActionButton(
+                        label = stringResource(R.string.download_migration_export),
+                        onClick = {
+                            viewModel.exportMigration {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.download_migration_export_empty),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
-                    }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 QueueActionButton(
                     label = stringResource(R.string.download_migration_import),
                     onClick = {
                         migrationImportLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
                     }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 if (downloadingTasks.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     QueueActionButton(
                         label = stringResource(R.string.download_queue_pause_all),
                         onClick = {

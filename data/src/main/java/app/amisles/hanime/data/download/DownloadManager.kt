@@ -587,6 +587,9 @@ class DownloadManager @Inject constructor(
         job.start()
     }
 
+    private fun gateProgress(task: DownloadTask): Int =
+        if (task.totalBytes > 0) (task.downloadedBytes * 100 / task.totalBytes).toInt() else 0
+
     private fun startNextPendingTask() {
         // 闸门判定含跨进程读取（粘性广播 / ConnectivityManager），必须在锁外
         if (!refreshGateState().allowed) return
@@ -614,9 +617,6 @@ class DownloadManager @Inject constructor(
      * 只读 ConcurrentHashMap，不做任何磁盘 I/O —— 这是持锁执行的关键约束：
      * 持锁做 I/O 会让主线程上的 pauseDownload / cancelDownload / startDownload 长时间等锁。
      */
-    private fun gateProgress(task: DownloadTask): Int =
-        if (task.totalBytes > 0) (task.downloadedBytes * 100 / task.totalBytes).toInt() else 0
-
     private fun pickPendingTaskLocked(exclude: Set<Int>): DownloadTask? {
         val pending = taskMap.values.filter {
             it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id) && it.id !in exclude
@@ -1113,9 +1113,7 @@ class DownloadManager @Inject constructor(
             it.status != DownloadStatus.COMPLETED && File(it.filePath + PARTMAP_SUFFIX).exists()
         }
         if (migratable.isEmpty()) return@withContext null
-        val manifest = DownloadMigrationCodec.encode(migratable) { path ->
-            File(path + PARTMAP_SUFFIX).exists()
-        }
+        val manifest = DownloadMigrationCodec.encode(migratable) { true }
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
             zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
@@ -1140,8 +1138,9 @@ class DownloadManager @Inject constructor(
             while (true) {
                 val entry = zip.nextEntry ?: break
                 if (entry.isDirectory) continue
-                if (entry.size > MAX_MIGRATION_ENTRY_BYTES) continue
-                entries[entry.name] = zip.readBytes()
+                // entry.size 在流式读取时常为 -1，必须自己计边读边限长，否则异常包可撑爆内存
+                val data = readEntryLimited(zip) ?: continue
+                entries[entry.name] = data
             }
         }
         val manifest = entries[MANIFEST_ENTRY]?.let { String(it) }
@@ -1149,16 +1148,25 @@ class DownloadManager @Inject constructor(
         val migrated = DownloadMigrationCodec.decode(manifest)
         if (migrated.isEmpty()) return@withContext 0
 
+        // 位图落盘是磁盘 I/O，必须先做完再进锁：持锁写文件会挡住主线程的暂停 / 取消
+        val pending = migrated.mapNotNull { entry ->
+            val newPath = File(dir, File(entry.filePath).name).absolutePath
+            if (tasksLock.withLock { taskMap.values.any { it.filePath == newPath } }) {
+                return@mapNotNull null
+            }
+            val partmapBytes = entry.partmapName?.let { entries[PARTMAP_DIR + it] }
+            if (partmapBytes != null) {
+                runCatching { File(newPath + PARTMAP_SUFFIX).writeBytes(partmapBytes) }
+            }
+            entry to newPath
+        }
+        if (pending.isEmpty()) return@withContext 0
+
         var imported = 0
         tasksLock.withLock {
-            migrated.forEach { entry ->
-                val newPath = File(dir, File(entry.filePath).name).absolutePath
+            pending.forEach { (entry, newPath) ->
+                // 写盘期间可能有同路径任务被创建，入锁后再确认一次
                 if (taskMap.values.any { it.filePath == newPath }) return@forEach
-                // 位图写到新路径旁，文件名沿用清单里的名字
-                val partmapBytes = entry.partmapName?.let { entries[PARTMAP_DIR + it] }
-                if (partmapBytes != null) {
-                    runCatching { File(newPath + PARTMAP_SUFFIX).writeBytes(partmapBytes) }
-                }
                 val id = taskIdCounter.incrementAndGet()
                 val task = DownloadMigrationCodec.toTask(entry, newPath).copy(id = id)
                 taskMap[id] = task
@@ -1169,6 +1177,21 @@ class DownloadManager @Inject constructor(
         }
         AppLogger.log("DownloadManager", "导入迁移包: 成功 " + imported + "/" + migrated.size)
         imported
+    }
+
+    /** 逐条读入并限长；超过上限返回 null 并跳过该条目。 */
+    private fun readEntryLimited(zip: ZipInputStream): ByteArray? {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(64 * 1024)
+        var total = 0L
+        while (true) {
+            val read = zip.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > MAX_MIGRATION_ENTRY_BYTES) return null
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
     }
 
     fun getCompletedDownloads(): List<DownloadTask> {
