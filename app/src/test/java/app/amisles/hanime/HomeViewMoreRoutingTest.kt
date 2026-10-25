@@ -111,4 +111,59 @@ class HomeViewMoreRoutingTest {
         assertNull(moreUrlPageRoute("$base/unknown-section/x"))
         assertNull(moreUrlPageRoute("$base/"))
     }
+
+    @Test
+    fun `genre more url maps to a genre search instead of the raw list page`() {
+        val s = section("里番", "$base/genre/%E8%A3%8F%E7%95%AA")
+
+        assertNull("排序值不应命中分类分区", sortApiValueOf(s))
+        assertEquals("裏番", genreApiValueOf(s))
+    }
+
+    @Test
+    fun `genre section title matches even when more url is a genre path`() {
+        assertEquals("泡麵番", genreApiValueOf(section("泡面番", "$base/genre/%E6%B3%A1%E9%BA%B5%E7%95%AA")))
+        assertEquals("2D動畫", genreApiValueOf(section("2D动画", "$base/genre/2D%E5%8B%95%E7%95%AB")))
+    }
+
+    @Test
+    fun `genre title is used when more url is absent`() {
+        assertEquals("裏番", genreApiValueOf(section("里番", "")))
+        assertEquals("3DCG", genreApiValueOf(section("3DCG", "")))
+    }
+
+    @Test
+    fun `accepts singular and plural genre paths`() {
+        assertEquals("裏番", moreUrlGenreToken("$base/genre/%E8%A3%8F%E7%95%AA"))
+        assertEquals("裏番", moreUrlGenreToken("$base/genres/%E8%A3%8F%E7%95%AA"))
+    }
+
+    @Test
+    fun `genre token strips query fragment and trailing slash`() {
+        assertEquals("裏番", moreUrlGenreToken("$base/genre/%E8%A3%8F%E7%95%AA/?page=2#top"))
+    }
+
+    @Test
+    fun `sort section is not mistaken for a genre section`() {
+        val s = section("最新上市", "$base/sort/latest")
+
+        assertEquals("latest", sortApiValueOf(s))
+        assertNull("排序分区不应命中分类", genreApiValueOf(s))
+    }
+
+    @Test
+    fun `unknown genre path yields no genre route`() {
+        assertNull(genreApiValueOf(section("未知分区", "$base/genre/unknown-genre")))
+        assertNull(moreUrlGenreToken("$base/sort/latest"))
+        assertNull(moreUrlGenreToken(""))
+    }
+
+    @Test
+    fun `section with neither sort nor genre falls back to the raw page`() {
+        val s = section("站点自定义分区", "$base/sort/upcoming")
+
+        assertEquals("upcoming", sortApiValueOf(s))
+        assertNull(genreApiValueOf(s))
+        assertTrue(moreUrlPageRoute(s.moreUrl)!!.startsWith("videoListPage?url="))
+    }
 }

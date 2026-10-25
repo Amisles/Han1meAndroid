@@ -98,6 +98,7 @@ import app.amisles.hanime.feature.profile.SubscriptionsScreen
 import app.amisles.hanime.feature.profile.WatchStatsScreen
 import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.feature.search.sortOptions
+import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
 import app.amisles.hanime.feature.comic.ComicScreen
@@ -219,6 +220,29 @@ internal fun moreUrlSortToken(moreUrl: String): String? {
 internal fun sortApiValueOf(section: HomeSection): String? =
     moreUrlSortToken(section.moreUrl)
         ?: sortOptions.firstOrNull { it.label == section.title }?.apiValue
+
+internal fun moreUrlGenreToken(moreUrl: String): String? {
+    val rest = listOf("/genre/", "/genres/")
+        .firstNotNullOfOrNull { marker ->
+            val at = moreUrl.indexOf(marker)
+            if (at < 0) null else moreUrl.substring(at + marker.length)
+        }
+        ?: return null
+    return rest
+        .substringBefore('?')
+        .substringBefore('#')
+        .trimEnd('/')
+        .takeIf { it.isNotEmpty() }
+        ?.let(::percentDecode)
+}
+
+internal fun genreApiValueOf(section: HomeSection): String? {
+    val token = moreUrlGenreToken(section.moreUrl)
+    if (token != null) {
+        return categories.firstOrNull { it.label == token || it.apiValue == token }?.apiValue
+    }
+    return categories.firstOrNull { it.label == section.title }?.apiValue
+}
 
 internal fun moreUrlPageRoute(moreUrl: String): String? {
     val path = moreUrl.substringAfter("://", moreUrl)
@@ -479,8 +503,10 @@ fun HanimeApp(
                                 navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true } },
                             onViewMore = { section ->
                                 val sortApiValue = sortApiValueOf(section)
+                                val genreApiValue = if (sortApiValue == null) genreApiValueOf(section) else null
                                 val target = when {
                                     sortApiValue != null -> "search?sort=${Uri.encode(sortApiValue)}"
+                                    genreApiValue != null -> "search?genre=${Uri.encode(genreApiValue)}"
                                     section.moreUrl.isNotBlank() -> moreUrlPageRoute(section.moreUrl)
                                     else -> null
                                 }
