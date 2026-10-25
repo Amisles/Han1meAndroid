@@ -603,6 +603,11 @@
     <string name="customize_preset_large">大圖</string>
     <string name="customize_group_typography">文字</string>
     <string name="customize_group_card">卡片與圖片</string>
+    <string name="customize_group_related">詳情頁推薦</string>
+    <string name="customize_related_layout">推薦區佈局</string>
+    <string name="customize_related_layout_hint">豎版封面預設網格，橫版預設列表</string>
+    <string name="customize_layout_list">列表</string>
+    <string name="customize_layout_grid">網格</string>
     <string name="customize_group_grid">柵格</string>
     <string name="customize_font_scale">全域字級</string>
     <string name="customize_aspect_ratio">縮圖長寬比</string>

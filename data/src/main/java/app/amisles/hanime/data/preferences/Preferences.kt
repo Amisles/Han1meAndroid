@@ -3,6 +3,7 @@ package app.amisles.hanime.data.preferences
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.SessionCookie
+import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
 import android.content.Context
@@ -65,6 +66,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
+private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
     private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
     /** 是否允许启动时自动检查更新。 */
@@ -190,6 +192,10 @@ object Preferences : SettingsRepository, SessionRepository {
     private val _searchLayoutModeFlow = MutableStateFlow<SearchLayoutMode?>(null)
     override val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
 
+    // 详情页推荐布局：null 表示未选择，由推荐卡片形态决定默认值
+    private val _relatedLayoutModeFlow = MutableStateFlow<RelatedLayoutMode?>(null)
+    override val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?> = _relatedLayoutModeFlow.asStateFlow()
+
     // ── 应用更新 ────────────────────────────────────────────────────────────
     // 「不再提示」记录的是版本号而非时间戳：跳过 1.6.0 后，1.7.0 发布时仍会重新提示。
     private val _skippedUpdateVersionFlow = MutableStateFlow("")
@@ -256,6 +262,7 @@ object Preferences : SettingsRepository, SessionRepository {
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
+        _relatedLayoutModeFlow.value = RelatedLayoutMode.fromNameOrNull(readString(SP_RELATED_LAYOUT_MODE, null))
         _skippedUpdateVersionFlow.value = readString(SP_SKIPPED_UPDATE_VERSION, "").orEmpty()
         _autoCheckUpdateFlow.value = readBoolean(SP_AUTO_CHECK_UPDATE, true)
         migrateLegacyLoginCookieDomain()
@@ -492,6 +499,7 @@ object Preferences : SettingsRepository, SessionRepository {
     override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
     override val autoQuality: Boolean get() = _autoQualityFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
+    override val relatedLayoutMode: RelatedLayoutMode? get() = _relatedLayoutModeFlow.value
 
     override fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
@@ -714,6 +722,16 @@ object Preferences : SettingsRepository, SessionRepository {
     override fun setSearchLayoutMode(mode: SearchLayoutMode) {
         sp.edit { putString(SP_SEARCH_LAYOUT_MODE, mode.name) }
         _searchLayoutModeFlow.value = mode
+    }
+
+    override fun setRelatedLayoutMode(mode: RelatedLayoutMode) {
+        sp.edit { putString(SP_RELATED_LAYOUT_MODE, mode.name) }
+        _relatedLayoutModeFlow.value = mode
+    }
+
+    override fun clearRelatedLayoutMode() {
+        sp.edit { remove(SP_RELATED_LAYOUT_MODE) }
+        _relatedLayoutModeFlow.value = null
     }
 
     // ── 应用更新 ────────────────────────────────────────────────────────────

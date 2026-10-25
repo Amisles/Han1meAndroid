@@ -95,6 +95,7 @@ import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.HanimeSuccess
 import app.amisles.hanime.core.ui.theme.HanimeWarning
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.ThumbnailQuality
@@ -103,6 +104,7 @@ import app.amisles.hanime.core.ui.theme.UiConfigImport
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.UiPreset
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -138,6 +140,8 @@ fun CustomizeScreen(
     onBackClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val appPrefs = LocalAppPreferences.current
+    val relatedLayout by appPrefs.relatedLayoutModeFlow.collectAsStateWithLifecycle()
     val config by UiConfigStore.config.collectAsStateWithLifecycle()
     val homeSections by UiConfigStore.homeSections.collectAsStateWithLifecycle()
     val activePreset = remember(config) { UiPreset.of(config) }
@@ -221,6 +225,44 @@ fun CustomizeScreen(
                     labelFor = { stringResource(presetLabelRes(it)) },
                     onSelect = { UiConfigStore.set(it.config) }
                 )
+                Spacer(modifier = Modifier.height(GROUP_GAP))
+            }
+
+            item(key = "related-layout") {
+                GroupLabel(stringResource(R.string.customize_group_related))
+                SettingsGroupCard {
+                    Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.customize_related_layout),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (relatedLayout != null) {
+                                Text(
+                                    text = stringResource(R.string.customize_reset),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { appPrefs.clearRelatedLayoutMode() }
+                                )
+                            }
+                        }
+                        Text(
+                            text = stringResource(R.string.customize_related_layout_hint),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 3.dp, bottom = 8.dp)
+                        )
+                        TwoWaySegment(
+                            firstLabel = stringResource(R.string.customize_layout_list),
+                            secondLabel = stringResource(R.string.customize_layout_grid),
+                            firstSelected = relatedLayout != RelatedLayoutMode.GRID,
+                            onSelectFirst = { appPrefs.setRelatedLayoutMode(RelatedLayoutMode.LIST) },
+                            onSelectSecond = { appPrefs.setRelatedLayoutMode(RelatedLayoutMode.GRID) }
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(GROUP_GAP))
             }
 
@@ -622,6 +664,49 @@ private fun PresetSegment(
                     text = labelFor(preset),
                     fontSize = 13.sp,
                     color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+/* ───────────────────────── 二选一分段 ───────────────────────── */
+
+@Composable
+private fun TwoWaySegment(
+    firstLabel: String,
+    secondLabel: String,
+    firstSelected: Boolean,
+    onSelectFirst: () -> Unit,
+    onSelectSecond: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        listOf(firstLabel to firstSelected, secondLabel to !firstSelected).forEachIndexed { index, (label, selected) ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .clickable { if (index == 0) onSelectFirst() else onSelectSecond() }
+                    .padding(vertical = 7.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    color = if (selected) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant

@@ -1,5 +1,6 @@
 package app.amisles.hanime.domain.repository
 
+import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
@@ -122,6 +123,12 @@ interface SettingsRepository {
     val searchLayoutMode: SearchLayoutMode?
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
     fun setSearchLayoutMode(mode: SearchLayoutMode)
+
+    /** null 表示未选择，详情页按推荐卡片形态取默认值。 */
+    val relatedLayoutMode: RelatedLayoutMode?
+    val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?>
+    fun setRelatedLayoutMode(mode: RelatedLayoutMode)
+    fun clearRelatedLayoutMode()
 
     // ── 统计 ────────────────────────────────────────────────────────────────
     /** 观看统计开关。关闭后不展示入口，也不做任何统计计算。 */

@@ -603,6 +603,11 @@
     <string name="customize_preset_large">Large</string>
     <string name="customize_group_typography">Text</string>
     <string name="customize_group_card">Card and image</string>
+    <string name="customize_group_related">Detail recommendations</string>
+    <string name="customize_related_layout">Recommendation layout</string>
+    <string name="customize_related_layout_hint">Portrait covers default to grid, landscape to list</string>
+    <string name="customize_layout_list">List</string>
+    <string name="customize_layout_grid">Grid</string>
     <string name="customize_group_grid">Grid</string>
     <string name="customize_font_scale">Global font scale</string>
     <string name="customize_aspect_ratio">Thumbnail aspect ratio</string>

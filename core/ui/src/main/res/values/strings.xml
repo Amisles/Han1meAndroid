@@ -627,6 +627,11 @@
     <string name="customize_preset_large">大图</string>
     <string name="customize_group_typography">文字</string>
     <string name="customize_group_card">卡片与图片</string>
+    <string name="customize_group_related">详情页推荐</string>
+    <string name="customize_related_layout">推荐区布局</string>
+    <string name="customize_related_layout_hint">竖版封面默认网格，横版默认列表</string>
+    <string name="customize_layout_list">列表</string>
+    <string name="customize_layout_grid">网格</string>
     <string name="customize_group_grid">栅格</string>
     <string name="customize_font_scale">全局字号</string>
     <string name="customize_aspect_ratio">缩略图宽高比</string>

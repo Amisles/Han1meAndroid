@@ -55,6 +55,7 @@ import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
@@ -159,6 +160,15 @@ fun DetailScreen(
     // 0 = 简介（除评论外的全部信息），1 = 评论
     var selectedTab by remember { mutableStateOf(0) }
     var showLoginUnsupportedDialog by remember { mutableStateOf(false) }
+
+    // 推荐区布局：用户显式选择优先，未选择时按推荐卡片形态取默认（竖版网格 / 横版列表）
+    val savedRelatedLayout by appPrefs.relatedLayoutModeFlow.collectAsStateWithLifecycle()
+    val hasPortraitRelated = videoDetail?.relatedVideos?.any { it.isPortraitCover } == true
+    val relatedGrid = (savedRelatedLayout ?: if (hasPortraitRelated) {
+        RelatedLayoutMode.GRID
+    } else {
+        RelatedLayoutMode.LIST
+    }) == RelatedLayoutMode.GRID
 
     // 评论登录入口拦截：不支持登录时弹窗提示，否则跳转登录页
     val tryNavigateToLogin: () -> Unit = {
@@ -369,7 +379,8 @@ fun DetailScreen(
         likingComments = likingComments,
         activeReplyTarget = activeReplyTarget,
         isPostingReply = isPostingReply,
-        replyError = replyError
+        replyError = replyError,
+        relatedGrid = relatedGrid
     )
     val restActions = DetailRestActions(
         onTabSelected = selectTab,

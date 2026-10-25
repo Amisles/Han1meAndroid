@@ -603,6 +603,11 @@
     <string name="customize_preset_large">大サイズ</string>
     <string name="customize_group_typography">文字</string>
     <string name="customize_group_card">カードと画像</string>
+    <string name="customize_group_related">詳細ページのおすすめ</string>
+    <string name="customize_related_layout">おすすめのレイアウト</string>
+    <string name="customize_related_layout_hint">縦長カバーはグリッド、横長はリストが既定</string>
+    <string name="customize_layout_list">リスト</string>
+    <string name="customize_layout_grid">グリッド</string>
     <string name="customize_group_grid">グリッド</string>
     <string name="customize_font_scale">全体の文字倍率</string>
     <string name="customize_aspect_ratio">サムネイルの縦横比</string>

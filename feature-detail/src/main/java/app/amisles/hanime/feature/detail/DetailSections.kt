@@ -7,20 +7,37 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.Reply
@@ -32,6 +49,7 @@ import app.amisles.hanime.feature.detail.components.DetailPlaylistHeader
 import app.amisles.hanime.feature.detail.components.DetailPlaylistVideos
 import app.amisles.hanime.feature.detail.components.DetailRelatedVideoCard
 import app.amisles.hanime.feature.detail.components.DetailTabBar
+import coil3.compose.AsyncImage
 
 /** 详情页「其余组件」（Tab 条 / 简介 / 播放集合 / 相关推荐 / 评论）所需的只读状态。 */
 internal data class DetailRestState(
@@ -54,7 +72,8 @@ internal data class DetailRestState(
     val likingComments: Set<String>,
     val activeReplyTarget: ReplyTarget?,
     val isPostingReply: Boolean,
-    val replyError: String?
+    val replyError: String?,
+    val relatedGrid: Boolean
 )
 
 /** 「其余组件」的交互回调；依赖页面级状态的判断由 DetailScreen 实现后传入，组件层只负责触发。 */
@@ -94,15 +113,27 @@ internal fun LazyListScope.detailRestItems(
     }
 
     if (state.selectedTab == 0) {
-        // 先按 id 去重再作为 Lazy key，避免站点返回重复条目时 key 冲突崩溃
-        items(detail.relatedVideos.distinctBy { it.id }, key = { it.id }) { video ->
-            DetailRelatedRow(
-                video = video,
-                currentTab = state.selectedTab,
-                onSelectTab = actions.onTabSelected,
-                onVideoClick = actions.onVideoClick,
-                onAuthorClick = actions.onAuthorClick
-            )
+        val related = detail.relatedVideos.distinctBy { it.id }
+        if (state.relatedGrid) {
+            item(key = "detail_related_grid") {
+                DetailRelatedGrid(
+                    videos = related,
+                    currentTab = state.selectedTab,
+                    onSelectTab = actions.onTabSelected,
+                    onVideoClick = actions.onVideoClick
+                )
+            }
+        } else {
+            // 先按 id 去重再作为 Lazy key，避免站点返回重复条目时 key 冲突崩溃
+            items(related, key = { it.id }) { video ->
+                DetailRelatedRow(
+                    video = video,
+                    currentTab = state.selectedTab,
+                    onSelectTab = actions.onTabSelected,
+                    onVideoClick = actions.onVideoClick,
+                    onAuthorClick = actions.onAuthorClick
+                )
+            }
         }
     }
 
@@ -277,4 +308,97 @@ private fun DetailCommentsPage(
         onClearReplyError = actions.onClearReplyError,
         onNavigateToLogin = actions.onNavigateToLogin
     )
+}
+
+/** 推荐区网格：按窗口宽度取列数，竖版封面用 134:197，横版沿用配置比例。 */
+@Composable
+private fun DetailRelatedGrid(
+    videos: List<HanimeVideo>,
+    currentTab: Int,
+    onSelectTab: (Int) -> Unit,
+    onVideoClick: (String) -> Unit
+) {
+    if (videos.isEmpty()) return
+    val cfg = LocalUiConfig.current
+    val sizeInfo = currentWindowSizeInfo()
+    val columns = remember(sizeInfo, cfg) { sizeInfo.gridColumns(cfg).coerceAtLeast(2) }
+    val gap = cfg.gridGap
+    val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp)
+    ) {
+        // LazyVerticalGrid 不能嵌进 LazyColumn，按行列手工切块
+        videos.chunked(columns).forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = gap / 2)
+                    .detailTabSwipe(
+                        currentTab = currentTab,
+                        thresholdPx = thresholdPx,
+                        onSelectTab = onSelectTab
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(gap)
+            ) {
+                row.forEach { video ->
+                    DetailRelatedGridCard(
+                        video = video,
+                        onClick = { onVideoClick(video.videoUrl) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** 网格版推荐卡：封面铺满卡片宽度，标题固定两行。 */
+@Composable
+private fun DetailRelatedGridCard(
+    video: HanimeVideo,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cfg = LocalUiConfig.current
+    val shape = RoundedCornerShape(cfg.cardCornerRadius)
+    val ratio = if (video.isPortraitCover) 134f / 197f else cfg.thumbnailAspectRatio
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(ratio)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+        ) {
+            if (video.thumbnailUrl.isNotBlank()) {
+                AsyncImage(
+                    model = video.thumbnailUrl,
+                    contentDescription = video.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        Text(
+            text = video.title,
+            fontSize = cfg.gridTitleFontSize,
+            lineHeight = cfg.gridTitleLineHeight,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground,
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = cfg.cardTitleTopPadding)
+        )
+    }
 }
