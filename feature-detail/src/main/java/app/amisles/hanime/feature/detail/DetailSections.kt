@@ -20,23 +20,30 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -410,6 +417,35 @@ private fun DetailRelatedGridCard(
                     contentScale = ContentScale.Crop
                 )
             }
+            video.duration.takeIf { it.isNotEmpty() }?.let { duration ->
+                ThumbnailBadge(
+                    text = duration,
+                    fontSize = cfg.badgeFontSize,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(3.dp)
+                )
+            }
+            if (video.likeRate.isNotEmpty() || video.viewCount.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    if (video.likeRate.isNotEmpty()) {
+                        ThumbnailBadge(
+                            text = video.likeRate,
+                            fontSize = cfg.badgeFontSize,
+                            icon = true
+                        )
+                    }
+                    if (video.viewCount.isNotEmpty()) {
+                        ThumbnailBadge(text = video.viewCount, fontSize = cfg.badgeFontSize)
+                    }
+                }
+            }
         }
         Text(
             text = video.title,
@@ -423,6 +459,38 @@ private fun DetailRelatedGridCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = cfg.cardTitleTopPadding)
+        )
+    }
+}
+
+/** 封面角标：半透明黑底 + 白字，深浅色下均能压住任意亮度的缩略图。 */
+@Composable
+private fun ThumbnailBadge(
+    text: String,
+    fontSize: TextUnit,
+    modifier: Modifier = Modifier,
+    icon: Boolean = false
+) {
+    Row(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
+            .padding(horizontal = 3.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        if (icon) {
+            Icon(
+                imageVector = Icons.Outlined.ThumbUp,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(12.dp)
+            )
+        }
+        Text(
+            text = text,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Medium,
+            color = Color.White
         )
     }
 }
