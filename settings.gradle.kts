@@ -31,4 +31,5 @@ include(":feature-detail")
 include(":feature-download")
 include(":feature-profile")
 include(":feature-settings")
+include(":baselineprofile")
  

@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -82,6 +83,11 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+}
+
+baselineProfile {
+    // 生成结果写回源码目录，随 release 一起打包；否则每次都得手动拷贝
+    saveInSrc = true
 }
 
 kotlin {
