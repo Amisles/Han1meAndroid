@@ -31,5 +31,6 @@ include(":feature-detail")
 include(":feature-download")
 include(":feature-profile")
 include(":feature-settings")
+include(":feature-comic")
 include(":baselineprofile")
  

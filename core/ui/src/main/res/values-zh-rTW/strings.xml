@@ -831,6 +831,10 @@
     <string name="crash_notice_title">上次異常結束</string>
     <string name="crash_notice_body">應用程式上次未正常結束，已記錄崩潰資訊。可以檢視並決定是否回報給開發者。</string>
     <string name="crash_notice_view">檢視</string>
+    <string name="comic_title">漫畫</string>
+    <string name="comic_entry">漫畫</string>
+    <string name="comic_entry_summary">瀏覽 hanimeone.me 的漫畫</string>
+    <string name="comic_empty">暫無漫畫內容</string>
     <string name="backup_error_checksum">備份檔案已損壞或不完整，請重新匯出後再試</string>
     <string name="download_storage_title">儲存空間</string>
     <string name="download_storage_free">剩餘 %1$s</string>

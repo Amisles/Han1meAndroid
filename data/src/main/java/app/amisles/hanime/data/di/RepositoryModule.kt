@@ -7,6 +7,7 @@ import app.amisles.hanime.data.stats.StatsManager
 import app.amisles.hanime.data.update.GitHubUpdateRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.BackupRepository
+import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
@@ -44,6 +45,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLibraryRepository(impl: HanimeRepository): LibraryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindComicRepository(impl: HanimeRepository): ComicRepository
 
     @Binds
     @Singleton

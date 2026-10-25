@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -37,7 +38,8 @@ fun Header(
     title: String? = null,
     siteUrl: String? = null,
     onSearchNavigate: () -> Unit = {},
-    onProfileClick: (() -> Unit)? = null
+    onProfileClick: (() -> Unit)? = null,
+    onComicClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -89,6 +91,18 @@ fun Header(
         }
 
         Spacer(modifier = Modifier.weight(1f))
+
+        if (onComicClick != null) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                contentDescription = stringResource(R.string.comic_entry),
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .size(26.dp)
+                    .clickable { onComicClick() }
+                    .padding(end = 14.dp)
+            )
+        }
 
         Icon(
             imageVector = Icons.Default.Search,

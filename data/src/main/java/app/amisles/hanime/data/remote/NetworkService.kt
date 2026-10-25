@@ -58,6 +58,8 @@ class NetworkService @Inject constructor(
 
     companion object {
         private val HOST_REGEX = Regex("https?://([^/]+)")
+
+        const val COMICS_BASE_URL = "https://hanimeone.me"
     }
 
     init {
@@ -184,6 +186,13 @@ class NetworkService @Inject constructor(
             AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
             LoginFormResult(code, cookies, body)
         }
+    }
+
+    suspend fun fetchComicsPage(page: Int = 1): FetchResult = withContext(Dispatchers.IO) {
+        val url = COMICS_BASE_URL + if (page > 1) "/comics?page=$page" else "/comics"
+        AppLogger.log("NetworkService", "fetchComicsPage url=$url")
+        val html = executeRequest(buildRequest(url))
+        FetchResult(html, COMICS_BASE_URL)
     }
 
     suspend fun fetchHomePageWithBaseUrl(): FetchResult {

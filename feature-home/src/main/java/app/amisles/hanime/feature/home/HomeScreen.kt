@@ -180,7 +180,8 @@ fun HomeScreen(
     onNavigateToSearch: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onViewMore: (HomeSection) -> Unit = {},
-    onProfileClick: (() -> Unit)? = null
+    onProfileClick: (() -> Unit)? = null,
+    onComicClick: (() -> Unit)? = null
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -211,7 +212,8 @@ fun HomeScreen(
         onNavigateToSearch = onNavigateToSearch,
         onAuthorClick = onAuthorClick,
         onViewMore = onViewMore,
-        onProfileClick = onProfileClick
+        onProfileClick = onProfileClick,
+        onComicClick = onComicClick
     )
 }
 
@@ -231,7 +233,8 @@ fun HomeScreenContent(
     onNavigateToSearch: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onViewMore: (HomeSection) -> Unit = {},
-    onProfileClick: (() -> Unit)? = null
+    onProfileClick: (() -> Unit)? = null,
+    onComicClick: (() -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -295,7 +298,8 @@ fun HomeScreenContent(
             Header(
                 siteUrl = siteUrl,
                 onSearchNavigate = onNavigateToSearch,
-                onProfileClick = onProfileClick
+                onProfileClick = onProfileClick,
+                onComicClick = onComicClick
             )
         }
 

@@ -109,6 +109,7 @@ dependencies {
     implementation(project(":feature-download"))
     implementation(project(":feature-profile"))
     implementation(project(":feature-settings"))
+    implementation(project(":feature-comic"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.profileinstaller)

@@ -100,6 +100,7 @@ import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
+import app.amisles.hanime.feature.comic.ComicScreen
 import app.amisles.hanime.feature.settings.BackupScreen
 import app.amisles.hanime.feature.settings.CrashLogScreen
 import app.amisles.hanime.ui.screens.PlaylistDetailScreen
@@ -295,6 +296,7 @@ fun HanimeApp(
         currentRoute != "settings" &&
         currentRoute != "backup" &&
         currentRoute != "crashLog" &&
+        currentRoute != "comics" &&
         currentRoute != "watchStats" &&
         currentRoute != "batchDownload" &&
         !currentRoute.startsWith("subscriptions") &&
@@ -491,7 +493,13 @@ fun HanimeApp(
                                         restoreState = true
                                     }
                                 } },
-                            onProfileClick = { profileOpen = true }
+                            onProfileClick = { profileOpen = true },
+                            onComicClick = { navController.navigate("comics") }
+                        )
+                    }
+                    composable("comics") {
+                        ComicScreen(
+                            onBackClick = { navController.popBackStack() }
                         )
                     }
                     composable(

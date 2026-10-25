@@ -15,10 +15,12 @@ import app.amisles.hanime.data.parser.CommentParser
 import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
 import app.amisles.hanime.data.parser.LoginParser
+import app.amisles.hanime.data.parser.ComicPageParser
 import app.amisles.hanime.data.parser.SearchPageParser
 import app.amisles.hanime.data.parser.SubscribeParser
 import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.ComicPage
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteGroup
@@ -40,6 +42,7 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.result.AppResult
@@ -67,8 +70,22 @@ class HanimeRepository @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val favoriteGroupDao: FavoriteGroupDao,
     private val watchHistoryDao: WatchHistoryDao,
-    private val searchHistoryDao: SearchHistoryDao
-) : ContentRepository, LibraryRepository, AccountRepository {
+    private val searchHistoryDao: SearchHistoryDao,
+    private val comicPageParser: ComicPageParser
+) : ContentRepository, LibraryRepository, AccountRepository, ComicRepository {
+
+    override suspend fun getComics(page: Int): AppResult<ComicPage> {
+        return try {
+            val result = networkService.fetchComicsPage(page)
+            AppLogger.log("HanimeRepository", "Comics HTML received, length: " + result.html.length)
+            AppResult.success(comicPageParser.parse(result.html, result.baseUrl))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getComics: " + e.message, e)
+            AppResult.error(e.message ?: "加载漫画失败", e)
+        }
+    }
 
     override suspend fun addFavorite(video: FavoriteVideo) {
         try {
