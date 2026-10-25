@@ -27,7 +27,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 
 private val RELATED_THUMB_WIDTH = 150.dp
-private val RELATED_PORTRAIT_THUMB_WIDTH = 84.dp
+private val RELATED_PORTRAIT_THUMB_WIDTH = 210.dp
 private const val LANDSCAPE_ASPECT_RATIO = 16f / 9f
 private const val PORTRAIT_ASPECT_RATIO = 134f / 197f
 
