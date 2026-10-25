@@ -29,6 +29,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,64 +46,74 @@ fun UpdateAvailableDialog(
     onSkipVersion: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius + 8.dp)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = true)) {
-        Surface(
-            shape = shape,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, MaterialTheme.colorScheme.outline, shape)
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = stringResource(R.string.update_dialog_title, update.versionName),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+        UpdateDialogBody(update, onUpdate, onSkipVersion, onDismiss)
+    }
+}
+
+@Composable
+internal fun UpdateDialogBody(
+    update: AppUpdate,
+    onUpdate: () -> Unit,
+    onSkipVersion: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius + 8.dp)
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.update_dialog_title, update.versionName),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 280.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (update.releaseNotes.isBlank()) {
+                    Text(
+                        text = stringResource(R.string.update_available),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    MarkdownNotes(update.releaseNotes)
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DialogButton(
+                    label = stringResource(R.string.update_do_not_remind),
+                    primary = false,
+                    modifier = Modifier.weight(1f),
+                    onClick = onSkipVersion
                 )
-
-                Spacer(Modifier.height(14.dp))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 280.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    if (update.releaseNotes.isBlank()) {
-                        Text(
-                            text = stringResource(R.string.update_available),
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        MarkdownNotes(update.releaseNotes)
-                    }
-                }
-
-                Spacer(Modifier.height(18.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DialogButton(
-                        label = stringResource(R.string.update_do_not_remind),
-                        primary = false,
-                        modifier = Modifier.weight(1f),
-                        onClick = onSkipVersion
-                    )
-                    DialogButton(
-                        label = stringResource(R.string.update_later),
-                        primary = false,
-                        modifier = Modifier.weight(1f),
-                        onClick = onDismiss
-                    )
-                    DialogButton(
-                        label = stringResource(R.string.update_now),
-                        primary = true,
-                        modifier = Modifier.weight(1f),
-                        onClick = onUpdate
-                    )
-                }
+                DialogButton(
+                    label = stringResource(R.string.update_later),
+                    primary = false,
+                    modifier = Modifier.weight(1f),
+                    onClick = onDismiss
+                )
+                DialogButton(
+                    label = stringResource(R.string.update_now),
+                    primary = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = onUpdate
+                )
             }
         }
     }
@@ -144,7 +155,7 @@ private fun MarkdownNotes(raw: String) {
                     color = body
                 )
             }
-            line.startsWith("    ") || line.startsWith("\\t") -> Text(
+            line.startsWith("    ") || line.startsWith("\t") -> Text(
                 text = line.trim(),
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
@@ -237,7 +248,9 @@ private fun DialogButton(
             fontSize = 12.sp,
             fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
             color = fg,
-            maxLines = 1
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            lineHeight = 16.sp
         )
     }
 }
