@@ -588,6 +588,10 @@ fun VideoPlayer(
         val act = activity ?: return@DisposableEffect onDispose {}
         // 上一次已生效的方向（null = 尚未登记），仅在真正翻转时上报
         var lastLandscape: Boolean? = null
+        // 候选方向与它开始稳定的时刻：同一次翻转必须持续 FLIP_DEBOUNCE_MS 才被采纳，
+        // 手持时的短暂倾斜不会因此切换全屏状态
+        var candidateLandscape: Boolean? = null
+        var candidateSince = 0L
         // 竖屏待确认次数：左右横置互翻必经竖屏，而全屏时 SENSOR_LANDSCAPE 不会让画面经过竖屏，
         // 若一次判到竖屏就退出会「退出全屏又立刻重进」，故竖屏需连续两次判定才生效
         var portraitStreak = 0
@@ -610,8 +614,18 @@ fun VideoPlayer(
                 val previous = lastLandscape
                 if (previous == landscape) {
                     portraitStreak = 0
+                    candidateLandscape = null
                     return
                 }
+                // 时间防抖：朝向要持续稳定一段时间才采纳，避免手持抖动反复进出全屏
+                val now = System.currentTimeMillis()
+                if (candidateLandscape != landscape) {
+                    candidateLandscape = landscape
+                    candidateSince = now
+                    return
+                }
+                if (now - candidateSince < FLIP_DEBOUNCE_MS) return
+                candidateLandscape = null
                 if (!landscape && previous != null) {
                     portraitStreak++
                     if (portraitStreak < 2) return
