@@ -38,15 +38,6 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.AppUpdate
 
-/**
- * 启动时的更新提示弹窗。
- *
- * 三选一而非「两个按钮 + 关闭叉」：用户明确表达「不再提示」需要一次点击，
- * 藏在关闭手势里会被误触或难以发现，于是下次启动又弹一遍。
- *
- * 自带弹窗容器而不复用 AlertDialog：发行说明是 Markdown，需要标题、列表、代码
- * 各自的间距与缩进，AlertDialog 的固定 text 槽位放不下这种排版。
- */
 @Composable
 fun UpdateAvailableDialog(
     update: AppUpdate,
@@ -120,12 +111,6 @@ fun UpdateAvailableDialog(
 private val bulletColorRe = Regex("^\\s*[-*+]\\s+")
 private val headingRe = Regex("^#{1,6}\\s+")
 
-/**
- * 极简 Markdown 渲染：只处理发行说明里实际会出现的几种结构。
- *
- * 不引入完整 Markdown 库 —— 这里只需要标题、列表、代码、粗体与行内代码，
- * 引入依赖的体积与解析开销远大于收益。
- */
 @Composable
 private fun MarkdownNotes(raw: String) {
     val body = MaterialTheme.colorScheme.onSurfaceVariant

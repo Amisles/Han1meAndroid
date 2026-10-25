@@ -172,8 +172,6 @@ class DownloadManager @Inject constructor(
         return defaultDownloadDir
     }
 
-    // 必须声明在 init 之前：init 里启动的协程会立即求值闸门并写 _gateState，
-    // 若它声明在后面，那一刻字段仍是 null，直接 NPE（v1.8 首次出现的崩溃）。
     @Volatile
     private var queueOrder: List<Int> = Preferences.downloadQueueOrder
 
