@@ -42,17 +42,20 @@ class ComicViewModel @Inject constructor(
     val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
 
     private var loadJob: Job? = null
+    private var loadMoreJob: Job? = null
 
     fun load() {
         if (_isLoading.value) return
         loadJob?.cancel()
+        loadMoreJob?.cancel()
         _isLoading.value = true
+        _isLoadingMore.value = false
         _error.value = null
         loadJob = viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { comics.getComics(1) }
                 when (result) {
-                    is AppResult.Success -> apply(result.data, false)
+                    is AppResult.Success -> apply(result.data, 1)
                     is AppResult.Error -> _error.value = result.message
                     is AppResult.Loading -> Unit
                 }
@@ -68,14 +71,14 @@ class ComicViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        if (_isLoadingMore.value || !_hasMore.value) return
-        val next = _currentPage.value + 1
+        if (_isLoading.value || _isLoadingMore.value || !_hasMore.value) return
+        val requested = _currentPage.value + 1
         _isLoadingMore.value = true
-        viewModelScope.launch {
+        loadMoreJob = viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) { comics.getComics(next) }
+                val result = withContext(Dispatchers.IO) { comics.getComics(requested) }
                 when (result) {
-                    is AppResult.Success -> apply(result.data, true)
+                    is AppResult.Success -> apply(result.data, requested)
                     is AppResult.Error -> _error.value = result.message
                     is AppResult.Loading -> Unit
                 }
@@ -83,31 +86,36 @@ class ComicViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 AppLogger.logError("ComicViewModel", "加载更多漫画失败: " + e.message, e)
+                _error.value = e.message ?: "加载更多漫画失败"
             } finally {
                 _isLoadingMore.value = false
             }
         }
     }
 
-    private fun apply(page: ComicPage, append: Boolean) {
-        _sections.value = if (append) merge(_sections.value, page.sections) else page.sections
-        _currentPage.value = page.currentPage
-        _hasMore.value = page.hasNextPage
+    private fun apply(page: ComicPage, requested: Int) {
+        val incoming = page.sections.filter { it.items.isNotEmpty() }
+        val previous = _sections.value
+        val merged = if (requested > 1) merge(previous, incoming) else incoming
+        val grew = merged.sumOf { it.items.size } > previous.sumOf { it.items.size }
+        _sections.value = merged
+        _currentPage.value = requested
+        _hasMore.value = page.hasNextPage && incoming.isNotEmpty() && (requested == 1 || grew)
+        _error.value = null
     }
 
-    /** 分页返回的分区同名时按标题合并条目，保持首次出现的区块顺序。 */
     private fun merge(old: List<ComicSection>, incoming: List<ComicSection>): List<ComicSection> {
         if (old.isEmpty()) return incoming
         val result = old.toMutableList()
+        val seen = result.flatMapTo(HashSet()) { section -> section.items.map { it.detailUrl } }
         incoming.forEach { section ->
+            val fresh = section.items.filter { seen.add(it.detailUrl) }
+            if (fresh.isEmpty()) return@forEach
             val index = result.indexOfFirst { it.title == section.title }
             if (index < 0) {
-                result += section
+                result += section.copy(items = fresh)
             } else {
-                val existing = result[index]
-                result[index] = existing.copy(
-                    items = (existing.items + section.items).distinctBy { it.detailUrl }
-                )
+                result[index] = result[index].copy(items = result[index].items + fresh)
             }
         }
         return result
