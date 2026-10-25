@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -98,10 +99,10 @@ fun Header(
                 contentDescription = stringResource(R.string.comic_entry),
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
-                    .size(26.dp)
+                    .size(30.dp)
                     .clickable { onComicClick() }
-                    .padding(end = 14.dp)
             )
+            Spacer(modifier = Modifier.width(16.dp))
         }
 
         Icon(
