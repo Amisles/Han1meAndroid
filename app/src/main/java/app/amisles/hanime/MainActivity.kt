@@ -778,8 +778,10 @@ fun HanimeApp(
                             videoUrl = videoUrl,
                             onBackClick = { navController.popBackStack() },
                             onVideoClick = { newVideoUrl ->
-                                // 连播 / 点相关推荐是「同屏换片」，替换而非入栈，否则返回栈与 ViewModel 无界累积
-                                navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") {
+                                navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
+                            onAutoPlayNext = { nextUrl ->
+                                // 自动连播是「同屏换片」，替换当前条目，避免返回时逐集回退
+                                navController.navigate("detail?videoUrl=${Uri.encode(nextUrl)}") {
                                     popUpTo("detail?videoUrl={videoUrl}") { inclusive = true }
                                 } },
                             onTagClick = { tag ->

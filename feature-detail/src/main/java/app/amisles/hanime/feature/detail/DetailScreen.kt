@@ -79,6 +79,8 @@ fun DetailScreen(
     videoUrl: String? = null,
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {},
+    // 自动连播的下一集：与手动点卡不同，它不该在返回栈里留下上一集
+    onAutoPlayNext: (String) -> Unit = onVideoClick,
     onTagClick: (String) -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onAuthorPageClick: (String) -> Unit = {},
@@ -260,7 +262,7 @@ fun DetailScreen(
         if (autoPlayNext) {
             val next = videoDetail?.relatedVideos?.firstOrNull { it.videoUrl.isNotBlank() }
             if (next != null) {
-                onVideoClick(next.videoUrl)
+                onAutoPlayNext(next.videoUrl)
             }
         }
     }
