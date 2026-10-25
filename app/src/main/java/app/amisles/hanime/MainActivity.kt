@@ -297,14 +297,16 @@ internal fun percentDecode(raw: String): String {
 /**
  * 跳转到搜索页。
  *
- * 不能带 restoreState：它会把上一次搜索页的返回栈条目连同**旧参数**一起恢复，
- * 新路由的 keyword / genre / sort 被丢弃，表现为跳转后结果仍是上一次的。
- * 改为先清掉旧的 search 条目再压入新条目，保证每次点按都真正带着新参数重建。
+ * popUpTo 与 launchSingleTop 必须和 [navigateToTab] 保持一致：底部导航靠这套选项
+ * 保存 / 恢复各 Tab，改掉它们会让底部导航回不到首页。
+ *
+ * 仅 restoreState 例外。它恢复的是上一次离开搜索页时被存下的条目，连同旧参数一起，
+ * 新路由的 keyword / genre / sort 会被丢弃。因此这里不恢复，让每次点按都用新参数重建。
  */
 private fun NavController.navigateToSearch(route: String) {
     navigate(route) {
-        popUpTo(graph.startDestinationId) { saveState = false }
-        launchSingleTop = false
+        popUpTo(graph.startDestinationId) { saveState = true }
+        launchSingleTop = true
         restoreState = false
     }
 }
