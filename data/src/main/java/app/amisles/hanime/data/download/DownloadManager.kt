@@ -172,6 +172,15 @@ class DownloadManager @Inject constructor(
         return defaultDownloadDir
     }
 
+    // 必须声明在 init 之前：init 里启动的协程会立即求值闸门并写 _gateState，
+    // 若它声明在后面，那一刻字段仍是 null，直接 NPE（v1.8 首次出现的崩溃）。
+    @Volatile
+    private var queueOrder: List<Int> = Preferences.downloadQueueOrder
+
+    private val _gateState = MutableStateFlow(DownloadGateState.OPEN)
+    /** 调度闸门状态。任一条件不满足则新任务不启动，已运行的任务不受影响。 */
+    override val gateState: StateFlow<DownloadGateState> = _gateState.asStateFlow()
+
     init {
         onProgressUpdate = { taskId, title, progress, status ->
             forwardToService(context, title, progress, status, taskId)
@@ -630,9 +639,6 @@ class DownloadManager @Inject constructor(
         return pendingTask?.takeIf { activeSlots.get() < concurrencyLimit }
     }
 
-    @Volatile
-    private var queueOrder: List<Int> = Preferences.downloadQueueOrder
-
     override fun moveToFront(taskId: Int) {
         val current = queueOrder.toMutableList()
         current.remove(taskId)
@@ -664,10 +670,6 @@ class DownloadManager @Inject constructor(
         }
         AppLogger.log("DownloadManager", "resumeAll: 已恢复 " + paused.size + " 个任务")
     }
-
-    private val _gateState = MutableStateFlow(DownloadGateState.OPEN)
-    /** 调度闸门状态。任一条件不满足则新任务不启动，已运行的任务不受影响。 */
-    override val gateState: StateFlow<DownloadGateState> = _gateState.asStateFlow()
 
     override fun reevaluateGate() {
         if (refreshGateState().allowed) startNextPendingTask()
