@@ -244,6 +244,17 @@ internal fun genreApiValueOf(section: HomeSection): String? {
     return categories.firstOrNull { it.label == section.title }?.apiValue
 }
 
+/** 构造搜索页路由；ts 让每次点按都成为一次可区分的新意图，不受 restoreState 复用影响。 */
+internal fun searchRoute(keyword: String? = null, genre: String? = null, sort: String? = null): String {
+    val params = buildList {
+        if (!keyword.isNullOrBlank()) add("keyword=" + Uri.encode(keyword))
+        if (!genre.isNullOrBlank()) add("genre=" + Uri.encode(genre))
+        if (!sort.isNullOrBlank()) add("sort=" + Uri.encode(sort))
+        add("ts=" + System.currentTimeMillis())
+    }
+    return "search?" + params.joinToString("&")
+}
+
 internal fun moreUrlPageRoute(moreUrl: String): String? {
     val path = moreUrl.substringAfter("://", moreUrl)
         .substringAfter('/', "")
@@ -281,6 +292,21 @@ internal fun percentDecode(raw: String): String {
         i++
     }
     return bytes.toByteArray().toString(Charsets.UTF_8)
+}
+
+/**
+ * 跳转到搜索页。
+ *
+ * 不能带 restoreState：它会把上一次搜索页的返回栈条目连同**旧参数**一起恢复，
+ * 新路由的 keyword / genre / sort 被丢弃，表现为跳转后结果仍是上一次的。
+ * 改为先清掉旧的 search 条目再压入新条目，保证每次点按都真正带着新参数重建。
+ */
+private fun NavController.navigateToSearch(route: String) {
+    navigate(route) {
+        popUpTo(graph.startDestinationId) { saveState = false }
+        launchSingleTop = false
+        restoreState = false
+    }
 }
 
 /**
@@ -472,25 +498,9 @@ fun HanimeApp(
                             // 时间戳让每次「点大图」都是一次可区分的新意图，
                             // 而「从详情页返回」参数不变，仍会被正确跳过。
                             onSearchClick = { keyword ->
-                                navController.navigate(
-                                    "search?keyword=${Uri.encode(keyword)}&ts=${System.currentTimeMillis()}"
-                                ) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                } },
+                                navController.navigateToSearch(searchRoute(keyword = keyword)) },
                             onGenreSearch = { genre ->
-                                navController.navigate(
-                                    "search?genre=${Uri.encode(genre)}&ts=${System.currentTimeMillis()}"
-                                ) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                } },
+                                navController.navigateToSearch(searchRoute(genre = genre)) },
                             onNavigateToSearch = {
                                 navController.navigate("search") {
                                     popUpTo(navController.graph.startDestinationId) {
@@ -504,19 +514,20 @@ fun HanimeApp(
                             onViewMore = { section ->
                                 val sortApiValue = sortApiValueOf(section)
                                 val genreApiValue = if (sortApiValue == null) genreApiValueOf(section) else null
-                                val target = when {
-                                    sortApiValue != null -> "search?sort=${Uri.encode(sortApiValue)}"
-                                    genreApiValue != null -> "search?genre=${Uri.encode(genreApiValue)}"
-                                    section.moreUrl.isNotBlank() -> moreUrlPageRoute(section.moreUrl)
-                                    else -> null
-                                }
-                                if (target != null) {
-                                    navController.navigate(target) {
-                                        popUpTo(navController.graph.startDestinationId) {
-                                            saveState = true
+                                if (sortApiValue != null || genreApiValue != null) {
+                                    navController.navigateToSearch(
+                                        if (sortApiValue != null) searchRoute(sort = sortApiValue)
+                                        else searchRoute(genre = genreApiValue)
+                                    )
+                                } else if (section.moreUrl.isNotBlank()) {
+                                    moreUrlPageRoute(section.moreUrl)?.let { route ->
+                                        navController.navigate(route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
                                 } },
                             onProfileClick = { profileOpen = true },
