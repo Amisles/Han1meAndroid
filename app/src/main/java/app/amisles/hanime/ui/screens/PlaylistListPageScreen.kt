@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,11 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R as CoreR
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.ui.viewmodel.PlaylistListPageViewModel
 
 private val ROW_THUMB_WIDTH = 130.dp
@@ -66,7 +63,7 @@ fun PlaylistListPageScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(HanimeBackground).statusBarsPadding()
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp),
@@ -76,7 +73,7 @@ fun PlaylistListPageScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(CoreR.string.common_back),
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -84,20 +81,20 @@ fun PlaylistListPageScreen(
                 text = displayTitle,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = HanimePrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (error != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = error ?: stringResource(CoreR.string.common_load_failed),
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -129,7 +126,8 @@ private fun PlaylistListItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
-            .background(HanimeCard, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .surfaceEdge(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(10.dp),
@@ -152,7 +150,7 @@ private fun PlaylistListItem(
                 text = playlist.title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -160,12 +158,16 @@ private fun PlaylistListItem(
                 modifier = Modifier.padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = playlist.author, fontSize = 11.sp, color = HanimePrimary)
+                Text(
+                    text = playlist.author,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 if (playlist.publishTime.isNotEmpty()) {
                     Text(
                         text = " · ${playlist.publishTime}",
                         fontSize = 11.sp,
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

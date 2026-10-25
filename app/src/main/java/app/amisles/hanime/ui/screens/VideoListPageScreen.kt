@@ -36,10 +36,7 @@ import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import androidx.compose.material3.MaterialTheme
 import app.amisles.hanime.ui.viewmodel.VideoListPageViewModel
 
 @Composable
@@ -63,7 +60,7 @@ fun VideoListPageScreen(
 
     ResponsiveContent {
         Column(
-            modifier = Modifier.fillMaxSize().background(HanimeBackground).statusBarsPadding()
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp),
@@ -73,7 +70,7 @@ fun VideoListPageScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(CoreR.string.common_back),
-                        tint = HanimeTextPrimary,
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -81,20 +78,20 @@ fun VideoListPageScreen(
                     text = displayTitle,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = HanimePrimary)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else if (error != null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = error ?: stringResource(CoreR.string.common_load_failed),
-                        color = HanimeTextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,11 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.R as CoreR
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeCard
-import app.amisles.hanime.core.ui.theme.HanimePrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextPrimary
-import app.amisles.hanime.core.ui.theme.HanimeTextSecondary
+import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.ui.viewmodel.PlaylistDetailViewModel
 import coil3.compose.AsyncImage
 
@@ -69,7 +66,7 @@ fun PlaylistDetailScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(HanimeBackground).statusBarsPadding()
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 10.dp),
@@ -79,7 +76,7 @@ fun PlaylistDetailScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(CoreR.string.common_back),
-                    tint = HanimeTextPrimary,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -87,13 +84,13 @@ fun PlaylistDetailScreen(
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = HanimePrimary)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (error != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = error ?: stringResource(CoreR.string.common_load_failed),
-                    color = HanimeTextSecondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else if (playlistDetail != null) {
@@ -113,7 +110,9 @@ private fun PlaylistDetailContent(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Column(
-                modifier = Modifier.fillMaxWidth().background(HanimeCard).padding(15.dp)
+                modifier = Modifier.fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(15.dp)
             ) {
                 if (detail.coverUrl.isNotEmpty()) {
                     AsyncImage(
@@ -131,7 +130,7 @@ private fun PlaylistDetailContent(
                     text = detail.title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(top = 12.dp)
                 )
 
@@ -148,14 +147,18 @@ private fun PlaylistDetailContent(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text(text = detail.author, fontSize = 13.sp, color = HanimePrimary)
+                    Text(
+                        text = detail.author,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Text(
                         text = " · " + stringResource(
                             CoreR.string.common_playlist_videos_count,
                             detail.videoCount
                         ),
                         fontSize = 12.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 6.dp)
                     )
                 }
@@ -164,7 +167,7 @@ private fun PlaylistDetailContent(
                     Text(
                         text = detail.description,
                         fontSize = 12.sp,
-                        color = HanimeTextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 8.dp)
@@ -179,7 +182,7 @@ private fun PlaylistDetailContent(
                     text = stringResource(CoreR.string.playlist_videos),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = HanimeTextPrimary,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp)
                 )
             }
@@ -208,7 +211,8 @@ private fun PlaylistVideoItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 4.dp)
-            .background(HanimeCard, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+            .surfaceEdge(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
             .padding(8.dp),
@@ -231,7 +235,7 @@ private fun PlaylistVideoItem(
                 text = video.title,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = HanimeTextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -239,7 +243,7 @@ private fun PlaylistVideoItem(
                 Text(
                     text = video.publishTime,
                     fontSize = 10.sp,
-                    color = HanimeTextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
