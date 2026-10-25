@@ -28,7 +28,7 @@ class ComicPageParser @Inject constructor() {
             }.orEmpty()
             val items = wrapper.select("div.comic-rows-videos-div")
                 .mapNotNull { parseItem(it) }
-                .distinctBy { it.id }
+                .distinctBy { it.detailUrl }
             if (items.isEmpty()) null else ComicSection(title, items)
         }
         val (current, total, hasNext) = parsePagination(doc)

@@ -106,7 +106,7 @@ class ComicViewModel @Inject constructor(
             } else {
                 val existing = result[index]
                 result[index] = existing.copy(
-                    items = (existing.items + section.items).distinctBy { it.id }
+                    items = (existing.items + section.items).distinctBy { it.detailUrl }
                 )
             }
         }

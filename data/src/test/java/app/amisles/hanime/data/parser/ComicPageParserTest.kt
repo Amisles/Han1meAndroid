@@ -130,6 +130,26 @@ class ComicPageParserTest {
     }
 
     @Test
+    fun sameComicMayAppearInMultipleSections() {
+        val html = page(
+            """
+            |<div class="comic-rows-wrapper">
+            |  <h3>發燒漫畫</h3>
+            |  ${card("167430", "Shared", "https://c/s.jpg")}
+            |</div>
+            |<div class="comic-rows-wrapper">
+            |  <h3>最新上傳</h3>
+            |  ${card("167430", "Shared", "https://c/s.jpg")}
+            |</div>
+            """.trimMargin()
+        )
+        val result = parser.parse(html, baseUrl)
+        assertEquals(2, result.sections.size)
+        assertEquals(1, result.sections[0].items.size)
+        assertEquals(1, result.sections[1].items.size)
+    }
+
+    @Test
     fun cardWithoutTitleIgnored() {
         val html = page(
             """

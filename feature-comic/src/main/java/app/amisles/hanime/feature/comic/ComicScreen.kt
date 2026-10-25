@@ -146,14 +146,14 @@ fun ComicScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
             ) {
-                sections.forEach { section ->
+                sections.forEachIndexed { index, section ->
                     item(
-                        key = "comic-section-" + section.title,
+                        key = "comic-section-" + index,
                         span = { GridItemSpan(maxLineSpan) }
                     ) {
                         ComicSectionHeader(section.title)
                     }
-                    items(section.items, key = { it.id }) { comic ->
+                    items(section.items, key = { index.toString() + "-" + it.id }) { comic ->
                         ComicCard(comic)
                     }
                 }
