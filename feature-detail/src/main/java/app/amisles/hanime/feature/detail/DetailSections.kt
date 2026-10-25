@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.detail
 
+import android.content.Context
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -13,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,9 +34,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
@@ -50,6 +55,9 @@ import app.amisles.hanime.feature.detail.components.DetailPlaylistVideos
 import app.amisles.hanime.feature.detail.components.DetailRelatedVideoCard
 import app.amisles.hanime.feature.detail.components.DetailTabBar
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.size.Dimension
+import coil3.size.Precision
 
 /** 详情页「其余组件」（Tab 条 / 简介 / 播放集合 / 相关推荐 / 评论）所需的只读状态。 */
 internal data class DetailRestState(
@@ -73,7 +81,8 @@ internal data class DetailRestState(
     val activeReplyTarget: ReplyTarget?,
     val isPostingReply: Boolean,
     val replyError: String?,
-    val relatedGrid: Boolean
+    val relatedGrid: Boolean,
+    val relatedColumns: Int
 )
 
 /** 「其余组件」的交互回调；依赖页面级状态的判断由 DetailScreen 实现后传入，组件层只负责触发。 */
@@ -115,13 +124,17 @@ internal fun LazyListScope.detailRestItems(
     if (state.selectedTab == 0) {
         val related = detail.relatedVideos.distinctBy { it.id }
         if (state.relatedGrid) {
-            item(key = "detail_related_grid") {
-                DetailRelatedGrid(
-                    videos = related,
-                    currentTab = state.selectedTab,
-                    onSelectTab = actions.onTabSelected,
-                    onVideoClick = actions.onVideoClick
-                )
+            val columns = state.relatedColumns
+            related.chunked(columns).forEachIndexed { rowIndex, row ->
+                item(key = "detail_related_row_" + rowIndex) {
+                    DetailRelatedGridRow(
+                        row = row,
+                        columns = columns,
+                        currentTab = state.selectedTab,
+                        onSelectTab = actions.onTabSelected,
+                        onVideoClick = actions.onVideoClick
+                    )
+                }
             }
         } else {
             // 先按 id 去重再作为 Lazy key，避免站点返回重复条目时 key 冲突崩溃
@@ -310,48 +323,55 @@ private fun DetailCommentsPage(
     )
 }
 
-/** 推荐区网格：按窗口宽度取列数，竖版封面用 134:197，横版沿用配置比例。 */
+
+/** 按卡片实测宽度限制解码尺寸，避免整页竖版封面按原图解码。 */
+private fun thumbnailRequest(
+    context: Context,
+    density: Density,
+    url: String,
+    width: Dp,
+    ratio: Float
+): ImageRequest {
+    val widthPx = with(density) { width.roundToPx() }.coerceAtLeast(1)
+    val heightPx = (widthPx / ratio).toInt().coerceAtLeast(1)
+    return ImageRequest.Builder(context)
+        .data(url)
+        .size(Dimension.Pixels(widthPx), Dimension.Pixels(heightPx))
+        .precision(Precision.INEXACT)
+        .build()
+}
+
+/** 推荐区的一行网格：由调用方按行 emit 成独立 Lazy item，保证复用与懒加载。 */
 @Composable
-private fun DetailRelatedGrid(
-    videos: List<HanimeVideo>,
+private fun DetailRelatedGridRow(
+    row: List<HanimeVideo>,
+    columns: Int,
     currentTab: Int,
     onSelectTab: (Int) -> Unit,
     onVideoClick: (String) -> Unit
 ) {
-    if (videos.isEmpty()) return
     val cfg = LocalUiConfig.current
-    val sizeInfo = currentWindowSizeInfo()
-    val columns = remember(sizeInfo, cfg) { sizeInfo.gridColumns(cfg).coerceAtLeast(2) }
     val gap = cfg.gridGap
     val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 6.dp)
+            .padding(horizontal = 6.dp, vertical = gap / 2)
+            .detailTabSwipe(
+                currentTab = currentTab,
+                thresholdPx = thresholdPx,
+                onSelectTab = onSelectTab
+            ),
+        horizontalArrangement = Arrangement.spacedBy(gap)
     ) {
-        // LazyVerticalGrid 不能嵌进 LazyColumn，按行列手工切块
-        videos.chunked(columns).forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = gap / 2)
-                    .detailTabSwipe(
-                        currentTab = currentTab,
-                        thresholdPx = thresholdPx,
-                        onSelectTab = onSelectTab
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(gap)
-            ) {
-                row.forEach { video ->
-                    DetailRelatedGridCard(
-                        video = video,
-                        onClick = { onVideoClick(video.videoUrl) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
-            }
+        row.forEach { video ->
+            DetailRelatedGridCard(
+                video = video,
+                onClick = { onVideoClick(video.videoUrl) },
+                modifier = Modifier.weight(1f)
+            )
         }
+        repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
     }
 }
 
@@ -370,7 +390,7 @@ private fun DetailRelatedGridCard(
             .clip(shape)
             .clickable { onClick() }
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(ratio)
@@ -379,8 +399,12 @@ private fun DetailRelatedGridCard(
                 .border(1.dp, MaterialTheme.colorScheme.outline, shape)
         ) {
             if (video.thumbnailUrl.isNotBlank()) {
+                val context = LocalContext.current
+                val density = LocalDensity.current
                 AsyncImage(
-                    model = video.thumbnailUrl,
+                    model = remember(video.thumbnailUrl, maxWidth, ratio, density) {
+                        thumbnailRequest(context, density, video.thumbnailUrl, maxWidth, ratio)
+                    },
                     contentDescription = video.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

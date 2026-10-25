@@ -53,6 +53,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
@@ -347,6 +348,10 @@ fun DetailScreen(
 
     // 平板且非全屏、已加载内容时采用左右分栏（左播放器 / 右其余组件）
     val sizeInfo = currentWindowSizeInfo()
+    val uiCfg = LocalUiConfig.current
+    val relatedColumns = remember(sizeInfo, uiCfg) {
+        sizeInfo.gridColumns(uiCfg).coerceAtLeast(2)
+    }
     // 启用条件：平板 + 非全屏 + 非「错误且未加载」致命态（回落到手机错误页）
     val useTabletUI = sizeInfo.isTablet && !isPlayerFullscreen
             && !(error != null && videoDetail == null)
@@ -380,7 +385,8 @@ fun DetailScreen(
         activeReplyTarget = activeReplyTarget,
         isPostingReply = isPostingReply,
         replyError = replyError,
-        relatedGrid = relatedGrid
+        relatedGrid = relatedGrid,
+        relatedColumns = relatedColumns
     )
     val restActions = DetailRestActions(
         onTabSelected = selectTab,
