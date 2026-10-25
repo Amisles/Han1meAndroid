@@ -25,10 +25,12 @@ object CrashLogger {
 
     private const val DIR_NAME = "crash"
     private const val MAX_RECORDS = 10
-    private const val MAX_FILE_BYTES = 256 * 1024L
+    private const val MAX_FILE_BYTES = 256 * 1024
     private const val HEADER_DEVICE_MAX = 120
 
+    /** SimpleDateFormat 非线程安全；崩溃可能同时来自多个线程，故加锁。 */
     private val nameFormatter = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US)
+    private val nameLock = Any()
 
     @Volatile
     private var crashDir: File? = null
@@ -58,7 +60,8 @@ object CrashLogger {
     private fun write(context: Context, thread: Thread, throwable: Throwable) {
         val dir = crashDir ?: return
         val now = System.currentTimeMillis()
-        val file = File(dir, "crash-" + nameFormatter.format(Date(now)) + ".txt")
+        val stamp = synchronized(nameLock) { nameFormatter.format(Date(now)) }
+        val file = File(dir, "crash-" + stamp + ".txt")
         val text = buildString {
             append("time: ").append(Date(now)).append('\n')
             append("version: ").append(versionName(context)).append('\n')
@@ -69,7 +72,7 @@ object CrashLogger {
             append("thread: ").append(thread.name).append('\n')
             append('\n')
             append(throwable.stackTraceToString())
-        }.take(MAX_FILE_BYTES.toInt())
+        }.take(MAX_FILE_BYTES)
         runCatching { file.writeText(text) }
         // 同时追加到主日志，便于用户只导出一份文件就能定位
         runCatching { AppLogger.logError("Crash", "未捕获异常: " + throwable.message, throwable) }
