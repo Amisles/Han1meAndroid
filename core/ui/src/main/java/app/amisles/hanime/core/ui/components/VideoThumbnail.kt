@@ -40,11 +40,13 @@ fun VideoThumbnail(
     viewCount: String,
     modifier: Modifier = Modifier,
     crop: Boolean = false,
-    targetWidth: Dp? = null
+    targetWidth: Dp? = null,
+    // 竖版封面（如里番）与配置里的横版比例不同，需按实际比例算解码高度
+    aspectRatioOverride: Float? = null
 ) {
     val cfg = LocalUiConfig.current
     val quality = cfg.thumbnailQuality
-    val aspectRatio = cfg.thumbnailAspectRatio
+    val aspectRatio = aspectRatioOverride ?: cfg.thumbnailAspectRatio
     val context = LocalContext.current
     val density = LocalDensity.current
 
