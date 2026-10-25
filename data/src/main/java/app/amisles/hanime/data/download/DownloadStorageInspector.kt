@@ -4,6 +4,15 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import java.io.File
 
+/** 目录扫描到的、尚未登记为任务的成品文件。 */
+internal data class DiscoveredDownload(
+    val videoId: String,
+    val title: String,
+    val quality: String,
+    val filePath: String,
+    val totalBytes: Long
+)
+
 /** 存储面板的数据来源：目录解析、用量统计与孤儿位图清理。 */
 internal object DownloadStorageInspector {
 
@@ -51,6 +60,51 @@ internal object DownloadStorageInspector {
             orphanPartmapCount = orphanCount,
             orphanPartmapBytes = orphanBytes
         )
+    }
+
+    /**
+     * 扫描目录中已下载的 mp4，供卸载重装后重建任务列表。
+     *
+     * 文件名由 [app.amisles.hanime.data.download.DownloadManager.startDownload] 按
+     * `标题_画质_<videoId>.mp4` 生成，videoId 固定是最后一段下划线之后、扩展名之前的内容。
+     * 解析不出 videoId 的文件（用户自己放进去的、旧版命名）直接跳过，避免误收无关文件。
+     *
+     * @param knownIds 已有任务引用的 baseName（不含扩展名），这些文件不再重复登记。
+     */
+    fun scanDownloadedFiles(dir: File, knownIds: Set<String>): List<DiscoveredDownload> {
+        val files = runCatching { dir.listFiles() }.getOrNull().orEmpty()
+        val result = mutableListOf<DiscoveredDownload>()
+        for (file in files) {
+            if (!file.isFile || !file.name.endsWith(".mp4")) continue
+            if (file.length() <= 0) continue
+            val baseNames = listOf(file.name.removeSuffix(".mp4"), file.name)
+            if (baseNames.any { it in knownIds }) continue
+            val parsed = parseDownloadedFileName(file.name) ?: continue
+            result += DiscoveredDownload(
+                videoId = parsed.first,
+                title = parsed.second,
+                quality = parsed.third,
+                filePath = file.absolutePath,
+                totalBytes = file.length()
+            )
+        }
+        return result
+    }
+
+    /** 从 `标题_画质_<videoId>.mp4` 反解 (videoId, 标题, 画质)；不合规返回 null。 */
+    private fun parseDownloadedFileName(name: String): Triple<String, String, String>? {
+        val stem = name.removeSuffix(".mp4")
+        val lastSep = stem.lastIndexOf('_')
+        if (lastSep <= 0 || lastSep == stem.length - 1) return null
+        val videoId = stem.substring(lastSep + 1)
+        if (videoId.isEmpty() || !videoId.all { it.isLetterOrDigit() }) return null
+        val head = stem.substring(0, lastSep)
+        val qualitySep = head.lastIndexOf('_')
+        if (qualitySep <= 0) return null
+        val title = head.substring(0, qualitySep)
+        val quality = head.substring(qualitySep + 1)
+        if (title.isEmpty() || quality.isEmpty()) return null
+        return Triple(videoId, title, quality)
     }
 
     /** 删除无人引用的位图文件，返回释放的字节数。 */

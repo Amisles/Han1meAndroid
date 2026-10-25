@@ -280,6 +280,7 @@ class DownloadManager @Inject constructor(
                     .filter { (verified, original) -> verified.status != original.status }
                     .forEach { (verified, _) -> persistTask(verified) }
                 taskIdCounter.set(downloadDao.getMaxId() ?: 0)
+                adoptOrphanFiles()
                 AppLogger.log("DownloadManager", "Restored ${restoredTasks.size} tasks from DB, taskIdCounter=$taskIdCounter")
                 val interruptedIds = entities.filter {
                     it.status == DownloadStatus.DOWNLOADING.name
@@ -295,6 +296,41 @@ class DownloadManager @Inject constructor(
         }
 
         registerNetworkObserver()
+    }
+
+    /**
+     * 把下载目录里「有文件、无任务」的成品视频登记为已完成任务。
+     *
+     * 卸载重装后数据库随应用数据一起被清除，但 Download/Hanime 是公共目录、文件仍在。
+     * 不重建任务的话，这些文件既不出现在下载页，也会被当成孤儿数据。
+     */
+    private fun adoptOrphanFiles() {
+        val dir = resolveDownloadDir()
+        val known = tasksLock.withLock { taskMap.values.mapTo(mutableSetOf()) { File(it.filePath).name } }
+        val discovered = DownloadStorageInspector.scanDownloadedFiles(dir, known)
+        if (discovered.isEmpty()) return
+        val adopted = mutableListOf<DownloadTask>()
+        tasksLock.withLock {
+            discovered.forEach { item ->
+                val nextId = taskIdCounter.incrementAndGet()
+                val task = DownloadTask(
+                    id = nextId,
+                    title = item.title,
+                    quality = item.quality,
+                    url = "",
+                    totalBytes = item.totalBytes,
+                    downloadedBytes = item.totalBytes,
+                    status = DownloadStatus.COMPLETED,
+                    filePath = item.filePath,
+                    videoId = item.videoId
+                )
+                taskMap[nextId] = task
+                adopted += task
+            }
+            emitTasks()
+        }
+        adopted.forEach { persistTask(it) }
+        AppLogger.log("DownloadManager", "Adopted ${adopted.size} existing files from ${dir.absolutePath}")
     }
 
     /**
