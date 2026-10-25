@@ -17,11 +17,15 @@ class VideoListParser @Inject constructor() {
      * 2. 简化卡片 `.home-rows-videos-div`（里番 / 泡面番 等搜索结果页使用），不含
      *    .video-item-container，若只按常规选择器解析会得到空列表。
      * 两类都解析并按 videoId 去重（保留首次出现、保持顺序）。
+     *
+     * @param includePlaylistCards 详情页的播放集合卡片（.playlist-video-card）与常规卡片同用
+     *   .video-item-container，默认排除以免混入相关推荐；播放集合由 PlaylistParser 单独解析。
      */
-    fun parseVideoList(doc: Document, baseUrl: String): List<HanimeVideo> {
+    fun parseVideoList(doc: Document, baseUrl: String, includePlaylistCards: Boolean = false): List<HanimeVideo> {
         val videos = LinkedHashMap<String, HanimeVideo>()
 
         for (container in doc.select(".video-item-container")) {
+            if (!includePlaylistCards && container.hasClass("playlist-video-card")) continue
             parseSingleVideoContainer(container, baseUrl)?.let { videos.putIfAbsent(it.id, it) }
         }
 
@@ -37,6 +41,7 @@ class VideoListParser @Inject constructor() {
      * 视频链接在外层 `<a>` 上（而非内部 .video-link）、标题是 .home-rows-videos-title、
      * 无 .duration / .stats-container / .subtitle（留空）。
      * 链接兼容「卡片内部有 <a>」与「<a> 是卡片的直接父级」两种形态。
+     * 该卡片为竖版封面（里番 / 泡面番 等），[HanimeVideo.isPortraitCover] 置 true。
      */
     fun parseSimpleVideoCard(card: Element, baseUrl: String): HanimeVideo? {
         return try {
@@ -64,7 +69,8 @@ class VideoListParser @Inject constructor() {
                 viewCount = "",
                 author = "",
                 publishTime = "",
-                videoUrl = rawUrl
+                videoUrl = rawUrl,
+                isPortraitCover = true
             )
         } catch (e: IndexOutOfBoundsException) {
             AppLogger.logError("VideoListParser", "Error parsing simple video card: ${e.message}", e)

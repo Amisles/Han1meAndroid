@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.parser
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -424,5 +425,96 @@ class VideoListParserTest {
         val doc = Jsoup.parse(html, baseUrl)
         val videos = parser.parseAuthorVideos(doc, baseUrl)
         assertEquals(2, videos.size)
+    }
+
+    // 详情页「相关推荐」的两种卡片：非里番用 .video-item-container（横版缩略图），
+    // 里番用 .home-rows-videos-div（竖版封面，134:197）
+    private val relatedCardsHtml = """
+        <div class="desktop-video-grid">
+            <div class="video-item-container">
+                <div class="horizontal-card">
+                    <a href="/watch?v=405188" class="video-link">
+                        <div class="thumb-container">
+                            <img class="main-thumb" src="https://cdn.example.com/image/thumbnail/405188l.jpg"/>
+                            <div class="duration">10:55</div>
+                            <div class="stats-container">
+                                <div class="stat-item"><i class="material-icons">thumb_up</i>99%</div>
+                                <div class="stat-item">23.1万次</div>
+                            </div>
+                        </div>
+                        <div class="title">Cantarella &amp; Changli【WuWa】</div>
+                    </a>
+                    <div class="subtitle"><a href="/search?query=FantaC">FantaC</a><span class="subtitle-time">&nbsp;• 8個月前</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="margin: 0px;">
+            <div class="col-xs-2 related-video-width" style="padding: 0px 4px;">
+                <a style="text-decoration: none;" href="/watch?v=115128">
+                    <div class="home-rows-videos-div related-video-margin-bottom hover-lighter">
+                        <div class="video-card-inner" style="position: relative;">
+                            <img loading="lazy" src="https://cdn.example.com/image/cover/115128.jpg?secure=bpIJc4HMeKQ5l5H9lR-Hfg==,1794623837"/>
+                            <div class="home-rows-videos-title">被寢取的巨乳人妻們 2</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    """.trimIndent()
+
+    @Test
+    fun `parseVideoList distinguishes landscape related card from portrait related card`() {
+        val doc = Jsoup.parse(relatedCardsHtml, baseUrl)
+        val videos = parser.parseVideoList(doc, baseUrl)
+
+        assertEquals(2, videos.size)
+        val landscape = videos.first { it.id == "405188" }
+        val portrait = videos.first { it.id == "115128" }
+        assertFalse("常规卡片为横版缩略图", landscape.isPortraitCover)
+        assertTrue("里番简化卡片为竖版封面", portrait.isPortraitCover)
+        assertEquals("被寢取的巨乳人妻們 2", portrait.title)
+    }
+
+    @Test
+    fun `parseVideoList keeps simplified search cards portrait`() {
+        val doc = Jsoup.parse(simpleSearchCardsHtml, baseUrl)
+        val videos = parser.parseVideoList(doc, baseUrl)
+        assertEquals(2, videos.size)
+        assertTrue(videos.all { it.isPortraitCover })
+    }
+
+    @Test
+    fun `parseVideoList skips playlist cards by default`() {
+        val html = """
+            <div class="video-playlist-wrapper">
+                <div class="playlist-hover-wrap">
+                    <div class="playlist-video-card video-item-container no-select">
+                        <div class="video-thumb-container horizontal-card">
+                            <div class="thumb-container">
+                                <a href="/watch?v=7001">
+                                    <img class="main-thumb" src="https://cdn.example.com/7001.jpg"/>
+                                    <div class="duration">20:57</div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="video-info-container">
+                            <h4 class="video-title"><a href="/watch?v=7001">Playlist Only</a></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="video-item-container">
+                <a class="video-link" href="/watch?v=7002"></a>
+                <div class="title">Related Only</div>
+            </div>
+        """.trimIndent()
+        val doc = Jsoup.parse(html, baseUrl)
+
+        val filtered = parser.parseVideoList(doc, baseUrl)
+        assertEquals(1, filtered.size)
+        assertEquals("7002", filtered[0].id)
+
+        val unfiltered = parser.parseVideoList(doc, baseUrl, includePlaylistCards = true)
+        assertEquals(2, unfiltered.size)
     }
 }

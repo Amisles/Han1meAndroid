@@ -9,5 +9,6 @@ data class HanimeVideo(
     val viewCount: String,
     val author: String,
     val publishTime: String,
-    val videoUrl: String
+    val videoUrl: String,
+    val isPortraitCover: Boolean = false
 )

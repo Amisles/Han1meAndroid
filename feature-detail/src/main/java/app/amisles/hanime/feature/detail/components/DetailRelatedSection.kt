@@ -27,6 +27,9 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 
 private val RELATED_THUMB_WIDTH = 150.dp
+private val RELATED_PORTRAIT_THUMB_WIDTH = 84.dp
+private const val LANDSCAPE_ASPECT_RATIO = 16f / 9f
+private const val PORTRAIT_ASPECT_RATIO = 134f / 197f
 
 private val RELATED_TITLE_FONT_SIZE = 12.sp
 private val RELATED_TITLE_LINE_HEIGHT = 16.sp
@@ -40,6 +43,9 @@ internal fun DetailRelatedVideoCard(
     onVideoClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit
 ) {
+    val thumbWidth = if (video.isPortraitCover) RELATED_PORTRAIT_THUMB_WIDTH else RELATED_THUMB_WIDTH
+    val thumbRatio = if (video.isPortraitCover) PORTRAIT_ASPECT_RATIO else LANDSCAPE_ASPECT_RATIO
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -57,10 +63,10 @@ internal fun DetailRelatedVideoCard(
             likeRate = "",
             viewCount = "",
             crop = true,
-            targetWidth = RELATED_THUMB_WIDTH,
+            targetWidth = thumbWidth,
             modifier = Modifier
-                .width(RELATED_THUMB_WIDTH)
-                .aspectRatio(16f / 9f)
+                .width(thumbWidth)
+                .aspectRatio(thumbRatio)
                 .clip(RoundedCornerShape(6.dp))
         )
 
