@@ -12,6 +12,12 @@
     <!-- 下载期间持有 CPU 锁与 Wi-Fi 锁，避免息屏后 Wi-Fi 进入省电模式导致长视频下载降速 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- 卸载重装后读回公共 Download/Hanime 下由上一个安装写入的视频：
+         分区存储默认只让应用看到自己写的文件，需媒体读取权限才能看到别的安装留下的 mp4。 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <application
         android:name=".HanimeApplication"

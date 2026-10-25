@@ -304,11 +304,35 @@ class DownloadManager @Inject constructor(
      * 卸载重装后数据库随应用数据一起被清除，但 Download/Hanime 是公共目录、文件仍在。
      * 不重建任务的话，这些文件既不出现在下载页，也会被当成孤儿数据。
      */
-    private fun adoptOrphanFiles() {
+    /**
+     * 目录直读为空时改走 MediaStore。
+     *
+     * 分区存储下本应用看不到「上一个安装」写入的文件，但 MediaStore 仍为它们建了索引；
+     * 这是卸载重装后能认出历史下载的唯一途径。
+     */
+    private fun scanViaMediaStore(dir: File, knownNames: Set<String>): List<DiscoveredDownload> {
+        val videos = MediaStoreVideoScanner.queryDownloads(context, DEFAULT_DOWNLOAD_SUBDIR)
+        return videos
+            .filter { it.displayName !in knownNames }
+            .mapNotNull { item ->
+                val parsed = DownloadStorageInspector.parseDownloadedFileName(item.displayName)
+                    ?: return@mapNotNull null
+                DiscoveredDownload(
+                    videoId = parsed.first,
+                    title = parsed.second,
+                    quality = parsed.third,
+                    filePath = item.absolutePath,
+                    totalBytes = item.size
+                )
+            }
+    }
+    private fun adoptOrphanFiles(): Int {
         val dir = resolveDownloadDir()
         val known = tasksLock.withLock { taskMap.values.mapTo(mutableSetOf()) { File(it.filePath).name } }
-        val discovered = DownloadStorageInspector.scanDownloadedFiles(dir, known)
-        if (discovered.isEmpty()) return
+        val discovered = DownloadStorageInspector
+            .scanDownloadedFiles(dir, known)
+            .ifEmpty { scanViaMediaStore(dir, known) }
+        if (discovered.isEmpty()) return 0
         val adopted = mutableListOf<DownloadTask>()
         tasksLock.withLock {
             discovered.forEach { item ->
@@ -331,6 +355,7 @@ class DownloadManager @Inject constructor(
         }
         adopted.forEach { persistTask(it) }
         AppLogger.log("DownloadManager", "Adopted ${adopted.size} existing files from ${dir.absolutePath}")
+        return adopted.size
     }
 
     /**
@@ -1057,6 +1082,10 @@ class DownloadManager @Inject constructor(
         val dir = DownloadStorageInspector.currentDirectory(context.getExternalFilesDir(null))
         val activePaths = tasks.value.mapTo(HashSet()) { it.filePath }
         DownloadStorageInspector.clearOrphanPartmaps(dir, activePaths)
+    }
+
+    override suspend fun rescanExistingDownloads(): Int = withContext(Dispatchers.IO) {
+        adoptOrphanFiles()
     }
 
     /** 删除任务的本地文件：正片 + 分块位图表 + 其写入中间文件。幂等，失败仅记录。 */

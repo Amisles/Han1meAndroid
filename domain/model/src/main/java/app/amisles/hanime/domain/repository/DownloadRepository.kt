@@ -87,6 +87,9 @@ interface DownloadRepository {
 
     /** 清理无任务引用的位图文件，返回释放字节数。 */
     suspend fun clearOrphanPartmaps(): Long
+
+    /** 重新扫描下载目录，把尚未登记的历史成品文件补进任务列表；返回新认领的数量。 */
+    suspend fun rescanExistingDownloads(): Int
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean
     fun isVideoDownloading(videoId: String, quality: String = ""): Boolean
     fun getDownloadStatus(videoId: String): DownloadStatus?

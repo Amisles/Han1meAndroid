@@ -49,6 +49,12 @@ class DownloadedFileScanTest {
     }
 
     @Test
+    fun `directory probe distinguishes missing from denied`() {
+        assertEquals(DirectoryAccess.MISSING, probeAccess(File(temp.root, "absent")))
+        assertEquals(DirectoryAccess.READABLE, probeAccess(temp.root))
+    }
+
+    @Test
     fun `skips files that still have a resume partmap`() {
         touch("标题_1080P_405188.mp4")
         touch("标题_1080P_405188.mp4.partmap")

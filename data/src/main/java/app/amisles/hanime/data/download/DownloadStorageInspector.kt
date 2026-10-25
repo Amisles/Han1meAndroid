@@ -13,6 +13,31 @@ internal data class DiscoveredDownload(
     val totalBytes: Long
 )
 
+/**
+ * 列出目录内容。
+ *
+ * Android 11+ 的分区存储会按应用授予的访问范围过滤结果：应用自己写入的文件始终可见，
+ * 但卸载重装后由「上一个安装」写入的文件不再属于本应用，`listFiles()` 可能返回空数组。
+ * 这是识别不到历史下载的主要成因，调用方需能区分「目录不存在」与「目录存在但读不到」，
+ * 故这里不吞掉 null（读不到）与空数组（确实没有文件）的差别。
+ */
+internal fun listFilesOrEmpty(dir: File): Array<File> =
+    runCatching { dir.listFiles() }.getOrNull() ?: emptyArray()
+
+/** 目录可读性诊断：用于向用户说明「识别不到」是权限问题还是真的没有文件。 */
+internal enum class DirectoryAccess {
+    MISSING,
+    DENIED,
+    READABLE
+}
+
+internal fun probeAccess(dir: File): DirectoryAccess = when {
+    !dir.exists() -> DirectoryAccess.MISSING
+    !dir.isDirectory -> DirectoryAccess.MISSING
+    !dir.canRead() -> DirectoryAccess.DENIED
+    else -> DirectoryAccess.READABLE
+}
+
 /** 存储面板的数据来源：目录解析、用量统计与孤儿位图清理。 */
 internal object DownloadStorageInspector {
 
@@ -34,7 +59,7 @@ internal object DownloadStorageInspector {
      * @param activeBasePaths 仍被任务引用的文件路径集合（不含 .partmap 后缀）。
      */
     fun inspect(dir: File, activeBasePaths: Set<String>): DownloadStorageInfo {
-        val files = runCatching { dir.listFiles() }.getOrNull().orEmpty()
+        val files = listFilesOrEmpty(dir)
         var completed = 0L
         var partial = 0L
         var orphanCount = 0
@@ -73,7 +98,7 @@ internal object DownloadStorageInspector {
      * @param knownNames 已有任务引用的文件名，这些文件不再重复登记。
      */
     fun scanDownloadedFiles(dir: File, knownNames: Set<String>): List<DiscoveredDownload> {
-        val files = runCatching { dir.listFiles() }.getOrNull().orEmpty()
+        val files = listFilesOrEmpty(dir)
         val inProgress = files
             .filter { it.name.endsWith(PARTMAP_SUFFIX) }
             .mapTo(mutableSetOf()) { it.name.removeSuffix(PARTMAP_SUFFIX) }
@@ -96,7 +121,7 @@ internal object DownloadStorageInspector {
     }
 
     /** 从 `标题_画质_<videoId>.mp4` 反解 (videoId, 标题, 画质)；不合规返回 null。 */
-    private fun parseDownloadedFileName(name: String): Triple<String, String, String>? {
+    internal fun parseDownloadedFileName(name: String): Triple<String, String, String>? {
         val stem = name.removeSuffix(".mp4")
         val lastSep = stem.lastIndexOf('_')
         if (lastSep <= 0 || lastSep == stem.length - 1) return null
@@ -113,7 +138,7 @@ internal object DownloadStorageInspector {
 
     /** 删除无人引用的位图文件，返回释放的字节数。 */
     fun clearOrphanPartmaps(dir: File, activeBasePaths: Set<String>): Long {
-        val files = runCatching { dir.listFiles() }.getOrNull().orEmpty()
+        val files = listFilesOrEmpty(dir)
         var freed = 0L
         for (file in files) {
             if (!file.isFile || !file.name.endsWith(PARTMAP_SUFFIX)) continue

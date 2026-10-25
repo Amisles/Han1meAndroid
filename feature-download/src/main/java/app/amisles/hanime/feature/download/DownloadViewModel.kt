@@ -40,6 +40,14 @@ class DownloadViewModel @Inject constructor(
         }
     }
 
+    /** 权限授予后重新扫描：把上一个安装留在公共目录里的成品补进列表。 */
+    fun rescanDownloads() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { downloads.rescanExistingDownloads() }
+            refreshStorageInfo()
+        }
+    }
+
     fun clearOrphanPartmaps(onDone: (Long) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val freed = runCatching { downloads.clearOrphanPartmaps() }.getOrDefault(0L)

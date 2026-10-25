@@ -123,7 +123,8 @@ internal fun LazyListScope.detailRestItems(
                         columns = columns,
                         currentTab = state.selectedTab,
                         onSelectTab = actions.onTabSelected,
-                        onVideoClick = actions.onVideoClick
+                        onVideoClick = actions.onVideoClick,
+                        onAuthorClick = actions.onAuthorClick
                     )
                 }
             }
@@ -321,7 +322,8 @@ private fun DetailRelatedGridRow(
     columns: Int,
     currentTab: Int,
     onSelectTab: (Int) -> Unit,
-    onVideoClick: (String) -> Unit
+    onVideoClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit
 ) {
     val cfg = LocalUiConfig.current
     val gap = cfg.gridGap
@@ -341,6 +343,7 @@ private fun DetailRelatedGridRow(
             DetailRelatedGridCard(
                 video = video,
                 onClick = { onVideoClick(video.videoUrl) },
+                onAuthorClick = onAuthorClick,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -348,11 +351,12 @@ private fun DetailRelatedGridRow(
     }
 }
 
-/** 网格版推荐卡：封面铺满卡片宽度，标题固定两行。 */
+/** 网格版推荐卡：封面铺满卡片宽度，标题固定两行，作者行可选。 */
 @Composable
 private fun DetailRelatedGridCard(
     video: HanimeVideo,
     onClick: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val cfg = LocalUiConfig.current
@@ -393,6 +397,18 @@ private fun DetailRelatedGridCard(
                 .fillMaxWidth()
                 .padding(top = cfg.cardTitleTopPadding)
         )
+        if (video.author.isNotEmpty()) {
+            Text(
+                text = video.author,
+                fontSize = cfg.gridMetaFontSize,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(top = 2.dp, bottom = 6.dp)
+                    .clickable { onAuthorClick(video.author) }
+            )
+        }
     }
 }
 

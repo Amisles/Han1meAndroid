@@ -150,6 +150,16 @@ fun DownloadScreen(
         ActivityResultContracts.RequestPermission()
     ) { /* 拒绝仅导致通知不可见，无需额外处理 */ }
 
+    // 媒体读取权限：卸载重装后要靠它从 MediaStore 找回上一个安装写入的视频
+    val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_VIDEO
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+    val mediaPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.rescanDownloads() }
+
     var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!notificationPermissionRequested) {
@@ -161,6 +171,11 @@ fun DownloadScreen(
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (ContextCompat.checkSelfPermission(context, mediaPermission) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                mediaPermissionLauncher.launch(mediaPermission)
             }
         }
     }
