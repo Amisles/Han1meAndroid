@@ -68,17 +68,21 @@ internal object DownloadStorageInspector {
      * 文件名由 [app.amisles.hanime.data.download.DownloadManager.startDownload] 按
      * `标题_画质_<videoId>.mp4` 生成，videoId 固定是最后一段下划线之后、扩展名之前的内容。
      * 解析不出 videoId 的文件（用户自己放进去的、旧版命名）直接跳过，避免误收无关文件。
+     * 带同名位图的文件同样跳过：下载直接写入最终 .mp4，位图存在即表示该文件尚未下完。
      *
-     * @param knownIds 已有任务引用的 baseName（不含扩展名），这些文件不再重复登记。
+     * @param knownNames 已有任务引用的文件名，这些文件不再重复登记。
      */
-    fun scanDownloadedFiles(dir: File, knownIds: Set<String>): List<DiscoveredDownload> {
+    fun scanDownloadedFiles(dir: File, knownNames: Set<String>): List<DiscoveredDownload> {
         val files = runCatching { dir.listFiles() }.getOrNull().orEmpty()
+        val inProgress = files
+            .filter { it.name.endsWith(PARTMAP_SUFFIX) }
+            .mapTo(mutableSetOf()) { it.name.removeSuffix(PARTMAP_SUFFIX) }
         val result = mutableListOf<DiscoveredDownload>()
         for (file in files) {
             if (!file.isFile || !file.name.endsWith(".mp4")) continue
             if (file.length() <= 0) continue
-            val baseNames = listOf(file.name.removeSuffix(".mp4"), file.name)
-            if (baseNames.any { it in knownIds }) continue
+            if (file.name in knownNames) continue
+            if (file.name in inProgress) continue
             val parsed = parseDownloadedFileName(file.name) ?: continue
             result += DiscoveredDownload(
                 videoId = parsed.first,

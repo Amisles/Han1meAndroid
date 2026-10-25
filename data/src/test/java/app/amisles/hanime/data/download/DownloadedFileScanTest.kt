@@ -43,12 +43,19 @@ class DownloadedFileScanTest {
     fun `skips files already referenced by a task`() {
         val file = touch("标题_1080P_405188.mp4")
 
-        val found = DownloadStorageInspector.scanDownloadedFiles(
-            temp.root,
-            setOf(file.name, file.nameWithoutExtension)
-        )
+        val found = DownloadStorageInspector.scanDownloadedFiles(temp.root, setOf(file.name))
 
         assertTrue(found.isEmpty())
+    }
+
+    @Test
+    fun `skips files that still have a resume partmap`() {
+        touch("标题_1080P_405188.mp4")
+        touch("标题_1080P_405188.mp4.partmap")
+
+        val found = DownloadStorageInspector.scanDownloadedFiles(temp.root, emptySet())
+
+        assertTrue("未下完的文件不应被认领", found.isEmpty())
     }
 
     @Test
