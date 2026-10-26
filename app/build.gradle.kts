@@ -16,7 +16,6 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
-/** 依次从环境变量、keystore.properties 取值；都没有时返回 null。 */
 fun signingValue(envName: String, propName: String): String? =
     System.getenv(envName)?.takeIf { it.isNotBlank() }
         ?: (keystoreProperties[propName] as String?)?.takeIf { it.isNotBlank() }
@@ -26,7 +25,6 @@ val releaseStorePassword = signingValue("RELEASE_STORE_PASSWORD", "storePassword
 val releaseKeyAlias = signingValue("RELEASE_KEY_ALIAS", "keyAlias")
 val releaseKeyPassword = signingValue("RELEASE_KEY_PASSWORD", "keyPassword")
 
-/** 四项齐备且 keystore 文件真实存在时才启用 release 签名。 */
 val hasReleaseSigning = listOf(
     releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword
 ).all { it != null } && releaseStoreFile?.let { rootProject.file(it).exists() } == true
@@ -39,8 +37,8 @@ android {
         applicationId = "app.amisles.hanime"
         minSdk = 30
         targetSdk = 37
-        versionCode = 15
-        versionName = "1.7.0"
+        versionCode = 16
+        versionName = "1.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

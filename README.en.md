@@ -21,7 +21,7 @@
 
 ## Download
 
-**Latest: v1.6.0** · Android 11 (API 30) or newer · targets Android 17 (API 37)
+**Latest: v1.7.1** · Android 11 (API 30) or newer · targets Android 17 (API 37)
 
 | Item | Detail |
 | --- | --- |
@@ -29,20 +29,6 @@
 | Package | `Han1meAndroid-v<version>.apk`, about 6 MB |
 | Distribution | GitHub Releases only; not published on any app store |
 | Upgrading | Install over the existing app with the same signature; favorites, history and downloads are kept |
-
-Before sideloading, verify the signature to confirm the APK was built by this repository's maintainer. Use `apksigner` from the Android SDK `build-tools`:
-
-```bash
-apksigner verify --print-certs Han1meAndroid-v1.6.0.apk
-```
-
-The certificate SHA-256 digest must match:
-
-```text
-57f0e2d9c9c76da75fdda64761b00c76a4e894d83150f9ea31f05ba30d5f35fe
-```
-
-This fingerprint stays the same across releases. If it does not match, the APK did not come from this repository — do not install it.
 
 > The app needs network access to the corresponding site. If the default site is unreachable, configure a working mirror under Settings → Site URL.
 
