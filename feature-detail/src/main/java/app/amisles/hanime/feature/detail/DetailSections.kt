@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.amisles.hanime.core.ui.components.VideoThumbnail
+import app.amisles.hanime.core.ui.components.videoCoverAspectRatio
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.domain.model.Comment
@@ -361,7 +362,7 @@ private fun DetailRelatedGridCard(
 ) {
     val cfg = LocalUiConfig.current
     val shape = RoundedCornerShape(cfg.cardCornerRadius)
-    val ratio = if (video.isPortraitCover) 134f / 197f else cfg.thumbnailAspectRatio
+    val ratio = videoCoverAspectRatio(video)
     Column(
         modifier = modifier
             .clip(shape)

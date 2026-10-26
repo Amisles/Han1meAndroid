@@ -34,6 +34,7 @@ fun VideoGridCard(
     targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
+    val coverRatio = videoCoverAspectRatio(video)
 
     Column(
         modifier = modifier
@@ -45,7 +46,7 @@ fun VideoGridCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(cfg.thumbnailAspectRatio)
+                .aspectRatio(coverRatio)
                 .clip(RoundedCornerShape(cfg.cardCornerRadius))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
@@ -55,7 +56,8 @@ fun VideoGridCard(
                 likeRate = video.likeRate,
                 viewCount = video.viewCount,
                 crop = true,
-                targetWidth = targetWidth
+                targetWidth = targetWidth,
+                aspectRatioOverride = coverRatio
             )
         }
 

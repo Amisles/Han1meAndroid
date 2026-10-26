@@ -41,6 +41,7 @@ fun VideoCard(
     targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
+    val coverRatio = videoCoverAspectRatio(video)
 
     Column(
         modifier = modifier
@@ -50,7 +51,7 @@ fun VideoCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(cfg.thumbnailAspectRatio)
+                .aspectRatio(coverRatio)
                 .clip(RoundedCornerShape(cfg.cardCornerRadius))
         ) {
             VideoThumbnail(
@@ -59,7 +60,8 @@ fun VideoCard(
                 likeRate = video.likeRate,
                 viewCount = video.viewCount,
                 crop = true,
-                targetWidth = targetWidth
+                targetWidth = targetWidth,
+                aspectRatioOverride = coverRatio
             )
         }
 
@@ -127,7 +129,14 @@ fun VideoListItem(
             cfg.cardCornerRadius.value
         ).dp
     )
-    val thumbWidth = thumbnailWidth ?: cfg.listThumbnailWidth
+    val coverRatio = videoCoverAspectRatio(video)
+    val baseThumbWidth = thumbnailWidth ?: cfg.listThumbnailWidth
+    // 竖版封面按高度反推宽度，使两种卡片的缩略图区高度接近，避免行高大幅跳动
+    val thumbWidth = if (video.isPortraitCover) {
+        baseThumbWidth / cfg.thumbnailAspectRatio * coverRatio
+    } else {
+        baseThumbWidth
+    }
     // 标题区固定两行高并让文字垂直居中：单行标题时空白上下均分，不会全堆在标题与作者之间。
     // 行高比例与 grid 标题一致（16sp / 12sp），两行高据此换算，等高且不裁切
     val titleLineHeight = cfg.listTitleFontSize.value.times(4f / 3f).sp
@@ -151,9 +160,10 @@ fun VideoListItem(
             viewCount = "",
             crop = true,
             targetWidth = thumbWidth,
+            aspectRatioOverride = coverRatio,
             modifier = Modifier
                 .width(thumbWidth)
-                .aspectRatio(cfg.thumbnailAspectRatio)
+                .aspectRatio(coverRatio)
                 .clip(thumbShape)
         )
 
