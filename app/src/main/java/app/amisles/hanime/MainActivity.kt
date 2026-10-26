@@ -295,38 +295,27 @@ internal fun percentDecode(raw: String): String {
 }
 
 /**
- * 跳转到搜索页。
+ * 回到栈根后压入目标路由，供「切 Tab」与「跳搜索」共用。
  *
- * popUpTo 与 launchSingleTop 必须和 [navigateToTab] 保持一致：底部导航靠这套选项
- * 保存 / 恢复各 Tab，改掉它们会让底部导航回不到首页。
- *
- * 仅 restoreState 例外。它恢复的是上一次离开搜索页时被存下的条目，连同旧参数一起，
- * 新路由的 keyword / genre / sort 会被丢弃。因此这里不恢复，让每次点按都用新参数重建。
+ * 不能用 saveState / restoreState：扁平图下 popUpTo 的目标恒为 startDestination，
+ * 保存与恢复共用同一个 destination id —— pop 时把被弹出的页面存到该 id 下，
+ * restore 紧接着又把它取回来，表现为「点 Tab 没有反应」或「回到上一次的详情页」。
  */
-private fun NavController.navigateToSearch(route: String) {
+private fun NavController.navigateToRoot(route: String) {
     navigate(route) {
-        popUpTo(graph.startDestinationId) { saveState = true }
+        popUpTo(graph.startDestinationId) { saveState = false }
         launchSingleTop = true
         restoreState = false
     }
 }
 
-/**
- * 切换底部导航 / 导航栏的 Tab。
- *
- * 固定为「以 startDestination 为根、保存/恢复各 Tab 状态」的标准模式：
- * - 原实现用 popBackStack(route) 回退到目标 Tab，返回栈会随「首页→搜索→下载→首页→…」
- *   的往返不断累积同一批目的地，返回键需要按很多次才能退出，且各 Tab 的滚动位置不会被保存；
- * - 改为 popUpTo(图起点){saveState} + launchSingleTop + restoreState 后，栈深度恒定，
- *   再次进入同一 Tab 时能恢复上次的列表位置。
- */
+/** 跳转到搜索页。 */
+private fun NavController.navigateToSearch(route: String) = navigateToRoot(route)
+
+/** 切换底部导航 / 导航栏的 Tab；目标已是当前 Tab 时不动。 */
 private fun NavController.navigateToTab(route: String) {
     if (currentDestination?.route?.baseRoute() == route) return
-    navigate(route) {
-        popUpTo(graph.startDestinationId) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
-    }
+    navigateToRoot(route)
 }
 
 @Composable
@@ -504,15 +493,9 @@ fun HanimeApp(
                             onGenreSearch = { genre ->
                                 navController.navigateToSearch(searchRoute(genre = genre)) },
                             onNavigateToSearch = {
-                                navController.navigate("search") {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                } },
+                                navController.navigateToSearch(searchRoute()) },
                             onAuthorClick = { author ->
-                                navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true } },
+                                navController.navigateToSearch(searchRoute(keyword = author)) },
                             onViewMore = { section ->
                                 val sortApiValue = sortApiValueOf(section)
                                 val genreApiValue = if (sortApiValue == null) genreApiValueOf(section) else null
@@ -525,10 +508,10 @@ fun HanimeApp(
                                     moreUrlPageRoute(section.moreUrl)?.let { route ->
                                         navController.navigate(route) {
                                             popUpTo(navController.graph.startDestinationId) {
-                                                saveState = true
+                                                saveState = false
                                             }
                                             launchSingleTop = true
-                                            restoreState = true
+                                            restoreState = false
                                         }
                                     }
                                 } },
@@ -576,7 +559,7 @@ fun HanimeApp(
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                             onAuthorClick = { author ->
-                                navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true }
+                                navController.navigateToSearch(searchRoute(keyword = author))
                             }
                         )
                     }
@@ -785,9 +768,9 @@ fun HanimeApp(
                                     popUpTo("detail?videoUrl={videoUrl}") { inclusive = true }
                                 } },
                             onTagClick = { tag ->
-                                navController.navigate("search?keyword=${Uri.encode(tag)}") { launchSingleTop = true } },
+                                navController.navigateToSearch(searchRoute(keyword = tag)) },
                             onAuthorClick = { author ->
-                                navController.navigate("search?keyword=${Uri.encode(author)}") { launchSingleTop = true } },
+                                navController.navigateToSearch(searchRoute(keyword = author)) },
                             onAuthorPageClick = { authorPageUrl ->
                                 navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}") },
                             onNavigateToLogin = {
