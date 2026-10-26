@@ -146,10 +146,6 @@ fun DownloadScreen(
         onDispose { showStoragePanel = false }
     }
 
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* 拒绝仅导致通知不可见，无需额外处理 */ }
-
     // 媒体读取权限：卸载重装后要靠它从 MediaStore 找回上一个安装写入的视频
     val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_VIDEO
@@ -160,25 +156,36 @@ fun DownloadScreen(
         ActivityResultContracts.RequestPermission()
     ) { viewModel.rescanDownloads() }
 
-    var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!notificationPermissionRequested) {
-            notificationPermissionRequested = true
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            if (ContextCompat.checkSelfPermission(context, mediaPermission) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                mediaPermissionLauncher.launch(mediaPermission)
-            }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        // 通知权限的弹窗结束后才轮到存储权限：系统同一时刻只处理一个请求，
+        // 两个 launch 挨在一起时第二个会被静默丢弃。
+        if (ContextCompat.checkSelfPermission(context, mediaPermission) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            mediaPermissionLauncher.launch(mediaPermission)
         }
     }
+
+    // 每次进入本页都按当前授权状态决定是否申请：只用一次标志会让被拒后无法重试。
+    // 已授权时这里不会弹窗，系统也会自行限制重复询问次数。
+    LaunchedEffect(Unit) {
+        val needsNotification = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        if (needsNotification) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (ContextCompat.checkSelfPermission(context, mediaPermission) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            mediaPermissionLauncher.launch(mediaPermission)
+        }
+    }
+
+    LaunchedEffect(Unit) { viewModel.rescanDownloads() }
 
     val migrationExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
