@@ -35,7 +35,7 @@ class VideoListPageViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                _videos.value = networkService.fetchVideoListPage(url)
+                _videos.value = networkService.fetchVideoListPage(url).distinctBy { it.id }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

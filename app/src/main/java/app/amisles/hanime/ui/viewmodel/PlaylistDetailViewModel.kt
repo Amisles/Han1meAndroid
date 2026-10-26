@@ -36,6 +36,7 @@ class PlaylistDetailViewModel @Inject constructor(
             _error.value = null
             try {
                 _playlistDetail.value = networkService.fetchPlaylistDetailPage(url)
+                    ?.let { detail -> detail.copy(videos = detail.videos.distinctBy { it.id }) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

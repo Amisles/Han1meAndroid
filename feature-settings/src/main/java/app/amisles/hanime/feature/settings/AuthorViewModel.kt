@@ -66,18 +66,25 @@ class AuthorViewModel @Inject constructor(
                             pendingPlaylists?.let { data = data.copy(playlists = it) }
                             pendingVideos = null
                             pendingPlaylists = null
-                            _authorData.value = data
+                            _authorData.value = data.copy(
+                                videos = data.videos.distinctBy { it.id },
+                                playlists = data.playlists.distinctBy { it.playlistUrl }
+                            )
                         }
                         is AuthorPageDataEvent.Videos -> {
                             if (_authorData.value != null) {
-                                _authorData.value = _authorData.value?.copy(videos = event.videos)
+                                _authorData.value = _authorData.value?.copy(
+                                    videos = event.videos.distinctBy { it.id }
+                                )
                             } else {
                                 pendingVideos = event.videos
                             }
                         }
                         is AuthorPageDataEvent.Playlists -> {
                             if (_authorData.value != null) {
-                                _authorData.value = _authorData.value?.copy(playlists = event.playlists)
+                                _authorData.value = _authorData.value?.copy(
+                                    playlists = event.playlists.distinctBy { it.playlistUrl }
+                                )
                             } else {
                                 pendingPlaylists = event.playlists
                             }
