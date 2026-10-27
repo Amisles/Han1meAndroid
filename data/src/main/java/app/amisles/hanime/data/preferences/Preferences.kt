@@ -2,6 +2,7 @@ package app.amisles.hanime.data.preferences
 
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.model.SessionCookie
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
@@ -67,6 +68,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
 private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
+private const val SP_COMIC_READ_MODE = "comic_read_mode"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
     private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
     /** 是否允许启动时自动检查更新。 */
@@ -196,6 +198,10 @@ private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
     private val _relatedLayoutModeFlow = MutableStateFlow<RelatedLayoutMode?>(null)
     override val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?> = _relatedLayoutModeFlow.asStateFlow()
 
+    // 漫画阅读方式：null 表示未选择，阅读器按单页翻页起步
+    private val _comicReadModeFlow = MutableStateFlow<ComicReadMode?>(null)
+    override val comicReadModeFlow: StateFlow<ComicReadMode?> = _comicReadModeFlow.asStateFlow()
+
     // ── 应用更新 ────────────────────────────────────────────────────────────
     // 「不再提示」记录的是版本号而非时间戳：跳过 1.6.0 后，1.7.0 发布时仍会重新提示。
     private val _skippedUpdateVersionFlow = MutableStateFlow("")
@@ -263,6 +269,8 @@ private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
         _relatedLayoutModeFlow.value = RelatedLayoutMode.fromNameOrNull(readString(SP_RELATED_LAYOUT_MODE, null))
+        _comicReadModeFlow.value = ComicReadMode.entries
+            .firstOrNull { it.name == readString(SP_COMIC_READ_MODE, null) }
         _skippedUpdateVersionFlow.value = readString(SP_SKIPPED_UPDATE_VERSION, "").orEmpty()
         _autoCheckUpdateFlow.value = readBoolean(SP_AUTO_CHECK_UPDATE, true)
         migrateLegacyLoginCookieDomain()
@@ -500,6 +508,7 @@ private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
     override val autoQuality: Boolean get() = _autoQualityFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
     override val relatedLayoutMode: RelatedLayoutMode? get() = _relatedLayoutModeFlow.value
+    override val comicReadMode: ComicReadMode? get() = _comicReadModeFlow.value
 
     override fun setAppLanguage(lang: String) {
         sp.edit { putString(SP_APP_LANGUAGE, lang) }
@@ -727,6 +736,11 @@ private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
     override fun setRelatedLayoutMode(mode: RelatedLayoutMode) {
         sp.edit { putString(SP_RELATED_LAYOUT_MODE, mode.name) }
         _relatedLayoutModeFlow.value = mode
+    }
+
+    override fun setComicReadMode(mode: ComicReadMode) {
+        sp.edit { putString(SP_COMIC_READ_MODE, mode.name) }
+        _comicReadModeFlow.value = mode
     }
 
     override fun clearRelatedLayoutMode() {

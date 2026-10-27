@@ -1,5 +1,6 @@
 package app.amisles.hanime.domain.repository
 
+import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -123,6 +124,11 @@ interface SettingsRepository {
     val searchLayoutMode: SearchLayoutMode?
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
     fun setSearchLayoutMode(mode: SearchLayoutMode)
+
+    /** 漫画阅读方式；null 表示用户从未选择，阅读器按单页翻页起步。 */
+    val comicReadMode: ComicReadMode?
+    val comicReadModeFlow: StateFlow<ComicReadMode?>
+    fun setComicReadMode(mode: ComicReadMode)
 
     /** null 表示未选择，详情页按推荐卡片形态取默认值。 */
     val relatedLayoutMode: RelatedLayoutMode?

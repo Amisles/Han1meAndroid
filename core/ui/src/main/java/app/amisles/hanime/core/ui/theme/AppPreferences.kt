@@ -1,6 +1,7 @@
 package app.amisles.hanime.core.ui.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
@@ -29,6 +30,7 @@ interface AppPreferences {
     val autoPlayNextFlow: StateFlow<Boolean>
     val loopPlaybackFlow: StateFlow<Boolean>
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
+    val comicReadModeFlow: StateFlow<ComicReadMode?>
     val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?>
     val longPressBoostSpeedFlow: StateFlow<Float>
     val doubleTapSeekFlow: StateFlow<Boolean>
@@ -44,6 +46,7 @@ interface AppPreferences {
     fun setAutoPlayNext(enabled: Boolean)
     fun setLoopPlayback(enabled: Boolean)
     fun setSearchLayoutMode(mode: SearchLayoutMode)
+    fun setComicReadMode(mode: ComicReadMode)
     fun setRelatedLayoutMode(mode: RelatedLayoutMode)
 
     /** 清除用户选择，恢复按推荐卡片形态取默认值。 */
