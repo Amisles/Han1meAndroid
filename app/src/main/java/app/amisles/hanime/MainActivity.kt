@@ -101,6 +101,8 @@ import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
+import app.amisles.hanime.feature.comic.ComicDetailScreen
+import app.amisles.hanime.feature.comic.ComicReaderScreen
 import app.amisles.hanime.feature.comic.ComicScreen
 import app.amisles.hanime.feature.settings.BackupScreen
 import app.amisles.hanime.feature.settings.CrashLogScreen
@@ -346,7 +348,9 @@ fun HanimeApp(
         !currentRoute.startsWith("playlistListPage") &&
         !currentRoute.startsWith("playlistDetail") &&
         !currentRoute.startsWith("accountEdit") &&
-        !currentRoute.startsWith("localPlayer")
+        !currentRoute.startsWith("localPlayer") &&
+        !currentRoute.startsWith("comicDetail") &&
+        !currentRoute.startsWith("comicReader")
 
     val sizeInfo = currentWindowSizeInfo()
     val useRail = sizeInfo.useNavigationRail
@@ -356,7 +360,7 @@ fun HanimeApp(
 
     val activity = LocalContext.current as? ComponentActivity
     val landscapeAllowed = sizeInfo.isTablet || currentRoute.startsWith("detail") ||
-        currentRoute.startsWith("localPlayer")
+        currentRoute.startsWith("localPlayer") || currentRoute.startsWith("comicReader")
     LaunchedEffect(currentRoute) {
         val act = activity ?: return@LaunchedEffect
         if (sizeInfo.isTablet) return@LaunchedEffect
@@ -521,6 +525,69 @@ fun HanimeApp(
                     }
                     composable("comics") {
                         ComicScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onComicClick = { comicId ->
+                                navController.navigate("comicDetail?comicId=" + Uri.encode(comicId))
+                            }
+                        )
+                    }
+                    composable(
+                        route = "comicDetail?comicId={comicId}",
+                        arguments = listOf(navArgument("comicId") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val comicId = backStackEntry.arguments?.getString("comicId").orEmpty()
+                        ComicDetailScreen(
+                            comicId = comicId,
+                            onBackClick = { navController.popBackStack() },
+                            onReadClick = { id, page, title, coverUrl ->
+                                navController.navigate(
+                                    "comicReader?comicId=" + Uri.encode(id) +
+                                        "&page=" + page +
+                                        "&title=" + Uri.encode(title) +
+                                        "&cover=" + Uri.encode(coverUrl)
+                                )
+                            },
+                            onComicClick = { id ->
+                                navController.navigate("comicDetail?comicId=" + Uri.encode(id)) {
+                                    popUpTo("comicDetail?comicId={comicId}") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable(
+                        route = "comicReader?comicId={comicId}&page={page}&title={title}&cover={cover}",
+                        arguments = listOf(
+                            navArgument("comicId") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("page") {
+                                type = NavType.IntType
+                                defaultValue = 1
+                            },
+                            navArgument("title") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("cover") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val args = backStackEntry.arguments
+                        ComicReaderScreen(
+                            comicId = args?.getString("comicId").orEmpty(),
+                            startPage = args?.getInt("page") ?: 1,
+                            title = args?.getString("title").orEmpty(),
+                            coverUrl = args?.getString("cover").orEmpty(),
                             onBackClick = { navController.popBackStack() }
                         )
                     }

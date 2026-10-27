@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.comic
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,7 @@ private const val LOAD_MORE_THRESHOLD = 6
 @Composable
 fun ComicScreen(
     onBackClick: () -> Unit = {},
+    onComicClick: (String) -> Unit = {},
     viewModel: ComicViewModel = hiltViewModel()
 ) {
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -164,7 +166,7 @@ fun ComicScreen(
                             ComicSectionHeader(section.title)
                         }
                         items(section.items, key = { index.toString() + "-" + it.id }) { comic ->
-                            ComicCard(comic, cardWidth)
+                            ComicCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
                         }
                     }
                     if (isLoadingMore) {
@@ -214,7 +216,7 @@ private fun ComicSectionHeader(title: String) {
 }
 
 @Composable
-private fun ComicCard(comic: ComicItem, targetWidth: Dp) {
+private fun ComicCard(comic: ComicItem, targetWidth: Dp, onClick: () -> Unit) {
     val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -228,7 +230,11 @@ private fun ComicCard(comic: ComicItem, targetWidth: Dp) {
             .build()
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
