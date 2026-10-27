@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.amisles.hanime.data.local.entity.ComicProgressEntity
 import app.amisles.hanime.data.local.entity.DownloadEntity
 import app.amisles.hanime.data.local.entity.FavoriteGroupEntity
 import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
@@ -11,8 +12,8 @@ import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.entity.WatchHistoryEntity
 
 @Database(
-    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class, FavoriteGroupEntity::class],
-    version = 7,
+    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class, FavoriteGroupEntity::class, ComicProgressEntity::class],
+    version = 8,
     exportSchema = true
 )
 abstract class FavoriteDatabase : RoomDatabase() {
@@ -21,6 +22,7 @@ abstract class FavoriteDatabase : RoomDatabase() {
     abstract fun watchHistoryDao(): WatchHistoryDao
     abstract fun downloadDao(): DownloadDao
     abstract fun searchHistoryDao(): SearchHistoryDao
+    abstract fun comicProgressDao(): ComicProgressDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -92,6 +94,22 @@ abstract class FavoriteDatabase : RoomDatabase() {
                         id TEXT NOT NULL PRIMARY KEY,
                         name TEXT NOT NULL,
                         createdAt INTEGER NOT NULL
+                    )""".trimIndent()
+                )
+            }
+        }
+
+        // 漫画阅读进度表：一本漫画一行，记录最后停留页
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS comic_progress (
+                        comicId TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        coverUrl TEXT NOT NULL,
+                        pageCount INTEGER NOT NULL,
+                        last_page INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
                     )""".trimIndent()
                 )
             }

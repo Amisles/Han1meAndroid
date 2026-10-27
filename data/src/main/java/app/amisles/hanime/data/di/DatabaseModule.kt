@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.local.database.FavoriteDao
+import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.database.FavoriteDatabase
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
@@ -33,7 +34,8 @@ object DatabaseModule {
                 FavoriteDatabase.MIGRATION_3_4,
                 FavoriteDatabase.MIGRATION_4_5,
                 FavoriteDatabase.MIGRATION_5_6,
-                FavoriteDatabase.MIGRATION_6_7
+                FavoriteDatabase.MIGRATION_6_7,
+            FavoriteDatabase.MIGRATION_7_8
             )
             // 不再使用 fallbackToDestructiveMigration
             .build()
@@ -53,4 +55,8 @@ object DatabaseModule {
 
     @Provides
     fun provideSearchHistoryDao(db: FavoriteDatabase): SearchHistoryDao = db.searchHistoryDao()
+
+    @Provides
+    @Singleton
+    fun provideComicProgressDao(db: FavoriteDatabase): ComicProgressDao = db.comicProgressDao()
 }

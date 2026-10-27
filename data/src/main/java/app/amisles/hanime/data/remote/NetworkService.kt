@@ -195,6 +195,21 @@ class NetworkService @Inject constructor(
         FetchResult(html, COMICS_BASE_URL)
     }
 
+    suspend fun fetchComicDetailPage(comicId: String): FetchResult = withContext(Dispatchers.IO) {
+        val url = COMICS_BASE_URL + "/comic/" + comicId
+        AppLogger.log("NetworkService", "fetchComicDetailPage url=" + url)
+        val html = executeRequest(buildRequest(url))
+        FetchResult(html, COMICS_BASE_URL)
+    }
+
+    suspend fun fetchComicChapterPage(comicId: String, page: Int): FetchResult =
+        withContext(Dispatchers.IO) {
+            val url = COMICS_BASE_URL + "/comic/" + comicId + "/" + page
+            AppLogger.log("NetworkService", "fetchComicChapterPage url=" + url)
+            val html = executeRequest(buildRequest(url))
+            FetchResult(html, COMICS_BASE_URL)
+        }
+
     suspend fun fetchHomePageWithBaseUrl(): FetchResult {
         AppLogger.log("NetworkService", "fetchHomePageWithBaseUrl called")
         val baseUrl = getCurrentBaseUrl()

@@ -2,6 +2,7 @@ package app.amisles.hanime.data.repository
 
 import android.database.SQLException
 import android.util.Log
+import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
 import app.amisles.hanime.data.local.entity.toDomain
@@ -15,12 +16,17 @@ import app.amisles.hanime.data.parser.CommentParser
 import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
 import app.amisles.hanime.data.parser.LoginParser
+import app.amisles.hanime.data.parser.ComicDetailParser
 import app.amisles.hanime.data.parser.ComicPageParser
+import app.amisles.hanime.data.parser.ComicReaderParser
 import app.amisles.hanime.data.parser.SearchPageParser
 import app.amisles.hanime.data.parser.SubscribeParser
 import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.ComicChapter
+import app.amisles.hanime.domain.model.ComicDetail
 import app.amisles.hanime.domain.model.ComicPage
+import app.amisles.hanime.domain.model.ComicProgress
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteGroup
@@ -42,6 +48,8 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.data.local.entity.toDomain
+import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
@@ -71,7 +79,10 @@ class HanimeRepository @Inject constructor(
     private val favoriteGroupDao: FavoriteGroupDao,
     private val watchHistoryDao: WatchHistoryDao,
     private val searchHistoryDao: SearchHistoryDao,
-    private val comicPageParser: ComicPageParser
+    private val comicPageParser: ComicPageParser,
+    private val comicDetailParser: ComicDetailParser,
+    private val comicReaderParser: ComicReaderParser,
+    private val comicProgressDao: ComicProgressDao
 ) : ContentRepository, LibraryRepository, AccountRepository, ComicRepository {
 
     override suspend fun getComics(page: Int): AppResult<ComicPage> {
@@ -84,6 +95,50 @@ class HanimeRepository @Inject constructor(
         } catch (e: Exception) {
             AppLogger.logError("HanimeRepository", "Error in getComics: " + e.message, e)
             AppResult.error(e.message ?: "加载漫画失败", e)
+        }
+    }
+
+
+    override suspend fun getComicDetail(comicId: String): AppResult<ComicDetail> {
+        return try {
+            val result = networkService.fetchComicDetailPage(comicId)
+            AppResult.success(comicDetailParser.parse(result.html, result.baseUrl, comicId))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getComicDetail: " + e.message, e)
+            AppResult.error(e.message ?: "加载漫画详情失败", e)
+        }
+    }
+
+    override suspend fun getComicChapter(comicId: String, page: Int): AppResult<ComicChapter> {
+        return try {
+            val result = networkService.fetchComicChapterPage(comicId, page)
+            AppResult.success(comicReaderParser.parse(result.html, result.baseUrl, comicId))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getComicChapter: " + e.message, e)
+            AppResult.error(e.message ?: "加载漫画失败", e)
+        }
+    }
+
+    override fun observeComicProgress(comicId: String): Flow<ComicProgress?> =
+        comicProgressDao.observeProgress(comicId).map { it?.toDomain() }
+
+    override fun observeComicProgressList(): Flow<List<ComicProgress>> =
+        comicProgressDao.getAllProgress().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun saveComicProgress(progress: ComicProgress) {
+        try {
+            val updated = comicProgressDao.updateLastPage(
+                progress.comicId,
+                progress.lastPage,
+                progress.updatedAt
+            )
+            if (updated == 0) comicProgressDao.upsert(progress.toEntity())
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error saving comic progress: " + e.message, e)
         }
     }
 
