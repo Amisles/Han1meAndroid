@@ -35,19 +35,7 @@ class ComicPageParser @Inject constructor() {
         return ComicPage(sections, current, total, hasNext)
     }
 
-    private fun parseItem(card: Element): ComicItem? {
-        val href = card.selectFirst("a[href*=/comic/]")?.attr("abs:href").orEmpty()
-        if (href.isEmpty()) return null
-        val id = href.substringAfterLast("/comic/").substringBefore('?').substringBefore('/').trim()
-        if (id.isEmpty()) return null
-        val title = card.selectFirst(".comic-rows-videos-title")?.text()?.trim().orEmpty()
-        if (title.isEmpty()) return null
-        val img = card.selectFirst("img")
-        val cover = img?.attr("data-srcset")?.trim().orEmpty()
-            .ifEmpty { img?.attr("abs:data-src")?.trim().orEmpty() }
-            .ifEmpty { img?.attr("abs:src")?.trim().orEmpty() }
-        return ComicItem(id, title, cover, href)
-    }
+    private fun parseItem(card: Element): ComicItem? = ComicItemParser.parse(card)
 
     private fun parsePagination(doc: Document): Triple<Int, Int, Boolean> {
         val pager = doc.select("div.search-pagination").firstOrNull()
