@@ -31,7 +31,7 @@ class ComicReaderParser @Inject constructor() {
             currentSrc.substringBeforeLast('/', "").let { if (it.isEmpty()) "" else "$it/" }
         }
         val fallbackExtension = img?.attr("data-extension")?.trim().orEmpty()
-            .ifEmpty { currentSrc.substringAfterLast('.', "webp") }
+            .ifEmpty { extensionFromUrl(currentSrc) }
 
         val extensions = readExtensions(doc)
         val declaredPages = doc.selectFirst(".comic-show-content-nav")
@@ -49,6 +49,18 @@ class ComicReaderParser @Inject constructor() {
             prefix + number + "." + resolveExtension(extensions.getOrNull(number - 1), fallbackExtension)
         }
         return ComicChapter(comicId, pageCount, pages)
+    }
+
+    /**
+     * 从图片 URL 推断扩展名。
+     *
+     * 不能用「最后一个点之后」：无扩展名的 URL（如 https://cdn.example.com/comic/123/1）会从 host
+     * 的最后一个点截出垃圾值（com/comic/123/1），拼出的整话地址全部 404。这里只认白名单后缀
+     * （允许跟 query / fragment），其余一律回退 webp —— 与站点实际使用的格式一致。
+     */
+    private fun extensionFromUrl(url: String): String {
+        val match = Regex("\\.(webp|jpg|jpeg|png)([?#].*)?$", RegexOption.IGNORE_CASE).find(url)
+        return match?.groupValues?.get(1)?.lowercase() ?: "webp"
     }
 
     /** 站点用首字母缩写标记每页格式：w = webp，j = jpg，p = png。 */
