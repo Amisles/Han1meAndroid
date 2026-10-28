@@ -534,7 +534,6 @@ internal suspend fun DownloadManager.downloadFileChunked(
         runCatching { outputFile.delete() }
         runCatching { partmapFile.delete() }
         clearChunkedMark(taskId)
-        singleConnectionFiles.remove(filePath)
         downloadFileSingle(taskId, url, filePath, 0L)
         return
     }
