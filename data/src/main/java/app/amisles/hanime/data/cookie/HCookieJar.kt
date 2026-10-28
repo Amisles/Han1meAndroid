@@ -42,21 +42,25 @@ object HCookieJar : CookieJar {
         val host = url.host
         val out = mutableListOf<Cookie>()
 
-        // 从内存存储读取并清理过期 Cookie
+        // 从内存存储读取并清理过期 Cookie。
+        // 必须原地修改而非整体替换 map 条目：并发请求可能已持有同一 list 引用
+        // 并正在追加新 Cookie，换引用会让那些写入落在孤儿列表上丢失。
         val storedCookies = cookieMap[host]
         if (storedCookies != null) {
             synchronized(storedCookies) {
                 val now = System.currentTimeMillis()
-                val validCookies = storedCookies.filter { it.expiresAt > now }
-                // 有过期 Cookie 时更新存储（移除已过期条目）
-                if (validCookies.size != storedCookies.size) {
-                    if (validCookies.isEmpty()) {
-                        cookieMap.remove(host)
+                val iterator = storedCookies.iterator()
+                while (iterator.hasNext()) {
+                    val cookie = iterator.next()
+                    if (cookie.expiresAt > now) {
+                        out.add(cookie)
                     } else {
-                        cookieMap[host] = validCookies.toMutableList()
+                        iterator.remove()
                     }
                 }
-                out.addAll(validCookies)
+                if (storedCookies.isEmpty()) {
+                    cookieMap.remove(host, storedCookies)
+                }
             }
         }
 
