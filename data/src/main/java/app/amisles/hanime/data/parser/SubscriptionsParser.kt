@@ -1,6 +1,5 @@
 package app.amisles.hanime.data.parser
 
-import android.util.Log
 import app.amisles.hanime.domain.model.SubscribedArtist
 import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.core.common.util.AppLogger
@@ -29,7 +28,11 @@ class SubscriptionsParser @Inject constructor(
         val doc: Document = Jsoup.parse(html, baseUrl)
         val artists = parseArtists(doc)
         val videos = videoListParser.parseVideoList(doc, baseUrl)
-        Log.i("SubscriptionsDebug", "<<< Parsed ${artists.size} subscribed artists (active=${artists.count { it.isActive }}), ${videos.size} videos")
+        // 用 AppLogger 而非 android.util.Log：后者在 JVM 单测里是未实现的桩，会让解析逻辑无法测试
+        AppLogger.log(
+            "SubscriptionsParser",
+            "Parsed ${artists.size} subscribed artists (active=${artists.count { it.isActive }}), ${videos.size} videos"
+        )
         return SubscriptionsContent(artists = artists, videos = videos)
     }
 
@@ -48,11 +51,12 @@ class SubscriptionsParser @Inject constructor(
             val name = card.selectFirst(".card-mobile-title.search-artist-title")?.text()?.trim()
                 ?: card.selectFirst(".search-artist-title")?.text()?.trim()
                 ?: continue
-            if (!seenNames.add(name)) continue // 已收录，跳过重复条
-
+            // active 必须在去重之前判定：页面同时渲染移动端 / 桌面端两份同名卡，若只有后一份
+            // 带 subscriptions-active-artist，先按去重 continue 会把高亮丢掉
             if (card.classNames().contains("subscriptions-active-artist")) {
                 activeNames.add(name)
             }
+            if (!seenNames.add(name)) continue // 已收录，跳过重复条
 
             // 头像：优先取绝对定位覆盖在头像卡片上的那张（作者头像），否则回退卡片内最后一张 img
             val avatarUrl = card.selectFirst("img[style*=absolute]")?.attr("abs:src")
