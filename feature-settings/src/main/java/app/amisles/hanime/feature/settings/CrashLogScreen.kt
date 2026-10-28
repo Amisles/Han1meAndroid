@@ -82,12 +82,16 @@ fun CrashLogScreen(
             viewModel.consumeExport()
             return@rememberLauncherForActivityResult
         }
-        runCatching {
-            context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
-        }
+        // openOutputStream 返回 null（目标不可写）与写入抛异常都视为失败：若一律提示
+        // 「已导出」，用户以为日志已保存，之后清空崩溃记录即永久丢失
+        val writeOk = runCatching {
+            val stream = context.contentResolver.openOutputStream(uri) ?: return@runCatching false
+            stream.use { it.write(text.toByteArray()) }
+            true
+        }.getOrDefault(false)
         viewModel.consumeExport()
-        Toast.makeText(context, context.getString(R.string.crash_log_exported), Toast.LENGTH_SHORT)
-            .show()
+        val toastRes = if (writeOk) R.string.crash_log_exported else R.string.crash_log_export_failed
+        Toast.makeText(context, context.getString(toastRes), Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(exportText) {

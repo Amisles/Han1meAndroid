@@ -167,16 +167,23 @@ fun FavoriteScreen(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             } else if (isSelectionMode) {
+                // 全选只作用于当前过滤视图（分组 / 搜索）内的条目，与列表渲染同源：
+                // 若用全量 favorites，过滤视图外的收藏会被一并选中删除——用户按可见集合
+                // 理解「全选」，屏幕外的条目不该陪葬。取消全选同理只移除可见条目，
+                // 此前因切换分组/搜索而保留的显式选中项不受影响。
+                val allVisibleSelected = visibleFavorites.isNotEmpty() &&
+                    visibleFavorites.all { it.id in selectedIds }
                 Text(
                     text = stringResource(R.string.common_select_all),
                     fontSize = 14.sp,
-                    color = if (selectedIds.size == favorites.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    color = if (allVisibleSelected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clickable {
-                            selectedIds = if (selectedIds.size == favorites.size) {
-                                emptySet()
+                            val visibleIds = visibleFavorites.map { it.id }.toSet()
+                            selectedIds = if (allVisibleSelected) {
+                                selectedIds - visibleIds
                             } else {
-                                favorites.map { it.id }.toSet()
+                                selectedIds + visibleIds
                             }
                         }
                         .padding(horizontal = 8.dp, vertical = 4.dp)

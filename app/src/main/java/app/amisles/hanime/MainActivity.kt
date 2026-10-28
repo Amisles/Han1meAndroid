@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -120,6 +121,8 @@ import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -375,8 +378,12 @@ fun HanimeApp(
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
+    // 经 rememberUpdatedState 读取：swipeToOpenDrawer 的 pointerInput 只以像素常量为 key，
+    // 手势协程在首次组合时启动并捕获这里的闭包，直接读 currentRoute 会永远拿到启动时的旧值，
+    // 「仅首页唤出抽屉」的守卫在切到其他页后全部失效
+    val currentRouteState = rememberUpdatedState(currentRoute)
     val swipeOpenProfile: () -> Unit = {
-        if (currentRoute == "home") profileOpen = true
+        if (currentRouteState.value == "home") profileOpen = true
     }
     val swipeTouchSlopPx = with(density) { HOME_SWIPE_SLOP_DP.dp.toPx() }
     val swipeOpenThresholdPx = with(density) { HOME_SWIPE_OPEN_DP.dp.toPx() }
@@ -403,7 +410,11 @@ fun HanimeApp(
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
         label = "profileDrawer"
     )
-    val progress = (rawProgress + drawerCloseSkip).coerceAtMost(1f)
+    // 关闭续接必须是乘法：松手当帧 rawProgress 仍为 1，此时抽屉已视觉位移 skip 比例，
+    // progress = rawProgress * (1 - skip) 恰好等于松手位置（1 - skip），随 rawProgress
+    // 归零平滑收尾。旧实现 (rawProgress + skip).coerceAtMost(1f) 数学上反向：松手当帧
+    // 被 clamp 回 1（弹回全开）、停留 skip×320ms、收尾再由 skip 复位造成第二次跳变。
+    val progress = rawProgress * (1f - drawerCloseSkip)
     LaunchedEffect(profileOpen, rawProgress) {
         if (!profileOpen && rawProgress == 0f) drawerCloseSkip = 0f
     }
@@ -949,7 +960,11 @@ fun HanimeApp(
     // 每次崩溃只提示一次：用崩溃文件名作已读标记，文件名带时间戳天然唯一。
     var crashNotice by remember { mutableStateOf<CrashRecord?>(null) }
     LaunchedEffect(Unit) {
-        crashNotice = CrashLogger.takeUnseen(Preferences.acknowledgedCrashFile)
+        // takeUnseen 会逐个全量读取崩溃文件（最多 10 份 × 256KB）并读一次加密偏好，属磁盘 IO；
+        // 与 CrashLogViewModel 对同一 API 的用法对齐，避免冷启动首帧后阻塞主线程
+        crashNotice = withContext(Dispatchers.IO) {
+            CrashLogger.takeUnseen(Preferences.acknowledgedCrashFile)
+        }
     }
     crashNotice?.let { record ->
         AlertDialog(

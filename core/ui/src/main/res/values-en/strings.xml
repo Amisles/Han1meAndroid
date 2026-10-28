@@ -831,6 +831,7 @@
     <string name="crash_log_privacy">Records stay on this device and are never uploaded. After exporting, you decide whether to share them.</string>
     <string name="crash_log_export">Export</string>
     <string name="crash_log_exported">Exported</string>
+    <string name="crash_log_export_failed">Export failed</string>
     <string name="crash_log_clear">Clear</string>
     <string name="crash_log_clear_confirm">Clear all crash records?</string>
     <string name="crash_notice_title">Last exit was abnormal</string>

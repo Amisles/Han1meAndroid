@@ -862,6 +862,7 @@
     <string name="crash_log_privacy">记录只保存在本机，不会上传。导出后可自行决定是否提供给开发者。</string>
     <string name="crash_log_export">导出</string>
     <string name="crash_log_exported">已导出</string>
+    <string name="crash_log_export_failed">导出失败</string>
     <string name="crash_log_clear">清空</string>
     <string name="crash_log_clear_confirm">确定清空全部崩溃记录吗？</string>
     <string name="crash_notice_title">上次异常退出</string>

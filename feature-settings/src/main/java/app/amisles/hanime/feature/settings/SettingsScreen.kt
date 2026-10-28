@@ -56,9 +56,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -227,13 +232,22 @@ private fun FolderPickerDialog(
     var showNewFolder by remember { mutableStateOf(false) }
     var newFolderName by rememberSaveable { mutableStateOf("") }
     var toastRes by remember { mutableStateOf<Int?>(null) }
+    // 建目录异步进行中置位：防止转场窗口内连点两次触发两次 mkdirs（第二次会因目录已存在
+    // 返回 false 而误报失败）
+    var creatingFolder by remember { mutableStateOf(false) }
+    val folderScope = rememberCoroutineScope()
 
     val roots = remember(context) { pickerRoots(context) }
 
-    val subDirs = remember(currentDir) {
-        currentDir.listFiles { f -> f.isDirectory }
-            ?.sortedBy { it.name.lowercase() }
-            ?: emptyList()
+    // 目录列举在 IO 线程完成：/storage/emulated/0 等位置可能有数百个子目录，主线程
+    // listFiles + 排序在慢存储上会阻塞数百毫秒乃至 ANR。key 变化即重新列举，
+    // 列举期间沿用上一次结果（旧目录列表短暂残留一帧级时间后刷新）。
+    val subDirs by produceState(emptyList<File>(), currentDir) {
+        value = withContext(Dispatchers.IO) {
+            currentDir.listFiles { f -> f.isDirectory }
+                ?.sortedBy { it.name.lowercase() }
+                ?: emptyList()
+        }
     }
 
     LaunchedEffect(toastRes) {
@@ -263,14 +277,23 @@ private fun FolderPickerDialog(
                         toastRes = R.string.settings_download_storage_enter_name
                         return@TextButton
                     }
-                    val safe = raw.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    val created = runCatching { File(currentDir, safe).mkdirs() }.getOrDefault(false)
-                    if (created) {
-                        currentDir = File(currentDir, safe)
-                        newFolderName = ""
-                        showNewFolder = false
-                    } else {
-                        toastRes = R.string.settings_download_storage_enter_name
+                    if (creatingFolder) return@TextButton
+                    creatingFolder = true
+                    // 先捕获目标路径再进协程：协程挂起期间 currentDir 可能已被用户改动
+                    val target = File(currentDir, raw.replace(Regex("[\\\\/:*?\"<>|]"), "_"))
+                    folderScope.launch {
+                        // mkdirs 是磁盘 IO，慢存储上可达数百毫秒，移出主线程
+                        val created = withContext(Dispatchers.IO) {
+                            runCatching { target.mkdirs() }.getOrDefault(false)
+                        }
+                        creatingFolder = false
+                        if (created) {
+                            currentDir = target
+                            newFolderName = ""
+                            showNewFolder = false
+                        } else {
+                            toastRes = R.string.settings_download_storage_enter_name
+                        }
                     }
                 }) {
                     Text(stringResource(R.string.common_confirm), color = MaterialTheme.colorScheme.primary)
