@@ -164,10 +164,21 @@ class BackupManager @Inject constructor(
         val stamp = System.currentTimeMillis()
         val name = "auto-" + stamp + ".zip"
         File(dir, name).writeBytes(exportBackup(emptyMap()))
+        pruneAutoBackups(dir)
         name
     }.getOrElse { e ->
         AppLogger.logError("BackupManager", "自动备份失败: " + e.message, e)
         null
+    }
+
+    /** 自动快照按时间保留最近 [MAX_AUTO_BACKUPS] 份，避免反复导入无限累积占满外部存储。 */
+    private fun pruneAutoBackups(dir: File) {
+        runCatching {
+            dir.listFiles { f -> f.isFile && f.name.startsWith("auto-") && f.name.endsWith(".zip") }
+                ?.sortedByDescending { it.name }
+                ?.drop(MAX_AUTO_BACKUPS)
+                ?.forEach { runCatching { it.delete() } }
+        }
     }
 
     private fun parseContents(files: Map<String, String>, manifest: BackupManifest) = BackupContents(
@@ -534,6 +545,7 @@ class BackupManager @Inject constructor(
         private const val MAX_ENTRY_BYTES = 16L * 1024 * 1024
         private const val MAX_TOTAL_BYTES = 48L * 1024 * 1024
         private const val AUTO_BACKUP_DIR = "backups"
+        private const val MAX_AUTO_BACKUPS = 3
 
         const val ENTRY_MANIFEST = "manifest.json"
         const val ENTRY_FAVORITES = "favorites.json"
