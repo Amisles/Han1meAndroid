@@ -32,22 +32,20 @@
 
 > The app needs network access to the corresponding site. If the default site is unreachable, configure a working mirror under Settings → Site URL.
 
-<!-- UI preview: after dropping screenshots into docs/screenshots/, remove the comment markers below to enable.
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/01-home.png" width="24%" alt="Home">
-  <img src="docs/screenshots/02-detail.png" width="24%" alt="Detail and playback">
-  <img src="docs/screenshots/03-search.png" width="24%" alt="Search and filters">
-  <img src="docs/screenshots/04-download.png" width="24%" alt="Download manager">
+  <img src="docs/screenshots/01-home.jpg" width="24%" alt="Home">
+  <img src="docs/screenshots/02-detail.jpg" width="24%" alt="Detail and playback">
+  <img src="docs/screenshots/03-search.jpg" width="24%" alt="Search and filters">
+  <img src="docs/screenshots/04-download.jpg" width="24%" alt="Download manager">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/05-customize.png" width="24%" alt="UI customization">
-  <img src="docs/screenshots/06-settings.png" width="24%" alt="Settings">
-  <img src="docs/screenshots/07-dark.png" width="24%" alt="Dark theme">
+  <img src="docs/screenshots/05-customize.jpg" width="24%" alt="UI customization">
+  <img src="docs/screenshots/06-settings.jpg" width="24%" alt="Settings">
+  <img src="docs/screenshots/07-dark.jpg" width="24%" alt="Dark theme">
 </p>
--->
 
 ## Features
 
