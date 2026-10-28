@@ -132,6 +132,13 @@ class VideoListParser @Inject constructor() {
                     author = parts[0].trim()
                 }
             }
+            // 现网结构里发布时间在 .subtitle 内的 .subtitle-time 上（与 <a> 平级），不在 <a> 的文本里，
+            // 只按「•」切分会得到空串 —— 与 parseVideoItem 保持一致，单独取一次；旧结构（时间写在
+            // <a> 文本里）仍由上面的切分兜住，两者谁先取到用谁。
+            if (publishTime.isEmpty()) {
+                publishTime = container.selectFirst(".subtitle-time")?.text()
+                    ?.replace("•", "")?.trim().orEmpty()
+            }
 
             val finalVideoUrl = if (videoUrl.startsWith("/")) "$baseUrl$videoUrl" else videoUrl
 

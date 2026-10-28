@@ -476,6 +476,17 @@ class VideoListParserTest {
     }
 
     @Test
+    fun `parseVideoList reads publish time from subtitle-time sibling`() {
+        val doc = Jsoup.parse(relatedCardsHtml, baseUrl)
+        val landscape = parser.parseVideoList(doc, baseUrl).first { it.id == "405188" }
+
+        // 现网结构：时间在 .subtitle 内、与 <a> 平级的 .subtitle-time 上，不在 <a> 文本里；
+        // 旧实现只按「•」切分 <a> 的文本，publishTime 恒为空
+        assertEquals("FantaC", landscape.author)
+        assertEquals("8個月前", landscape.publishTime)
+    }
+
+    @Test
     fun `parseVideoList keeps simplified search cards portrait`() {
         val doc = Jsoup.parse(simpleSearchCardsHtml, baseUrl)
         val videos = parser.parseVideoList(doc, baseUrl)
