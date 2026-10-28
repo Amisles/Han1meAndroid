@@ -240,9 +240,10 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
             )
         }
         val start = System.currentTimeMillis()
+        var conn: HttpsURLConnection? = null
         return try {
             val url = URL(baseUrl)
-            val conn = (url.openConnection() as HttpsURLConnection).apply {
+            conn = (url.openConnection() as HttpsURLConnection).apply {
                 connectTimeout = 10000
                 readTimeout = 10000
                 requestMethod = "HEAD"
@@ -258,7 +259,6 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
             } else {
                 "证书信息不可用"
             }
-            conn.disconnect()
             DiagnosticResult(
                 type = DiagnosticType.SSL_CERTIFICATE,
                 status = DiagnosticStatus.OK,
@@ -293,6 +293,8 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
                 latencyMs = System.currentTimeMillis() - start,
                 suggestion = "请检查网络或切换镜像站"
             )
+        } finally {
+            runCatching { conn?.disconnect() }
         }
     }
 
