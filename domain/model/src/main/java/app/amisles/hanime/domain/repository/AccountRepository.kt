@@ -32,7 +32,7 @@ interface AccountRepository {
     suspend fun updateAccountProfile(name: String, email: String, csrfToken: String): AppResult<Unit>
 
     // ── 评论 ────────────────────────────────────────────────────────────────
-    suspend fun getComments(videoId: String): AppResult<List<Comment>>
+    suspend fun getComments(videoId: String, page: Int = 1): AppResult<List<Comment>>
     suspend fun getReplies(commentId: String): AppResult<List<Reply>>
 
     /** @return Pair(新评论, 新评论总数) */

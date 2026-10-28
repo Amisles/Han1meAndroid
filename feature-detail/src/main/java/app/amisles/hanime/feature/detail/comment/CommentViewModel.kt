@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -153,6 +154,16 @@ class CommentViewModel @Inject constructor(
     private fun isSameVideoAsRequest(requestVideoId: String): Boolean =
         requestVideoId == currentVideoId
 
+    private val _isLoadingMoreComments = MutableStateFlow(false)
+    val isLoadingMoreComments: StateFlow<Boolean> = _isLoadingMoreComments.asStateFlow()
+
+    private val _hasMoreComments = MutableStateFlow(false)
+    val hasMoreComments: StateFlow<Boolean> = _hasMoreComments.asStateFlow()
+
+    private var nextCommentPage = 2
+
+    private var loadMoreCommentsJob: Job? = null
+
     /** 加载评论列表；已加载过则不重复请求，除非 force=true。 */
     fun loadComments(force: Boolean = false) {
         if (currentVideoId.isEmpty()) return
@@ -164,6 +175,10 @@ class CommentViewModel @Inject constructor(
         AppLogger.d("CommentViewModel", "loadComments called, videoId: $requestVideoId")
         _isLoadingComments.value = true
         _commentsError.value = null
+        loadMoreCommentsJob?.cancel()
+        _isLoadingMoreComments.value = false
+        _hasMoreComments.value = false
+        nextCommentPage = 2
 
         viewModelScope.launch {
             try {
@@ -180,6 +195,7 @@ class CommentViewModel @Inject constructor(
                         AppLogger.d("CommentViewModel", "Got ${result.data.size} comments")
                         _comments.value = result.data
                         _commentsLoaded.value = true
+                        _hasMoreComments.value = result.data.size >= COMMENTS_PAGE_SIZE
                     }
                     is AppResult.Error -> {
                         AppLogger.e("CommentViewModel", "Error loading comments: ${result.message}", result.exception)
@@ -194,6 +210,57 @@ class CommentViewModel @Inject constructor(
                 if (isSameVideoAsRequest(requestVideoId)) _commentsError.value = e.message
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isLoadingComments.value = false
+            }
+        }
+    }
+
+    /**
+     * 追加下一页评论；最后一页（返回数不足页大小）时置 [hasMoreComments] = false。
+     * 站点 /loadComment 对越界页返回与上一页相同的数据，这里以「页数无增量」同样收口，
+     * 避免越界后无限重复请求。
+     */
+    fun loadMoreComments() {
+        if (currentVideoId.isEmpty()) return
+        if (_isLoadingComments.value || _isLoadingMoreComments.value) return
+        if (!_hasMoreComments.value) return
+        val requestVideoId = currentVideoId
+        val page = nextCommentPage
+        AppLogger.d("CommentViewModel", "loadMoreComments page=$page videoId=$requestVideoId")
+        _isLoadingMoreComments.value = true
+        _commentsError.value = null
+        loadMoreCommentsJob = viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    account.getComments(requestVideoId, page)
+                }
+                if (!isSameVideoAsRequest(requestVideoId)) return@launch
+                when (result) {
+                    is AppResult.Success -> {
+                        val existing = _comments.value
+                        val merged = (existing + result.data).distinctBy { it.id }
+                        if (merged.size == existing.size || result.data.size < COMMENTS_PAGE_SIZE) {
+                            _hasMoreComments.value = false
+                        } else {
+                            _comments.value = merged
+                            nextCommentPage = page + 1
+                        }
+                    }
+                    is AppResult.Error -> {
+                        _commentsError.value = result.message
+                        _hasMoreComments.value = true
+                    }
+                    is AppResult.Loading -> {}
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("CommentViewModel", "loadMoreComments failed: ${e.message}", e)
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _commentsError.value = e.message
+                    _hasMoreComments.value = true
+                }
+            } finally {
+                if (isSameVideoAsRequest(requestVideoId)) _isLoadingMoreComments.value = false
             }
         }
     }
@@ -552,6 +619,11 @@ class CommentViewModel @Inject constructor(
     /** 清除评论点赞的错误状态。 */
     fun clearCommentLikeError() {
         _commentLikeError.value = null
+    }
+
+    companion object {
+        /** 站点 /loadComment 单页返回的评论数。 */
+        const val COMMENTS_PAGE_SIZE = 20
     }
 }
 

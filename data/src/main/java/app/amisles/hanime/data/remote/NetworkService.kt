@@ -465,11 +465,15 @@ class NetworkService @Inject constructor(
      * 拉取视频评论 JSON（GET /loadComment?id={videoId}&type=video&content=comment-tablink），
      * 返回 {"comments": "<HTML>", "content": "comment-tablink"}。
      */
-    suspend fun fetchComments(videoId: String): String {
-        AppLogger.log("NetworkService", "fetchComments called, videoId: $videoId")
+    suspend fun fetchComments(videoId: String, page: Int = 1): String {
+        AppLogger.log("NetworkService", "fetchComments called, videoId: $videoId page: $page")
         return withContext(Dispatchers.IO) {
             val baseUrl = getCurrentBaseUrl()
-            val url = "$baseUrl/loadComment?id=$videoId&type=video&content=comment-tablink"
+            val url = if (page > 1) {
+                "$baseUrl/loadComment?id=$videoId&type=video&content=comment-tablink&page=$page"
+            } else {
+                "$baseUrl/loadComment?id=$videoId&type=video&content=comment-tablink"
+            }
             AppLogger.log("NetworkService", "Fetching comments from: ${url.redactUrlForLog()}")
             executeRequest(buildRequest(url))
         }

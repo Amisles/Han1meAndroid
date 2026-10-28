@@ -284,6 +284,16 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+    override suspend fun moveFavoritesToGroup(videoIds: List<String>, groupId: String): Boolean {
+        if (videoIds.isEmpty()) return true
+        return try {
+            favoriteDao.setFavoriteGroupForIds(videoIds, groupId) == videoIds.size
+        } catch (e: SQLException) {
+            AppLogger.logError("HanimeRepository", "Error moving favorites: ${e.message}", e)
+            false
+        }
+    }
+
     override suspend fun setFavoriteTags(videoId: String, tags: List<String>): Boolean {
         return try {
             val normalized = tags
@@ -322,6 +332,16 @@ class HanimeRepository @Inject constructor(
             false
         }
     }
+
+    override suspend fun markWatched(videoId: String): Boolean =
+        try {
+            watchHistoryDao.markWatched(videoId, System.currentTimeMillis()) > 0
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "markWatched: ${e.message}", e)
+            false
+        }
 
     override suspend fun getWatchHistory(videoId: String): WatchHistory? {
         return try {
@@ -496,9 +516,9 @@ class HanimeRepository @Inject constructor(
         }
     }
 
-    override suspend fun getComments(videoId: String): AppResult<List<Comment>> {
+    override suspend fun getComments(videoId: String, page: Int): AppResult<List<Comment>> {
         return try {
-            val json = networkService.fetchComments(videoId)
+            val json = networkService.fetchComments(videoId, page)
             AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
             AppResult.success(commentParser.parse(json))
         } catch (e: CancellationException) {

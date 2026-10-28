@@ -7,8 +7,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +63,8 @@ internal data class DetailRestState(
     val isSubscribing: Boolean,
     val comments: List<Comment>,
     val isLoadingComments: Boolean,
+    val isLoadingMoreComments: Boolean,
+    val hasMoreComments: Boolean,
     val commentsError: String?,
     val repliesCache: Map<String, List<Reply>>,
     val loadingReplies: Set<String>,
@@ -90,6 +94,7 @@ internal data class DetailRestActions(
     val onAuthorPageClick: (String) -> Unit,
     val onVideoClick: (String) -> Unit,
     val onLoadComments: (force: Boolean) -> Unit,
+    val onLoadMoreComments: () -> Unit,
     val onLoadReplies: (String) -> Unit,
     val onToggleReplies: (String) -> Unit,
     val onPostComment: (String) -> Unit,
@@ -99,7 +104,8 @@ internal data class DetailRestActions(
     val onSubmitReply: (String) -> Unit,
     val onCancelReply: () -> Unit,
     val onClearReplyError: () -> Unit,
-    val onNavigateToLogin: () -> Unit
+    val onNavigateToLogin: () -> Unit,
+    val onVideoLongClick: (HanimeVideo) -> Unit
 )
 
 /** 详情页「其余组件」：手机单列与平板右栏共用的 LazyColumn 内容。 */
@@ -125,7 +131,8 @@ internal fun LazyListScope.detailRestItems(
                         currentTab = state.selectedTab,
                         onSelectTab = actions.onTabSelected,
                         onVideoClick = actions.onVideoClick,
-                        onAuthorClick = actions.onAuthorClick
+                        onAuthorClick = actions.onAuthorClick,
+                        onVideoLongClick = actions.onVideoLongClick
                     )
                 }
             }
@@ -137,7 +144,8 @@ internal fun LazyListScope.detailRestItems(
                     currentTab = state.selectedTab,
                     onSelectTab = actions.onTabSelected,
                     onVideoClick = actions.onVideoClick,
-                    onAuthorClick = actions.onAuthorClick
+                    onAuthorClick = actions.onAuthorClick,
+                    onVideoLongClick = actions.onVideoLongClick
                 )
             }
         }
@@ -183,7 +191,8 @@ private fun DetailRelatedRow(
     currentTab: Int,
     onSelectTab: (Int) -> Unit,
     onVideoClick: (String) -> Unit,
-    onAuthorClick: (String) -> Unit
+    onAuthorClick: (String) -> Unit,
+    onVideoLongClick: (HanimeVideo) -> Unit
 ) {
     val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
     Box(
@@ -196,7 +205,8 @@ private fun DetailRelatedRow(
         DetailRelatedVideoCard(
             video = video,
             onVideoClick = onVideoClick,
-            onAuthorClick = onAuthorClick
+            onAuthorClick = onAuthorClick,
+            onLongClick = { onVideoLongClick(video) }
         )
     }
 }
@@ -289,6 +299,9 @@ private fun DetailCommentsPage(
     CommentSection(
         comments = state.comments,
         isLoading = state.isLoadingComments,
+        isLoadingMore = state.isLoadingMoreComments,
+        hasMore = state.hasMoreComments,
+        onLoadMore = actions.onLoadMoreComments,
         error = state.commentsError,
         onRetry = { actions.onLoadComments(true) },
         repliesCache = state.repliesCache,
@@ -324,7 +337,8 @@ private fun DetailRelatedGridRow(
     currentTab: Int,
     onSelectTab: (Int) -> Unit,
     onVideoClick: (String) -> Unit,
-    onAuthorClick: (String) -> Unit
+    onAuthorClick: (String) -> Unit,
+    onVideoLongClick: (HanimeVideo) -> Unit
 ) {
     val cfg = LocalUiConfig.current
     val gap = cfg.gridGap
@@ -345,6 +359,7 @@ private fun DetailRelatedGridRow(
                 video = video,
                 onClick = { onVideoClick(video.videoUrl) },
                 onAuthorClick = onAuthorClick,
+                onLongClick = { onVideoLongClick(video) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -358,6 +373,7 @@ private fun DetailRelatedGridCard(
     video: HanimeVideo,
     onClick: () -> Unit,
     onAuthorClick: (String) -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val cfg = LocalUiConfig.current
@@ -366,7 +382,7 @@ private fun DetailRelatedGridCard(
     Column(
         modifier = modifier
             .clip(shape)
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         BoxWithConstraints(
             modifier = Modifier

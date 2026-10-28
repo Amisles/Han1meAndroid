@@ -63,6 +63,7 @@ import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
 import app.amisles.hanime.feature.detail.components.DetailVideoPlayer
 import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
 import app.amisles.hanime.feature.detail.components.VideoUnavailableHint
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
 import app.amisles.hanime.feature.detail.util.shareVideo
 import kotlinx.coroutines.currentCoroutineContext
@@ -84,7 +85,8 @@ fun DetailScreen(
     onAuthorClick: (String) -> Unit = {},
     onAuthorPageClick: (String) -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
     val viewModel: DetailViewModel = hiltViewModel()
@@ -110,6 +112,8 @@ fun DetailScreen(
     val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
     val comments by commentVm.comments.collectAsStateWithLifecycle()
     val isLoadingComments by commentVm.isLoadingComments.collectAsStateWithLifecycle()
+    val isLoadingMoreComments by commentVm.isLoadingMoreComments.collectAsStateWithLifecycle()
+    val hasMoreComments by commentVm.hasMoreComments.collectAsStateWithLifecycle()
     val commentsError by commentVm.commentsError.collectAsStateWithLifecycle()
     val commentsLoaded by commentVm.commentsLoaded.collectAsStateWithLifecycle()
     val repliesCache by commentVm.repliesCache.collectAsStateWithLifecycle()
@@ -371,6 +375,8 @@ fun DetailScreen(
         isSubscribing = isSubscribing,
         comments = comments,
         isLoadingComments = isLoadingComments,
+        isLoadingMoreComments = isLoadingMoreComments,
+        hasMoreComments = hasMoreComments,
         commentsError = commentsError,
         repliesCache = repliesCache,
         loadingReplies = loadingReplies,
@@ -400,7 +406,9 @@ fun DetailScreen(
         onAuthorClick = onAuthorClick,
         onAuthorPageClick = onAuthorPageClick,
         onVideoClick = onVideoClick,
+        onVideoLongClick = onVideoLongClick,
         onLoadComments = { force -> commentVm.loadComments(force = force) },
+        onLoadMoreComments = { commentVm.loadMoreComments() },
         onLoadReplies = { commentVm.loadReplies(it) },
         onToggleReplies = { commentVm.toggleReplies(it) },
         onPostComment = { text ->

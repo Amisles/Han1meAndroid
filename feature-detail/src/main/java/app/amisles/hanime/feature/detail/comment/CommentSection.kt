@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.detail.comment
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +30,9 @@ import app.amisles.hanime.core.ui.components.KaomojiErrorView
 internal fun CommentSection(
     comments: List<app.amisles.hanime.domain.model.Comment>,
     isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit,
     error: String?,
     onRetry: () -> Unit,
     repliesCache: Map<String, List<app.amisles.hanime.domain.model.Reply>>,
@@ -142,8 +146,77 @@ internal fun CommentSection(
                         )
                     }
                 }
+                CommentLoadMoreFooter(
+                    isLoadingMore = isLoadingMore,
+                    hasMore = hasMore,
+                    hasError = error != null,
+                    onLoadMore = onLoadMore,
+                    onRetry = onRetry
+                )
                 Spacer(modifier = Modifier.height(8.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun CommentLoadMoreFooter(
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    hasError: Boolean,
+    onLoadMore: () -> Unit,
+    onRetry: () -> Unit
+) {
+    when {
+        isLoadingMore -> {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        hasMore && hasError -> {
+            Text(
+                text = stringResource(R.string.comment_load_more_failed),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onRetry)
+                    .padding(vertical = 14.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+        hasMore -> {
+            Text(
+                text = stringResource(R.string.comment_load_more),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onLoadMore)
+                    .padding(vertical = 14.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+        !hasError -> {
+            Text(
+                text = stringResource(R.string.comment_no_more),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }
