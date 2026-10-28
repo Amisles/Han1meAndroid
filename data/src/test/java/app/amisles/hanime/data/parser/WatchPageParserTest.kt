@@ -395,4 +395,45 @@ class WatchPageParserTest {
         // RegexOption.IGNORE_CASE，但 regex 的 value 保持原样（800mb）
         assertEquals("800mb", detail.fileSize)
     }
+
+    @Test
+    fun `parse ignores zero user id placeholder from js`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <script>window.userId = 0;</script>
+            </body></html>
+        """.trimIndent()
+        val detail = parser.parse(html, baseUrl)!!
+        // 0 是未登录占位，不能当真实用户 ID
+        assertEquals("", detail.subscribeUserId)
+    }
+
+    @Test
+    fun `parse skips invalid user id and falls through to next source`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <meta name="user-id" content="0"/>
+                <script>var currentUserId = 456;</script>
+            </body></html>
+        """.trimIndent()
+        val detail = parser.parse(html, baseUrl)!!
+        assertEquals("456", detail.subscribeUserId)
+    }
+
+    @Test
+    fun `parse reads valid js user id`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <script>window.userId = 789;</script>
+            </body></html>
+        """.trimIndent()
+        val detail = parser.parse(html, baseUrl)!!
+        assertEquals("789", detail.subscribeUserId)
+    }
 }

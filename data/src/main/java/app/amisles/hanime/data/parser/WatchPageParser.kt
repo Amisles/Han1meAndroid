@@ -208,12 +208,6 @@ class WatchPageParser @Inject constructor(
      * JS 全局变量等位置，命中即返回其数字值；均未命中返回空字符串。
      */
     private fun parseCurrentUserId(doc: Document, html: String): String {
-        fun String?.toNumericId(): String? {
-            if (this.isNullOrBlank()) return null
-            val v = this.trim()
-            return if (v.all { it.isDigit() }) v else null
-        }
-
         // 1) meta 标签
         for (name in listOf("user-id", "user_id", "userId", "auth-user-id", "current-user-id")) {
             doc.selectFirst("meta[name=\"$name\"]")?.attr("content")?.toNumericId()
@@ -241,10 +235,24 @@ class WatchPageParser @Inject constructor(
         )
         for (pattern in jsPatterns) {
             val m = runCatching { Regex(pattern).find(html) }.getOrNull() ?: continue
-            m.groupValues.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { return it }
+            // 与前面几条来源走同一套校验：JS 里的 userId 可能是无关数字（例如未登录时的占位 0）
+            m.groupValues.getOrNull(1)?.toNumericId()?.let { return it }
         }
 
         return ""
+    }
+
+    /**
+     * 把「看起来像用户 ID」的文本规整成纯数字串。
+     *
+     * 只接受十进制正整数：0 不是有效用户 ID（页面上的 userId = 0 通常是未登录占位或无关脚本），
+     * 负数、溢出、夹杂其它字符一律视为无效。否则会把无关数字当成真实 ID 发请求，换来服务器错误。
+     */
+    private fun String?.toNumericId(): String? {
+        if (this.isNullOrBlank()) return null
+        val v = this.trim()
+        if (v.isEmpty() || !v.all { it.isDigit() }) return null
+        return v.toLongOrNull()?.takeIf { it > 0 }?.toString()
     }
 
     /**
@@ -265,8 +273,8 @@ class WatchPageParser @Inject constructor(
             ?: USER_ID_REGEX.find(authorPageUrl)?.groupValues?.getOrNull(1)?.takeIf { it.isNotEmpty() }
             ?: ""
 
-        val userId = scope?.selectFirst("input[name=\"subscribe-user-id\"]")?.attr("value")?.trim()
-            ?.takeIf { it.isNotEmpty() }
+        // 表单里的值同样要过一遍校验：某些页面会渲染 subscribe-user-id=0（未登录占位）
+        val userId = scope?.selectFirst("input[name=\"subscribe-user-id\"]")?.attr("value")?.toNumericId()
             ?: currentUserId
 
         val status = scope?.selectFirst("input[name=\"subscribe-status\"]")?.attr("value")?.trim() ?: ""
