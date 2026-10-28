@@ -35,7 +35,7 @@ class PlaylistListPageViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                _playlists.value = networkService.fetchPlaylistListPage(url)
+                _playlists.value = networkService.fetchPlaylistListPage(url).distinctBy { it.playlistUrl }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
