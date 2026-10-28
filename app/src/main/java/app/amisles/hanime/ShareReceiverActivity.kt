@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import android.widget.Toast
 
@@ -61,9 +60,7 @@ class ShareReceiverActivity : ComponentActivity() {
         /** 从任意文本中找出首个 /watch?v= 链接（容忍被聊天工具截断或附加了多余文案）。 */
         fun extractWatchUrl(text: String): String? {
             val match = WATCH_URL_REGEX.find(text) ?: return null
-            val path = match.value
-            val query = match.groupValues.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: ""
-            return "https://" + match.groupValues.getOrNull(2)!! + path + query
+            return "https://" + match.groupValues[1] + match.groupValues[2] + match.groupValues[3]
         }
 
         private val WATCH_URL_REGEX = Regex(

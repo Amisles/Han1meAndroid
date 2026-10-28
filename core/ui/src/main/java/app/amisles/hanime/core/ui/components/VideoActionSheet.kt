@@ -21,8 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,12 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.HanimeVideo
-
-private data class VideoAction(
-    val icon: ImageVector,
-    val label: String,
-    val danger: Boolean = false
-)
 
 /**
  * 视频卡片长按快捷菜单：收藏 / 下载 / 分享 / 搜索相关视频。

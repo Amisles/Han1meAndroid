@@ -247,7 +247,6 @@ class CommentViewModel @Inject constructor(
                     }
                     is AppResult.Error -> {
                         _commentsError.value = result.message
-                        _hasMoreComments.value = true
                     }
                     is AppResult.Loading -> {}
                 }
@@ -257,7 +256,6 @@ class CommentViewModel @Inject constructor(
                 AppLogger.e("CommentViewModel", "loadMoreComments failed: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
                     _commentsError.value = e.message
-                    _hasMoreComments.value = true
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isLoadingMoreComments.value = false

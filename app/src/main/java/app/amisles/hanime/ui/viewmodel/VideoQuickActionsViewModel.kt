@@ -66,8 +66,6 @@ class VideoQuickActionsViewModel @Inject constructor(
     private var qualitiesJob: Job? = null
     private var requestedVideoId: String = ""
 
-    fun isFavorite(videoId: String): Boolean = _favoriteIds.value.contains(videoId)
-
     fun ensureFavoritesLoaded(ids: List<String>) {
         val missing = ids.filter { it.isNotEmpty() && !_favoriteIds.value.contains(it) }
         if (missing.isEmpty()) return
