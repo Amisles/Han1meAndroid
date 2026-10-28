@@ -69,6 +69,15 @@ class DetailViewModel @Inject constructor(
     private val _downloadStartResults = Channel<Int>(Channel.BUFFERED)
     val downloadStartResults: Flow<Int> = _downloadStartResults.receiveAsFlow()
 
+    /**
+     * 一次性提示（字符串资源 id）。
+     *
+     * 目前只有本地库写失败会走这里：写失败时星标会被随后的复核复位，若不给提示，用户看到的是
+     * 「点了没反应、星标自己弹回」，无从判断是网络问题还是存储问题。
+     */
+    private val _messages = Channel<Int>(Channel.BUFFERED)
+    val messages: Flow<Int> = _messages.receiveAsFlow()
+
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
 
@@ -283,8 +292,10 @@ class DetailViewModel @Inject constructor(
                 val currentState = _isFavorite.value
                 val detail = _videoDetail.value
 
+                // 写失败不再被仓储吞掉：下面据此补一条提示（星标会被复核复位，不给提示等于「点了没反应」）
+                var written = true
                 if (currentState) {
-                    withContext(Dispatchers.IO) {
+                    written = withContext(Dispatchers.IO) {
                         library.removeFavorite(currentVideoId)
                     }
                     AppLogger.d("DetailViewModel", "Removed from favorites")
@@ -301,7 +312,7 @@ class DetailViewModel @Inject constructor(
                             viewCount = "",
                             createdAt = System.currentTimeMillis()
                         )
-                        withContext(Dispatchers.IO) {
+                        written = withContext(Dispatchers.IO) {
                             library.addFavorite(favoriteVideo)
                         }
                         AppLogger.d("DetailViewModel", "Added to favorites")
@@ -309,6 +320,7 @@ class DetailViewModel @Inject constructor(
                 }
                 val verified = withContext(Dispatchers.IO) { library.isFavorite(currentVideoId) }
                 _isFavorite.value = verified
+                if (!written) _messages.trySend(R.string.local_save_failed)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

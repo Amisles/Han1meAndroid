@@ -25,6 +25,6 @@ interface ComicRepository {
     /** 全部阅读进度，按最近阅读排序。 */
     fun observeComicProgressList(): Flow<List<ComicProgress>>
 
-    /** 保存进度：已有记录只更新页码，没有则整行写入。 */
-    suspend fun saveComicProgress(progress: ComicProgress)
+    /** 保存进度：已有记录只更新页码，没有则整行写入。返回 false 表示本地写入失败。 */
+    suspend fun saveComicProgress(progress: ComicProgress): Boolean
 }

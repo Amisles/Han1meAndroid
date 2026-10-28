@@ -49,6 +49,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Favorite
+import android.widget.Toast
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
@@ -69,6 +70,13 @@ fun FavoriteScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    // 本地库写入失败（磁盘满 / DB 损坏）：列表会刷新回滚，这里补一条提示说明「为什么没生效」
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { messageRes ->
+            Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // null 表示「全部分组」；空串表示「未分组」
     var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }

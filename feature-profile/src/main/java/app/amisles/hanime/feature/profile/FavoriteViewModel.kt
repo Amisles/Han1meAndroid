@@ -3,16 +3,20 @@ package app.amisles.hanime.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.repository.LibraryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,6 +36,15 @@ class FavoriteViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    /** 一次性提示（字符串资源 id）：本地库写入失败时由界面弹 toast。 */
+    private val _messages = Channel<Int>(Channel.BUFFERED)
+    val messages: Flow<Int> = _messages.receiveAsFlow()
+
+    /** 写失败统一上报：列表会自行刷新回滚，但用户需要知道「为什么操作没生效」。 */
+    private fun reportWriteResult(success: Boolean) {
+        if (!success) _messages.trySend(R.string.local_save_failed)
+    }
 
     fun loadFavorites() {
         _isLoading.value = true
@@ -56,11 +69,13 @@ class FavoriteViewModel @Inject constructor(
         if (trimmed.isEmpty()) return
         if (groups.value.any { it.name.equals(trimmed, ignoreCase = true) }) return
         viewModelScope.launch(Dispatchers.IO) {
-            repository.upsertFavoriteGroup(
-                FavoriteGroup(
-                    id = UUID.randomUUID().toString(),
-                    name = trimmed,
-                    createdAt = System.currentTimeMillis()
+            reportWriteResult(
+                repository.upsertFavoriteGroup(
+                    FavoriteGroup(
+                        id = UUID.randomUUID().toString(),
+                        name = trimmed,
+                        createdAt = System.currentTimeMillis()
+                    )
                 )
             )
         }
@@ -71,39 +86,43 @@ class FavoriteViewModel @Inject constructor(
         if (trimmed.isEmpty()) return
         val target = groups.value.firstOrNull { it.id == groupId } ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            repository.upsertFavoriteGroup(target.copy(name = trimmed))
+            reportWriteResult(repository.upsertFavoriteGroup(target.copy(name = trimmed)))
         }
     }
 
     fun deleteGroup(groupId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.deleteFavoriteGroup(groupId)
+            val ok = repository.deleteFavoriteGroup(groupId)
             val favorites = repository.getAllFavorites()
             withContext(Dispatchers.Main) { _favorites.value = favorites }
+            reportWriteResult(ok)
         }
     }
 
     fun moveToGroup(videoId: String, groupId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.moveFavoriteToGroup(videoId, groupId)
+            val ok = repository.moveFavoriteToGroup(videoId, groupId)
             val favorites = repository.getAllFavorites()
             withContext(Dispatchers.Main) { _favorites.value = favorites }
+            reportWriteResult(ok)
         }
     }
 
     fun setTags(videoId: String, tags: List<String>) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.setFavoriteTags(videoId, tags)
+            val ok = repository.setFavoriteTags(videoId, tags)
             val favorites = repository.getAllFavorites()
             withContext(Dispatchers.Main) { _favorites.value = favorites }
+            reportWriteResult(ok)
         }
     }
 
     fun removeFavorite(videoId: String) {
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { repository.removeFavorite(videoId) }
+                val ok = withContext(Dispatchers.IO) { repository.removeFavorite(videoId) }
                 loadFavorites()
+                reportWriteResult(ok)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -116,8 +135,9 @@ class FavoriteViewModel @Inject constructor(
         if (videoIds.isEmpty()) return
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { repository.removeFavorites(videoIds) }
+                val ok = withContext(Dispatchers.IO) { repository.removeFavorites(videoIds) }
                 loadFavorites()
+                reportWriteResult(ok)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

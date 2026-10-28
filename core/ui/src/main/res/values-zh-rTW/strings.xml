@@ -15,6 +15,8 @@
     <string name="common_select_all">全選</string>
     <string name="common_loading">載入中...</string>
     <string name="common_load_failed">載入失敗</string>
+    <!-- 本機資料庫寫入失敗時的統一提示 -->
+    <string name="local_save_failed">儲存失敗，請檢查儲存空間</string>
     <string name="common_empty_data">暫無資料</string>
     <string name="common_search">搜尋</string>
     <string name="common_play">播放</string>

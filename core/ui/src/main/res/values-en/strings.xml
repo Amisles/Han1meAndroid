@@ -15,6 +15,8 @@
     <string name="common_select_all">Select All</string>
     <string name="common_loading">Loading...</string>
     <string name="common_load_failed">Load failed</string>
+    <!-- Shown when a local database write fails (disk full / corrupted DB) -->
+    <string name="local_save_failed">Save failed. Check available storage.</string>
     <string name="common_empty_data">No data</string>
     <string name="common_search">Search</string>
     <string name="common_play">Play</string>

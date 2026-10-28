@@ -20,6 +20,8 @@
     <string name="common_select_all">全选</string>
     <string name="common_loading">加载中...</string>
     <string name="common_load_failed">加载失败</string>
+    <!-- 本地库写入失败（磁盘满 / DB 损坏）时的统一提示 -->
+    <string name="local_save_failed">保存失败，请检查存储空间</string>
     <string name="common_empty_data">暂无数据</string>
     <string name="common_search">搜索</string>
     <string name="common_play">播放</string>

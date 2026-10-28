@@ -129,47 +129,56 @@ class HanimeRepository @Inject constructor(
     override fun observeComicProgressList(): Flow<List<ComicProgress>> =
         comicProgressDao.getAllProgress().map { list -> list.map { it.toDomain() } }
 
-    override suspend fun saveComicProgress(progress: ComicProgress) {
-        try {
+    override suspend fun saveComicProgress(progress: ComicProgress): Boolean {
+        return try {
             val updated = comicProgressDao.updateLastPage(
                 progress.comicId,
                 progress.lastPage,
                 progress.updatedAt
             )
             if (updated == 0) comicProgressDao.upsert(progress.toEntity())
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error saving comic progress: " + e.message, e)
+            false
         }
     }
 
-    override suspend fun addFavorite(video: FavoriteVideo) {
-        try {
+    override suspend fun addFavorite(video: FavoriteVideo): Boolean {
+        return try {
             favoriteDao.addFavorite(video.toEntity())
             AppLogger.log("HanimeRepository", "Favorite added successfully")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding favorite: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun removeFavorite(videoId: String) {
-        try {
+    override suspend fun removeFavorite(videoId: String): Boolean {
+        return try {
             favoriteDao.removeFavoriteById(videoId)
             AppLogger.log("HanimeRepository", "Favorite removed successfully")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing favorite: ${e.message}", e)
+            false
         }
     }
 
     /**
      * 批量删除收藏。ids 为空时直接返回：Room 的 `IN (:ids)` 在空集合下会生成非法 SQL。
      */
-    override suspend fun removeFavorites(videoIds: List<String>) {
-        if (videoIds.isEmpty()) return
-        try {
+    override suspend fun removeFavorites(videoIds: List<String>): Boolean {
+        // 空集合是合法的无操作，按成功处理（Room 的 IN (:ids) 在空集合下会生成非法 SQL）
+        if (videoIds.isEmpty()) return true
+        return try {
             favoriteDao.removeFavoritesByIds(videoIds)
             AppLogger.log("HanimeRepository", "Favorites removed: ${videoIds.size}")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing favorites: ${e.message}", e)
+            false
         }
     }
 
@@ -205,51 +214,61 @@ class HanimeRepository @Inject constructor(
     override fun getAllFavoriteGroupsFlow(): Flow<List<FavoriteGroup>> =
         favoriteGroupDao.getAllGroups().map { list -> list.map { it.toDomain() } }
 
-    override suspend fun upsertFavoriteGroup(group: FavoriteGroup) {
-        try {
+    override suspend fun upsertFavoriteGroup(group: FavoriteGroup): Boolean {
+        return try {
             favoriteGroupDao.upsertGroup(group.toEntity())
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error saving favorite group: ${e.message}", e)
+            false
         }
     }
 
     /** 删除分组并把其下收藏移回「未分组」，避免条目失去归属后不可见。 */
-    override suspend fun deleteFavoriteGroup(groupId: String) {
-        try {
+    override suspend fun deleteFavoriteGroup(groupId: String): Boolean {
+        return try {
             favoriteGroupDao.detachFavoritesOfGroup(groupId)
             favoriteGroupDao.deleteGroup(groupId)
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error deleting favorite group: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun moveFavoriteToGroup(videoId: String, groupId: String) {
-        try {
+    override suspend fun moveFavoriteToGroup(videoId: String, groupId: String): Boolean {
+        return try {
             favoriteDao.setFavoriteGroup(videoId, groupId)
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error moving favorite: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun setFavoriteTags(videoId: String, tags: List<String>) {
-        try {
+    override suspend fun setFavoriteTags(videoId: String, tags: List<String>): Boolean {
+        return try {
             val normalized = tags
                 .map { it.trim().replace(',', ' ') }
                 .filter { it.isNotEmpty() }
                 .distinct()
                 .take(MAX_TAGS_PER_FAVORITE)
             favoriteDao.setFavoriteTags(videoId, normalized.joinToString(","))
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error saving favorite tags: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun addWatchHistory(history: WatchHistory) {
-        try {
+    override suspend fun addWatchHistory(history: WatchHistory): Boolean {
+        return try {
             watchHistoryDao.addWatchHistory(history.toEntity())
             AppLogger.log("HanimeRepository", "Watch history added successfully")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding watch history: ${e.message}", e)
+            false
         }
     }
 
@@ -283,34 +302,41 @@ class HanimeRepository @Inject constructor(
         return watchHistoryDao.getAllWatchHistory().map { list -> list.map { it.toDomain() } }
     }
 
-    override suspend fun removeWatchHistory(videoId: String) {
-        try {
+    override suspend fun removeWatchHistory(videoId: String): Boolean {
+        return try {
             watchHistoryDao.removeWatchHistory(videoId)
             AppLogger.log("HanimeRepository", "Watch history removed successfully")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing watch history: ${e.message}", e)
+            false
         }
     }
 
     /**
      * 批量删除观看历史。ids 为空时直接返回：Room 的 `IN (:ids)` 在空集合下会生成非法 SQL。
      */
-    override suspend fun removeWatchHistories(videoIds: List<String>) {
-        if (videoIds.isEmpty()) return
-        try {
+    override suspend fun removeWatchHistories(videoIds: List<String>): Boolean {
+        // 空集合是合法的无操作，按成功处理
+        if (videoIds.isEmpty()) return true
+        return try {
             watchHistoryDao.removeWatchHistoriesByIds(videoIds)
             AppLogger.log("HanimeRepository", "Watch histories removed: ${videoIds.size}")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing watch histories: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun clearWatchHistory() {
-        try {
+    override suspend fun clearWatchHistory(): Boolean {
+        return try {
             watchHistoryDao.clearWatchHistory()
             AppLogger.log("HanimeRepository", "Watch history cleared successfully")
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error clearing watch history: ${e.message}", e)
+            false
         }
     }
 
@@ -760,33 +786,39 @@ class HanimeRepository @Inject constructor(
         return searchHistoryDao.getAllHistory().map { list -> list.map { it.query } }
     }
 
-    override suspend fun addSearchHistory(query: String) {
-        if (query.isBlank()) return
-        try {
+    override suspend fun addSearchHistory(query: String): Boolean {
+        if (query.isBlank()) return true
+        return try {
             searchHistoryDao.addSearch(
                 SearchHistoryEntity(
                     query = query.trim(),
                     searchedAt = System.currentTimeMillis()
                 )
             )
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error adding search history: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun removeSearchHistory(query: String) {
-        try {
+    override suspend fun removeSearchHistory(query: String): Boolean {
+        return try {
             searchHistoryDao.removeSearch(query)
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error removing search history: ${e.message}", e)
+            false
         }
     }
 
-    override suspend fun clearSearchHistory() {
-        try {
+    override suspend fun clearSearchHistory(): Boolean {
+        return try {
             searchHistoryDao.clearAllSearch()
+            true
         } catch (e: SQLException) {
             AppLogger.logError("HanimeRepository", "Error clearing search history: ${e.message}", e)
+            false
         }
     }
 

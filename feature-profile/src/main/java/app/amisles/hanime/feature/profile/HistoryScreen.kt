@@ -54,6 +54,7 @@ import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
+import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -98,6 +99,13 @@ fun HistoryScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadHistory()
+    }
+
+    // 本地库写入失败（磁盘满 / DB 损坏）：列表会刷新回滚，这里补一条提示说明「为什么没删掉」
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { messageRes ->
+            Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show()
+        }
     }
 
     LaunchedEffect(isSelectionMode) {

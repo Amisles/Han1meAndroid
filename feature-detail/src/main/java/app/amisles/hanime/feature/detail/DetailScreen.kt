@@ -557,6 +557,18 @@ fun DetailScreen(
         }
     }
 
+    // 本地库写入失败（磁盘满 / DB 损坏）：星标随后会被复核复位，补一条提示避免「点了没反应」
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { messageRes ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = context.getString(messageRes),
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
+
     if (showDownloadDialog) {
         DetailDownloadDialog(
             isLoadingQualities = isLoadingQualities,
