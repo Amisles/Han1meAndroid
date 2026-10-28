@@ -43,8 +43,9 @@ object HCookieJar : CookieJar {
         val out = mutableListOf<Cookie>()
 
         // 从内存存储读取并清理过期 Cookie。
-        // 必须原地修改而非整体替换 map 条目：并发请求可能已持有同一 list 引用
-        // 并正在追加新 Cookie，换引用会让那些写入落在孤儿列表上丢失。
+        // 必须原地修改而非整体替换 map 条目，且清理后不得把空列表从 map 摘除：
+        // 并发请求可能已持有同一 list 引用，替换或摘除都会让它的追加落在孤儿列表上丢失。
+        // 列表身份一经创建永不替换（clearHost/clearAll 的登出语义除外），空列表常驻的内存开销可忽略。
         val storedCookies = cookieMap[host]
         if (storedCookies != null) {
             synchronized(storedCookies) {
@@ -57,9 +58,6 @@ object HCookieJar : CookieJar {
                     } else {
                         iterator.remove()
                     }
-                }
-                if (storedCookies.isEmpty()) {
-                    cookieMap.remove(host, storedCookies)
                 }
             }
         }
