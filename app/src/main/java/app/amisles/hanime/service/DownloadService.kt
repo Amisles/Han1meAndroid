@@ -15,8 +15,11 @@ import androidx.core.app.NotificationCompat
 import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.domain.model.DownloadStatus
+import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
 
 /**
  * 下载前台服务：在通知栏显示下载进度，支持后台下载。
@@ -25,7 +28,17 @@ import java.util.concurrent.ConcurrentHashMap
  * 否则集合永不为空，stopForeground / stopSelf 永不执行，导致 dataSync 前台服务泄漏。
  * 服务随任务结束由 DownloadManager 按需重启（START_NOT_STICKY）。
  */
+@AndroidEntryPoint
 class DownloadService : Service() {
+
+    /**
+     * 系统回收 dataSync 配额时（[onTimeout]）需要真正把任务停下来。
+     *
+     * 下载协程活在 DownloadManager 的进程级作用域里，与本服务无生命周期绑定：只清 [activeTasks]
+     * 只是让通知与前台状态失效，传输本身照跑不误。
+     */
+    @Inject
+    lateinit var downloadManager: DownloadManager
 
     companion object {
         const val CHANNEL_ID = "download_channel"
@@ -52,8 +65,15 @@ class DownloadService : Service() {
         const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
     }
 
-    // taskId -> (title, progress)，记录仍在进行的下载任务（仅 DOWNLOADING/PENDING）
-    private val activeTasks = ConcurrentHashMap<Int, Pair<String, Int>>()
+    /**
+     * 活动任务快照（仅 DOWNLOADING / PENDING）。
+     *
+     * 必须连状态一起记：只有真正在传输（DOWNLOADING）时才该持 CPU / Wi-Fi 锁。等待闸门的
+     * PENDING 任务可能挂上数小时，而无超时的 WIFI_MODE_FULL_HIGH_PERF 会一直抑制省电模式。
+     */
+    private data class ActiveTask(val title: String, val progress: Int, val status: DownloadStatus?)
+
+    private val activeTasks = ConcurrentHashMap<Int, ActiveTask>()
     /**
      * 当前占据前台通知的任务 id；-1 表示「服务未处于前台」。
      *
@@ -116,6 +136,19 @@ class DownloadService : Service() {
         runCatching { wifiLock?.takeIf { it.isHeld }?.release() }
     }
 
+    /**
+     * 按当前活动任务同步锁状态：只有真的存在 DOWNLOADING 才持锁。
+     *
+     * 历史事件可能不带状态（EXTRA_STATUS 缺失），这类按「下载中」保守处理。
+     * 等待闸门的 PENDING 任务不持锁 —— 它可能几小时不产生任何进度事件，锁不会有下一次续期机会。
+     */
+    private fun syncTransferLocks() {
+        val transferring = activeTasks.values.any {
+            it.status == null || it.status == DownloadStatus.DOWNLOADING
+        }
+        if (transferring) acquireTransferLocks() else releaseTransferLocks()
+    }
+
     private fun notificationId(taskId: Int) = NOTIFICATION_ID_BASE + taskId
 
     override fun onCreate() {
@@ -157,8 +190,8 @@ class DownloadService : Service() {
             // 默认（含 DOWNLOADING / 无状态）：按进度通知处理
             else -> handleProgress(taskId, title ?: "", progress, status, startId)
         }
-        // 活动任务集合已空即释放锁；统一放在此处，任何分支提前返回漏放都会被兜住
-        if (activeTasks.isEmpty()) releaseTransferLocks()
+        // 锁状态统一在此按「是否仍有真实传输」收敛，任何分支提前返回漏放都会被兜住
+        syncTransferLocks()
         return START_NOT_STICKY
     }
 
@@ -194,10 +227,14 @@ class DownloadService : Service() {
     override fun onTimeout(startId: Int) {
         AppLogger.log(
             "DownloadService",
-            "dataSync 前台服务时长已达系统上限，退出前台以让任务转为暂停: startId=$startId"
+            "dataSync 前台服务时长已达系统上限，暂停全部任务并退出前台: startId=$startId"
         )
-        // 这里只负责交还系统配额：任务的最新进度已由 DownloadManager 的更新链路实时落盘
-        // （updateTask 内状态切换即 persist），退出前台后用户下次点「继续」即可续传。
+        // 必须真的暂停：下载协程挂在 DownloadManager 的进程级作用域上，本服务被系统收回后它们
+        // 照常运行，却已失去前台豁免 —— 随时可能被静默杀掉，界面还停在「下载中」。
+        // 转 PAUSED 后位图表已经落盘，用户点「继续」即可从断点续传。
+        runCatching { downloadManager.pauseAllForSystemQuota() }.onFailure { e ->
+            AppLogger.logError("DownloadService", "暂停下载失败: " + e.message, e)
+        }
         activeTasks.clear()
         stopForeground(STOP_FOREGROUND_REMOVE)
         foregroundTaskId = -1
@@ -216,9 +253,9 @@ class DownloadService : Service() {
             stopSelfResult(startId)
             return
         }
-        activeTasks[taskId] = title to progress
-        // 仍有在途任务即续期 CPU / Wi-Fi 锁
-        acquireTransferLocks()
+        activeTasks[taskId] = ActiveTask(title, progress, status)
+        // 锁不在事件里直接续期：PENDING（等待闸门）同样会走这里，但它不该持锁。
+        // 由 onStartCommand 末尾的 syncTransferLocks() 按「是否存在 DOWNLOADING」统一决定。
         val notification = buildProgressNotification(title, progress, status)
         // 只有「当前没有前台任务」或「前台任务已不在活动集合里」时才需要占据前台；
         // 其余情况（包括本任务就是前台任务）一律只更新通知，不必重复 startForeground。
@@ -253,11 +290,11 @@ class DownloadService : Service() {
             }
             stopSelfResult(startId)
         } else if (next != null) {
-            val (t, p) = activeTasks[next]!!
+            val promoted = activeTasks[next]!!
             startForegroundSafely(
                 notificationId(next),
                 next,
-                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING)
+                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING)
             )
             if (taskId >= 0) {
                 notificationManager.notify(notificationId(taskId), terminalNotification)
@@ -290,11 +327,11 @@ class DownloadService : Service() {
             stopSelfResult(startId)
         } else if (wasForeground || !activeTasks.containsKey(foregroundTaskId)) {
             val next = activeTasks.keys.first()
-            val (t, p) = activeTasks[next]!!
+            val promoted = activeTasks[next]!!
             startForegroundSafely(
                 notificationId(next),
                 next,
-                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING)
+                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING)
             )
             notificationManager.notify(notificationId(taskId), notification)
         } else {
@@ -322,11 +359,11 @@ class DownloadService : Service() {
             foregroundTaskId = -1
             stopSelfResult(startId)
         } else if (wasForeground || !activeTasks.containsKey(foregroundTaskId)) {
-            val (t, p) = activeTasks[next]!!
+            val promoted = activeTasks[next]!!
             startForegroundSafely(
                 notificationId(next),
                 next,
-                buildProgressNotification(t, p, DownloadStatus.DOWNLOADING)
+                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING)
             )
         }
         // 其余情况：前台仍是别的任务，被移除任务的通知已 cancel，无需额外处理

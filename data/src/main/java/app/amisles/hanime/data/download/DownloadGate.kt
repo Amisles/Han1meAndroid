@@ -42,6 +42,30 @@ internal object DownloadGate {
 
     fun isNightHour(hour: Int): Boolean = hour in NIGHT_START_HOUR until NIGHT_END_HOUR
 
+    /**
+     * 距离下一个夜间窗口边界的毫秒数（窗口内指向当日 [NIGHT_END_HOUR]，窗口外指向次日
+     * [NIGHT_START_HOUR]）。
+     *
+     * 只计算「下一次切换」而不是每天固定闹钟：调用方到点后重新调用，设备休眠造成的延迟唤醒会
+     * 自然落到边界之后，不会一天天累积漂移。
+     */
+    fun msUntilNextNightBoundary(now: Long = System.currentTimeMillis()): Long {
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        if (isNightHour(cal.get(Calendar.HOUR_OF_DAY))) {
+            cal.set(Calendar.HOUR_OF_DAY, NIGHT_END_HOUR)
+        } else {
+            cal.add(Calendar.DAY_OF_YEAR, 1)
+            cal.set(Calendar.HOUR_OF_DAY, NIGHT_START_HOUR)
+        }
+        // 至少 1 秒：恰好落在边界上时不能让调用方空转
+        return (cal.timeInMillis - now).coerceAtLeast(1_000L)
+    }
+
     /** 读粘性广播的充电状态；读不到一律视为未充电（宁可等待，也不误用流量/电量）。 */
     private fun isCharging(context: Context): Boolean {
         val intent = runCatching {

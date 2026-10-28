@@ -26,9 +26,9 @@ interface DownloadRepository {
     val tasks: StateFlow<List<DownloadTask>>
 
     /**
-     * 新建下载任务。
+     * 新建下载任务；同一文件已有暂停/失败的任务时复用该任务并直接续传。
      *
-     * @return 新建任务的 id；负数表示未新建：
+     * @return 任务 id（新建或复用的既有任务，续传已触发）；负数表示未启动：
      *   [RESULT_INVALID_URL] 直链非法或路径越界，
      *   [RESULT_ALREADY_ACTIVE] 同一文件已有进行中 / 等待中的任务，
      *   [RESULT_ALREADY_COMPLETED] 同一文件已下载完成。

@@ -137,6 +137,8 @@ internal suspend fun DownloadManager.downloadFileChunked(
     // 不足 2 块无并行收益，退回单连接；同时清掉可能残留的位图表，避免留下孤儿文件
     if (chunkCount < 2) {
         if (partmapFile.exists()) runCatching { partmapFile.delete() }
+        // 单连接会从头写满，成品不再是稀疏文件
+        clearChunkedMark(taskId)
         downloadFileSingle(taskId, url, filePath, 0L)
         return
     }
@@ -159,6 +161,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
             // 一并清掉失败写入残留的 .tmp：否则后续 deriveResumeState 会把它当作「位图表替换被
             // 中断」，从而拒绝续传这次单连接下载已完成的连续前缀（该前缀本身是可信的）。
             runCatching { File(filePath + PARTMAP_SUFFIX + ".tmp").delete() }
+            clearChunkedMark(taskId)
             downloadFileSingle(taskId, url, filePath, 0L)
             return
         }
@@ -167,6 +170,10 @@ internal suspend fun DownloadManager.downloadFileChunked(
             AppLogger.log("DownloadManager", "续传位图表重建失败，该文件可能无法跨进程续传: ${partmapFile.name}")
         }
     }
+
+    // 从这一行起，成品文件就是「稀疏写」的：位图表一旦丢失（用户清理公共目录 / 清理动作被中断），
+    // 单凭 file.length() 续传会留下永远回填不了的空洞。标记写在私有目录，跨进程仍然可信。
+    markChunkedFile(taskId)
 
     val chunkSize = totalBytes / chunkCount
     val chunkDownloaded = AtomicLongArray(chunkCount)
@@ -524,8 +531,9 @@ internal suspend fun DownloadManager.downloadFileChunked(
         // 比对文件长度，最终产出「长度正确、中段是垃圾数据」的坏文件。
         // 这里改为丢弃分块文件、位图与单连接标记，随后以 0 起始整份重写。
         AppLogger.log("DownloadManager", "分块降级单连接：丢弃稀疏分块文件后整份重下，避免空洞导致坏文件")
-        runCatching { partmapFile.delete() }
         runCatching { outputFile.delete() }
+        runCatching { partmapFile.delete() }
+        clearChunkedMark(taskId)
         singleConnectionFiles.remove(filePath)
         downloadFileSingle(taskId, url, filePath, 0L)
         return
@@ -538,6 +546,8 @@ internal suspend fun DownloadManager.downloadFileChunked(
     if (rangeUnsupported.get()) {
         AppLogger.log("DownloadManager", "降级单连接下载: taskId=$taskId, url=${url.redactUrlForLog()}")
         if (partmapFile.exists()) partmapFile.delete()
+        // 单连接会从头写满整个文件，成品不再稀疏，标记随之失效
+        clearChunkedMark(taskId)
         downloadFileSingle(taskId, url, filePath, 0L)
         return
     }
@@ -559,6 +569,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
     // 每个分块已精确校验「写入长度 == 区间长度」，各块区间之和恰为 totalBytes，
     if (allDone && totalDownloaded == totalBytes && onDisk == totalBytes) {
         partmapFile.delete()   // 成功后清理位图表
+        clearChunkedMark(taskId)   // 成品已完整，长度重新可信
     } else {
         // 完整性不达标：抛出异常触发 FAILED 并保留位图表，下次续传仅补未完成块
         throw IOException("分块下载完整性校验失败：allDone=$allDone, $totalDownloaded/$totalBytes, disk=$onDisk")

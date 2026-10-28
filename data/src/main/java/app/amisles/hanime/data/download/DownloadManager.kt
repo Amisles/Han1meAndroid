@@ -41,12 +41,17 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.database.sqlite.SQLiteException
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -101,6 +106,17 @@ class DownloadManager @Inject constructor(
     // 不主动移除，单个大文件任务可堆积上千个已关闭对象（块数上限 MAX_PARTMAP_CHUNKS = 4096）。
     private val taskCalls = ConcurrentHashMap<Int, ConcurrentLinkedQueue<Call>>()
     private val taskCancelFlags = ConcurrentHashMap<Int, AtomicBoolean>()
+
+    /**
+     * 每个任务最近一次「暂停」的序号（单调递增）。
+     *
+     * 调度决定与真正开跑之间隔着锁外的续传点推导（磁盘 IO），这段窗口里用户完全可能按下暂停。
+     * 任务处于 PENDING 时复核 status 即可发现；但从 PAUSED 恢复时「再次暂停」不改变 status
+     * （本来就是 PAUSED），status 复核失效，故用序号记录「暂停意图」：调度前取号、开跑前比对，
+     * 序号变了就说明期间有过暂停，放弃启动。[pauseAll] 会给所有任务取号，使「暂停全部」同样能
+     * 打断正在进行的批量恢复。
+     */
+    private val pauseEpoch = ConcurrentHashMap<Int, AtomicLong>()
     private val taskIdCounter = AtomicInteger(0)
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
@@ -131,6 +147,13 @@ class DownloadManager @Inject constructor(
     /** 网络监听是否已注册；DownloadManager 是进程级单例，重复注册会收到重复回调。 */
     @Volatile
     private var networkCallbackRegistered = false
+
+    /** 电源状态监听是否已注册；与 [networkCallbackRegistered] 同理，只注册一次。 */
+    @Volatile
+    private var gateReceiverRegistered = false
+
+    /** 持有引用：动态注册的接收器由系统持有，这里再存一份避免被优化掉。 */
+    private var gateReceiver: BroadcastReceiver? = null
 
     /**
      * 因断网而被自动暂停的任务 id。只有这些任务才会在网络恢复后自动续传 ——
@@ -296,6 +319,7 @@ class DownloadManager @Inject constructor(
         }
 
         registerNetworkObserver()
+        registerGateObservers()
     }
 
     /**
@@ -394,8 +418,9 @@ class DownloadManager @Inject constructor(
         }
         val filePath = targetFile.absolutePath
 
-        // 需要「锁外推导续传状态」的既有任务 id；非空表示本方法是复用而非新建
-        var deferredResumeId: Int? = null
+        // 需要「锁外推导续传状态」的既有任务；非空表示本方法复用既有任务而非新建
+        var deferredResumeTask: DownloadTask? = null
+        var createdTaskId: Int? = null
 
         tasksLock.withLock {
             // 去重必须按「文件身份」而非 (url, quality)：downloadUrl 是带时效签名的 CDN 直链，
@@ -404,17 +429,15 @@ class DownloadManager @Inject constructor(
             val existingTask = taskMap.values.find { it.filePath == filePath }
             if (existingTask != null) {
                 AppLogger.log("DownloadManager", "该文件已有下载任务，复用 taskId=${existingTask.id}: $title ($quality)")
-                return when (existingTask.status) {
-                    // 暂停/失败：复用即续传，保持「点下载 = 继续」的既有语义
-                    DownloadStatus.PAUSED, DownloadStatus.FAILED -> {
-                        // resumeDownloadInternal 内的续传推导（读 .partmap / stat / delete）会阻塞
-                        // 持锁期间主线程的 pauseDownload / cancelDownload，故延后到锁外执行
-                        deferredResumeId = existingTask.id
-                        RESULT_RESUME_DEFERRED
-                    }
-                    DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> RESULT_ALREADY_ACTIVE
-                    DownloadStatus.COMPLETED -> RESULT_ALREADY_COMPLETED
+                when (existingTask.status) {
+                    // 暂停/失败：复用即续传，保持「点下载 = 继续」的既有语义。
+                    // 续传推导含磁盘 IO，不能在前面的锁内做，故记下来移到锁外执行。
+                    DownloadStatus.PAUSED, DownloadStatus.FAILED -> deferredResumeTask = existingTask
+                    DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> return RESULT_ALREADY_ACTIVE
+                    DownloadStatus.COMPLETED -> return RESULT_ALREADY_COMPLETED
                 }
+                // 非局部 return 与 return@withLock 混用容易写错：这里只退出锁块，真正的启动在锁外
+                return@withLock
             }
 
             val taskId = taskIdCounter.incrementAndGet()
@@ -435,19 +458,27 @@ class DownloadManager @Inject constructor(
             persistTask(task)
             AppLogger.log("DownloadManager", "Starting download $taskId: $title ($quality)")
 
-            startDownloadWithConcurrencyInternal(task)
-
-            return taskId
+            // 新建任务此刻必然是 PENDING；若开跑前被暂停，启动复核会放弃
+            startDownloadWithConcurrencyInternal(task, expectedStatus = DownloadStatus.PENDING)
+            createdTaskId = taskId
         }
 
-        deferredResumeId?.let { id ->
-            val task = taskMap[id] ?: return id
-            // 锁外做磁盘 I/O，再重新持锁启动；putIfAbsent 保证并发重复启动的安全性
+        deferredResumeTask?.let { task ->
+            // 先取「暂停序号」再做磁盘 IO：推导期间用户若按了暂停，序号会变，启动复核随即放弃本次调度
+            val epochAtSchedule = pauseEpochOf(task.id)
             val (rb, rm) = deriveResumeState(task)
-            tasksLock.withLock { startDownloadWithConcurrencyInternal(task, rb, rm) }
-            return id
+            tasksLock.withLock {
+                startDownloadWithConcurrencyInternal(
+                    task,
+                    rb,
+                    rm,
+                    expectedStatus = task.status,
+                    scheduledPauseEpoch = epochAtSchedule
+                )
+            }
+            return task.id
         }
-        return RESULT_INVALID_URL
+        return createdTaskId ?: RESULT_INVALID_URL
     }
 
     /**
@@ -462,6 +493,33 @@ class DownloadManager @Inject constructor(
             if (activeSlots.compareAndSet(cur, cur + 1)) return true
         }
     }
+
+    /**
+     * 分块下载标记文件（存放在应用私有目录，与公共目录里的位图表分开）。
+     *
+     * 位图表在公共 Download 目录，用户清理垃圾文件、或「先删位图再删文件」的清理动作被中断，
+     * 都会留下「无位图表、但有稀疏成品」的状态。此时按 file.length() 做单连接续传会把空洞
+     * 永久留在文件中间，而收尾只比对长度 → 静默产出能播但花屏的坏文件。标记放在私有目录，
+     * 即使位图表被外部删掉、进程重启，也仍能判定「这个文件曾被分块写过，长度不可信」。
+     */
+    private fun chunkedMarkerFile(taskId: Int) =
+        File(File(context.filesDir, CHUNKED_MARKER_DIR), taskId.toString())
+
+    /** 分块写入开始前打标记，成功后清除（见 [chunkedMarkerFile]）。 */
+    internal fun markChunkedFile(taskId: Int) {
+        runCatching {
+            val marker = chunkedMarkerFile(taskId)
+            marker.parentFile?.mkdirs()
+            marker.writeText("")
+        }.onFailure { AppLogger.logError("DownloadManager", "写分块标记失败: " + it.message, it) }
+    }
+
+    internal fun clearChunkedMark(taskId: Int) {
+        runCatching { chunkedMarkerFile(taskId).delete() }
+    }
+
+    private fun hasChunkedMark(taskId: Int): Boolean =
+        runCatching { chunkedMarkerFile(taskId).exists() }.getOrDefault(false)
 
     /**
      * 从磁盘残留推导续传起点，返回 (单连接续传字节数, 分块续传位图)。
@@ -492,8 +550,11 @@ class DownloadManager @Inject constructor(
                         "DownloadManager",
                         "该文件曾判定分块无收益，但残留的是稀疏分块文件，不能直接单连接续传；丢弃后整份重下: " + task.title
                     )
-                    runCatching { partmapFile.delete() }
+                    // 先删成品再删位图：中途崩溃时残留的是「有位图、无成品」，下次仍走本分支；
+                    // 反过来会留下「无位图、有稀疏成品」，正是下面要防的那条误判路径。
                     runCatching { file.delete() }
+                    runCatching { partmapFile.delete() }
+                    clearChunkedMark(task.id)
                     return 0L to null
                 }
                 return 0L to sanitized
@@ -508,14 +569,31 @@ class DownloadManager @Inject constructor(
                 "DownloadManager",
                 "位图表替换被中断（残留 ${partmapTmpFile.name}），分块进度不可信，丢弃后整份重下: ${task.title}"
             )
-            runCatching { partmapTmpFile.delete() }
+            // 同样先删成品再删 .tmp：反过来的话，两步之间崩溃会留下「无位图、无 .tmp、有稀疏成品」，
+            // 正好落进下面的单连接续传回退。删除后重下，标记同时失效。
             if (file.exists()) runCatching { file.delete() }
+            runCatching { partmapTmpFile.delete() }
+            clearChunkedMark(task.id)
             return 0L to null
         }
         // 回退：文件级续传（单连接）或整文件重下
         if (partmapFile.exists()) {
-            runCatching { partmapFile.delete() }
             if (file.exists()) runCatching { file.delete() }
+            runCatching { partmapFile.delete() }
+            clearChunkedMark(task.id)
+            return 0L to null
+        }
+
+        // 位图表缺失、但本任务此前确实走过分块下载：成品可能是稀疏的（file.length() 只是最大
+        // 已写偏移，其下可能有大片空洞）。按长度做单连接续传，空洞永远回填不了，而收尾只比对
+        // 长度 → 静默产出「能播但花屏」的坏文件。标记在私有目录，不受公共目录里的删除动作影响。
+        if (hasChunkedMark(task.id)) {
+            AppLogger.logError(
+                "DownloadManager",
+                "位图表缺失但该文件曾分块写入，磁盘长度不可信，丢弃后整份重下: " + task.title
+            )
+            if (file.exists()) runCatching { file.delete() }
+            clearChunkedMark(task.id)
             return 0L to null
         }
 
@@ -530,16 +608,41 @@ class DownloadManager @Inject constructor(
     }
 
     /**
+     * 启动一个任务。
+     *
      * 统一负责 activeSlots 的占位与释放：只有通过 [tryAcquireSoftSlot] 的调用才会进入 Job 作用域，
      * 也只有那里才会 -1，保证占位与释放成对；登记本身用 putIfAbsent 保证幂等。
      * 结束后调度下一个 PENDING 任务。
+     *
+     * @param expectedStatus 调用方在锁外推导续传点之前看到的任务状态。开跑前会复核一次：状态对不上
+     *   说明期间被暂停/取消，放弃本次调度（占用的槽位由 Job 的 finally 归还）。null 表示不复核。
+     * @param scheduledPauseEpoch 调度前的暂停序号，见 [pauseEpoch]。负数表示不校验。
      */
-    private fun startDownloadWithConcurrencyInternal(task: DownloadTask, resumeBytes: Long = 0L, resumeChunkMap: BooleanArray? = null) {
+    private fun startDownloadWithConcurrencyInternal(
+        task: DownloadTask,
+        resumeBytes: Long = 0L,
+        resumeChunkMap: BooleanArray? = null,
+        expectedStatus: DownloadStatus? = null,
+        scheduledPauseEpoch: Long = -1L
+    ) {
         // 本方法会在多条路径上重入（startDownload / startNextPendingTask / updateConcurrencyLimit /
         // retryAllFailed）。收敛到同一把锁上，保证「检查 downloadJobs」与「占槽位再登记 job」成为
         // 一个原子步骤：否则并发重入会让同一任务登记两个 Job，前一个被覆盖后其 finally 的
         // activeSlots -1 就不再对应任何真实占位，计数被减成负数，并发上限永久失效。
         if (downloadJobs.containsKey(task.id)) return
+        // 锁外推导续传点期间状态可能已变：这里先做一次廉价复核，避免白占一个槽位、白建一个 Job。
+        // 真正的判定在 Job 体开头（与 updateTask(PAUSED) 共用 tasksLock，见那里的说明）。
+        val snapshot = taskMap[task.id]
+        if (snapshot == null ||
+            (expectedStatus != null && snapshot.status != expectedStatus) ||
+            (scheduledPauseEpoch >= 0L && pauseEpochOf(task.id) != scheduledPauseEpoch)
+        ) {
+            AppLogger.log(
+                "DownloadManager",
+                "调度已过期，跳过启动: ${task.title} (id=${task.id}, 期望 $expectedStatus, 实际 ${snapshot?.status})"
+            )
+            return
+        }
         // 闸门关闭时不占槽位、不启动：任务保持 PENDING，由条件变化或网络恢复重新拾起
         val gate = refreshGateState()
         if (!gate.allowed) {
@@ -566,9 +669,31 @@ class DownloadManager @Inject constructor(
         taskCancelFlags.remove(task.id)
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
+                // 唯一的状态认定点：从锁外推导续传点到这里隔着磁盘 IO，用户可能已经暂停。
+                // 这里的复核与 updateTask(PAUSED) 共用 tasksLock，因此「暂停」与「开跑」严格有序：
+                //   - 暂停先落库 → 复核不通过，本 Job 直接退出（槽位在 finally 归还）；
+                //   - 暂停后到   → 此时 Job 已登记，pauseDownload 会 cancel 它，PAUSED 再覆盖状态。
+                // 只靠锁外那次复核不够：对一个本来就 PAUSED 的任务「再次暂停」不改变 status，
+                // 必须靠暂停序号识别。
+                var started = false
+                updateTask(task.id) { current ->
+                    val statusMatches = expectedStatus == null || current.status == expectedStatus
+                    val pauseUnchanged =
+                        scheduledPauseEpoch < 0L || pauseEpochOf(task.id) == scheduledPauseEpoch
+                    if (statusMatches && pauseUnchanged && !isTaskCancelled(task.id)) {
+                        started = true
+                        current.copy(status = DownloadStatus.DOWNLOADING)
+                    } else {
+                        current
+                    }
+                }
+                if (!started) {
+                    AppLogger.log("DownloadManager", "调度已过期（期间被暂停/取消），放弃启动: ${task.title}")
+                    return@launch
+                }
+
                 AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
 
-                updateTask(task.id) { it.copy(status = DownloadStatus.DOWNLOADING) }
                 try {
                     downloadFile(task.id, task.url, task.filePath, resumeBytes, resumeChunkMap)
                 } catch (e: SourceChangedException) {
@@ -652,6 +777,14 @@ class DownloadManager @Inject constructor(
             AppLogger.log("DownloadManager", "任务 " + task.id + " 已在下载中，忽略重复调度")
             return
         }
+        // 登记与 start 之间可能被取消：LAZY Job 一旦被取消，协程体不会执行，finally 也就不会归还
+        // 槽位，这里必须补还，否则并发上限会永久少一格。
+        if (isTaskCancelled(task.id)) {
+            downloadJobs.remove(task.id, job)
+            if (activeSlots.decrementAndGet() < 0) activeSlots.set(0)
+            AppLogger.log("DownloadManager", "任务在登记后被取消，已归还并发槽位: " + task.id)
+            return
+        }
         job.start()
     }
 
@@ -668,10 +801,19 @@ class DownloadManager @Inject constructor(
             val candidate = tasksLock.withLock { pickPendingTaskLocked(exclude = tried) } ?: return
             if (activeSlots.get() >= concurrencyLimit) return
             AppLogger.log("DownloadManager", "启动下一个等待任务: ${candidate.title}")
+            // 暂停序号必须在磁盘 IO 之前取：推导期间用户按了暂停，序号就会变，启动复核随即放弃。
+            // 否则会拿「旧的 PENDING 快照」把刚被暂停的任务重新拉起来（P2-5）。
+            val epochAtSchedule = pauseEpochOf(candidate.id)
             // 锁外推导（含 .partmap 读取/删除、file.length()），不阻塞主线程 pause/cancel
             val (rb, rm) = deriveResumeState(candidate)
             val launched = tasksLock.withLock {
-                startDownloadWithConcurrencyInternal(candidate, rb, rm)
+                startDownloadWithConcurrencyInternal(
+                    candidate,
+                    rb,
+                    rm,
+                    expectedStatus = DownloadStatus.PENDING,
+                    scheduledPauseEpoch = epochAtSchedule
+                )
                 downloadJobs.containsKey(candidate.id)
             }
             if (!launched) return
@@ -714,8 +856,25 @@ class DownloadManager @Inject constructor(
             taskMap.values.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
                 .map { it.id }
         }
-        active.forEach { pauseDownload(it) }
+        // 对所有任务（含此刻仍为 PAUSED 的）取号：批量恢复正在逐个拉起时，「暂停全部」必须能
+        // 打断那些还没轮到、但已经在 resumeAll 名单里的任务。
+        taskMap.keys.forEach { bumpPauseEpoch(it) }
+        // 逐个暂停时不再链式调度：否则「暂停 A → 链路拉起 B → 暂停 B」会白白启动再取消，
+        // 在 Service.onTimeout（主线程）这种场景下还会放大停顿。统一在最后调度一次。
+        active.forEach { pauseDownloadInternal(it, scheduleNext = false) }
+        startNextPendingTask()
         AppLogger.log("DownloadManager", "pauseAll: 已暂停 " + active.size + " 个任务")
+    }
+
+    /**
+     * 系统回收 dataSync 前台服务配额时的兜底暂停（由 DownloadService.onTimeout 调用）。
+     *
+     * 与用户主动「全部暂停」等价，单独命名只是为了在日志里能区分触发来源：前台服务被系统收回后
+     * 进程里的协程并不会停，任务必须显式转 PAUSED，否则会失去前台豁免、随后被系统静默杀掉。
+     */
+    fun pauseAllForSystemQuota() {
+        AppLogger.log("DownloadManager", "系统回收前台服务配额，暂停全部下载")
+        pauseAll()
     }
 
     override fun resumeAll() {
@@ -724,8 +883,19 @@ class DownloadManager @Inject constructor(
         }
         paused.forEach { id ->
             val task = taskMap[id] ?: return@forEach
+            // 取号后再推导：期间用户若暂停（哪怕对象本来就是 PAUSED，status 不会变）或点了
+            // 「全部暂停」，序号都会变，据此跳过，不会出现「暂停全部」之后仍在拉起任务的情况。
+            val epochAtSchedule = pauseEpochOf(id)
             val (rb, rm) = deriveResumeState(task)
-            tasksLock.withLock { startDownloadWithConcurrencyInternal(task, rb, rm) }
+            tasksLock.withLock {
+                startDownloadWithConcurrencyInternal(
+                    task,
+                    rb,
+                    rm,
+                    expectedStatus = DownloadStatus.PAUSED,
+                    scheduledPauseEpoch = epochAtSchedule
+                )
+            }
         }
         AppLogger.log("DownloadManager", "resumeAll: 已恢复 " + paused.size + " 个任务")
     }
@@ -759,9 +929,16 @@ class DownloadManager @Inject constructor(
         while (activeSlots.get() < concurrencyLimit) {
             val candidate = tasksLock.withLock { pickPendingTaskLocked(exclude = emptySet()) }
                 ?: break
+            val epochAtSchedule = pauseEpochOf(candidate.id)
             val (rb, rm) = deriveResumeState(candidate)
             val launched = tasksLock.withLock {
-                startDownloadWithConcurrencyInternal(candidate, rb, rm)
+                startDownloadWithConcurrencyInternal(
+                    candidate,
+                    rb,
+                    rm,
+                    expectedStatus = DownloadStatus.PENDING,
+                    scheduledPauseEpoch = epochAtSchedule
+                )
                 downloadJobs.containsKey(candidate.id)
             }
             if (!launched) break
@@ -961,7 +1138,22 @@ class DownloadManager @Inject constructor(
         errorMessage = errorMessage
     )
 
-    override fun pauseDownload(taskId: Int) {
+    /** 读取任务当前的暂停序号；从未暂停过为 0。 */
+    private fun pauseEpochOf(taskId: Int): Long = pauseEpoch[taskId]?.get() ?: 0L
+
+    /** 记录一次「暂停意图」并返回新序号。 */
+    private fun bumpPauseEpoch(taskId: Int): Long =
+        pauseEpoch.computeIfAbsent(taskId) { AtomicLong() }.incrementAndGet()
+
+    override fun pauseDownload(taskId: Int) = pauseDownloadInternal(taskId, scheduleNext = true)
+
+    /**
+     * @param scheduleNext 是否在暂停后立刻调度下一个 PENDING 任务。[pauseAll] 会传 false，
+     *   把 N 次链式调度收敛成一次，避免「暂停 A 拉起 B、再暂停 B」的无谓启动/取消。
+     */
+    private fun pauseDownloadInternal(taskId: Int, scheduleNext: Boolean) {
+        // 先记暂停意图：调度链可能在几毫秒后才发现这次暂停（见 [pauseEpoch] 的说明）
+        bumpPauseEpoch(taskId)
         // 用户/系统主动暂停时移出自动暂停集合：这不是断网触发的，不应在网络恢复后被自动拉起
         autoPausedByNetwork.remove(taskId)
 
@@ -971,7 +1163,7 @@ class DownloadManager @Inject constructor(
         // 复用 updateTask：状态切换（→PAUSED）会立即落盘
         updateTask(taskId) { it.copy(status = DownloadStatus.PAUSED) }
         // 避免空出的槽位不拾起 PENDING 任务导致其余任务永久挂起。
-        startNextPendingTask()
+        if (scheduleNext) startNextPendingTask()
         AppLogger.log("DownloadManager", "Download paused: $taskId")
     }
 
@@ -994,11 +1186,18 @@ class DownloadManager @Inject constructor(
         }
         failedIds.forEach { id ->
             val task = taskMap[id] ?: return@forEach
+            val epochAtSchedule = pauseEpochOf(id)
             val (rb, rm) = deriveResumeState(task)
             tasksLock.withLock {
                 val current = taskMap[id] ?: return@withLock
                 if (current.status != DownloadStatus.FAILED) return@withLock
-                startDownloadWithConcurrencyInternal(current, rb, rm)
+                startDownloadWithConcurrencyInternal(
+                    current,
+                    rb,
+                    rm,
+                    expectedStatus = DownloadStatus.FAILED,
+                    scheduledPauseEpoch = epochAtSchedule
+                )
             }
         }
         AppLogger.log("DownloadManager", "retryAllFailed: 已触发 " + failedIds.size + " 个失败任务重试")
@@ -1012,9 +1211,18 @@ class DownloadManager @Inject constructor(
         val task = taskMap[taskId] ?: return
         if (task.status != DownloadStatus.PAUSED && task.status != DownloadStatus.FAILED) return
         if (downloadJobs.containsKey(taskId)) return
+        // 推导含磁盘 IO：期间可能被暂停/取消，故先记录期望状态与暂停序号，开跑前复核
+        val expectedStatus = task.status
+        val epochAtSchedule = pauseEpochOf(taskId)
         val (resumeBytes, resumeMap) = deriveResumeState(task)
         tasksLock.withLock {
-            startDownloadWithConcurrencyInternal(task, resumeBytes, resumeMap)
+            startDownloadWithConcurrencyInternal(
+                task,
+                resumeBytes,
+                resumeMap,
+                expectedStatus = expectedStatus,
+                scheduledPauseEpoch = epochAtSchedule
+            )
         }
         if (resumeMap != null) {
             AppLogger.log("DownloadManager", "Resume (chunked) download: $taskId, undone chunks=${resumeMap.count { !it }}/${resumeMap.size}")
@@ -1038,6 +1246,7 @@ class DownloadManager @Inject constructor(
         // 走与 persistTask 相同的串行队列，避免 DELETE 与在途 UPSERT 竞争导致任务复活
         persistDelete(taskId)
         lastNotifiedPercent.remove(taskId)
+        pauseEpoch.remove(taskId)
         // 任务记录已删除，无法再走 updateTask 进度通道；必须显式通知前台服务撤销该任务的
         // 常驻通知并重算活动集合，否则通知（ongoing 不可划掉）与 dataSync 前台服务会永久残留。
         forwardRemoveToService(taskId)
@@ -1093,6 +1302,7 @@ class DownloadManager @Inject constructor(
         runCatching { File(task.filePath).takeIf { it.exists() }?.delete() }
         runCatching { File(task.filePath + PARTMAP_SUFFIX).delete() }
         runCatching { File(task.filePath + PARTMAP_SUFFIX + ".tmp").delete() }
+        clearChunkedMark(task.id)
     }
 
     /**
@@ -1160,11 +1370,67 @@ class DownloadManager @Inject constructor(
     }
 
     /**
+     * 闸门的「条件变化」触发源。
+     *
+     * 此前闸门只在任务启动时求值（[reevaluateGate] 全仓没有调用方），而充电状态与夜间时段都不会
+     * 触发任何既有回调 —— 「仅充电 / 仅夜间」排队的任务会一直停在 PENDING，直到网络抖动。
+     * 这里补上两类触发：
+     * - 充电插拔：ACTION_POWER_CONNECTED / DISCONNECTED（系统保护广播，只能动态注册）；
+     * - 夜间窗口边界：进程内定时器，到 00:00 / 06:00 重新求值。设备休眠会延后唤醒但不会漏，
+     *   延迟到也就意味着窗口已经打开，正好可以放行。
+     *
+     * Wi-Fi 条件不在这里处理：网络恢复已由 [registerNetworkObserver] 的 onAvailable 触发。
+     */
+    private fun registerGateObservers() {
+        if (gateReceiverRegistered) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                AppLogger.log("DownloadManager", "电源状态变化，重新求值调度闸门: " + intent?.action)
+                reevaluateGate()
+            }
+        }
+        gateReceiverRegistered = runCatching {
+            ContextCompat.registerReceiver(
+                context,
+                receiver,
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_POWER_CONNECTED)
+                    addAction(Intent.ACTION_POWER_DISCONNECTED)
+                },
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            true
+        }.getOrDefault(false)
+        if (gateReceiverRegistered) {
+            gateReceiver = receiver
+        } else {
+            AppLogger.log("DownloadManager", "注册电源状态监听失败，闸门仍只在任务启动时求值")
+        }
+
+        // 夜间窗口边界：只做「下一次切换」，到点后重新计算，无需每天固定闹钟；
+        // 设备休眠导致延迟唤醒时会自然落到边界之后，不会累积漂移。
+        scope.launch {
+            while (true) {
+                val waitMs = DownloadGate.msUntilNextNightBoundary()
+                delay(waitMs)
+                if (Preferences.downloadNightOnly) {
+                    AppLogger.log("DownloadManager", "夜间时段边界切换，重新求值调度闸门")
+                    reevaluateGate()
+                }
+            }
+        }
+    }
+
+    /**
      * 显式生命周期出口。单例随进程存在是预期行为，但提供结构化取消入口：进程退出、测试拆卸、
      * 或需要强制中断所有在途下载时调用，保证协程与在途请求被确定性回收。
      * scope 根使用 SupervisorJob，单个下载任务的异常不会株连其它在途任务。
      */
     fun shutdown() {
+        // 动态注册的接收器必须显式注销，否则单例被重建时会累积监听
+        gateReceiver?.let { runCatching { context.unregisterReceiver(it) } }
+        gateReceiver = null
+        gateReceiverRegistered = false
         scopeJob.cancel()
         downloadJobs.clear()
         taskCalls.clear()
@@ -1398,9 +1664,10 @@ class DownloadManager @Inject constructor(
          * - [RESULT_ALREADY_COMPLETED]：同一文件已下载完成。
          */
         const val RESULT_INVALID_URL = -1
-        /** 复用了已有任务并已在锁外启动续传；调用方按「已启动」处理。 */
-        const val RESULT_RESUME_DEFERRED = -4
         const val RESULT_ALREADY_ACTIVE = -2
         const val RESULT_ALREADY_COMPLETED = -3
+
+        /** 分块下载标记目录（放在 filesDir 下，与公共下载目录里的位图表分开）。 */
+        private const val CHUNKED_MARKER_DIR = "download_chunked"
     }
 }
