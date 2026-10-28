@@ -975,5 +975,22 @@
     <string name="watch_stats_minutes">%1$d 分钟</string>
     <string name="watch_stats_hours">%1$d 小时 %2$d 分</string>
     <string name="settings_watch_stats">观看统计</string>
+    <string name="share_link_unrecognized">未能识别链接中的视频地址</string>
+    <string name="favorite_added">已加入收藏</string>
+    <string name="favorite_removed">已取消收藏</string>
+    <string name="card_search_related">搜索相关视频</string>
+    <string name="comment_load_more">加载更多评论</string>
+    <string name="comment_load_more_failed">评论加载失败，点击重试</string>
+    <string name="comment_no_more">没有更多评论了</string>
+    <string name="home_continue_done">标记看完</string>
+    <string name="home_continue_remove">从继续观看中移除</string>
+    <string name="history_search_hint">搜索观看历史</string>
+    <string name="favorite_sort">排序</string>
+    <string name="favorite_sort_recent">最近收藏</string>
+    <string name="favorite_sort_title">标题</string>
+    <string name="favorite_sort_author">作者</string>
+    <string name="playlist_favorite_done_with_count">已收藏 %1$d 个视频</string>
+    <string name="playlist_favorite_done">已收藏 %1$d 个视频</string>
+    <string name="playlist_favorite_exists">列表中的视频均已收藏</string>
     <string name="settings_watch_stats_summary">纯本地计算本周观看时长、常看作者与完成率；关闭后不展示入口</string>
 </resources>

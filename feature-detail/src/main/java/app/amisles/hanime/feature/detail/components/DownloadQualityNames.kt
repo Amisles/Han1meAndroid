@@ -13,7 +13,7 @@ import app.amisles.hanime.domain.model.DownloadQuality
  * 分辨率未知时回退到站点原文，保证不丢信息。
  */
 @Composable
-internal fun localizedQualityName(quality: DownloadQuality): String =
+public fun localizedQualityName(quality: DownloadQuality): String =
     when (quality.resolution) {
         "1080p" -> stringResource(R.string.download_quality_1080p)
         "720p" -> stringResource(R.string.download_quality_720p)

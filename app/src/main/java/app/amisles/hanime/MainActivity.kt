@@ -86,6 +86,10 @@ import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.CloudflareChallengeDialog
 import app.amisles.hanime.ui.components.BottomNav
+import app.amisles.hanime.ui.components.VideoQuickActionsHost
+import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.ui.viewmodel.VideoQuickActionsViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.ui.components.NavRail
 import app.amisles.hanime.feature.detail.DetailScreen
 import app.amisles.hanime.feature.detail.LocalPlayerScreen
@@ -131,6 +135,15 @@ import kotlin.math.abs
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        /** 由 ShareReceiverActivity 携带视频地址打开详情页。 */
+        const val ACTION_OPEN_VIDEO = "app.amisles.hanime.action.OPEN_VIDEO"
+
+        /** 由 DownloadService 的完成通知携带成品文件路径，直达本地播放页。 */
+        const val ACTION_PLAY_LOCAL = "app.amisles.hanime.action.PLAY_LOCAL"
+        const val EXTRA_OPEN_FILE_PATH = "extra_open_file_path"
+    }
 
     /** 更新仓储：HanimeApp 需要它在启动时发起静默检查。 */
     @Inject
@@ -387,6 +400,11 @@ fun HanimeApp(
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
+    val quickActionsVm: VideoQuickActionsViewModel = hiltViewModel()
+    var favoriteSheetVideo by remember { mutableStateOf<HanimeVideo?>(null) }
+    val onVideoLongClick: (HanimeVideo) -> Unit = { video ->
+        favoriteSheetVideo = video
+    }
     // 经 rememberUpdatedState 读取：swipeToOpenDrawer 的 pointerInput 只以像素常量为 key，
     // 手势协程在首次组合时启动并捕获这里的闭包，直接读 currentRoute 会永远拿到启动时的旧值，
     // 「仅首页唤出抽屉」的守卫在切到其他页后全部失效
@@ -408,6 +426,34 @@ fun HanimeApp(
     LaunchedEffect(autoCheckUpdate) {
         if (autoCheckUpdate) {
             runCatching { updateRepository.checkForUpdate(force = false) }
+        }
+    }
+
+    // ── 外链进入：分享 / 深链携带的视频地址 ──────────────────────────────────
+    // onNewIntent 处理应用已在前台的情况；handledIntent 保证同一 intent 只消费一次。
+    var handledIntent by remember { mutableStateOf<Any?>(null) }
+    var pendingShareIntent by remember { mutableStateOf(activity?.intent) }
+    LaunchedEffect(activity) {
+        activity?.addOnNewIntentListener { intent -> pendingShareIntent = intent }
+    }
+    LaunchedEffect(pendingShareIntent) {
+        val intent = pendingShareIntent ?: return@LaunchedEffect
+        if (handledIntent == intent) return@LaunchedEffect
+        when (intent.action) {
+            MainActivity.ACTION_OPEN_VIDEO -> {
+                handledIntent = intent
+                pendingShareIntent = null
+                intent.data?.toString()?.takeIf { it.isNotBlank() }?.let { url ->
+                    navController.navigate("detail?videoUrl=${Uri.encode(url)}")
+                }
+            }
+            MainActivity.ACTION_PLAY_LOCAL -> {
+                handledIntent = intent
+                pendingShareIntent = null
+                intent.getStringExtra(MainActivity.EXTRA_OPEN_FILE_PATH)?.takeIf { it.isNotBlank() }?.let { path ->
+                    navController.navigate("localPlayer?filePath=${Uri.encode(path)}")
+                }
+            }
         }
     }
     // 左滑关闭：拖拽期间的位移，以及松手时跳过的抽屉宽度占比；
@@ -540,7 +586,8 @@ fun HanimeApp(
                                     }
                                 } },
                             onProfileClick = { profileOpen = true },
-                            onComicClick = { navController.navigate("comics") }
+                            onComicClick = { navController.navigate("comics") },
+                            onVideoLongClick = onVideoLongClick
                         )
                     }
                     composable("comics") {
@@ -704,7 +751,8 @@ fun HanimeApp(
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                             onAuthorClick = { author ->
                                 navController.navigateToSearch(searchRoute(keyword = author))
-                            }
+                            },
+                            onVideoLongClick = onVideoLongClick
                         )
                     }
                     composable("download") {
@@ -730,7 +778,8 @@ fun HanimeApp(
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                             onNavigateToLogin = {
                                 navController.navigate("login")
-                            }
+                            },
+                            onVideoLongClick = onVideoLongClick
                         )
                     }
                     composable("accountEdit") {
@@ -855,7 +904,8 @@ fun HanimeApp(
                             onBackClick = { navController.popBackStack() },
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                            }
+                            },
+                            onVideoLongClick = onVideoLongClick
                         )
                     }
                     composable(
@@ -889,7 +939,9 @@ fun HanimeApp(
                             onBackClick = { navController.popBackStack() },
                             onVideoClick = { videoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                            }
+                            },
+                            onVideoLongClick = onVideoLongClick,
+                            onFavoriteAll = { videos -> quickActionsVm.favoriteAll(videos) }
                         )
                     }
                     composable(
@@ -906,6 +958,7 @@ fun HanimeApp(
                             onBackClick = { navController.popBackStack() },
                             onVideoClick = { newVideoUrl ->
                                 navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
+                            onVideoLongClick = onVideoLongClick,
                             onAutoPlayNext = { nextUrl ->
                                 // 自动连播是「同屏换片」，替换当前条目，避免返回时逐集回退
                                 navController.navigate("detail?videoUrl=${Uri.encode(nextUrl)}") {
@@ -944,6 +997,16 @@ fun HanimeApp(
 
     // ---- 我的页面抽屉：左侧滑出，覆盖整个 Scaffold（含底部导航）----
     val showOverlay by remember { derivedStateOf { profileOpen || progress > 0.001f } }
+
+    VideoQuickActionsHost(
+        sheetVideo = favoriteSheetVideo,
+        onDismiss = { favoriteSheetVideo = null },
+        onSearchRelated = { keyword ->
+            favoriteSheetVideo = null
+            navController.navigateToSearch(searchRoute(keyword = keyword))
+        },
+        viewModel = quickActionsVm
+    )
 
     // 抽屉展开或关闭动画期间拦截返回键，先收起抽屉而非退出 Activity；
     // 命中条件与遮罩层一致（progress > 0 表示仍在关闭动画中），避免动画期间把返回键漏给系统。

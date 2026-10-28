@@ -1,7 +1,9 @@
 package app.amisles.hanime.feature.detail.components
 
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,10 +39,12 @@ private val RELATED_TITLE_LINE_HEIGHT = 16.sp
  * 相关推荐列表项：左侧缩略图 + 右侧标题 / 作者 / 数据行；作者名可点击进入搜索，卡片整体可点击播放。
  */
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 internal fun DetailRelatedVideoCard(
     video: HanimeVideo,
     onVideoClick: (String) -> Unit,
-    onAuthorClick: (String) -> Unit
+    onAuthorClick: (String) -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val thumbWidth = if (video.isPortraitCover) RELATED_PORTRAIT_THUMB_WIDTH else RELATED_THUMB_WIDTH
     val thumbRatio = videoCoverAspectRatio(video)
@@ -52,7 +56,7 @@ internal fun DetailRelatedVideoCard(
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
             .surfaceEdge(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
-            .clickable { onVideoClick(video.videoUrl) },
+            .combinedClickable(onClick = { onVideoClick(video.videoUrl) }, onLongClick = onLongClick),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -49,6 +49,7 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.VideoListItem
+import app.amisles.hanime.domain.model.HanimeVideo
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -58,7 +59,8 @@ fun SubscriptionsScreen(
     initialQuery: String = "",
     onBackClick: () -> Unit = {},
     onVideoClick: (String) -> Unit = {},
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
     val viewModel: SubscriptionsViewModel = hiltViewModel()
@@ -168,7 +170,8 @@ fun SubscriptionsScreen(
                         items(videos, key = { it.id }) { video ->
                             VideoListItem(
                                 video = video,
-                                onClick = { onVideoClick(video.videoUrl) }
+                                onClick = { onVideoClick(video.videoUrl) },
+                                onLongClick = { onVideoLongClick(video) }
                             )
                         }
                         item { Spacer(modifier = Modifier.height(20.dp)) }

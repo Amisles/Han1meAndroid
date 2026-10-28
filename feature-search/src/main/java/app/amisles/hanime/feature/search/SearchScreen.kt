@@ -74,6 +74,7 @@ import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,7 +89,8 @@ fun SearchScreen(
      * 「同参数的新一次点按」与「从详情页返回」。不参与搜索条件。
      */
     initialToken: String? = null,
-    onAuthorClick: (String) -> Unit = {}
+    onAuthorClick: (String) -> Unit = {},
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
     val viewModel: SearchViewModel = hiltViewModel()
@@ -640,7 +642,8 @@ fun SearchScreen(
                         VideoGridCard(
                             video = video,
                             onClick = { onVideoClick(video.videoUrl) },
-                            onAuthorClick = onAuthorClick
+                            onAuthorClick = onAuthorClick,
+                            onLongClick = { onVideoLongClick(video) }
                         )
                     }
 
@@ -667,7 +670,8 @@ fun SearchScreen(
                     VideoListItem(
                         video = video,
                         onClick = { onVideoClick(video.videoUrl) },
-                        onAuthorClick = onAuthorClick
+                        onAuthorClick = onAuthorClick,
+                        onLongClick = { onVideoLongClick(video) }
                     )
                 }
 

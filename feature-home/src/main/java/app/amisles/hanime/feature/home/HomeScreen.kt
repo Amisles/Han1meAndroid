@@ -181,7 +181,8 @@ fun HomeScreen(
     onAuthorClick: (String) -> Unit = {},
     onViewMore: (HomeSection) -> Unit = {},
     onProfileClick: (() -> Unit)? = null,
-    onComicClick: (() -> Unit)? = null
+    onComicClick: (() -> Unit)? = null,
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -213,7 +214,10 @@ fun HomeScreen(
         onAuthorClick = onAuthorClick,
         onViewMore = onViewMore,
         onProfileClick = onProfileClick,
-        onComicClick = onComicClick
+        onComicClick = onComicClick,
+        onVideoLongClick = onVideoLongClick,
+        onMarkContinueWatched = { id -> viewModel.markContinueItemWatched(id) },
+        onRemoveContinueItem = { id -> viewModel.removeContinueItem(id) }
     )
 }
 
@@ -234,7 +238,10 @@ fun HomeScreenContent(
     onAuthorClick: (String) -> Unit = {},
     onViewMore: (HomeSection) -> Unit = {},
     onProfileClick: (() -> Unit)? = null,
-    onComicClick: (() -> Unit)? = null
+    onComicClick: (() -> Unit)? = null,
+    onVideoLongClick: (HanimeVideo) -> Unit = {},
+    onMarkContinueWatched: (String) -> Unit = {},
+    onRemoveContinueItem: (String) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -384,6 +391,8 @@ fun HomeScreenContent(
                     ContinueWatchingSection(
                         items = continueWatching,
                         onItemClick = { history -> onVideoClick(history.videoUrl) },
+                        onMarkWatched = { history -> onMarkContinueWatched(history.id) },
+                        onRemove = { history -> onRemoveContinueItem(history.id) },
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
@@ -440,6 +449,7 @@ fun HomeScreenContent(
                                 video = video,
                                 onClick = { onVideoClick(video.videoUrl) },
                                 onAuthorClick = onAuthorClick,
+                                onLongClick = { onVideoLongClick(video) },
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                             )
                         }
@@ -459,6 +469,7 @@ fun HomeScreenContent(
                                             video = video,
                                             onClick = { onVideoClick(video.videoUrl) },
                                             onAuthorClick = onAuthorClick,
+                                            onLongClick = { onVideoLongClick(video) },
                                             thumbnailWidth = rowThumbnailWidth,
                                             modifier = Modifier
                                                 .weight(1f)
@@ -490,6 +501,7 @@ fun HomeScreenContent(
                                             video = video,
                                             onClick = { onVideoClick(video.videoUrl) },
                                             onAuthorClick = onAuthorClick,
+                                            onLongClick = { onVideoLongClick(video) },
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
@@ -513,6 +525,7 @@ fun HomeScreenContent(
                                         video = video,
                                         onClick = { onVideoClick(video.videoUrl) },
                                         onAuthorClick = onAuthorClick,
+                                        onLongClick = { onVideoLongClick(video) },
                                         targetWidth = CAROUSEL_CARD_WIDTH,
                                         modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
                                     )

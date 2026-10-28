@@ -923,5 +923,22 @@
     <string name="watch_stats_minutes">%1$d 分</string>
     <string name="watch_stats_hours">%1$d 時間 %2$d 分</string>
     <string name="settings_watch_stats">視聴統計</string>
+    <string name="share_link_unrecognized">共有内容に動画リンクが見つかりませんでした</string>
+    <string name="favorite_added">お気に入りに追加しました</string>
+    <string name="favorite_removed">お気に入りを解除しました</string>
+    <string name="card_search_related">関連動画を検索</string>
+    <string name="comment_load_more">コメントをさらに読み込む</string>
+    <string name="comment_load_more_failed">コメントの読み込みに失敗しました、タップで再試行</string>
+    <string name="comment_no_more">これ以上コメントはありません</string>
+    <string name="home_continue_done">視聴済みにする</string>
+    <string name="home_continue_remove">続きを見るから削除</string>
+    <string name="history_search_hint">視聴履歴を検索</string>
+    <string name="favorite_sort">並び替え</string>
+    <string name="favorite_sort_recent">最近の追加</string>
+    <string name="favorite_sort_title">タイトル</string>
+    <string name="favorite_sort_author">作者</string>
+    <string name="playlist_favorite_done_with_count">動画を%1$d件お気に入りに追加しました</string>
+    <string name="playlist_favorite_done">%1$d 件の動画をお気に入りに追加しました</string>
+    <string name="playlist_favorite_exists">リストの動画はすべてお気に入り済みです</string>
     <string name="settings_watch_stats_summary">今週の視聴時間・よく見る作者・完走率を端末内で計算します。オフにすると入口を隠します</string>
 </resources>

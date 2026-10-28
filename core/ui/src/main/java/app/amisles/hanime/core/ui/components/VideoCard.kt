@@ -2,6 +2,8 @@ package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,11 +34,13 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoCard(
     video: HanimeVideo,
     onClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     targetWidth: Dp? = null
 ) {
@@ -46,7 +50,7 @@ fun VideoCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Box(
             modifier = Modifier
@@ -112,11 +116,13 @@ fun VideoCard(
 }
 
 /** 紧凑列表行：整宽卡片，左侧小缩略图 + 右侧多行信息，信息密度高于横滑大卡片。 */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoListItem(
     video: HanimeVideo,
     onClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     thumbnailWidth: Dp? = null
 ) {
@@ -148,7 +154,7 @@ fun VideoListItem(
             .background(MaterialTheme.colorScheme.surface, cardShape)
             .surfaceEdge(cardShape)
             .clip(cardShape)
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(cfg.listItemPadding),
         horizontalArrangement = Arrangement.spacedBy(cfg.listItemSpacing),
         verticalAlignment = Alignment.CenterVertically

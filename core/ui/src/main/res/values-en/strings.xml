@@ -923,5 +923,22 @@
     <string name="watch_stats_minutes">%1$d min</string>
     <string name="watch_stats_hours">%1$d h %2$d min</string>
     <string name="settings_watch_stats">Watch stats</string>
+    <string name="share_link_unrecognized">Could not find a video link in the shared content</string>
+    <string name="favorite_added">Added to favorites</string>
+    <string name="favorite_removed">Removed from favorites</string>
+    <string name="card_search_related">Search related videos</string>
+    <string name="comment_load_more">Load more comments</string>
+    <string name="comment_load_more_failed">Failed to load comments, tap to retry</string>
+    <string name="comment_no_more">No more comments</string>
+    <string name="home_continue_done">Mark as watched</string>
+    <string name="home_continue_remove">Remove from Continue watching</string>
+    <string name="history_search_hint">Search watch history</string>
+    <string name="favorite_sort">Sort</string>
+    <string name="favorite_sort_recent">Recently added</string>
+    <string name="favorite_sort_title">Title</string>
+    <string name="favorite_sort_author">Author</string>
+    <string name="playlist_favorite_done_with_count">Added %1$d videos to favorites</string>
+    <string name="playlist_favorite_done">Added %1$d videos to favorites</string>
+    <string name="playlist_favorite_exists">All videos are already in favorites</string>
     <string name="settings_watch_stats_summary">Computes weekly watch time, top authors and completion rate locally; hide the entry when off</string>
 </resources>

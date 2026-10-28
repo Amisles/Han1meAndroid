@@ -15,7 +15,7 @@ internal fun pickInitialSourceUrl(detail: VideoDetail, preferredQuality: String)
 }
 
 /** 调用系统分享面板分享视频（标题 + 链接）。 */
-internal fun shareVideo(context: Context, title: String, url: String) {
+public fun shareVideo(context: Context, title: String, url: String) {
     val shareText = if (url.isNotEmpty()) "$title\n$url" else title
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"

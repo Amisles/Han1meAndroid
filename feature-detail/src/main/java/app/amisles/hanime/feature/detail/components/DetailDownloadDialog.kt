@@ -30,7 +30,7 @@ import app.amisles.hanime.domain.model.DownloadQuality
  * 选中后的「发起下载 + 关闭弹窗 + 提示」由调用方在 [onQualitySelected] 中处理，以复用页面级 SnackbarHostState。
  */
 @Composable
-internal fun DetailDownloadDialog(
+public fun DetailDownloadDialog(
     isLoadingQualities: Boolean,
     downloadQualities: List<DownloadQuality>,
     onQualitySelected: (DownloadQuality) -> Unit,

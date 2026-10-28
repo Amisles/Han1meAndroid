@@ -37,6 +37,7 @@ import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import androidx.compose.material3.MaterialTheme
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.ui.viewmodel.VideoListPageViewModel
 
 @Composable
@@ -44,7 +45,8 @@ fun VideoListPageScreen(
     title: String? = null,
     url: String = "",
     onBackClick: () -> Unit = {},
-    onVideoClick: (String) -> Unit = {}
+    onVideoClick: (String) -> Unit = {},
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val viewModel: VideoListPageViewModel = hiltViewModel()
     val videos by viewModel.videos.collectAsStateWithLifecycle()
@@ -105,7 +107,11 @@ fun VideoListPageScreen(
                         items = videos,
                         key = { it.id }
                     ) { video ->
-                        VideoCard(video = video, onClick = { onVideoClick(video.videoUrl) })
+                        VideoCard(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            onLongClick = { onVideoLongClick(video) }
+                        )
                     }
                 }
             }

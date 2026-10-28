@@ -923,5 +923,22 @@
     <string name="watch_stats_minutes">%1$d 分鐘</string>
     <string name="watch_stats_hours">%1$d 小時 %2$d 分</string>
     <string name="settings_watch_stats">觀看統計</string>
+    <string name="share_link_unrecognized">未能識別連結中的影片位址</string>
+    <string name="favorite_added">已加入收藏</string>
+    <string name="favorite_removed">已取消收藏</string>
+    <string name="card_search_related">搜尋相關影片</string>
+    <string name="comment_load_more">載入更多評論</string>
+    <string name="comment_load_more_failed">評論載入失敗，點擊重試</string>
+    <string name="comment_no_more">沒有更多評論了</string>
+    <string name="home_continue_done">標記看完</string>
+    <string name="home_continue_remove">從繼續觀看中移除</string>
+    <string name="history_search_hint">搜尋觀看歷史</string>
+    <string name="favorite_sort">排序</string>
+    <string name="favorite_sort_recent">最近收藏</string>
+    <string name="favorite_sort_title">標題</string>
+    <string name="favorite_sort_author">作者</string>
+    <string name="playlist_favorite_done_with_count">已收藏 %1$d 個影片</string>
+    <string name="playlist_favorite_done">已收藏 %1$d 個影片</string>
+    <string name="playlist_favorite_exists">清單中的影片均已收藏</string>
     <string name="settings_watch_stats_summary">純本機計算本週觀看時長、常看作者與完成率；關閉後不顯示入口</string>
 </resources>
