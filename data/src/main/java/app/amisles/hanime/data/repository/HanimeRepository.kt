@@ -1,7 +1,6 @@
 package app.amisles.hanime.data.repository
 
 import android.database.SQLException
-import android.util.Log
 import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
@@ -658,10 +657,6 @@ class HanimeRepository @Inject constructor(
             if (artistId.isBlank()) {
                 return AppResult.error("作者 ID 缺失，无法订阅")
             }
-            Log.i(
-                "SubscribeDebug",
-                ">>> toggleSubscribe(artistId=$artistId, willSubscribe=$willSubscribe) userId=$userId"
-            )
             val json = networkService.toggleSubscribe(
                 csrfToken = csrfToken,
                 userId = userId,
@@ -675,7 +670,6 @@ class HanimeRepository @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.i("SubscribeDebug", "!!! toggleSubscribe IOException: ${e.message}")
             AppLogger.logError("HanimeRepository", "Error in toggleSubscribe: ${e.message}", e)
             AppResult.error(e.message ?: "订阅操作失败", e)
         }
