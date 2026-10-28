@@ -844,6 +844,7 @@
     <string name="comic_entry_summary">hanimeone.me の漫画を見る</string>
     <string name="comic_empty">漫画がありません</string>
     <string name="comic_tags_entry">タグ</string>
+    <string name="comic_artists_entry">作者</string>
     <string name="comic_tags_title">漫画タグ</string>
     <string name="comic_artists_title">漫画作者</string>
     <string name="comic_directory_count">%1$d 件</string>

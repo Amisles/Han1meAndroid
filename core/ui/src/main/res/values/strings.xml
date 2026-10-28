@@ -875,6 +875,7 @@
     <string name="comic_entry_summary">浏览 hanimeone.me 的漫画</string>
     <string name="comic_empty">暂无漫画内容</string>
     <string name="comic_tags_entry">标签</string>
+    <string name="comic_artists_entry">作者</string>
     <string name="comic_tags_title">漫画标签</string>
     <string name="comic_artists_title">漫画作者</string>
     <string name="comic_directory_count">%1$d 项</string>

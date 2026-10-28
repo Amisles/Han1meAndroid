@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,6 +55,7 @@ fun ComicScreen(
     onBackClick: () -> Unit = {},
     onComicClick: (String) -> Unit = {},
     onTagsClick: () -> Unit = {},
+    onArtistsClick: () -> Unit = {},
     viewModel: ComicViewModel = hiltViewModel()
 ) {
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -106,7 +108,13 @@ fun ComicScreen(
             ComicEntryChip(
                 icon = Icons.Outlined.Sell,
                 label = stringResource(R.string.comic_tags_entry),
-                onClick = onTagsClick,
+                onClick = onTagsClick
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            ComicEntryChip(
+                icon = Icons.Outlined.Person,
+                label = stringResource(R.string.comic_artists_entry),
+                onClick = onArtistsClick,
                 modifier = Modifier.padding(end = 12.dp)
             )
         }

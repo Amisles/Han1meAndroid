@@ -844,6 +844,7 @@
     <string name="comic_entry_summary">Browse comics on hanimeone.me</string>
     <string name="comic_empty">No comics available</string>
     <string name="comic_tags_entry">Tags</string>
+    <string name="comic_artists_entry">Artists</string>
     <string name="comic_tags_title">Comic tags</string>
     <string name="comic_artists_title">Comic artists</string>
     <string name="comic_directory_count">%1$d items</string>

@@ -351,6 +351,7 @@ fun HanimeApp(
         currentRoute != "crashLog" &&
         currentRoute != "comics" &&
         currentRoute != "comicTags" &&
+        currentRoute != "comicArtists" &&
         !currentRoute.startsWith("comicDirectory") &&
         currentRoute != "watchStats" &&
         currentRoute != "batchDownload" &&
@@ -549,7 +550,8 @@ fun HanimeApp(
                             onComicClick = { comicId ->
                                 navController.navigate("comicDetail?comicId=" + Uri.encode(comicId))
                             },
-                            onTagsClick = { navController.navigate("comicTags") }
+                            onTagsClick = { navController.navigate("comicTags") },
+                            onArtistsClick = { navController.navigate("comicArtists") }
                         )
                     }
                     composable("comicTags") {
@@ -561,6 +563,13 @@ fun HanimeApp(
                                     comicDirectoryRoute(ComicDirectoryKind.TAG, entry.name, entry.url)
                                 )
                             }
+                        )
+                    }
+                    composable("comicArtists") {
+                        ComicDirectoryScreen(
+                            kind = ComicDirectoryKind.ARTIST,
+                            onBackClick = { navController.popBackStack() },
+                            onEntryClick = {}
                         )
                     }
                     composable(
