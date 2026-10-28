@@ -139,6 +139,13 @@ class VideoListParser @Inject constructor() {
                 publishTime = container.selectFirst(".subtitle-time")?.text()
                     ?.replace("•", "")?.trim().orEmpty()
             }
+            // 再兜一层：个别卡片模板把时间直接拼在 .subtitle 文本里（没有 .subtitle-time 节点）。
+            // 注意这里取的是整个 .subtitle 而不是里面的 <a>，否则又会漏掉时间。
+            if (publishTime.isEmpty()) {
+                val subtitleText = container.selectFirst(".subtitle")?.text().orEmpty()
+                val parts = subtitleText.split("•")
+                if (parts.size >= 2) publishTime = parts[1].trim()
+            }
 
             val finalVideoUrl = if (videoUrl.startsWith("/")) "$baseUrl$videoUrl" else videoUrl
 

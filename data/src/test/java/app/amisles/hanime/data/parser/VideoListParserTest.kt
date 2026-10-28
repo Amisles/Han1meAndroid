@@ -487,6 +487,22 @@ class VideoListParserTest {
     }
 
     @Test
+    fun `parseVideoList reads publish time from subtitle text when span missing`() {
+        // 变体模板：时间直接拼在 .subtitle 文本里，没有 .subtitle-time 节点
+        val html = """
+            <div class="video-item-container">
+                <a class="video-link" href="/watch?v=9002"></a>
+                <div class="title">Text Time</div>
+                <div class="subtitle"><a>AuthorY</a> • 3天前</div>
+            </div>
+        """.trimIndent()
+
+        val video = parser.parseVideoList(Jsoup.parse(html, baseUrl), baseUrl).single()
+        assertEquals("AuthorY", video.author)
+        assertEquals("3天前", video.publishTime)
+    }
+
+    @Test
     fun `parseVideoList keeps simplified search cards portrait`() {
         val doc = Jsoup.parse(simpleSearchCardsHtml, baseUrl)
         val videos = parser.parseVideoList(doc, baseUrl)

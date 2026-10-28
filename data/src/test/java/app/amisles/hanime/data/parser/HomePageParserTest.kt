@@ -237,4 +237,30 @@ class HomePageParserTest {
         // ownText 仅取 "最新上市" 部分（去除 <small>更多</small>）
         assertEquals("最新上市", data.sections[0].title)
     }
+
+    @Test
+    fun `section cards carry publish time from subtitle-time`() {
+        // 首页分区卡片与详情页「相关推荐」同构：时间在 .subtitle 内、与 <a> 平级的 .subtitle-time 上
+        val html = """
+            <html><body>
+                <a class="horizontal-row-title" href="/sort/latest">
+                    <h3>最新上市</h3>
+                </a>
+                <div class="home-rows-videos-wrapper">
+                    <div class="video-item-container">
+                        <a class="video-link" href="/watch?v=9001"></a>
+                        <img class="main-thumb" src="https://cdn.example.com/9001.jpg"/>
+                        <div class="title">Home Card</div>
+                        <div class="subtitle"><a href="/search?query=AuthorX">AuthorX</a><span class="subtitle-time">&nbsp;• 8個月前</span></div>
+                    </div>
+                </div>
+            </body></html>
+        """.trimIndent()
+
+        val data = parser.parse(html, baseUrl)
+        assertEquals(1, data.sections.size)
+        val video = data.sections[0].videos.single()
+        assertEquals("AuthorX", video.author)
+        assertEquals("8個月前", video.publishTime)
+    }
 }

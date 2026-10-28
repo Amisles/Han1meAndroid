@@ -2,8 +2,10 @@ package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -75,18 +78,36 @@ fun VideoGridCard(
                 .padding(top = cfg.cardTitleTopPadding)
         )
 
-        if (video.author.isNotEmpty()) {
-            Text(
-                text = video.author,
-                fontSize = cfg.gridMetaFontSize,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                // 内层 clickable 会优先消费点击，不会连带触发整卡的 onClick
-                modifier = Modifier
-                    .padding(top = 2.dp, bottom = 6.dp)
-                    .clickable { onAuthorClick(video.author) }
-            )
+        if (video.author.isNotEmpty() || video.publishTime.isNotEmpty()) {
+            Row(
+                modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                if (video.author.isNotEmpty()) {
+                    Text(
+                        text = video.author,
+                        fontSize = cfg.gridMetaFontSize,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        // 内层 clickable 会优先消费点击，不会连带触发整卡的 onClick
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .clickable { onAuthorClick(video.author) }
+                    )
+                }
+                // 与 VideoCard 一致：作者后接「• 时间」，同处一行，不新增行高
+                if (video.publishTime.isNotEmpty()) {
+                    Text(
+                        text = "• ${video.publishTime}",
+                        fontSize = cfg.gridMetaFontSize,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
         }
     }
 }

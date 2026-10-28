@@ -229,6 +229,17 @@ fun VideoListItem(
                         )
                     }
                 }
+                // 发布时间：与 VideoCard 的「作者 • 时间」保持一致，列表行放在统计行末尾，
+                // 不额外占一行高度（首页 / 搜索 / 订阅等列表共用本组件）
+                if (video.publishTime.isNotEmpty()) {
+                    Text(
+                        text = video.publishTime,
+                        fontSize = cfg.listMetaFontSize,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
         }
     }
