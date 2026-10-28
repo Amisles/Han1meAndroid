@@ -46,6 +46,7 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+keystore.b64
 
 # 系统文件
 .DS_Store
