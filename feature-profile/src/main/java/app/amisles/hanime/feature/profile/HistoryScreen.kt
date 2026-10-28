@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.History
+import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.theme.HanimeDanger
@@ -96,6 +98,19 @@ fun HistoryScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<String?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val filteredHistory = remember(history, searchQuery) {
+        val keyword = searchQuery.trim()
+        if (keyword.isEmpty()) {
+            history
+        } else {
+            history.filter { video ->
+                video.title.contains(keyword, ignoreCase = true) ||
+                    video.author.contains(keyword, ignoreCase = true)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadHistory()
@@ -179,6 +194,17 @@ fun HistoryScreen(
             }
         }
 
+        if (!isSelectionMode && history.isNotEmpty()) {
+            SearchField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = stringResource(R.string.history_search_hint),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp, vertical = 4.dp)
+            )
+        }
+
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -186,7 +212,7 @@ fun HistoryScreen(
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
-        } else if (history.isEmpty()) {
+        } else if (history.isEmpty() || (searchQuery.isNotBlank() && filteredHistory.isEmpty())) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -222,7 +248,7 @@ fun HistoryScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位
-                items(history, key = { it.id }) { video ->
+                items(filteredHistory, key = { it.id }) { video ->
                     val isSelected = video.id in selectedIds
 
                     Row(
@@ -395,7 +421,7 @@ fun HistoryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.history_count, history.size),
+                    text = stringResource(R.string.history_count, filteredHistory.size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)

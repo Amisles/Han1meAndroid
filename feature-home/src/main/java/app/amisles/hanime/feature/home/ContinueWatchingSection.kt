@@ -1,6 +1,9 @@
 package app.amisles.hanime.feature.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.WatchHistory
@@ -44,6 +52,8 @@ private val CONTINUE_CARD_WIDTH = 150.dp
 internal fun ContinueWatchingSection(
     items: List<WatchHistory>,
     onItemClick: (WatchHistory) -> Unit,
+    onMarkWatched: (WatchHistory) -> Unit = {},
+    onRemove: (WatchHistory) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
@@ -63,11 +73,15 @@ internal fun ContinueWatchingSection(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(items, key = { it.id }) { history ->
+                var showActions by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier
                         .width(CONTINUE_CARD_WIDTH)
                         .clip(RoundedCornerShape(cfg.cardCornerRadius))
-                        .clickable { onItemClick(history) }
+                        .combinedClickable(
+                            onClick = { onItemClick(history) },
+                            onLongClick = { showActions = true }
+                        )
                 ) {
                     Box(
                         modifier = Modifier
@@ -125,9 +139,52 @@ internal fun ContinueWatchingSection(
                         }
                     }
                 }
+
+                if (showActions) {
+                    FullScreenOverlayDialog(onDismiss = { showActions = false }) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth(0.7f)
+                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                                .padding(vertical = 6.dp)
+                        ) {
+                            ContinueActionRow(
+                                label = stringResource(R.string.home_continue_done),
+                                onClick = {
+                                    showActions = false
+                                    onMarkWatched(history)
+                                }
+                            )
+                            ContinueActionRow(
+                                label = stringResource(R.string.home_continue_remove),
+                                onClick = {
+                                    showActions = false
+                                    onRemove(history)
+                                }
+                            )
+                            ContinueActionRow(
+                                label = stringResource(R.string.common_cancel),
+                                onClick = { showActions = false }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ContinueActionRow(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        fontSize = 15.sp,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp)
+    )
 }
 
 /** 剩余时长文案：超过一小时按「X 小时 Y 分」，否则「X 分」，不足一分钟按「不到 1 分」。 */

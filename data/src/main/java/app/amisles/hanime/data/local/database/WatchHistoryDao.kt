@@ -46,6 +46,13 @@ interface WatchHistoryDao {
     )
     suspend fun updatePlaybackProgress(videoId: String, position: Long, duration: Long): Int
 
+    /** 标记看完：进度顶满时长（未知时长按 1ms 兜底），使 95% 完成度过滤将其排除出继续观看。 */
+    @Query(
+        "UPDATE watch_history SET playback_duration = MAX(playback_duration, 1), " +
+            "playback_position = MAX(playback_duration, 1), watchedAt = :watchedAt WHERE id = :videoId"
+    )
+    suspend fun markWatched(videoId: String, watchedAt: Long): Int
+
     @Query("DELETE FROM watch_history WHERE id = :videoId")
     suspend fun removeWatchHistory(videoId: String)
 

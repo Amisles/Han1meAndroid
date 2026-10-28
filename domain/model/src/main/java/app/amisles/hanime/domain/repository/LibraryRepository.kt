@@ -29,6 +29,9 @@ interface LibraryRepository {
     suspend fun upsertFavoriteGroup(group: FavoriteGroup): Boolean
     suspend fun deleteFavoriteGroup(groupId: String): Boolean
     suspend fun moveFavoriteToGroup(videoId: String, groupId: String): Boolean
+
+    /** 批量移动收藏到分组；返回是否全部落库。 */
+    suspend fun moveFavoritesToGroup(videoIds: List<String>, groupId: String): Boolean
     suspend fun setFavoriteTags(videoId: String, tags: List<String>): Boolean
 
     // ── 观看历史 ────────────────────────────────────────────────────────────
@@ -43,6 +46,9 @@ interface LibraryRepository {
     suspend fun updateWatchProgress(videoId: String, position: Long, duration: Long): Boolean
 
     suspend fun getWatchHistory(videoId: String): WatchHistory?
+
+    /** 标记看完：把进度顶满时长，使该条目从「继续观看」消失但保留在历史中。 */
+    suspend fun markWatched(videoId: String): Boolean
     /**
      * 「继续观看」候选：有播放进度、且尚未看完的条目，按最近观看倒序。
      *

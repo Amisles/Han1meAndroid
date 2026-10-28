@@ -11,6 +11,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.ui.R
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,23 @@ class HomeViewModel @Inject constructor(
     val continueWatching: StateFlow<List<WatchHistory>> = libraryRepository
         .getContinueWatchingFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * 把条目标记为已看完：进度顶满时长后，95% 完成度过滤会让它离开「继续观看」。
+     * 历史记录本身保留。
+     */
+    fun markContinueItemWatched(videoId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            libraryRepository.markWatched(videoId)
+        }
+    }
+
+    /** 从继续观看移除 = 删除该条历史记录。 */
+    fun removeContinueItem(videoId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            libraryRepository.removeWatchHistory(videoId)
+        }
+    }
 
     private val _sections = MutableStateFlow<List<HomeSection>>(emptyList())
     val sections: StateFlow<List<HomeSection>> = _sections.asStateFlow()
