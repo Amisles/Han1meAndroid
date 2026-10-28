@@ -13,22 +13,22 @@ import javax.inject.Singleton
 @Singleton
 class CommentParser @Inject constructor() {
 
+    /**
+     * 解析 /loadComment 接口返回的 JSON。
+     *
+     * JSON 层失败（登录态过期时接口 200 返回登录页 HTML、CDN 返回 200 错误页等）必须向上
+     * 抛出，由仓库层统一转 AppResult.error：若吞成空列表，调用方拿到 success(emptyList)，
+     * UI 会显示「暂无评论」，与真没有评论不可区分。单条评论的结构异常（IOOBE / NPE）
+     * 仍在 [parseHtml] 内逐条跳过，不属于此列。
+     */
     fun parse(json: String): List<Comment> {
         if (json.isBlank()) return emptyList()
-        return try {
-            val html = JSONObject(json).optString("comments", "")
-            if (html.isEmpty()) {
-                AppLogger.log("CommentParser", "comments field is empty")
-                return emptyList()
-            }
-            parseHtml(html)
-        } catch (e: JSONException) {
-            AppLogger.logError("CommentParser", "Failed to parse comments JSON: ${e.message}", e)
-            emptyList()
-        } catch (e: NullPointerException) {
-            AppLogger.logError("CommentParser", "Failed to parse comments JSON: ${e.message}", e)
-            emptyList()
+        val html = JSONObject(json).optString("comments", "")
+        if (html.isEmpty()) {
+            AppLogger.log("CommentParser", "comments field is empty")
+            return emptyList()
         }
+        return parseHtml(html)
     }
 
     /**
@@ -217,23 +217,17 @@ class CommentParser @Inject constructor() {
      *
      * 回复结构与评论不同：回复容器 id 形如 reply-start-{commentId}，每条回复的头像位于
      * report-btn-wrapper 内部，点赞区是其后的兄弟 div（无 id）。
+     *
+     * JSON 层失败向上抛出（理由同 [parse]），仓库层转 AppResult.error。
      */
     fun parseReplies(json: String): List<Reply> {
         if (json.isBlank()) return emptyList()
-        return try {
-            val html = JSONObject(json).optString("replies", "")
-            if (html.isEmpty()) {
-                AppLogger.log("CommentParser", "replies field is empty")
-                return emptyList()
-            }
-            parseRepliesHtml(html)
-        } catch (e: JSONException) {
-            AppLogger.logError("CommentParser", "Failed to parse replies JSON: ${e.message}", e)
-            emptyList()
-        } catch (e: NullPointerException) {
-            AppLogger.logError("CommentParser", "Failed to parse replies JSON: ${e.message}", e)
-            emptyList()
+        val html = JSONObject(json).optString("replies", "")
+        if (html.isEmpty()) {
+            AppLogger.log("CommentParser", "replies field is empty")
+            return emptyList()
         }
+        return parseRepliesHtml(html)
     }
 
     /**

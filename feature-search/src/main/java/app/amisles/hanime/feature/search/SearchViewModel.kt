@@ -81,6 +81,10 @@ class SearchViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    /** 搜索代数：executeSearch 每次自增，界面据此把列表滚回顶部（换词/换条件后不能停留在旧结果的滚动位置）。 */
+    private val _searchGeneration = MutableStateFlow(0)
+    val searchGeneration: StateFlow<Int> = _searchGeneration.asStateFlow()
+
     // null 表示历史尚未从数据库读出：与「读完后确实为空」区分，避免进页面时先闪一下空态提示
     private val _searchHistory = MutableStateFlow<List<String>?>(null)
     val searchHistory: StateFlow<List<String>?> = _searchHistory.asStateFlow()
@@ -246,6 +250,8 @@ class SearchViewModel @Inject constructor(
         if (!hasAnyCriteria()) return
 
         val epoch = ++searchEpoch
+        // 同步失效在途 loadMore：新一轮搜索后，旧条件的加载更多结果不得再推进游标或触碰加载态
+        loadMoreEpoch++
         searchJob?.cancel()
         loadMoreJob?.cancel()
         _isLoadingMore.value = false
@@ -254,6 +260,8 @@ class SearchViewModel @Inject constructor(
         currentPageNum = 1
         _currentPage.value = 1
         _hasMore.value = true
+        // 滚动位置由界面代数变化回顶；此时旧结果仍显示、顶部细进度条提示加载中
+        _searchGeneration.value++
 
         searchJob = viewModelScope.launch {
             // 快照本轮请求的页码：协程挂起期间 currentPageNum 可能被 loadMore 改动，
@@ -308,6 +316,10 @@ class SearchViewModel @Inject constructor(
     }
 
     fun loadMore() {
+        // 新一轮搜索进行中禁止追加：此时 _hasMore 已被重置为 true、旧结果仍在屏上，
+        // 不设防会用「新条件 + 旧列表位置」发出错页请求，与新搜索第 1 页竞速时会把游标
+        // 推进到 2 而列表只剩第 1 页，第 2 页永久丢失
+        if (_isLoading.value) return
         if (_isLoadingMore.value || !_hasMore.value) return
         if (!hasAnyCriteria()) return
 

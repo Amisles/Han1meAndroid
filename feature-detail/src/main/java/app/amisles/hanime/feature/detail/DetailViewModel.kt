@@ -19,6 +19,7 @@ import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.domain.result.AppResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -328,29 +329,52 @@ class DetailViewModel @Inject constructor(
         if (id.isEmpty()) return
         val detail = _videoDetail.value ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val updated = library.updateWatchProgress(id, position, duration)
-                if (updated) return@launch
-                // 尚无历史记录（例如首次播放即调用）：插入完整记录
-                library.addWatchHistory(
-                    WatchHistory(
-                        id = id,
-                        title = detail.title,
-                        thumbnailUrl = detail.posterUrl,
-                        videoUrl = currentVideoUrl,
-                        author = detail.author,
-                        duration = "",
-                        watchedAt = System.currentTimeMillis(),
-                        playbackPosition = position,
-                        playbackDuration = duration
-                    )
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // 进度落盘失败不应影响播放：记录后吞掉，避免异常逃逸出 viewModelScope 导致崩溃
-                AppLogger.e("DetailViewModel", "Error saving playback progress: ${e.message}", e)
+            persistProgress(id, detail, position, duration)
+        }
+    }
+
+    /**
+     * 离场时的最终进度保存，由播放器组合销毁（onDispose）调用。
+     *
+     * 与 [savePlaybackProgress] 的区别：此时页面组合正在销毁，且连播切集会用 popUpTo
+     * 立即弹出旧导航条目，viewModelScope 可能在转场结束前就被取消 —— 落库段必须挂
+     * NonCancellable 才能保证写完。不能把保存发在组合自身的作用域里：那会随组合
+     * 一起被取消，任何等帧/挂起都到不了落库那一步。
+     */
+    fun saveFinalPlaybackProgress(position: Long, duration: Long) {
+        val id = currentVideoId
+        if (id.isEmpty()) return
+        val detail = _videoDetail.value ?: return
+        viewModelScope.launch {
+            withContext(NonCancellable + Dispatchers.IO) {
+                persistProgress(id, detail, position, duration)
             }
+        }
+    }
+
+    private suspend fun persistProgress(id: String, detail: VideoDetail, position: Long, duration: Long) {
+        try {
+            val updated = library.updateWatchProgress(id, position, duration)
+            if (updated) return
+            // 尚无历史记录（例如首次播放即调用）：插入完整记录
+            library.addWatchHistory(
+                WatchHistory(
+                    id = id,
+                    title = detail.title,
+                    thumbnailUrl = detail.posterUrl,
+                    videoUrl = currentVideoUrl,
+                    author = detail.author,
+                    duration = "",
+                    watchedAt = System.currentTimeMillis(),
+                    playbackPosition = position,
+                    playbackDuration = duration
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 进度落盘失败不应影响播放：记录后吞掉，避免异常逃逸出 viewModelScope 导致崩溃
+            AppLogger.e("DetailViewModel", "Error saving playback progress: ${e.message}", e)
         }
     }
 

@@ -41,6 +41,15 @@ object PlaybackSessionBridge {
         // 这里补一次启动，避免通知永久缺席
         if (serviceStarted) {
             startServiceSafely()
+            return
+        }
+        // 平板进出全屏会翻转布局分支：旧组合销毁触发 unbind（服务被停），同一播放器随即被
+        // 新组合重新 bind。播放全程从未停止，onIsPlayingChanged 不会再翻转，
+        // ensureService 无从触发 —— 若不按当前播放态补拉服务，媒体通知 / 锁屏 / 蓝牙控件
+        // 会缺席到下次暂停再播放为止。首次 bind 时播放器尚未起播（isPlaying=false），不会
+        // 破坏「真正开始播放才拉前台服务」的约束。
+        if (player.isPlaying) {
+            startServiceSafely()
         }
     }
 

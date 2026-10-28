@@ -19,7 +19,26 @@ object HCookieJar : CookieJar {
     // 用 ConcurrentHashMap 替代 HashMap，避免并发读写抛出 ConcurrentModificationException
     private val cookieMap: ConcurrentHashMap<String, MutableList<Cookie>> = ConcurrentHashMap()
 
+    /**
+     * 存储代数：每次 clearAll（登出）自增。
+     *
+     * 登出与响应到达天然并发（页面请求在途时点登出）：在途响应携带的是旧会话的
+     * Set-Cookie，若照常入库，刚被 clearAll 清掉的会话 Cookie 会被写回，
+     * 登出在本进程内形同虚设。见 [saveFromResponse] 的丢弃逻辑。
+     */
+    @Volatile
+    private var generation = 0L
+
+    /**
+     * 请求构建时所处的代数。OkHttp 保证同一次交换的 [loadForRequest] 与
+     * [saveFromResponse] 在同一条拦截器链、同一线程上先后执行，因此用 ThreadLocal
+     * 即可把响应的 Set-Cookie 关联到「发出请求时」的代数：两者不一致说明请求发出后
+     * 发生过登出，携带的是旧会话 Cookie，必须丢弃。
+     */
+    private val requestGeneration = ThreadLocal<Long>()
+
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
+        requestGeneration.set(generation)
         val host = url.host
         val out = mutableListOf<Cookie>()
 
@@ -69,6 +88,17 @@ object HCookieJar : CookieJar {
     }
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+        // 请求发出后发生过登出：这批 Set-Cookie 属于旧会话，一律丢弃。
+        // 正常路径 loadForRequest 必然先于本方法在同线程执行；缺记录时按当前代数放行
+        // （防御性兜底：宁可多收一次，不误杀登出之后新发出的请求回传的新会话）。
+        val sentGeneration = requestGeneration.get()
+        if (sentGeneration != null && sentGeneration != generation) {
+            AppLogger.d(
+                "HCookieJar",
+                "丢弃跨越登出的在途响应 Cookie: host=${url.host} count=${cookies.size}"
+            )
+            return
+        }
         val host = url.host
 
         // putIfAbsent 保证并发下创建列表的原子性，避免 getOrPut 的竞态条件
@@ -95,6 +125,8 @@ object HCookieJar : CookieJar {
     }
 
     fun clearAll() {
+        // 先推进代数再清空：在途请求的响应此后到达时，其记录的代数已落后，整批丢弃
+        generation++
         cookieMap.clear()
     }
 

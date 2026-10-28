@@ -182,6 +182,7 @@ fun SearchScreen(
     // 会连带重建整套 snapshotFlow 与收集协程（分页越多重建越频繁，且每次重建都会重新
     // 触发一次「已在底部」的判定）。这三个值改为通过 rememberUpdatedState 读取最新值。
     val videosState = rememberUpdatedState(videos)
+    val isLoadingState = rememberUpdatedState(isLoading)
     val isLoadingMoreState = rememberUpdatedState(isLoadingMore)
     val hasMoreState = rememberUpdatedState(hasMore)
     androidx.compose.runtime.LaunchedEffect(isGridMode) {
@@ -201,12 +202,23 @@ fun SearchScreen(
             }
         }
         nearEnd.collect { shouldLoad ->
-            if (shouldLoad && hasMoreState.value && !isLoadingMoreState.value &&
-                videosState.value.isNotEmpty()
+            // isLoading 守卫：新一轮搜索进行中（旧结果仍在屏、滚动态残留）不得触发加载更多，
+            // 否则会用新条件请求错页并与新搜索第 1 页竞速，造成缺页。VM 侧 loadMore 也有同款守卫。
+            if (shouldLoad && hasMoreState.value && !isLoadingState.value &&
+                !isLoadingMoreState.value && videosState.value.isNotEmpty()
             ) {
                 viewModel.loadMore()
             }
         }
+    }
+
+    // 新一轮搜索把列表滚回顶部：换词/换条件后旧滚动态会残留（新结果不足时被 clamp 到末尾），
+    // 用户看到的是新结果的尾部而非顶部；残留位置又满足 nearEnd，会连锁触发一次多余的分页请求。
+    val searchGeneration by viewModel.searchGeneration.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(searchGeneration) {
+        // 首次组合（generation=0）也会执行一次，列表本就在顶部，无副作用
+        gridState.scrollToItem(0)
+        listState.scrollToItem(0)
     }
 
     // 以导航参数为 key 重新注入，由 ViewModel 按参数内容去重。

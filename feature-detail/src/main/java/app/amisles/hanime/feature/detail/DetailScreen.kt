@@ -34,7 +34,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -297,13 +296,10 @@ fun DetailScreen(
                 val position = player.currentPosition
                 val duration = player.duration
                 if (position > 0) {
-                    // 必须等这一帧组合提交后再落库：viewModelScope 的取消会在其上一条 launch 起始
-                    // 分段（Dispatchers.IO）执行前生效，若在组合自身作用域里 suspend，离场保存会被直接取消。
-                    // 等一帧也顺带错开 release()，不在其调用栈内触发任何挂起的数据库往返。
-                    scope.launch {
-                        withFrameNanos { }
-                        viewModel.savePlaybackProgress(position, duration)
-                    }
+                    // 离场最终进度不能发在组合自身作用域：rememberCoroutineScope 随组合销毁取消，
+                    // 任何等帧 / 挂起都到不了落库那一步（原实现因此从未真正保存过）。改走 VM 的
+                    // saveFinalPlaybackProgress —— viewModelScope + NonCancellable，详见其注释。
+                    viewModel.saveFinalPlaybackProgress(position, duration)
                 }
                 // 必须同步释放：之前用 mainHandler.post 延后一帧，一旦宿主 Activity 在
                 // posted runnable 执行前销毁，或 release() 自身抛异常，播放器就永久泄漏
