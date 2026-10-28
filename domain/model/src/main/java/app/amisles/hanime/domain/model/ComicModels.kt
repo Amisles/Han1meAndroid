@@ -82,6 +82,29 @@ data class ComicProgress(
     val isFinished: Boolean get() = pageCount > 0 && lastPage >= pageCount
 }
 
+/** 标签 / 作者目录（/comics/tags、/comics/artists）的条目；[count] 为站点给出的作品数文案（如 4.2k），可能为空。 */
+data class ComicDirectoryEntry(
+    val name: String,
+    val count: String,
+    val url: String
+)
+
+/** 目录种类：标签与作者共用同一套页面结构与解析逻辑。 */
+enum class ComicDirectoryKind { TAG, ARTIST }
+
+/** 标签 / 作者作品列表的排序方式，与站点路径后缀一一对应。 */
+enum class ComicSort { LATEST, POPULAR_TODAY, POPULAR_WEEK, POPULAR }
+
+/** 标签 / 作者作品列表（/tags/{name}[/{sort}]）解析结果。 */
+data class ComicDirectoryResult(
+    val items: List<ComicItem>,
+    val currentPage: Int,
+    val totalPages: Int,
+    val hasNextPage: Boolean
+) {
+    val isEmpty: Boolean get() = items.isEmpty()
+}
+
 /** 阅读方式。 */
 enum class ComicReadMode {
     /** 单页横向翻页。 */

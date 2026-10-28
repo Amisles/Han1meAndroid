@@ -4,7 +4,6 @@ import app.amisles.hanime.domain.model.ComicItem
 import app.amisles.hanime.domain.model.ComicPage
 import app.amisles.hanime.domain.model.ComicSection
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,23 +30,9 @@ class ComicPageParser @Inject constructor() {
                 .distinctBy { it.detailUrl }
             if (items.isEmpty()) null else ComicSection(title, items)
         }
-        val (current, total, hasNext) = parsePagination(doc)
-        return ComicPage(sections, current, total, hasNext)
+        val page = ComicPaginationParser.parse(doc)
+        return ComicPage(sections, page.current, page.total, page.hasNext)
     }
 
     private fun parseItem(card: Element): ComicItem? = ComicItemParser.parse(card)
-
-    private fun parsePagination(doc: Document): Triple<Int, Int, Boolean> {
-        val pager = doc.select("div.search-pagination").firstOrNull()
-            ?.selectFirst("ul.pagination")
-            ?: return Triple(1, 1, false)
-        val current = pager.selectFirst("li.page-item.active span.page-link")
-            ?.text()?.trim()?.toIntOrNull() ?: 1
-        var total = current
-        pager.select("li.page-item a.page-link").forEach { link ->
-            link.text().trim().toIntOrNull()?.let { if (it > total) total = it }
-        }
-        val hasNext = pager.selectFirst("a.page-link[rel=next]") != null || current < total
-        return Triple(current, total, hasNext)
-    }
 }

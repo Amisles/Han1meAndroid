@@ -12,6 +12,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import app.amisles.hanime.domain.model.AuthorPageData
 import app.amisles.hanime.domain.model.AuthorPageDataEvent
+import app.amisles.hanime.domain.model.ComicDirectoryKind
+import app.amisles.hanime.domain.model.ComicSort
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.domain.model.PlaylistDetail
@@ -191,6 +193,25 @@ class NetworkService @Inject constructor(
     suspend fun fetchComicsPage(page: Int = 1): FetchResult = withContext(Dispatchers.IO) {
         val url = COMICS_BASE_URL + if (page > 1) "/comics?page=$page" else "/comics"
         AppLogger.log("NetworkService", "fetchComicsPage url=$url")
+        val html = executeRequest(buildRequest(url))
+        FetchResult(html, COMICS_BASE_URL)
+    }
+
+    suspend fun fetchComicDirectoryPage(kind: ComicDirectoryKind): FetchResult =
+        withContext(Dispatchers.IO) {
+            val url = COMICS_BASE_URL + ComicUrls.directoryPath(kind)
+            AppLogger.log("NetworkService", "fetchComicDirectoryPage url=" + url)
+            val html = executeRequest(buildRequest(url))
+            FetchResult(html, COMICS_BASE_URL)
+        }
+
+    suspend fun fetchComicDirectoryResultPage(
+        baseUrl: String,
+        sort: ComicSort,
+        page: Int
+    ): FetchResult = withContext(Dispatchers.IO) {
+        val url = ComicUrls.directoryResult(baseUrl, sort, page)
+        AppLogger.log("NetworkService", "fetchComicDirectoryResultPage url=" + url)
         val html = executeRequest(buildRequest(url))
         FetchResult(html, COMICS_BASE_URL)
     }

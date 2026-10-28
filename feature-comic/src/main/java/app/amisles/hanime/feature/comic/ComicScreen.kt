@@ -1,8 +1,8 @@
 package app.amisles.hanime.feature.comic
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,42 +34,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
-import app.amisles.hanime.core.ui.theme.LocalUiConfig
-import app.amisles.hanime.domain.model.ComicItem
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.size.Dimension
-import coil3.size.Precision
 import kotlinx.coroutines.flow.distinctUntilChanged
-
-private const val COMIC_COLUMNS = 3
-private const val COMIC_ASPECT_RATIO = 0.72f
-private const val COMIC_GRID_PADDING = 15
-private const val COMIC_GRID_GAP = 8
-private const val LOAD_MORE_THRESHOLD = 6
 
 @Composable
 fun ComicScreen(
     onBackClick: () -> Unit = {},
     onComicClick: (String) -> Unit = {},
+    onTagsClick: () -> Unit = {},
     viewModel: ComicViewModel = hiltViewModel()
 ) {
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -87,7 +71,7 @@ fun ComicScreen(
         }
             .distinctUntilChanged()
             .collect { (total, last) ->
-                if (total > 0 && last >= total - LOAD_MORE_THRESHOLD) viewModel.loadMore()
+                if (total > 0 && last >= total - COMIC_LOAD_MORE_THRESHOLD) viewModel.loadMore()
             }
     }
 
@@ -117,9 +101,13 @@ fun ComicScreen(
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 48.dp)
+                modifier = Modifier.weight(1f)
+            )
+            ComicEntryChip(
+                icon = Icons.Outlined.Sell,
+                label = stringResource(R.string.comic_tags_entry),
+                onClick = onTagsClick,
+                modifier = Modifier.padding(end = 12.dp)
             )
         }
 
@@ -147,10 +135,10 @@ fun ComicScreen(
             }
             else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val gap = COMIC_GRID_GAP.dp
-                val cardWidth = (maxWidth - COMIC_GRID_PADDING.dp * 2 - gap * (COMIC_COLUMNS - 1)) / COMIC_COLUMNS
+                val cardWidth = (maxWidth - COMIC_GRID_PADDING.dp * 2 - gap * (COMIC_GRID_COLUMNS - 1)) / COMIC_GRID_COLUMNS
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = GridCells.Fixed(COMIC_COLUMNS),
+                    columns = GridCells.Fixed(COMIC_GRID_COLUMNS),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = COMIC_GRID_PADDING.dp),
@@ -166,7 +154,7 @@ fun ComicScreen(
                             ComicSectionHeader(section.title)
                         }
                         items(section.items, key = { index.toString() + "-" + it.id }) { comic ->
-                            ComicCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
+                            ComicGridCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
                         }
                     }
                     if (isLoadingMore) {
@@ -216,50 +204,34 @@ private fun ComicSectionHeader(title: String) {
 }
 
 @Composable
-private fun ComicCard(comic: ComicItem, targetWidth: Dp, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
-    val context = LocalContext.current
-    val density = LocalDensity.current
-    val model = remember(comic.coverUrl, targetWidth, density) {
-        val widthPx = with(density) { targetWidth.roundToPx() }.coerceAtLeast(1)
-        val heightPx = (widthPx / COMIC_ASPECT_RATIO).toInt().coerceAtLeast(1)
-        ImageRequest.Builder(context)
-            .data(comic.coverUrl)
-            .size(Dimension.Pixels(widthPx), Dimension.Pixels(heightPx))
-            .precision(Precision.INEXACT)
-            .build()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
+private fun ComicEntryChip(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
             .clickable(onClick = onClick)
+            .padding(start = 9.dp, end = 11.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(COMIC_ASPECT_RATIO)
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(1.dp, MaterialTheme.colorScheme.outline, shape)
-        ) {
-            if (comic.coverUrl.isNotBlank()) {
-                AsyncImage(
-                    model = model,
-                    contentDescription = comic.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp)
+        )
         Text(
-            text = comic.title,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp)
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

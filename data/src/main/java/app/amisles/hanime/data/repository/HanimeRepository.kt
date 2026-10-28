@@ -17,6 +17,8 @@ import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
 import app.amisles.hanime.data.parser.LoginParser
 import app.amisles.hanime.data.parser.ComicDetailParser
+import app.amisles.hanime.data.parser.ComicDirectoryParser
+import app.amisles.hanime.data.parser.ComicDirectoryResultParser
 import app.amisles.hanime.data.parser.ComicPageParser
 import app.amisles.hanime.data.parser.ComicReaderParser
 import app.amisles.hanime.data.parser.SearchPageParser
@@ -25,8 +27,12 @@ import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.ComicChapter
 import app.amisles.hanime.domain.model.ComicDetail
+import app.amisles.hanime.domain.model.ComicDirectoryEntry
+import app.amisles.hanime.domain.model.ComicDirectoryKind
+import app.amisles.hanime.domain.model.ComicDirectoryResult
 import app.amisles.hanime.domain.model.ComicPage
 import app.amisles.hanime.domain.model.ComicProgress
+import app.amisles.hanime.domain.model.ComicSort
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteGroup
@@ -82,6 +88,8 @@ class HanimeRepository @Inject constructor(
     private val comicPageParser: ComicPageParser,
     private val comicDetailParser: ComicDetailParser,
     private val comicReaderParser: ComicReaderParser,
+    private val comicDirectoryParser: ComicDirectoryParser,
+    private val comicDirectoryResultParser: ComicDirectoryResultParser,
     private val comicProgressDao: ComicProgressDao
 ) : ContentRepository, LibraryRepository, AccountRepository, ComicRepository {
 
@@ -98,6 +106,37 @@ class HanimeRepository @Inject constructor(
         }
     }
 
+
+    override suspend fun getComicDirectory(
+        kind: ComicDirectoryKind
+    ): AppResult<List<ComicDirectoryEntry>> {
+        return try {
+            val result = networkService.fetchComicDirectoryPage(kind)
+            AppResult.success(comicDirectoryParser.parse(result.html, result.baseUrl, kind))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getComicDirectory: " + e.message, e)
+            val fallback = if (kind == ComicDirectoryKind.TAG) "加载标签失败" else "加载作者失败"
+            AppResult.error(e.message ?: fallback, e)
+        }
+    }
+
+    override suspend fun getComicDirectoryResult(
+        baseUrl: String,
+        sort: ComicSort,
+        page: Int
+    ): AppResult<ComicDirectoryResult> {
+        return try {
+            val result = networkService.fetchComicDirectoryResultPage(baseUrl, sort, page)
+            AppResult.success(comicDirectoryResultParser.parse(result.html, result.baseUrl))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("HanimeRepository", "Error in getComicDirectoryResult: " + e.message, e)
+            AppResult.error(e.message ?: "加载漫画列表失败", e)
+        }
+    }
 
     override suspend fun getComicDetail(comicId: String): AppResult<ComicDetail> {
         return try {

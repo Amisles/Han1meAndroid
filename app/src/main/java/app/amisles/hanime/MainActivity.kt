@@ -102,7 +102,9 @@ import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
+import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.feature.comic.ComicDetailScreen
+import app.amisles.hanime.feature.comic.ComicDirectoryScreen
 import app.amisles.hanime.feature.comic.ComicReaderScreen
 import app.amisles.hanime.feature.comic.ComicScreen
 import app.amisles.hanime.feature.settings.BackupScreen
@@ -343,6 +345,8 @@ fun HanimeApp(
         currentRoute != "backup" &&
         currentRoute != "crashLog" &&
         currentRoute != "comics" &&
+        currentRoute != "comicTags" &&
+        !currentRoute.startsWith("comicDirectory") &&
         currentRoute != "watchStats" &&
         currentRoute != "batchDownload" &&
         !currentRoute.startsWith("subscriptions") &&
@@ -539,7 +543,15 @@ fun HanimeApp(
                             onBackClick = { navController.popBackStack() },
                             onComicClick = { comicId ->
                                 navController.navigate("comicDetail?comicId=" + Uri.encode(comicId))
-                            }
+                            },
+                            onTagsClick = { navController.navigate("comicTags") }
+                        )
+                    }
+                    composable("comicTags") {
+                        ComicDirectoryScreen(
+                            kind = ComicDirectoryKind.TAG,
+                            onBackClick = { navController.popBackStack() },
+                            onEntryClick = {}
                         )
                     }
                     composable(
