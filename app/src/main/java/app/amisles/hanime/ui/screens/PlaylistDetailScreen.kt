@@ -2,7 +2,9 @@ package app.amisles.hanime.ui.screens
 import androidx.compose.foundation.layout.aspectRatio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,7 +54,9 @@ private val ROW_THUMB_WIDTH = 120.dp
 fun PlaylistDetailScreen(
     url: String = "",
     onBackClick: () -> Unit = {},
-    onVideoClick: (String) -> Unit = {}
+    onVideoClick: (String) -> Unit = {},
+    onVideoLongClick: (HanimeVideo) -> Unit = {},
+    onFavoriteAll: (List<HanimeVideo>) -> Unit = {}
 ) {
     val viewModel: PlaylistDetailViewModel = hiltViewModel()
     val playlistDetail by viewModel.playlistDetail.collectAsStateWithLifecycle()
@@ -96,7 +100,9 @@ fun PlaylistDetailScreen(
         } else if (playlistDetail != null) {
             PlaylistDetailContent(
                 detail = playlistDetail!!,
-                onVideoClick = onVideoClick
+                onVideoClick = onVideoClick,
+                onVideoLongClick = onVideoLongClick,
+                onFavoriteAll = { onFavoriteAll(playlistDetail!!.videos) }
             )
         }
     }
@@ -105,7 +111,9 @@ fun PlaylistDetailScreen(
 @Composable
 private fun PlaylistDetailContent(
     detail: app.amisles.hanime.domain.model.PlaylistDetail,
-    onVideoClick: (String) -> Unit = {}
+    onVideoClick: (String) -> Unit = {},
+    onVideoLongClick: (HanimeVideo) -> Unit = {},
+    onFavoriteAll: () -> Unit = {}
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -161,6 +169,16 @@ private fun PlaylistDetailContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 6.dp)
                     )
+
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = stringResource(CoreR.string.detail_favorite),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable(onClick = onFavoriteAll)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
 
                 if (detail.description.isNotEmpty()) {
@@ -192,7 +210,8 @@ private fun PlaylistDetailContent(
             ) { video ->
                 PlaylistVideoItem(
                     video = video,
-                    onClick = { onVideoClick(video.videoUrl) }
+                    onClick = { onVideoClick(video.videoUrl) },
+                    onLongClick = { onVideoLongClick(video) }
                 )
             }
         }
@@ -202,9 +221,11 @@ private fun PlaylistDetailContent(
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun PlaylistVideoItem(
     video: HanimeVideo,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null
 ) {
 
     Row(
@@ -214,7 +235,7 @@ private fun PlaylistVideoItem(
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
             .surfaceEdge(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
