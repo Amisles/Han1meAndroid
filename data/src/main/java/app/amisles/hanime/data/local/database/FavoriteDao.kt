@@ -34,6 +34,10 @@ interface FavoriteDao {
     @Query("UPDATE favorites SET group_id = :groupId WHERE id = :videoId")
     suspend fun setFavoriteGroup(videoId: String, groupId: String)
 
+    /** 批量移动收藏到分组；空集合会生成非法 SQL，由仓储层守卫。 */
+    @Query("UPDATE favorites SET group_id = :groupId WHERE id IN (:videoIds)")
+    suspend fun setFavoriteGroupForIds(videoIds: List<String>, groupId: String): Int
+
     /** 更新自定义标签（逗号分隔，已由调用方规范化）。 */
     @Query("UPDATE favorites SET tags = :tags WHERE id = :videoId")
     suspend fun setFavoriteTags(videoId: String, tags: String)

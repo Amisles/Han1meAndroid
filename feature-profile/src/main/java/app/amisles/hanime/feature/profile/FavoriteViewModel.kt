@@ -108,6 +108,16 @@ class FavoriteViewModel @Inject constructor(
         }
     }
 
+    fun moveFavoritesToGroup(videoIds: List<String>, groupId: String) {
+        if (videoIds.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = repository.moveFavoritesToGroup(videoIds, groupId)
+            val favorites = repository.getAllFavorites()
+            withContext(Dispatchers.Main) { _favorites.value = favorites }
+            reportWriteResult(ok)
+        }
+    }
+
     fun setTags(videoId: String, tags: List<String>) {
         viewModelScope.launch(Dispatchers.IO) {
             val ok = repository.setFavoriteTags(videoId, tags)

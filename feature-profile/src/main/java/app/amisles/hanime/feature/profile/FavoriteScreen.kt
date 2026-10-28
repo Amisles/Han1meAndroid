@@ -48,7 +48,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import android.widget.Toast
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
@@ -59,6 +62,8 @@ import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 
 private val ROW_THUMB_WIDTH = 140.dp
+
+internal enum class FavoriteSortMode { RECENT, TITLE, AUTHOR }
 
 @Composable
 fun FavoriteScreen(
@@ -81,6 +86,9 @@ fun FavoriteScreen(
     // null 表示「全部分组」；空串表示「未分组」
     var selectedGroupId by rememberSaveable { mutableStateOf<String?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var sortMode by rememberSaveable { mutableStateOf(FavoriteSortMode.RECENT) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
     var showCreateGroup by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var editingVideoId by remember { mutableStateOf("") }
@@ -89,7 +97,7 @@ fun FavoriteScreen(
     var editingGroupId by remember { mutableStateOf("") }
     var newTagInput by remember { mutableStateOf("") }
 
-    val visibleFavorites = remember(favorites, selectedGroupId, searchQuery) {
+    val visibleFavorites = remember(favorites, selectedGroupId, searchQuery, sortMode) {
         val keyword = searchQuery.trim()
         favorites.filter { video ->
             val groupOk = when (selectedGroupId) {
@@ -101,7 +109,13 @@ fun FavoriteScreen(
                 video.author.contains(keyword, ignoreCase = true) ||
                 video.tags.any { it.contains(keyword, ignoreCase = true) }
             groupOk && queryOk
-        }
+        }.sortedWith(
+            when (sortMode) {
+                FavoriteSortMode.RECENT -> compareByDescending { it.createdAt }
+                FavoriteSortMode.TITLE -> compareBy { it.title }
+                FavoriteSortMode.AUTHOR -> compareBy<FavoriteVideo> { it.author }.thenBy { it.title }
+            }
+        )
     }
 
     var isSelectionMode by remember { mutableStateOf(false) }
@@ -166,6 +180,44 @@ fun FavoriteScreen(
                 modifier = Modifier.weight(1f)
             )
             if (!isSelectionMode && favorites.isNotEmpty()) {
+                Box {
+                    Text(
+                        text = stringResource(R.string.favorite_sort),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable { sortMenuExpanded = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    DropdownMenu(
+                        expanded = sortMenuExpanded,
+                        onDismissRequest = { sortMenuExpanded = false }
+                    ) {
+                        FavoriteSortMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(
+                                            when (mode) {
+                                                FavoriteSortMode.RECENT -> R.string.favorite_sort_recent
+                                                FavoriteSortMode.TITLE -> R.string.favorite_sort_title
+                                                FavoriteSortMode.AUTHOR -> R.string.favorite_sort_author
+                                            }
+                                        ),
+                                        fontSize = 14.sp
+                                    )
+                                },
+                                trailingIcon = if (sortMode == mode) {
+                                    { Icon(Icons.Default.Check, contentDescription = null) }
+                                } else null,
+                                onClick = {
+                                    sortMode = mode
+                                    sortMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = stringResource(R.string.common_manage),
                     fontSize = 14.sp,
@@ -383,8 +435,28 @@ fun FavoriteScreen(
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+                Text(
+                    text = stringResource(R.string.favorite_group_label),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { showMoveDialog = true }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
         }
+    }
+
+    if (showMoveDialog) {
+        MoveToGroupDialog(
+            groups = groups,
+            onDismiss = { showMoveDialog = false },
+            onConfirm = { groupId ->
+                viewModel.moveFavoritesToGroup(selectedIds.toList(), groupId)
+                showMoveDialog = false
+                isSelectionMode = false
+            }
+        )
     }
 
     if (showDeleteConfirm) {
@@ -576,4 +648,55 @@ private fun FavoriteVideoItem(
             }
         }
     }
+}
+
+@Composable
+private fun MoveToGroupDialog(
+    groups: List<app.amisles.hanime.domain.model.FavoriteGroup>,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    FullScreenOverlayDialog(onDismiss = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.75f)
+                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.favorite_group_label),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+            )
+            GroupMoveOption(
+                label = stringResource(R.string.favorite_group_none),
+                onClick = { onConfirm(app.amisles.hanime.domain.model.FavoriteGroup.UNGROUPED_ID) }
+            )
+            groups.forEach { group ->
+                GroupMoveOption(
+                    label = group.name,
+                    onClick = { onConfirm(group.id) }
+                )
+            }
+            GroupMoveOption(
+                label = stringResource(R.string.common_cancel),
+                onClick = onDismiss
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupMoveOption(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        fontSize = 14.sp,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    )
 }
