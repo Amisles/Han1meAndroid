@@ -42,8 +42,10 @@ class DownloadService : Service() {
 
     companion object {
         const val CHANNEL_ID = "download_channel"
-        // 每个任务独立通知 id = BASE + taskId，避免并发互相覆盖
-        const val NOTIFICATION_ID_BASE = 1000
+        // 每个任务独立通知 id = BASE + taskId，避免并发互相覆盖。
+        // 取高段位：taskId 随历史任务单调递增（DB 最大 id 恢复），低位段（1000/2001）
+        // 会被长期累积的任务 id 撞上，与播放通知（2001）、订阅提醒（3001）互相覆盖。
+        private const val NOTIFICATION_ID_BASE = 1_000_000
 
         /** 尚未绑定到具体任务（taskId 非法）时的前台占位通知 id，与 BASE + taskId 不冲突。 */
         private const val NOTIFICATION_ID_PLACEHOLDER = NOTIFICATION_ID_BASE - 1
