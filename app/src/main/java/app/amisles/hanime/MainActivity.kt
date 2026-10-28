@@ -104,6 +104,7 @@ import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
 import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.feature.comic.ComicDetailScreen
+import app.amisles.hanime.feature.comic.ComicDirectoryResultScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryScreen
 import app.amisles.hanime.feature.comic.ComicReaderScreen
 import app.amisles.hanime.feature.comic.ComicScreen
@@ -279,6 +280,10 @@ internal fun moreUrlPageRoute(moreUrl: String): String? {
         else -> null
     }
 }
+
+/** 标签 / 作者作品列表路由：名称用于标题展示，地址用于拼接排序与分页。 */
+internal fun comicDirectoryRoute(kind: ComicDirectoryKind, name: String, url: String): String =
+    "comicDirectory?kind=" + kind.name + "&name=" + Uri.encode(name) + "&url=" + Uri.encode(url)
 
 internal fun percentDecode(raw: String): String {
     if ('%' !in raw) return raw
@@ -551,7 +556,44 @@ fun HanimeApp(
                         ComicDirectoryScreen(
                             kind = ComicDirectoryKind.TAG,
                             onBackClick = { navController.popBackStack() },
-                            onEntryClick = {}
+                            onEntryClick = { entry ->
+                                navController.navigate(
+                                    comicDirectoryRoute(ComicDirectoryKind.TAG, entry.name, entry.url)
+                                )
+                            }
+                        )
+                    }
+                    composable(
+                        route = "comicDirectory?kind={kind}&name={name}&url={url}",
+                        arguments = listOf(
+                            navArgument("kind") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("name") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("url") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val args = backStackEntry.arguments
+                        ComicDirectoryResultScreen(
+                            kind = ComicDirectoryKind.entries.firstOrNull {
+                                it.name == args?.getString("kind")
+                            } ?: ComicDirectoryKind.TAG,
+                            title = args?.getString("name").orEmpty(),
+                            url = args?.getString("url").orEmpty(),
+                            onBackClick = { navController.popBackStack() },
+                            onComicClick = { comicId ->
+                                navController.navigate("comicDetail?comicId=" + Uri.encode(comicId))
+                            }
                         )
                     }
                     composable(
