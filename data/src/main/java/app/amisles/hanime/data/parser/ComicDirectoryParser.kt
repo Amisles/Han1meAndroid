@@ -10,8 +10,8 @@ import javax.inject.Singleton
 /**
  * 标签 / 作者目录（/comics/tags、/comics/artists）解析。
  *
- * 两种目录结构一致：content-padding 内是一串 <a href="/tags/{name}"><div><span>名称</span><span>数量</span></div></a>。
- * 数量可能缺失；导航栏里的 /comics/tags 不含尾部斜杠，不会被误当成条目。
+ * 两者结构一致：<a href="/tags/{name}"><span>名称</span><span>数量</span></a>，数量可能缺失；
+ * 导航栏里的 /comics/tags 不含尾部斜杠，不会被误当成条目。
  */
 @Singleton
 class ComicDirectoryParser @Inject constructor() {

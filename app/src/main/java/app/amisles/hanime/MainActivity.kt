@@ -75,6 +75,7 @@ import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.CloudflareChallenge
+import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
@@ -102,7 +103,6 @@ import app.amisles.hanime.feature.search.sortOptions
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.feature.settings.AboutScreen
 import app.amisles.hanime.feature.settings.AuthorScreen
-import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.feature.comic.ComicDetailScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryResultScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryScreen
@@ -281,7 +281,6 @@ internal fun moreUrlPageRoute(moreUrl: String): String? {
     }
 }
 
-/** 标签 / 作者作品列表路由：名称用于标题展示，地址用于拼接排序与分页。 */
 internal fun comicDirectoryRoute(kind: ComicDirectoryKind, name: String, url: String): String =
     "comicDirectory?kind=" + kind.name + "&name=" + Uri.encode(name) + "&url=" + Uri.encode(url)
 

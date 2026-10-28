@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -258,16 +259,9 @@ private fun ComicSortBar(selected: ComicSort, onSelect: (ComicSort) -> Unit) {
 @Composable
 private fun ComicSortChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
-    Text(
-        text = label,
-        fontSize = 13.sp,
-        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-        color = if (selected) {
-            MaterialTheme.colorScheme.onPrimary
-        } else {
-            MaterialTheme.colorScheme.onBackground
-        },
+    Box(
         modifier = Modifier
+            .heightIn(min = 32.dp)
             .clip(shape)
             .background(
                 if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
@@ -278,6 +272,18 @@ private fun ComicSortChip(label: String, selected: Boolean, onClick: () -> Unit)
                 shape = shape
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 6.dp)
-    )
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            color = if (selected) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onBackground
+            }
+        )
+    }
 }
