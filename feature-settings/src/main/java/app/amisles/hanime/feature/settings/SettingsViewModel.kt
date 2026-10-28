@@ -237,8 +237,10 @@ class SettingsViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     val cacheDir = app.cacheDir
                     if (!cacheDir.exists()) 0
-                    // 统计删除失败的条目（被占用的文件会删除失败），据此提示用户真实结果
-                    else cacheDir.listFiles()?.count { !it.deleteRecursively() } ?: 0
+                    else cacheDir.listFiles()
+                        ?.filter { it.name !in PERSISTENT_CACHE_DIRS }
+                        ?.count { !it.deleteRecursively() }
+                        ?: 0
                 }
             }
             result.fold(
@@ -256,5 +258,11 @@ class SettingsViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    private companion object {
+        /** ExoPlayer SimpleCache 与 Coil DiskCache 的进程级实例常驻打开，删除其目录会让写入失效；
+         *  两者各有容量上限与 LRU 淘汰，不参与「清除缓存」。 */
+        val PERSISTENT_CACHE_DIRS = setOf("exoplayer-video-cache", "image_cache")
     }
 }
