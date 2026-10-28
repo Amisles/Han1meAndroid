@@ -569,7 +569,11 @@ fun HanimeApp(
                         ComicDirectoryScreen(
                             kind = ComicDirectoryKind.ARTIST,
                             onBackClick = { navController.popBackStack() },
-                            onEntryClick = {}
+                            onEntryClick = { entry ->
+                                navController.navigate(
+                                    comicDirectoryRoute(ComicDirectoryKind.ARTIST, entry.name, entry.url)
+                                )
+                            }
                         )
                     }
                     composable(
