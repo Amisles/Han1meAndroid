@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.IBinder
 import android.os.PowerManager
@@ -60,6 +61,9 @@ class DownloadService : Service() {
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
+
+        /** 下载完成事件携带的成品文件绝对路径，用于通知点击直达本地播放页。 */
+        const val EXTRA_FILE_PATH = "extra_file_path"
 
         /** 取消/删除任务：撤销通知并从活动集合移除。需与 DownloadManager 侧同名常量手工保持一致。 */
         const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
@@ -187,7 +191,11 @@ class DownloadService : Service() {
             // 暂停不计入活动下载，否则前台服务与通知永不释放
             status == DownloadStatus.PAUSED -> handlePaused(taskId, title ?: "", progress, startId)
             // 完成 / 失败：发普通通知，且仅当所有任务结束才退出前台
-            status == DownloadStatus.COMPLETED -> handleTerminal(taskId, buildCompletedNotification(title ?: ""), startId)
+            status == DownloadStatus.COMPLETED -> handleTerminal(
+                taskId,
+                buildCompletedNotification(title ?: "", intent?.getStringExtra(EXTRA_FILE_PATH) ?: "", taskId),
+                startId
+            )
             status == DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(title ?: ""), startId)
             // 默认（含 DOWNLOADING / 无状态）：按进度通知处理
             else -> handleProgress(taskId, title ?: "", progress, status, startId)
@@ -418,7 +426,7 @@ class DownloadService : Service() {
             .build()
     }
 
-    private fun buildCompletedNotification(title: String): Notification {
+    private fun buildCompletedNotification(title: String, filePath: String = "", taskId: Int = -1): Notification {
         val displayTitle = title.ifEmpty { getString(R.string.download_notification_completed) }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
@@ -426,7 +434,7 @@ class DownloadService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setOngoing(false)
             .setAutoCancel(true)
-            .setContentIntent(buildContentIntent())
+            .setContentIntent(buildContentIntent(taskId, filePath.takeIf { it.isNotBlank() }))
             .build()
     }
 
@@ -442,14 +450,21 @@ class DownloadService : Service() {
             .build()
     }
 
-    /** 构建点击通知后的 PendingIntent，打开 MainActivity。 */
-    private fun buildContentIntent(): PendingIntent {
+    /** 构建点击通知后的 PendingIntent：完成/失败通知携带成品文件路径，直达本地播放页。 */
+    private fun buildContentIntent(taskId: Int = -1, filePath: String? = null): PendingIntent {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            if (filePath != null) {
+                action = MainActivity.ACTION_PLAY_LOCAL
+                data = Uri.parse("file://$filePath")
+                putExtra(MainActivity.EXTRA_OPEN_FILE_PATH, filePath)
+            }
+            putExtra(EXTRA_TASK_ID, taskId)
         }
+        val requestCode = if (filePath != null) (taskId * 2 + 1) else 0
         return PendingIntent.getActivity(
             this,
-            0,
+            requestCode,
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )

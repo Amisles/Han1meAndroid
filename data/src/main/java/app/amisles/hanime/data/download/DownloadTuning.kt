@@ -23,6 +23,8 @@ internal const val EXTRA_TASK_ID = "extra_task_id"
 internal const val EXTRA_TITLE = "extra_title"
 internal const val EXTRA_PROGRESS = "extra_progress"
 internal const val EXTRA_STATUS = "extra_status"
+// 完成事件携带的成品文件路径；DownloadService 侧同名常量手工保持一致
+internal const val EXTRA_FILE_PATH = "extra_file_path"
 internal const val MAX_REQUESTS_PER_HOST = 16
 internal const val MAX_IDLE_CONNECTIONS = 16
 internal const val KEEP_ALIVE_SECONDS = 60L

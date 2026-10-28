@@ -1101,6 +1101,14 @@ class DownloadManager @Inject constructor(
         progressUpdate?.let { (id, title, progress, status) ->
             onProgressUpdate?.invoke(id, title, progress, status)
         }
+        // 完成事件额外携带成品文件路径，通知点击即可直达本地播放页
+        val completedPath = progressUpdate
+            ?.takeIf { it.status == DownloadStatus.COMPLETED }
+            ?.let { taskMap[taskId]?.filePath }
+            .orEmpty()
+        if (completedPath.isNotBlank()) {
+            forwardToService(context, progressUpdate!!.title, 100, DownloadStatus.COMPLETED, taskId, completedPath)
+        }
     }
     internal fun trackCall(taskId: Int, call: Call) {
         taskCalls.computeIfAbsent(taskId) { ConcurrentLinkedQueue() }.add(call)
@@ -1628,7 +1636,8 @@ class DownloadManager @Inject constructor(
         title: String,
         progress: Int,
         status: DownloadStatus,
-        taskId: Int
+        taskId: Int,
+        filePath: String = ""
     ) {
         val intent = Intent().apply {
             setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
@@ -1636,6 +1645,7 @@ class DownloadManager @Inject constructor(
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_PROGRESS, progress)
             putExtra(EXTRA_STATUS, status.name)
+            if (filePath.isNotBlank()) putExtra(EXTRA_FILE_PATH, filePath)
         }
         val firstTime = downloadServiceStarted.compareAndSet(false, true)
         try {
