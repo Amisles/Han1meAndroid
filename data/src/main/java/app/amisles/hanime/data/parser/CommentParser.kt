@@ -202,14 +202,12 @@ class CommentParser @Inject constructor() {
     }
 
     /**
-     * 解析回复数：load-replies-btn 文本形如 "查看 3 则回覆"，用正则提取数字。
+     * 解析回复数：load-replies-btn 文本形如 "查看 3 則回覆"。
      * 没有 load-replies-btn 表示该评论无回复。
      */
     private fun parseReplyCount(likeWrapper: org.jsoup.nodes.Element): Int {
         val btn = likeWrapper.selectFirst(".load-replies-btn") ?: return 0
-        val text = btn.text()
-        val match = Regex("(\\d+)").find(text) ?: return 0
-        return match.value.toIntOrNull() ?: 0
+        return parseReplyCountFromText(btn.text())
     }
 
     /**
@@ -392,4 +390,18 @@ class CommentParser @Inject constructor() {
     private fun parseReplyLikeCount(likeWrapper: org.jsoup.nodes.Element): Int {
         return extractCountAfter(likeWrapper, "thumb_up")
     }
+}
+
+/**
+ * 从「查看 1,234 則回覆」这类文案里取回复数。
+ *
+ * 站点会给上千的回复数加千分位，只取第一段连续数字会得到 1；这里允许数字之间夹逗号，
+ * 取到后统一去分隔符再转 Int。没有数字（或超出 Int 范围）返回 0。
+ *
+ * 独立成顶层函数：parse() 依赖 android.util.JSONObject，在 JVM 单测里不可用，
+ * 而这条规则是纯字符串逻辑，单独测试才能覆盖到。
+ */
+internal fun parseReplyCountFromText(text: String): Int {
+    val match = Regex("(\\d[\\d,]*)").find(text) ?: return 0
+    return match.value.replace(",", "").toIntOrNull() ?: 0
 }
