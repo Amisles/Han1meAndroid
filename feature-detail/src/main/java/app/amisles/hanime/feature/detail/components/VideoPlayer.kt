@@ -216,7 +216,9 @@ fun VideoPlayer(
     var rebufferCount by remember { mutableStateOf(0) }
     var autoSwitched by remember { mutableStateOf(false) }
     var stableTicks by remember { mutableStateOf(0) }
-    // 用户从清晰度菜单手动选择后置位：本次播放内不再被 ABR 覆盖（切集进入新页面时自然复位）
+    // 用户从清晰度菜单手动选择后置位：本次播放内不再被 ABR 覆盖。复位只依赖实例重建：
+    // 切集/连播都是导航替换条目（新页面 = 新播放器 = 新实例）；不能以 initialSourceUrl 变化
+    // 作为复位信号 —— 手动切画质回写偏好后 initialSourceUrl 也会变，会把刚设置的锁定误清
     var manualQualityOverride by remember { mutableStateOf(false) }
     // 上一次播放状态：用于区分「首次起播 / 换源的缓冲」与「播放中重新缓冲」
     var lastPlaybackState by remember { mutableStateOf(Player.STATE_IDLE) }
@@ -229,7 +231,10 @@ fun VideoPlayer(
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
     val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu)
-    val initialSeekAppliedRef = remember(initialSourceUrl) { mutableStateOf(false) }
+    // 续播标记跟随播放器实例（一次实例 = 一部视频），不能以 initialSourceUrl 为键：
+    // 画质切换会经「偏好回写 → 父级重组 → initialSourceUrl 变化」把标记复位，
+    // 之后任意一次缓冲恢复（BUFFERING→READY）都会把位置跳回续播点，吞掉用户当前进度
+    val initialSeekAppliedRef = remember(exoPlayer) { mutableStateOf(false) }
 
     // ── 清晰度切换 ──────────────────────────────────────────────────────────
     /**
@@ -268,7 +273,9 @@ fun VideoPlayer(
         exoPlayer.seekTo(position)
         if (wasPlaying) exoPlayer.play()
 
-        onQualityChanged(source.resolution)
+        // 只有手动选择才回写持久化画质偏好：ABR 自动换源若也回写，弱网两次卡顿
+        // 就会把用户显式设置的默认画质永久改成降档值（影响之后所有新视频的起播画质）
+        if (userInitiated) onQualityChanged(source.resolution)
     }
 
     /** 失败态重试：清除错误后重新 prepare 当前媒体项，并尽量回到原播放位置。 */
@@ -432,11 +439,6 @@ fun VideoPlayer(
     // 切换视频时重置海报占位显示状态（posterUrl 变化即新视频）
     LaunchedEffect(posterUrl) {
         showPoster = posterUrl.isNotEmpty()
-    }
-
-    // 换片源即视为新视频：手动画质锁定不应跨视频生效
-    LaunchedEffect(initialSourceUrl) {
-        manualQualityOverride = false
     }
 
     DisposableEffect(Unit) {

@@ -112,6 +112,7 @@ fun ComicReaderScreen(
                     startPage = state.currentPage,
                     jumpTarget = jumpTarget,
                     onJumpHandled = { jumpTarget = null },
+                    onJumpTo = { jumpTarget = it },
                     onPageChanged = viewModel::onPageChanged,
                     onToggleChrome = toggleChrome
                 )
@@ -188,6 +189,7 @@ private fun PagedReader(
     startPage: Int,
     jumpTarget: Int?,
     onJumpHandled: () -> Unit,
+    onJumpTo: (Int) -> Unit,
     onPageChanged: (Int) -> Unit,
     onToggleChrome: () -> Unit
 ) {
@@ -220,12 +222,14 @@ private fun PagedReader(
                 modifier = Modifier.fillMaxSize()
             )
             Row(modifier = Modifier.fillMaxSize()) {
+                // 点击翻页必须走 jumpTarget（驱动 Pager 实际滚动），不能直接 onPageChanged：
+                // 那只会推进 VM 页码并写入阅读进度，画面不动，进度也被未看过的页污染
                 TapZone(weight = 0.3f) {
-                    if (index > 0) onPageChanged(index)
+                    if (index > 0) onJumpTo(index)
                 }
                 TapZone(weight = 0.4f) { onToggleChrome() }
                 TapZone(weight = 0.3f) {
-                    if (index < pages.lastIndex) onPageChanged(index + 2)
+                    if (index < pages.lastIndex) onJumpTo(index + 2)
                 }
             }
         }

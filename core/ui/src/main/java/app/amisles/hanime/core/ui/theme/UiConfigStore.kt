@@ -64,6 +64,15 @@ object UiConfigStore {
     private val _homeSections = MutableStateFlow(HomeSectionConfig.Default)
     val homeSections: StateFlow<HomeSectionConfig> = _homeSections.asStateFlow()
 
+    // 滑杆「预览改内存、提交补落盘」的脏标记：拖动期间 updatePreviewOnly 只改内存，
+    // 松手提交值与最后一次预览值恒等，若 set() 因相等早退就永远轮不到落盘（重启即回滚）。
+    // 只在主线程的 Compose 回调间传递，@Volatile 兜底非主线程调用（导入/恢复）的可见性。
+    @Volatile
+    private var configPreviewDirty = false
+
+    @Volatile
+    private var homeSectionsPreviewDirty = false
+
     @Synchronized
     fun init(context: Context) {
         if (initialized) return
@@ -75,8 +84,16 @@ object UiConfigStore {
 
     fun set(config: UiConfig) {
         val safe = config.sanitized()
-        if (safe == _config.value) return
+        if (safe == _config.value) {
+            // 值虽相等，但内存可能带着从未落盘的预览漂移（滑杆松手提交正是如此），补写一次
+            if (configPreviewDirty) {
+                configPreviewDirty = false
+                if (initialized) persistAsync { write(safe) }
+            }
+            return
+        }
         if (initialized) persistAsync { write(safe) }
+        configPreviewDirty = false
         _config.value = safe
     }
 
@@ -85,13 +102,24 @@ object UiConfigStore {
     /** 仅更新内存中的预览值，不落盘；供滑杆拖动期间高频调用，拖动结束时用 [set] 持久化。 */
     fun updatePreviewOnly(transform: (UiConfig) -> UiConfig) {
         val safe = transform(_config.value).sanitized()
-        if (safe != _config.value) _config.value = safe
+        if (safe != _config.value) {
+            _config.value = safe
+            configPreviewDirty = true
+        }
     }
 
     fun setHomeSections(config: HomeSectionConfig) {
         val safe = config.sanitized()
-        if (safe == _homeSections.value) return
+        if (safe == _homeSections.value) {
+            // 同 [set]：预览漂移未落盘时，相等提交也要补写
+            if (homeSectionsPreviewDirty) {
+                homeSectionsPreviewDirty = false
+                if (initialized) persistAsync { writeHomeSections(safe) }
+            }
+            return
+        }
         if (initialized) persistAsync { writeHomeSections(safe) }
+        homeSectionsPreviewDirty = false
         _homeSections.value = safe
     }
 
@@ -101,7 +129,10 @@ object UiConfigStore {
     /** 仅更新内存中的首页分区预览值，不落盘；与 [updatePreviewOnly] 对称。 */
     fun updateHomeSectionsPreviewOnly(transform: (HomeSectionConfig) -> HomeSectionConfig) {
         val safe = transform(_homeSections.value).sanitized()
-        if (safe != _homeSections.value) _homeSections.value = safe
+        if (safe != _homeSections.value) {
+            _homeSections.value = safe
+            homeSectionsPreviewDirty = true
+        }
     }
 
     fun reset() {

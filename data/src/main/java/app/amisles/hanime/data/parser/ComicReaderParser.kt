@@ -15,6 +15,11 @@ import javax.inject.Singleton
 @Singleton
 class ComicReaderParser @Inject constructor() {
 
+    companion object {
+        /** 单话页数的合理性上限，防御 data-pages 被污染成超大值导致 OOM。 */
+        private const val MAX_PLAUSIBLE_PAGES = 2000
+    }
+
     fun parse(html: String, baseUrl: String, comicId: String): ComicChapter {
         val doc = Jsoup.parse(html, baseUrl)
         val img = doc.selectFirst("#current-page-image")
@@ -31,7 +36,12 @@ class ComicReaderParser @Inject constructor() {
         val extensions = readExtensions(doc)
         val declaredPages = doc.selectFirst(".comic-show-content-nav")
             ?.attr("data-pages")?.trim()?.toIntOrNull() ?: 0
-        val pageCount = declaredPages.takeIf { it > 0 } ?: extensions.size
+        // data-pages 是站点直供属性，无上限约束：异常大值（缓存污染/渲染异常）会在下方
+        // (1..pageCount).map 处急切展开成巨型列表直接 OOM，且 OOM 是 Error，仓库层 catch 拦不住。
+        // 上限取「扩展名数组长度」与保守常数的较大者 —— 数组来自页面内联脚本、每项对应真实页，
+        // 站点真出了超常页数时以它为准，不被常数误截。
+        val pageCount = (declaredPages.takeIf { it > 0 } ?: extensions.size)
+            .coerceAtMost(maxOf(extensions.size, MAX_PLAUSIBLE_PAGES))
 
         if (prefix.isEmpty() || pageCount <= 0) return ComicChapter(comicId, 0, emptyList())
 
