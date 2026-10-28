@@ -90,6 +90,12 @@ interface DownloadRepository {
 
     /** 重新扫描下载目录，把尚未登记的历史成品文件补进任务列表；返回新认领的数量。 */
     suspend fun rescanExistingDownloads(): Int
+
+    /** 外部数据源（备份导入等）直接写入了下载表后，把自增 id 计数器抬到已知区间之上。 */
+    fun adoptDownloadIdCeiling(maxId: Int)
+
+    /** 外部数据源可能占用比当前计数器更小的 id，导入后把下界一并纳入保护。 */
+    fun adoptDownloadIdFloor(minId: Int)
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean
     fun isVideoDownloading(videoId: String, quality: String = ""): Boolean
     fun getDownloadStatus(videoId: String): DownloadStatus?

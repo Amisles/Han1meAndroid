@@ -118,6 +118,10 @@ class DownloadManager @Inject constructor(
      */
     private val pauseEpoch = ConcurrentHashMap<Int, AtomicLong>()
     private val taskIdCounter = AtomicInteger(0)
+
+    /** 备份导入等外部写入会占用任意 id；记录已占用的下界，新建任务的 id 一律跳过该区间。 */
+    @Volatile
+    private var reservedIdFloor: Int = 0
     private val scopeJob = SupervisorJob()
     private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val tasksLock = ReentrantLock()
@@ -360,7 +364,7 @@ class DownloadManager @Inject constructor(
         val adopted = mutableListOf<DownloadTask>()
         tasksLock.withLock {
             discovered.forEach { item ->
-                val nextId = taskIdCounter.incrementAndGet()
+                val nextId = nextTaskId()
                 val task = DownloadTask(
                     id = nextId,
                     title = item.title,
@@ -440,7 +444,7 @@ class DownloadManager @Inject constructor(
                 return@withLock
             }
 
-            val taskId = taskIdCounter.incrementAndGet()
+            val taskId = nextTaskId()
 
             val task = DownloadTask(
                 id = taskId,
@@ -838,6 +842,34 @@ class DownloadManager @Inject constructor(
             compareBy({ order.indexOf(it.id).takeIf { i -> i >= 0 } ?: Int.MAX_VALUE }, { it.id })
         )
         return pendingTask?.takeIf { activeSlots.get() < concurrencyLimit }
+    }
+
+    override fun adoptDownloadIdCeiling(maxId: Int) {
+        if (maxId <= 0) return
+        while (true) {
+            val current = taskIdCounter.get()
+            if (current >= maxId) return
+            if (taskIdCounter.compareAndSet(current, maxId)) {
+                AppLogger.log("DownloadManager", "已采纳外部下载 id 上界: $maxId")
+                return
+            }
+        }
+    }
+
+    override fun adoptDownloadIdFloor(minId: Int) {
+        if (minId <= 0) return
+        if (minId > reservedIdFloor) reservedIdFloor = minId
+    }
+
+    private fun nextTaskId(): Int {
+        while (true) {
+            val candidate = taskIdCounter.incrementAndGet()
+            if (candidate < reservedIdFloor) {
+                taskIdCounter.updateAndGet { if (it < reservedIdFloor) reservedIdFloor else it }
+                continue
+            }
+            return candidate
+        }
     }
 
     override fun moveToFront(taskId: Int) {
@@ -1498,7 +1530,7 @@ class DownloadManager @Inject constructor(
             pending.forEach { (entry, newPath) ->
                 // 写盘期间可能有同路径任务被创建，入锁后再确认一次
                 if (taskMap.values.any { it.filePath == newPath }) return@forEach
-                val id = taskIdCounter.incrementAndGet()
+                val id = nextTaskId()
                 val task = DownloadMigrationCodec.toTask(entry, newPath).copy(id = id)
                 taskMap[id] = task
                 persistTask(task)

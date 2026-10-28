@@ -31,6 +31,9 @@ interface DownloadDao {
     @Query("SELECT MAX(id) FROM download_tasks")
     suspend fun getMaxId(): Int?
 
+    @Query("SELECT MIN(id) FROM download_tasks")
+    suspend fun getMinId(): Int?
+
     @Query("DELETE FROM download_tasks")
     suspend fun clearAll()
 }

@@ -27,6 +27,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.BackupRepository
+import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +52,8 @@ class BackupManager @Inject constructor(
     private val watchHistoryDao: WatchHistoryDao,
     private val downloadDao: DownloadDao,
     private val searchHistoryDao: SearchHistoryDao,
-    private val settings: SettingsRepository
+    private val settings: SettingsRepository,
+    private val downloads: DownloadRepository
 ) : BackupRepository {
 
     override suspend fun exportBackup(extraFiles: Map<String, String>): ByteArray =
@@ -133,6 +135,14 @@ class BackupManager @Inject constructor(
         }
 
         val settingsApplied = contents.settings?.let { applySettings(it); true } ?: false
+
+        // 导入的下载任务保留了源设备的主键 id，而运行中的 DownloadManager 只在进程启动时
+        // 同步过一次自增计数器；不同步会让之后新建的任务撞上导入行的 id，
+        // upsert(REPLACE) 会静默覆盖掉刚导入的记录。导入完成后立即向两侧扩张计数器。
+        if (contents.downloads.isNotEmpty()) {
+            downloadDao.getMaxId()?.let { downloads.adoptDownloadIdCeiling(it) }
+            downloadDao.getMinId()?.let { downloads.adoptDownloadIdFloor(it) }
+        }
 
         val summary = BackupImportSummary(
             favorites = contents.favorites.size,
