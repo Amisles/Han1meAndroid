@@ -143,9 +143,16 @@ fun SearchScreen(
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
 
-    // 人机校验通过后自动重搜，与首页一致
+    // 人机校验通过后自动重搜，与首页一致。
+    //
+    // solvedTick 是**进程级累计值**，不会归零；若只按「>0 就重搜」判断，从详情页返回（本页重新组合、
+    // LaunchedEffect 必然重跑）就会再搜一次：既白跑一次请求，又会推进搜索代数、把列表滚回顶部。
+    // 故记住本页已处理过的 tick，只响应「本页在场期间新发生的那次通过」。
     val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
+    var handledSolvedTick by remember { mutableStateOf(solvedTick) }
     androidx.compose.runtime.LaunchedEffect(solvedTick) {
+        if (solvedTick == handledSolvedTick) return@LaunchedEffect
+        handledSolvedTick = solvedTick
         if (solvedTick > 0) viewModel.resetSearch()
     }
 
@@ -214,9 +221,19 @@ fun SearchScreen(
 
     // 新一轮搜索把列表滚回顶部：换词/换条件后旧滚动态会残留（新结果不足时被 clamp 到末尾），
     // 用户看到的是新结果的尾部而非顶部；残留位置又满足 nearEnd，会连锁触发一次多余的分页请求。
+    //
+    // 但「每次进入组合都回顶」是错的：从详情页返回时本页会重新组合，LaunchedEffect 必然重跑，
+    // 一跑就会把导航条目里恢复出来的 LazyListState 当场抹掉 —— 用户下拉的进度全部丢失。
+    // 故用 handledGeneration 记住「本页已经处理过的代数」，只有代数真的前进（确实开了新一轮搜索）
+    // 才回顶；首次组合时初值即当前代数（或由 rememberSaveable 恢复），天然跳过，
+    // 滚动位置交给 rememberLazyListState 自带的保存 / 恢复。
     val searchGeneration by viewModel.searchGeneration.collectAsStateWithLifecycle()
+    // 用 rememberSaveable 而非 remember：若「提交搜索后立刻进详情」，回顶的 effect 可能还没跑，
+    // 随导航条目一起保存的旧代数会让返回时补做一次回顶，避免新结果配着旧滚动位置。
+    var handledGeneration by rememberSaveable { mutableStateOf(searchGeneration) }
     androidx.compose.runtime.LaunchedEffect(searchGeneration) {
-        // 首次组合（generation=0）也会执行一次，列表本就在顶部，无副作用
+        if (searchGeneration == handledGeneration) return@LaunchedEffect
+        handledGeneration = searchGeneration
         gridState.scrollToItem(0)
         listState.scrollToItem(0)
     }
