@@ -312,9 +312,7 @@ class DownloadManager @Inject constructor(
                 val interruptedIds = entities.filter {
                     it.status == DownloadStatus.DOWNLOADING.name
                 }.map { it.id }
-                tasksLock.withLock {
-                    interruptedIds.forEach { resumeDownloadInternal(it) }
-                }
+                interruptedIds.forEach { resumeDownloadInternal(it) }
                 // 避免进程重启后这些任务永久挂起、只能手动恢复。
                 startNextPendingTask()
             } catch (e: SQLiteException) {
@@ -653,13 +651,20 @@ class DownloadManager @Inject constructor(
             if (task.status != DownloadStatus.PENDING) {
                 updateTask(task.id) { it.copy(status = DownloadStatus.PENDING) }
             }
-            // 通知栏说明等待原因，避免用户以为下载卡死
-            onProgressUpdate?.invoke(
-                task.id,
-                task.title,
-                gateProgress(task),
-                DownloadStatus.PENDING
-            )
+            // 通知栏说明等待原因，避免用户以为下载卡死。
+            // 本方法在调用方的 tasksLock 内执行：forwardToService 是跨进程 IPC，
+            // 不能同步跑在锁里（updateTask 已把同类转发移出锁外），这里挪到 IO 作用域异步转发。
+            val gateNoticeTaskId = task.id
+            val gateNoticeTitle = task.title
+            val gateNoticeProgress = gateProgress(task)
+            scope.launch {
+                onProgressUpdate?.invoke(
+                    gateNoticeTaskId,
+                    gateNoticeTitle,
+                    gateNoticeProgress,
+                    DownloadStatus.PENDING
+                )
+            }
             return
         }
         // 占不到槽位则退回 PENDING，由 finally 的链式调度重新推导续传起点后拾起
