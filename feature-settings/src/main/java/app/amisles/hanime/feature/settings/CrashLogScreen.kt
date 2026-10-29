@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import java.text.SimpleDateFormat
@@ -154,17 +155,13 @@ fun CrashLogScreen(
             modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp)
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.End
+        WrappingActionRow(
+            modifier = Modifier.padding(horizontal = 15.dp, vertical = 6.dp)
         ) {
             ActionChip(
                 label = stringResource(R.string.crash_log_export),
                 onClick = { viewModel.prepareExport() }
             )
-            Spacer(modifier = Modifier.size(8.dp))
             ActionChip(
                 label = stringResource(R.string.crash_log_clear),
                 danger = true,

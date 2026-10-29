@@ -69,6 +69,7 @@ import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.SearchField
+import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.R
@@ -404,11 +405,8 @@ fun DownloadScreen(
 
         // 导入入口始终可用：换机后列表为空正是最需要导入的时候
         if (!isSelectionMode) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 15.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.End
+            WrappingActionRow(
+                modifier = Modifier.padding(horizontal = 15.dp, vertical = 2.dp)
             ) {
                 if (tasks.isNotEmpty()) {
                     QueueActionButton(
@@ -423,7 +421,6 @@ fun DownloadScreen(
                             }
                         }
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                 }
                 QueueActionButton(
                     label = stringResource(R.string.download_migration_import),
@@ -432,7 +429,6 @@ fun DownloadScreen(
                     }
                 )
                 if (downloadingTasks.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(8.dp))
                     QueueActionButton(
                         label = stringResource(R.string.download_queue_pause_all),
                         onClick = {
@@ -449,7 +445,6 @@ fun DownloadScreen(
                     )
                 }
                 if (pausedTasks.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(8.dp))
                     QueueActionButton(
                         label = stringResource(R.string.download_queue_resume_all),
                         onClick = { viewModel.resumeAll() }
