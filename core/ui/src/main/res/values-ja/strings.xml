@@ -634,6 +634,10 @@
     <string name="customize_card_show_author">投稿者を表示</string>
     <string name="customize_card_show_time">公開日を表示</string>
     <string name="customize_card_show_badges">バッジを表示</string>
+    <string name="customize_group_banner">ホームの大画像</string>
+    <string name="customize_banner_height">大画像の高さ</string>
+    <string name="customize_banner_tags">タグを表示</string>
+    <string name="customize_banner_max_tags">タグの数</string>
     <string name="customize_group_appearance">外観</string>
     <string name="customize_seed">アクセントカラー</string>
     <string name="customize_seed_brand">ブランドレッド</string>

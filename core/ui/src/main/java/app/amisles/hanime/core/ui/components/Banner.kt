@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.HanimeBanner
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -47,11 +48,12 @@ fun Banner(
     onSearchClick: (String) -> Unit = {},
     onTagClick: (String) -> Unit = {}
 ) {
+    val cfg = LocalUiConfig.current
     val clickable = bannerData.videoUrl.isNotEmpty() || bannerData.title.isNotEmpty()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp)
+            .height(cfg.bannerHeight)
             .clickable(enabled = clickable) {
                 if (bannerData.videoUrl.isNotEmpty()) {
                     onPlayClick()
@@ -130,10 +132,10 @@ fun Banner(
                 modifier = Modifier.padding(bottom = 10.dp)
             )
 
-            Row(
+            if (cfg.bannerShowTags && cfg.bannerMaxTags > 0 && bannerData.tags.isNotEmpty()) Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                bannerData.tags.take(5).forEach { tag ->
+                bannerData.tags.take(cfg.bannerMaxTags).forEach { tag ->
                     val chipShape = RoundedCornerShape(10.dp)
                     Text(
                         text = tag,

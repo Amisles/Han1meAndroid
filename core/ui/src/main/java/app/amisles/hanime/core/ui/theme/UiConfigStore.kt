@@ -50,6 +50,9 @@ object UiConfigStore {
     private const val K_CARD_SHOW_TIME = "card_show_time"
     private const val K_CARD_SHOW_BADGES = "card_show_badges"
     private const val K_CARD_CORNER_MODE = "card_corner_mode"
+    private const val K_BANNER_HEIGHT = "banner_height"
+    private const val K_BANNER_SHOW_TAGS = "banner_show_tags"
+    private const val K_BANNER_MAX_TAGS = "banner_max_tags"
     private const val K_SECTION_VISIBLE_COUNT = "section_visible_count"
     private const val K_SECTION_LAYOUTS = "section_layouts"
     private const val K_SECTION_ORDER = "section_order"
@@ -221,6 +224,9 @@ object UiConfigStore {
                 cornerMode = CornerMode.entries.firstOrNull { it.name == readRaw(K_CARD_CORNER_MODE) }
                     ?: d.card.cornerMode,
             ),
+            bannerHeight = readFloat(K_BANNER_HEIGHT, d.bannerHeight.value).dp,
+            bannerShowTags = readBoolean(K_BANNER_SHOW_TAGS, d.bannerShowTags),
+            bannerMaxTags = readInt(K_BANNER_MAX_TAGS, d.bannerMaxTags),
         ).sanitized()
     }
 
@@ -262,6 +268,9 @@ object UiConfigStore {
             putBoolean(K_CARD_SHOW_TIME, cfg.card.showPublishTime)
             putBoolean(K_CARD_SHOW_BADGES, cfg.card.showBadges)
             putString(K_CARD_CORNER_MODE, cfg.card.cornerMode.name)
+            putFloat(K_BANNER_HEIGHT, cfg.bannerHeight.value)
+            putBoolean(K_BANNER_SHOW_TAGS, cfg.bannerShowTags)
+            putInt(K_BANNER_MAX_TAGS, cfg.bannerMaxTags)
         }
     }
 

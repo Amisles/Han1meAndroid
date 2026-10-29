@@ -62,6 +62,9 @@ object UiConfigCodec {
                     .put("showBadges", config.card.showBadges)
                     .put("cornerMode", config.card.cornerMode.name)
             )
+            .putF("bannerHeight", config.bannerHeight.value)
+            .put("bannerShowTags", config.bannerShowTags)
+            .put("bannerMaxTags", config.bannerMaxTags)
 
         val s = JSONObject()
             .put("visibleCount", homeSections.visibleCount)
@@ -137,6 +140,9 @@ object UiConfigCodec {
                     it.name == c.optJSONObject("card")?.optString("cornerMode")
                 } ?: d.card.cornerMode,
             ),
+            bannerHeight = c.optF("bannerHeight", d.bannerHeight.value).dp,
+            bannerShowTags = c.optBoolean("bannerShowTags", d.bannerShowTags),
+            bannerMaxTags = c.optInt("bannerMaxTags", d.bannerMaxTags),
         ).sanitized()
 
         val hd = HomeSectionConfig.Default

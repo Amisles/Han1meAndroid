@@ -658,6 +658,10 @@
     <string name="customize_card_show_author">显示作者</string>
     <string name="customize_card_show_time">显示发布时间</string>
     <string name="customize_card_show_badges">显示角标</string>
+    <string name="customize_group_banner">首页大图</string>
+    <string name="customize_banner_height">大图高度</string>
+    <string name="customize_banner_tags">显示标签</string>
+    <string name="customize_banner_max_tags">标签数量</string>
     <string name="customize_group_appearance">外观</string>
     <string name="customize_seed">主题色</string>
     <string name="customize_seed_brand">品牌红</string>

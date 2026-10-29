@@ -37,6 +37,9 @@ data class UiConfig(
     val thumbnailQuality: ThumbnailQuality = ThumbnailQuality.STANDARD,
     val appearance: AppearanceConfig = AppearanceConfig(),
     val card: CardConfig = CardConfig(),
+    val bannerHeight: Dp = 260.dp,
+    val bannerShowTags: Boolean = true,
+    val bannerMaxTags: Int = 5,
 ) {
     fun gridColumnsFor(availableWidth: Dp): Int {
         val width = availableWidth.value
@@ -81,6 +84,8 @@ data class UiConfig(
             gridMinColumns = minCols,
             gridMaxColumns = maxCols,
             card = card.sanitized(),
+            bannerHeight = bannerHeight.clamp(180f, 360f),
+            bannerMaxTags = bannerMaxTags.coerceIn(0, 8),
         )
     }
 

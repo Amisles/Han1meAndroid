@@ -55,6 +55,7 @@ import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -546,6 +547,56 @@ fun CustomizeScreen(
                             UiConfigStore.update { it.copy(card = it.card.copy(showBadges = enabled)) }
                         }
                     )
+                }
+                Spacer(modifier = Modifier.height(GROUP_GAP))
+            }
+
+            item(key = "banner") {
+                GroupLabel(stringResource(R.string.customize_group_banner))
+                SettingsGroupCard {
+                    SliderRow(
+                        title = stringResource(R.string.customize_banner_height),
+                        valueText = "${config.bannerHeight.value.roundToInt()}dp",
+                        value = config.bannerHeight.value,
+                        range = 180f..360f,
+                        defaultValue = defaults.bannerHeight.value,
+                        isDefault = config.bannerHeight == defaults.bannerHeight,
+                        onReset = { UiConfigStore.update { it.copy(bannerHeight = defaults.bannerHeight) } },
+                        onPreview = { v ->
+                            UiConfigStore.updatePreviewOnly { it.copy(bannerHeight = v.roundToInt().toFloat().dp) }
+                        },
+                        onCommit = { v ->
+                            UiConfigStore.update { it.copy(bannerHeight = v.roundToInt().toFloat().dp) }
+                        }
+                    )
+                    RowDivider()
+                    SettingsSwitchRow(
+                        icon = Icons.Outlined.ViewCarousel,
+                        title = stringResource(R.string.customize_banner_tags),
+                        checked = config.bannerShowTags,
+                        onCheckedChange = { enabled ->
+                            UiConfigStore.update { it.copy(bannerShowTags = enabled) }
+                        }
+                    )
+                    if (config.bannerShowTags) {
+                        RowDivider()
+                        SliderRow(
+                            title = stringResource(R.string.customize_banner_max_tags),
+                            valueText = "${config.bannerMaxTags}",
+                            value = config.bannerMaxTags.toFloat(),
+                            range = 0f..8f,
+                            defaultValue = defaults.bannerMaxTags.toFloat(),
+                            isDefault = config.bannerMaxTags == defaults.bannerMaxTags,
+                            ticks = 9,
+                            onReset = { UiConfigStore.update { it.copy(bannerMaxTags = defaults.bannerMaxTags) } },
+                            onPreview = { v ->
+                                UiConfigStore.updatePreviewOnly { it.copy(bannerMaxTags = v.roundToInt()) }
+                            },
+                            onCommit = { v ->
+                                UiConfigStore.update { it.copy(bannerMaxTags = v.roundToInt()) }
+                            }
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(GROUP_GAP))
             }

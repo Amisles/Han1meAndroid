@@ -634,6 +634,10 @@
     <string name="customize_card_show_author">Show author</string>
     <string name="customize_card_show_time">Show publish date</string>
     <string name="customize_card_show_badges">Show badges</string>
+    <string name="customize_group_banner">Home banner</string>
+    <string name="customize_banner_height">Banner height</string>
+    <string name="customize_banner_tags">Show tags</string>
+    <string name="customize_banner_max_tags">Tag count</string>
     <string name="customize_group_appearance">Appearance</string>
     <string name="customize_seed">Accent color</string>
     <string name="customize_seed_brand">Brand red</string>

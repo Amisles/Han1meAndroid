@@ -634,6 +634,10 @@
     <string name="customize_card_show_author">顯示作者</string>
     <string name="customize_card_show_time">顯示發佈時間</string>
     <string name="customize_card_show_badges">顯示角標</string>
+    <string name="customize_group_banner">首頁大圖</string>
+    <string name="customize_banner_height">大圖高度</string>
+    <string name="customize_banner_tags">顯示標籤</string>
+    <string name="customize_banner_max_tags">標籤數量</string>
     <string name="customize_group_appearance">外觀</string>
     <string name="customize_seed">主題色</string>
     <string name="customize_seed_brand">品牌紅</string>
