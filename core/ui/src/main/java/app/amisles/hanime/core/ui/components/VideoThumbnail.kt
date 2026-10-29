@@ -1,5 +1,7 @@
 package app.amisles.hanime.core.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,10 +16,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -93,11 +99,21 @@ private fun ThumbnailBox(
         modifier = modifier
     ) {
         if (hasThumbnail) {
+            var loaded by remember(model) { mutableStateOf(false) }
+            val imageAlpha by animateFloatAsState(
+                targetValue = if (loaded) 1f else 0f,
+                animationSpec = tween(durationMillis = 180),
+                label = "thumbnailFade"
+            )
             AsyncImage(
                 model = model,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = contentScale
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = imageAlpha },
+                contentScale = contentScale,
+                onSuccess = { loaded = true },
+                onError = { loaded = true }
             )
         }
 
