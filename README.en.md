@@ -21,12 +21,12 @@
 
 ## Download
 
-**Latest: v1.7.1** · Android 11 (API 30) or newer · targets Android 17 (API 37)
+**Latest: v1.7.2** · Android 11 (API 30) or newer · targets Android 17 (API 37)
 
 | Item | Detail |
 | --- | --- |
 | Download | [GitHub Releases](https://github.com/Amisles/Han1meAndroid/releases/latest) |
-| Package | `Han1meAndroid-v<version>.apk`, about 6 MB |
+| Package | `Han1meAndroid-v<version>.apk`, about 7 MB |
 | Distribution | GitHub Releases only; not published on any app store |
 | Upgrading | Install over the existing app with the same signature; favorites, history and downloads are kept |
 
