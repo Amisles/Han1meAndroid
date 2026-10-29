@@ -152,6 +152,10 @@ class DownloadManager @Inject constructor(
     @Volatile
     private var networkCallbackRegistered = false
 
+    /** 已注册的网络回调引用，shutdown 时注销。 */
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var connectivityManager: ConnectivityManager? = null
+
     /** 电源状态监听是否已注册；与 [networkCallbackRegistered] 同理，只注册一次。 */
     @Volatile
     private var gateReceiverRegistered = false
@@ -1407,6 +1411,8 @@ class DownloadManager @Inject constructor(
         }
         networkCallbackRegistered = runCatching {
             cm.registerDefaultNetworkCallback(callback)
+            networkCallback = callback
+            connectivityManager = cm
             true
         }.getOrDefault(false)
         if (!networkCallbackRegistered) {
@@ -1476,6 +1482,12 @@ class DownloadManager @Inject constructor(
         gateReceiver?.let { runCatching { context.unregisterReceiver(it) } }
         gateReceiver = null
         gateReceiverRegistered = false
+        networkCallback?.let { cb ->
+            connectivityManager?.let { cm -> runCatching { cm.unregisterNetworkCallback(cb) } }
+        }
+        networkCallback = null
+        connectivityManager = null
+        networkCallbackRegistered = false
         scopeJob.cancel()
         downloadJobs.clear()
         taskCalls.clear()
