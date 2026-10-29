@@ -60,7 +60,7 @@ object UiConfigStore {
     @Volatile
     private var initialized = false
 
-    // 配置写盘是「整表重写」（27 个键），原实现在调用方线程同步 commit，而调用点全在 Compose
+    // 配置写盘是「整表重写」（近 40 个键），原实现在调用方线程同步 commit，而调用点全在 Compose
     // 点击/滑杆回调（主线程）上，一次提交就是一次同步磁盘写入。改为单线程串行落盘，
     // 保留「后写覆盖先写」的顺序语义，同时不阻塞 UI。SharedPreferences 自身是线程安全的，
     // 后台写与主线程读不会冲突。

@@ -6,6 +6,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 
 /** 强调色种子：只替换 primary / secondary，背景与文字仍由中性色板与对比度档位决定。 */
 enum class ThemeSeed(
@@ -18,7 +19,7 @@ enum class ThemeSeed(
 ) {
     BRAND(
         lightPrimary = Color(0xFFDC143C),
-        lightOnPrimary = Color.White,
+        lightOnPrimary = Color(0xFF1A1A1A),
         darkPrimary = Color(0xFFDC143C),
         darkOnPrimary = Color.White,
         lightSecondary = Color(0xFFFF4757),
@@ -33,7 +34,7 @@ enum class ThemeSeed(
         darkSecondary = Color(0xFFA9A3FF),
     ),
     TEAL(
-        lightPrimary = Color(0xFF0F9488),
+        lightPrimary = Color(0xFF0B7A70),
         lightOnPrimary = Color.White,
         darkPrimary = Color(0xFF2DD4BF),
         darkOnPrimary = Color(0xFF141414),
@@ -164,7 +165,7 @@ fun hanimeColorScheme(dark: Boolean, appearance: AppearanceConfig): ColorScheme 
         onPrimary = appearance.seed.onPrimary(dark),
         secondary = appearance.seed.secondary(dark),
         onSecondary = if (dark) Color(0xFF141414) else Color.White,
-        primaryContainer = if (dark) AmoledSurfaceVariant else Color(0xFFF3E6EA),
+        primaryContainer = appearance.seed.primary(dark).copy(alpha = 0.16f).compositeOver(base.surface),
         onPrimaryContainer = if (dark) Color(0xFFF5F5F5) else Color(0xFF1A1A1A),
     )
     if (dark && appearance.amoled) {

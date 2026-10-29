@@ -914,7 +914,11 @@ private fun PreviewPane(
     ) {
         CompositionLocalProvider(LocalUiConfig provides config) {
             Card(
-                modifier = modifier,
+                // 空点击：预览浮层压在列表之上，必须自己吃掉触摸，否则点击会穿透到下方的卡片
+                modifier = modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {},
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(14.dp)
             ) {
