@@ -537,7 +537,11 @@ fun HanimeApp(
                         fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS))
                     },
                     popEnterTransition = {
-                        fadeIn(animationSpec = tween(TRANSITION_DURATION_MS))
+                        fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)) +
+                            slideInHorizontally(
+                                animationSpec = tween(TRANSITION_DURATION_MS),
+                                initialOffsetX = { -it / 10 }
+                            )
                     },
                     popExitTransition = {
                         fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS)) +
