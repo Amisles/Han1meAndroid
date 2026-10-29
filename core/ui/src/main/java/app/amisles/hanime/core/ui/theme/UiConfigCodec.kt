@@ -45,6 +45,13 @@ object UiConfigCodec {
             .put("gridMinColumns", config.gridMinColumns)
             .put("gridMaxColumns", config.gridMaxColumns)
             .put("thumbnailQuality", config.thumbnailQuality.name)
+            .put(
+                "appearance",
+                JSONObject()
+                    .put("seed", config.appearance.seed.name)
+                    .put("amoled", config.appearance.amoled)
+                    .put("contrast", config.appearance.contrast.name)
+            )
 
         val s = JSONObject()
             .put("visibleCount", homeSections.visibleCount)
@@ -96,6 +103,15 @@ object UiConfigCodec {
             thumbnailQuality = ThumbnailQuality.entries
                 .firstOrNull { it.name == c.optString("thumbnailQuality") }
                 ?: d.thumbnailQuality,
+            appearance = AppearanceConfig(
+                seed = ThemeSeed.entries.firstOrNull { it.name == c.optJSONObject("appearance")?.optString("seed") }
+                    ?: d.appearance.seed,
+                amoled = c.optJSONObject("appearance")?.optBoolean("amoled", d.appearance.amoled)
+                    ?: d.appearance.amoled,
+                contrast = ContrastLevel.entries.firstOrNull {
+                    it.name == c.optJSONObject("appearance")?.optString("contrast")
+                } ?: d.appearance.contrast,
+            ),
         ).sanitized()
 
         val hd = HomeSectionConfig.Default

@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import app.amisles.hanime.core.ui.theme.HanimePrimary
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun LoadingIndicator(
@@ -20,7 +20,7 @@ fun LoadingIndicator(
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
-            color = HanimePrimary,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(size.dp)
         )
     }

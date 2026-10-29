@@ -41,6 +41,9 @@ object UiConfigStore {
     private const val K_GRID_MIN_COLS = "grid_min_cols"
     private const val K_GRID_MAX_COLS = "grid_max_cols"
     private const val K_THUMB_QUALITY = "thumb_quality"
+    private const val K_THEME_SEED = "theme_seed"
+    private const val K_AMOLED = "amoled"
+    private const val K_CONTRAST = "contrast"
     private const val K_SECTION_VISIBLE_COUNT = "section_visible_count"
     private const val K_SECTION_LAYOUTS = "section_layouts"
     private const val K_SECTION_ORDER = "section_order"
@@ -195,6 +198,13 @@ object UiConfigStore {
             gridMinColumns = readInt(K_GRID_MIN_COLS, d.gridMinColumns),
             gridMaxColumns = readInt(K_GRID_MAX_COLS, d.gridMaxColumns),
             thumbnailQuality = readQuality(d.thumbnailQuality),
+            appearance = AppearanceConfig(
+                seed = ThemeSeed.entries.firstOrNull { it.name == readRaw(K_THEME_SEED) }
+                    ?: d.appearance.seed,
+                amoled = readBoolean(K_AMOLED, d.appearance.amoled),
+                contrast = ContrastLevel.entries.firstOrNull { it.name == readRaw(K_CONTRAST) }
+                    ?: d.appearance.contrast,
+            ),
         ).sanitized()
     }
 
@@ -227,6 +237,9 @@ object UiConfigStore {
             putInt(K_GRID_MIN_COLS, cfg.gridMinColumns)
             putInt(K_GRID_MAX_COLS, cfg.gridMaxColumns)
             putString(K_THUMB_QUALITY, cfg.thumbnailQuality.name)
+            putString(K_THEME_SEED, cfg.appearance.seed.name)
+            putBoolean(K_AMOLED, cfg.appearance.amoled)
+            putString(K_CONTRAST, cfg.appearance.contrast.name)
         }
     }
 
@@ -263,4 +276,7 @@ object UiConfigStore {
 
     private fun readInt(key: String, default: Int): Int =
         runCatching { sp.getInt(key, default) }.getOrDefault(default)
+
+    private fun readBoolean(key: String, default: Boolean): Boolean =
+        runCatching { sp.getBoolean(key, default) }.getOrDefault(default)
 }

@@ -35,6 +35,7 @@ data class UiConfig(
     val gridMinColumns: Int = 2,
     val gridMaxColumns: Int = 5,
     val thumbnailQuality: ThumbnailQuality = ThumbnailQuality.STANDARD,
+    val appearance: AppearanceConfig = AppearanceConfig(),
 ) {
     fun gridColumnsFor(availableWidth: Dp): Int {
         val width = availableWidth.value

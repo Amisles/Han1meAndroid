@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -42,12 +43,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -79,6 +82,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,11 +95,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
+import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
+import app.amisles.hanime.core.ui.theme.ContrastLevel
 import app.amisles.hanime.core.ui.theme.HanimeSuccess
 import app.amisles.hanime.core.ui.theme.HanimeWarning
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.LocalIsDarkTheme
+import app.amisles.hanime.core.ui.theme.ThemeSeed
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.ThumbnailQuality
@@ -224,6 +233,101 @@ fun CustomizeScreen(
                     labelFor = { stringResource(presetLabelRes(it)) },
                     onSelect = { UiConfigStore.set(it.config) }
                 )
+                Spacer(modifier = Modifier.height(GROUP_GAP))
+            }
+
+            item(key = "appearance") {
+                GroupLabel(stringResource(R.string.customize_group_appearance))
+                SettingsGroupCard {
+                    Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.customize_seed),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = stringResource(seedLabelRes(config.appearance.seed)),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (config.appearance.seed != defaults.appearance.seed) {
+                                Spacer(modifier = Modifier.width(2.dp))
+                                IconAction(
+                                    icon = Icons.Default.RestartAlt,
+                                    enabled = true,
+                                    labelRes = R.string.customize_reset_item,
+                                    onClick = {
+                                        UiConfigStore.update {
+                                            it.copy(appearance = it.appearance.copy(seed = defaults.appearance.seed))
+                                        }
+                                    },
+                                    boxSize = 30.dp,
+                                    iconSize = 17.dp
+                                )
+                            }
+                        }
+                        SeedRow(
+                            selected = config.appearance.seed,
+                            onSelect = { seed ->
+                                UiConfigStore.update { it.copy(appearance = it.appearance.copy(seed = seed)) }
+                            }
+                        )
+                    }
+                    RowDivider()
+                    SettingsSwitchRow(
+                        icon = Icons.Outlined.DarkMode,
+                        title = stringResource(R.string.customize_amoled),
+                        subtitle = stringResource(R.string.customize_amoled_summary),
+                        checked = config.appearance.amoled,
+                        onCheckedChange = { enabled ->
+                            UiConfigStore.update { it.copy(appearance = it.appearance.copy(amoled = enabled)) }
+                        }
+                    )
+                    RowDivider()
+                    Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.customize_contrast),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (config.appearance.contrast != defaults.appearance.contrast) {
+                                IconAction(
+                                    icon = Icons.Default.RestartAlt,
+                                    enabled = true,
+                                    labelRes = R.string.customize_reset_item,
+                                    onClick = {
+                                        UiConfigStore.update {
+                                            it.copy(
+                                                appearance = it.appearance.copy(contrast = defaults.appearance.contrast)
+                                            )
+                                        }
+                                    },
+                                    boxSize = 30.dp,
+                                    iconSize = 17.dp
+                                )
+                            }
+                        }
+                        TwoWaySegment(
+                            firstLabel = stringResource(R.string.customize_contrast_standard),
+                            secondLabel = stringResource(R.string.customize_contrast_high),
+                            firstSelected = config.appearance.contrast == ContrastLevel.STANDARD,
+                            onSelectFirst = {
+                                UiConfigStore.update {
+                                    it.copy(appearance = it.appearance.copy(contrast = ContrastLevel.STANDARD))
+                                }
+                            },
+                            onSelectSecond = {
+                                UiConfigStore.update {
+                                    it.copy(appearance = it.appearance.copy(contrast = ContrastLevel.HIGH))
+                                }
+                            }
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(GROUP_GAP))
             }
 
@@ -711,6 +815,59 @@ private fun TwoWaySegment(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
+            }
+        }
+    }
+}
+
+/* ───────────────────────── 主题色块 ───────────────────────── */
+
+@Composable
+private fun SeedRow(
+    selected: ThemeSeed,
+    onSelect: (ThemeSeed) -> Unit
+) {
+    val dark = LocalIsDarkTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ThemeSeed.entries.forEach { seed ->
+            val label = stringResource(seedLabelRes(seed))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable { onSelect(seed) }
+                    .semantics { contentDescription = label },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(seed.primary(dark))
+                        .then(
+                            if (seed == selected) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (seed == selected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = seed.onPrimary(dark),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -1418,6 +1575,17 @@ private fun presetLabelRes(preset: UiPreset): Int = when (preset) {
     UiPreset.STANDARD -> R.string.customize_preset_standard
     UiPreset.COMFORTABLE -> R.string.customize_preset_comfortable
     UiPreset.LARGE -> R.string.customize_preset_large
+}
+
+private fun seedLabelRes(seed: ThemeSeed): Int = when (seed) {
+    ThemeSeed.BRAND -> R.string.customize_seed_brand
+    ThemeSeed.INDIGO -> R.string.customize_seed_indigo
+    ThemeSeed.TEAL -> R.string.customize_seed_teal
+    ThemeSeed.PURPLE -> R.string.customize_seed_purple
+    ThemeSeed.AMBER -> R.string.customize_seed_amber
+    ThemeSeed.GRAPHITE -> R.string.customize_seed_graphite
+    ThemeSeed.PINK -> R.string.customize_seed_pink
+    ThemeSeed.BLUE -> R.string.customize_seed_blue
 }
 
 private fun qualityLabelRes(quality: ThumbnailQuality): Int = when (quality) {
