@@ -40,6 +40,8 @@ data class UiConfig(
     val bannerHeight: Dp = 260.dp,
     val bannerShowTags: Boolean = true,
     val bannerMaxTags: Int = 5,
+    val navigationStyle: NavigationStyle = NavigationStyle.AUTO,
+    val navBarShowLabels: Boolean = false,
 ) {
     fun gridColumnsFor(availableWidth: Dp): Int {
         val width = availableWidth.value
@@ -89,6 +91,13 @@ data class UiConfig(
         )
     }
 
+    /** 导航最终形态：AUTO 按窗口宽度决定，其余固定。 */
+    fun resolvedNavStyle(isTablet: Boolean): NavigationStyle =
+        when (navigationStyle) {
+            NavigationStyle.AUTO -> if (isTablet) NavigationStyle.RAIL else NavigationStyle.BOTTOM
+            else -> navigationStyle
+        }
+
     companion object {
         val Default = UiConfig()
     }
@@ -104,5 +113,7 @@ enum class ThumbnailQuality(val sizeScale: Float) {
     STANDARD(1f),
     HIGH(1.5f),
 }
+
+enum class NavigationStyle { AUTO, BOTTOM, RAIL }
 
 val LocalUiConfig = staticCompositionLocalOf { UiConfig.Default }

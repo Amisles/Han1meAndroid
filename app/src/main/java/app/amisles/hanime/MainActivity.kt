@@ -80,6 +80,7 @@ import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.feature.settings.openReleasePage
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.NavigationStyle
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.CloudflareChallengeDialog
@@ -379,7 +380,8 @@ fun HanimeApp(
         !currentRoute.startsWith("comicReader")
 
     val sizeInfo = currentWindowSizeInfo()
-    val useRail = sizeInfo.useNavigationRail
+    val uiCfg = UiConfigStore.config.collectAsStateWithLifecycle().value
+    val useRail = uiCfg.resolvedNavStyle(sizeInfo.isTablet) == NavigationStyle.RAIL
 
     // 打开发行版页面 / 安装包直链需要 Context；在组合期取一次即可
     val appContext = LocalContext.current
@@ -470,7 +472,8 @@ fun HanimeApp(
             if (showBottomBar && useRail) {
                 NavRail(
                     currentRoute = currentRoute,
-                    onNavigate = { route -> navController.navigateToTab(route) }
+                    onNavigate = { route -> navController.navigateToTab(route) },
+                    showLabels = uiCfg.navBarShowLabels
                 )
             }
             Scaffold(
@@ -490,7 +493,8 @@ fun HanimeApp(
                     ) {
                         BottomNav(
                             currentRoute = currentRoute,
-                            onNavigate = { route -> navController.navigateToTab(route) }
+                            onNavigate = { route -> navController.navigateToTab(route) },
+                            showLabels = uiCfg.navBarShowLabels
                         )
                     }
                 }
@@ -507,7 +511,7 @@ fun HanimeApp(
                 NavHost(
                     navController = navController,
                     startDestination = "home",
-                    modifier = if (useRail) {
+                    modifier = if (useRail || currentRoute.startsWith("localPlayer")) {
                         navModifier
                     } else {
                         navModifier.swipeToOpenDrawer(

@@ -13,7 +13,8 @@ import androidx.compose.ui.res.stringResource
 fun NavRail(
     currentRoute: String,
     onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showLabels: Boolean = false
 ) {
     NavigationRail(
         modifier = modifier.fillMaxHeight(),
@@ -30,13 +31,15 @@ fun NavRail(
                         contentDescription = stringResource(screen.labelResId)
                     )
                 },
-                label = {
-                    androidx.compose.material3.Text(
-                        text = stringResource(screen.labelResId),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                },
-                alwaysShowLabel = true
+                label = if (showLabels) {
+                    {
+                        androidx.compose.material3.Text(
+                            text = stringResource(screen.labelResId),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                } else null,
+                alwaysShowLabel = showLabels
             )
         }
     }

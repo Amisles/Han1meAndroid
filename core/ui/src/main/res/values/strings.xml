@@ -668,6 +668,14 @@
     <string name="customize_discard_title">有未应用的修改</string>
     <string name="customize_discard_message">返回将丢弃本次全部调整。</string>
     <string name="customize_discard_confirm">丢弃并返回</string>
+    <string name="customize_group_navigation">导航</string>
+    <string name="customize_nav_style">导航形态</string>
+    <string name="customize_nav_style_hint">底部栏适合手机竖持；侧栏适合平板与大屏。</string>
+    <string name="customize_nav_auto">自动</string>
+    <string name="customize_nav_bottom">底部栏</string>
+    <string name="customize_nav_rail">侧栏</string>
+    <string name="customize_nav_labels">显示导航文字</string>
+    <string name="customize_nav_labels_summary">在底部栏 / 侧栏的图标下方显示页面名称</string>
     <string name="customize_group_appearance">外观</string>
     <string name="customize_seed">主题色</string>
     <string name="customize_seed_brand">品牌红</string>

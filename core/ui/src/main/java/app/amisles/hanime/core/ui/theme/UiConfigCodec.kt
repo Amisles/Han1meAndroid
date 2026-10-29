@@ -65,6 +65,8 @@ object UiConfigCodec {
             .putF("bannerHeight", config.bannerHeight.value)
             .put("bannerShowTags", config.bannerShowTags)
             .put("bannerMaxTags", config.bannerMaxTags)
+            .put("navigationStyle", config.navigationStyle.name)
+            .put("navBarShowLabels", config.navBarShowLabels)
 
         val s = JSONObject()
             .put("visibleCount", homeSections.visibleCount)
@@ -143,6 +145,9 @@ object UiConfigCodec {
             bannerHeight = c.optF("bannerHeight", d.bannerHeight.value).dp,
             bannerShowTags = c.optBoolean("bannerShowTags", d.bannerShowTags),
             bannerMaxTags = c.optInt("bannerMaxTags", d.bannerMaxTags),
+            navigationStyle = NavigationStyle.entries
+                .firstOrNull { it.name == c.optString("navigationStyle") } ?: d.navigationStyle,
+            navBarShowLabels = c.optBoolean("navBarShowLabels", d.navBarShowLabels),
         ).sanitized()
 
         val hd = HomeSectionConfig.Default

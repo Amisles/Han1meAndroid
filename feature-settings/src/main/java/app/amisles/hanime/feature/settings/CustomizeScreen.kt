@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -116,6 +117,7 @@ import app.amisles.hanime.core.ui.theme.HanimeSuccess
 import app.amisles.hanime.core.ui.theme.HanimeWarning
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalIsDarkTheme
+import app.amisles.hanime.core.ui.theme.NavigationStyle
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ThemeSeed
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
@@ -291,7 +293,57 @@ fun CustomizeScreen(
                     Spacer(modifier = Modifier.height(GROUP_GAP))
                 }
 
-                item(key = "appearance") {
+                item(key = "navigation") {
+                GroupLabel(stringResource(R.string.customize_group_navigation))
+                SettingsGroupCard {
+                    Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.customize_nav_style),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (config.navigationStyle != defaults.navigationStyle) {
+                                IconAction(
+                                    icon = Icons.Default.RestartAlt,
+                                    enabled = true,
+                                    labelRes = R.string.customize_reset_item,
+                                    onClick = {
+                                        updateConfig {
+                                            it.copy(navigationStyle = defaults.navigationStyle)
+                                        }
+                                    },
+                                    boxSize = 30.dp,
+                                    iconSize = 17.dp
+                                )
+                            }
+                        }
+                        Text(
+                            text = stringResource(R.string.customize_nav_style_hint),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 3.dp, bottom = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NavigationStyle.entries.forEach { style ->
+                                ChosenChip(
+                                    selected = style == config.navigationStyle,
+                                    label = stringResource(navStyleLabelRes(style)),
+                                    onClick = { updateConfig { it.copy(navigationStyle = style) } },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(GROUP_GAP))
+            }
+
+            item(key = "appearance") {
                     GroupLabel(stringResource(R.string.customize_group_appearance))
                     SettingsGroupCard {
                         Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
@@ -645,6 +697,21 @@ fun CustomizeScreen(
                                 }
                             )
                         }
+                    }
+                    Spacer(modifier = Modifier.height(GROUP_GAP))
+                }
+
+                item(key = "nav_labels") {
+                    SettingsGroupCard {
+                        SettingsSwitchRow(
+                            icon = Icons.Outlined.TextFields,
+                            title = stringResource(R.string.customize_nav_labels),
+                            subtitle = stringResource(R.string.customize_nav_labels_summary),
+                            checked = config.navBarShowLabels,
+                            onCheckedChange = { enabled ->
+                                updateConfig { it.copy(navBarShowLabels = enabled) }
+                            }
+                        )
                     }
                     Spacer(modifier = Modifier.height(GROUP_GAP))
                 }
@@ -1881,6 +1948,12 @@ private fun presetLabelRes(preset: UiPreset): Int = when (preset) {
     UiPreset.STANDARD -> R.string.customize_preset_standard
     UiPreset.COMFORTABLE -> R.string.customize_preset_comfortable
     UiPreset.LARGE -> R.string.customize_preset_large
+}
+
+private fun navStyleLabelRes(style: NavigationStyle): Int = when (style) {
+    NavigationStyle.AUTO -> R.string.customize_nav_auto
+    NavigationStyle.BOTTOM -> R.string.customize_nav_bottom
+    NavigationStyle.RAIL -> R.string.customize_nav_rail
 }
 
 private fun cardStyleLabelRes(style: CardStyle): Int = when (style) {

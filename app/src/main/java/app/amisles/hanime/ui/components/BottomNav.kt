@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
@@ -18,12 +19,14 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 
 sealed class Screen(val route: String, val labelResId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
@@ -37,7 +40,8 @@ val screens = listOf(Screen.Home, Screen.Search, Screen.Download)
 @Composable
 fun BottomNav(
     currentRoute: String,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    showLabels: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -63,14 +67,15 @@ fun BottomNav(
         ) {
             screens.forEach { screen ->
                 val isSelected = currentRoute.startsWith(screen.route)
-                Box(
+                Column(
                     modifier = Modifier
-                        .size(48.dp)
+                        .widthIn(min = 56.dp)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onNavigate(screen.route) },
-                    contentAlignment = Alignment.Center
+                        ) { onNavigate(screen.route) }
+                        .padding(vertical = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
                         imageVector = screen.icon,
@@ -78,6 +83,18 @@ fun BottomNav(
                         tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp)
                     )
+                    if (showLabels) {
+                        Text(
+                            text = stringResource(screen.labelResId),
+                            fontSize = 10.sp,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.padding(top = 1.dp)
+                        )
+                    }
                 }
             }
         }

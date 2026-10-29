@@ -644,6 +644,14 @@
     <string name="customize_discard_title">有未套用的修改</string>
     <string name="customize_discard_message">返回將捨棄本次全部調整。</string>
     <string name="customize_discard_confirm">捨棄並返回</string>
+    <string name="customize_group_navigation">導覽</string>
+    <string name="customize_nav_style">導覽形態</string>
+    <string name="customize_nav_style_hint">底部欄適合手機直持；側欄適合平板與大螢幕。</string>
+    <string name="customize_nav_auto">自動</string>
+    <string name="customize_nav_bottom">底部欄</string>
+    <string name="customize_nav_rail">側欄</string>
+    <string name="customize_nav_labels">顯示導覽文字</string>
+    <string name="customize_nav_labels_summary">在底部欄 / 側欄的圖示下方顯示頁面名稱</string>
     <string name="customize_group_appearance">外觀</string>
     <string name="customize_seed">主題色</string>
     <string name="customize_seed_brand">品牌紅</string>
