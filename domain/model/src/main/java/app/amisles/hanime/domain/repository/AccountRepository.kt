@@ -29,6 +29,10 @@ interface AccountRepository {
 
     // ── 账户资料 ────────────────────────────────────────────────────────────
     suspend fun getAccountProfile(): AppResult<AccountProfile>
+
+    /** 拉取账户资料以刷新本地缓存的昵称；返回 true 表示已拿到昵称。 */
+    suspend fun refreshAccountName(): Boolean
+
     suspend fun updateAccountProfile(name: String, email: String, csrfToken: String): AppResult<Unit>
 
     // ── 评论 ────────────────────────────────────────────────────────────────

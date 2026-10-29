@@ -101,6 +101,7 @@ fun ProfileScreen(
     val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val displayLetter by profileViewModel.displayLetter.collectAsStateWithLifecycle()
+    val displayName by profileViewModel.displayName.collectAsStateWithLifecycle()
     val watchCount by profileViewModel.watchCount.collectAsStateWithLifecycle()
     val favoriteCount by profileViewModel.favoriteCount.collectAsStateWithLifecycle()
     val downloadCount by profileViewModel.downloadCount.collectAsStateWithLifecycle()
@@ -120,6 +121,7 @@ fun ProfileScreen(
     // 进入组合即加载计数；抽屉每次打开都会重新进入组合，从而刷新统计。
     LaunchedEffect(Unit) {
         profileViewModel.loadCounts()
+        profileViewModel.refreshAccountName()
     }
 
     val menuItems = buildList {
@@ -200,7 +202,11 @@ fun ProfileScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = if (isLogin) stringResource(R.string.profile_member) else stringResource(R.string.profile_not_logged_in),
+                        text = when {
+                            !isLogin -> stringResource(R.string.profile_not_logged_in)
+                            displayName.isNotBlank() -> displayName
+                            else -> stringResource(R.string.profile_member)
+                        },
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,

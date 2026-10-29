@@ -51,7 +51,7 @@ class AccountProfileViewModel @Inject constructor(
     private var csrfToken: String = ""
 
     fun load() {
-        if (session.savedUserId.isBlank()) {
+        if (!session.isLoggedIn) {
             // 未登录态下不能留有上一次的 CSRF 令牌，否则 update() 会发一个注定失败的请求
             csrfToken = ""
             _error.value = context.getString(R.string.account_error_not_logged_in)

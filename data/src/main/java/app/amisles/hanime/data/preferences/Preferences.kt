@@ -45,6 +45,7 @@ object Preferences : SettingsRepository, SessionRepository {
     /** 明文→加密迁移已完成的标记。写进加密存储，避免每次启动都重新做明文探测。 */
     private const val SP_MIGRATED_TO_ENCRYPTED = "migrated_to_encrypted"
     private const val SP_SAVED_USER_ID = "saved_user_id"
+    private const val SP_SAVED_USER_NAME = "saved_user_name"
     private const val SP_MAX_DOWNLOAD_CONCURRENT = "max_download_concurrent"
     private const val SP_BASE_URL = "base_url"
     private const val SP_APP_LANGUAGE = "app_language"
@@ -133,6 +134,9 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
 
     private val _savedUserIdFlow = MutableStateFlow("")
     override val savedUserIdFlow: StateFlow<String> = _savedUserIdFlow.asStateFlow()
+
+    private val _savedUserNameFlow = MutableStateFlow("")
+    override val savedUserNameFlow: StateFlow<String> = _savedUserNameFlow.asStateFlow()
 
     private val _maxDownloadConcurrentFlow = MutableStateFlow(3)
     override val maxDownloadConcurrentFlow: StateFlow<Int> = _maxDownloadConcurrentFlow.asStateFlow()
@@ -248,6 +252,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _cloudFlareCookieFlow.value = SessionCookie(readString(SP_CF_COOKIE, "").orEmpty())
         _cloudFlareCookieDomain = readString(SP_CF_COOKIE_DOMAIN, "").orEmpty().lowercase()
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
+        _savedUserNameFlow.value = readString(SP_SAVED_USER_NAME, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
         _downloadRateLimitFlow.value = readInt(SP_DOWNLOAD_RATE_LIMIT, 0)
         _downloadWifiOnlyFlow.value = readBoolean(SP_DOWNLOAD_WIFI_ONLY, false)
@@ -340,6 +345,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
             val loginCookie = legacy.getString(SP_LOGIN_COOKIE, "").orEmpty()
             val cfCookie = legacy.getString(SP_CF_COOKIE, "").orEmpty()
             val savedUserId = legacy.getString(SP_SAVED_USER_ID, "").orEmpty()
+            val savedUserName = legacy.getString(SP_SAVED_USER_NAME, "").orEmpty()
             val maxConcurrent = legacy.getInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
             val baseUrl = legacy.getString(SP_BASE_URL, DEFAULT_BASE_URL).orEmpty()
             val appLang = legacy.getString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN).orEmpty()
@@ -356,6 +362,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
                 )
                 putString(SP_CF_COOKIE, cfCookie)
                 putString(SP_SAVED_USER_ID, savedUserId)
+                putString(SP_SAVED_USER_NAME, savedUserName)
                 putInt(SP_MAX_DOWNLOAD_CONCURRENT, maxConcurrent)
                 putString(SP_BASE_URL, baseUrl)
                 putString(SP_APP_LANGUAGE, appLang)
@@ -477,6 +484,8 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         get() = _cloudFlareCookieDomain.ifBlank { _loginCookieDomain }
 
     override val savedUserId: String get() = _savedUserIdFlow.value
+
+    override val savedUserName: String get() = _savedUserNameFlow.value
 
     override val maxDownloadConcurrent: Int get() = _maxDownloadConcurrentFlow.value
 
@@ -617,6 +626,14 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         // 纯数字用户标识不属于凭据，无论存储是否加密都落盘，避免界面在重启后丢失展示信息
         sp.edit { putString(SP_SAVED_USER_ID, clean) }
         _savedUserIdFlow.value = clean
+    }
+
+    /** 昵称同样只是展示信息，与登录态一并清除，但不受加密存储可用性影响。 */
+    override fun saveUserName(name: String) {
+        val clean = name.trim()
+        if (clean.isBlank()) return
+        sp.edit { putString(SP_SAVED_USER_NAME, clean) }
+        _savedUserNameFlow.value = clean
     }
 
     /** 保存 Cloudflare 校验 Cookie。加密存储不可用时同样不落盘（同 [saveLogin]）。 */
@@ -827,6 +844,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
             editor.remove(SP_CF_COOKIE_DOMAIN)
             editor.remove(SP_LOGIN_COOKIE_DOMAIN)
             editor.remove(SP_SAVED_USER_ID)
+            editor.remove(SP_SAVED_USER_NAME)
             editor.commit()
         }
         _loginStateFlow.value = false
@@ -836,6 +854,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _cloudFlareCookieDomain = ""
         _loginCookieDomain = ""
         _savedUserIdFlow.value = ""
+        _savedUserNameFlow.value = ""
     }
 
     /** 当前 baseUrl 的 host（小写）；解析失败时返回空串。 */

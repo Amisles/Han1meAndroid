@@ -41,17 +41,54 @@ class ProfileViewModel @Inject constructor(
     private val _downloadCount = MutableStateFlow(0)
     val downloadCount: StateFlow<Int> = _downloadCount.asStateFlow()
 
+    /** 登录用户的昵称；未登录或尚未取到时为空串，由界面回退到通用文案。 */
+    val displayName: StateFlow<String> = combine(
+        session.loginStateFlow,
+        session.savedUserNameFlow
+    ) { loggedIn, name ->
+        if (loggedIn) name else ""
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = session.savedUserName
+    )
+
     val displayLetter: StateFlow<String> = combine(
         session.loginCookieFlow,
-        session.savedUserIdFlow
-    ) { cookie, userId ->
-        val raw = session.extractDisplayEmail().ifBlank { userId }
+        session.savedUserIdFlow,
+        session.savedUserNameFlow
+    ) { cookie, userId, name ->
+        val raw = name.ifBlank { session.extractDisplayEmail().ifBlank { userId } }
         if (raw.isBlank()) "H" else raw.take(1).uppercase()
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = "H"
     )
+
+    /** 昵称本地还没有时才向站点取一次，避免每次打开抽屉都发请求。 */
+    private var accountNameRequested = false
+
+    init {
+        // 换账号后昵称已随登出清空，需要允许重新取一次
+        viewModelScope.launch {
+            session.loginStateFlow.collect { loggedIn -> if (!loggedIn) accountNameRequested = false }
+        }
+    }
+
+    fun refreshAccountName() {
+        if (!session.isLoggedIn || session.savedUserName.isNotBlank() || accountNameRequested) return
+        accountNameRequested = true
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { account.refreshAccountName() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("ProfileViewModel", "刷新昵称失败: ${e.message}", e)
+            }
+        }
+    }
 
     fun logout() {
         viewModelScope.launch {

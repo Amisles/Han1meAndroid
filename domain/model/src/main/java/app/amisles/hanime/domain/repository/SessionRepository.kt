@@ -36,6 +36,11 @@ interface SessionRepository {
     val savedUserIdFlow: StateFlow<String>
     fun saveUserId(id: String)
 
+    /** 当前登录用户的昵称（账户资料页的「用户名称」）；空串表示尚未获取。 */
+    val savedUserName: String
+    val savedUserNameFlow: StateFlow<String>
+    fun saveUserName(name: String)
+
     /**
      * 保存登录态。
      *

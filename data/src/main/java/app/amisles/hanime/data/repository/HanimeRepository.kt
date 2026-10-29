@@ -11,6 +11,7 @@ import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.data.parser.AccountIdentityParser
 import app.amisles.hanime.data.parser.AccountProfileParser
 import app.amisles.hanime.data.parser.CommentParser
 import app.amisles.hanime.data.parser.DownloadPageParser
@@ -82,6 +83,7 @@ class HanimeRepository @Inject constructor(
     private val commentParser: CommentParser,
     private val subscribeParser: SubscribeParser,
     private val accountProfileParser: AccountProfileParser,
+    private val accountIdentityParser: AccountIdentityParser,
     private val favoriteDao: FavoriteDao,
     private val favoriteGroupDao: FavoriteGroupDao,
     private val watchHistoryDao: WatchHistoryDao,
@@ -709,18 +711,39 @@ class HanimeRepository @Inject constructor(
     }
 
     /**
+     * 取当前登录用户的数字 ID。
+     *
+     * 登录 Cookie 不含用户 ID，此前只有访问过详情页（页面内渲染了当前用户）才会落盘，
+     * 因此「刚登录就打开账户资料」会拿不到 ID。缺失时抓一次首页，从本人的「编辑个人档案」
+     * 入口提取 ID 并落盘，之后无需再抓。
+     */
+    private suspend fun ensureUserId(): String {
+        val cached = Preferences.savedUserId
+        if (cached.isNotBlank()) return cached
+        if (!Preferences.isLoggedIn) return ""
+        val html = runCatching { networkService.fetchHomePageWithBaseUrl().html }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: return ""
+        val userId = accountIdentityParser.parseCurrentUserId(html) ?: return ""
+        Preferences.saveUserId(userId)
+        return userId
+    }
+
+    /**
      * 拉取账户资料（用户名称 + 电邮 + CSRF Token），GET /user/{id}/edit，
-     * 由 [AccountProfileParser] 解析表单当前值。
+     * 由 [AccountProfileParser] 解析表单当前值。成功后顺带缓存昵称，供抽屉等处展示。
      */
     override suspend fun getAccountProfile(): AppResult<AccountProfile> {
         return try {
-            val userId = Preferences.savedUserId.ifBlank {
-                return AppResult.error("未登录，无法查看账户资料")
+            val userId = ensureUserId().ifBlank {
+                return AppResult.error("无法确认登录用户，请重新登录后再试")
             }
             val result = networkService.fetchAccountEditPage(userId)
             AppLogger.log("HanimeRepository", "Account edit page HTML length: ${result.html.length}")
             val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
-                ?: return AppResult.error("无法解析账户资料页")
+                ?: return AppResult.error("登录状态可能已失效，请重新登录后再试")
+            Preferences.saveUserName(profile.name)
             AppResult.success(profile)
         } catch (e: CancellationException) {
             throw e
@@ -729,6 +752,9 @@ class HanimeRepository @Inject constructor(
             AppResult.error(e.message ?: "加载账户资料失败", e)
         }
     }
+
+    override suspend fun refreshAccountName(): Boolean =
+        getAccountProfile() is AppResult.Success && Preferences.savedUserName.isNotBlank()
 
     /**
      * 更新账户个人档案（用户名称 + 电邮），POST /user/{id}，凭 type=profile 区分「更改密码」分支。
@@ -741,8 +767,8 @@ class HanimeRepository @Inject constructor(
         csrfToken: String
     ): AppResult<Unit> {
         return try {
-            val userId = Preferences.savedUserId.ifBlank {
-                return AppResult.error("未登录，无法更新账户资料")
+            val userId = ensureUserId().ifBlank {
+                return AppResult.error("无法确认登录用户，请重新登录后再试")
             }
             if (csrfToken.isBlank()) {
                 return AppResult.error("CSRF Token 缺失，请返回重试")
@@ -754,6 +780,7 @@ class HanimeRepository @Inject constructor(
                 email = email
             )
             if (code in 300..399) {
+                Preferences.saveUserName(name)
                 AppResult.success(Unit)
             } else {
                 AppResult.error("更新失败（HTTP $code）")
