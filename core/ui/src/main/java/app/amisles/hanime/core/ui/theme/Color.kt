@@ -20,12 +20,16 @@ val HanimeBorderLight = Color(0xFFE0E0E0)
 val HanimeTextPrimaryLight = Color(0xFF1A1A1A)
 val HanimeTextSecondaryLight = Color(0xFF666666)
 
-/**
- * 危险 / 破坏性操作的强调色（删除、清空、失败状态）。
- * 不复用 MaterialTheme.colorScheme.error：本主题把 error 映射成 primary（同一支红），
- * 复用会让「删除」与「管理 / 重试」同色，破坏破坏性操作的视觉区分度。
- */
-val HanimeDanger = Color(0xFFFF6B6B)
+// 语义错误色：与品牌主色分开，破坏性操作、失败态统一走 error 语义
+val HanimeError = Color(0xFFB3261E)
+val HanimeOnError = Color(0xFFFFFFFF)
+val HanimeErrorContainer = Color(0xFFF9DEDC)
+val HanimeOnErrorContainer = Color(0xFF410E0B)
+
+val HanimeErrorDark = Color(0xFFF2B8B5)
+val HanimeOnErrorDark = Color(0xFF601410)
+val HanimeErrorContainerDark = Color(0xFF8C1D18)
+val HanimeOnErrorContainerDark = Color(0xFFF9DEDC)
 
 // 状态色（浅深色通用）
 val HanimeSuccess = Color(0xFF2ed573)

@@ -48,7 +48,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.domain.model.AppUpdate
 
 /** 把字节数格式化成 `12.3 MB`；0 或负数返回空串（调用方据此隐藏该行）。 */
@@ -190,7 +189,7 @@ fun UpdateScreen(
 
                 is UpdateUiState.Failed -> StatusCard(
                     icon = Icons.Default.ErrorOutline,
-                    iconTint = HanimeDanger,
+                    iconTint = MaterialTheme.colorScheme.error,
                     title = stringResource(R.string.update_check_failed),
                     subtitle = state.message,
                     action = {

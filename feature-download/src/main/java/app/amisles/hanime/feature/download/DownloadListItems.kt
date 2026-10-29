@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import coil3.compose.AsyncImage
 
@@ -245,7 +244,7 @@ internal fun DownloadTaskItem(
                 Text(
                     text = stringResource(R.string.download_failed),
                     fontSize = 10.sp,
-                    color = HanimeDanger,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 3.dp)
                 )
                 // 展示细分失败原因（如网络超时、HTTP 4xx/5xx）
@@ -345,7 +344,7 @@ internal fun DownloadTaskItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = stringResource(R.string.common_delete),
-                        tint = HanimeDanger,
+                        tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp)
                     )
                 }

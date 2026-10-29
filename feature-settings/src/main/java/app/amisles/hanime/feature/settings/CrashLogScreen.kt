@@ -49,7 +49,6 @@ import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.WrappingActionRow
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -204,7 +203,7 @@ fun CrashLogScreen(
                     showClearDialog = false
                     viewModel.clearAll()
                 }) {
-                    Text(stringResource(R.string.common_delete), color = HanimeDanger)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -277,13 +276,13 @@ private fun ActionChip(label: String, danger: Boolean = false, onClick: () -> Un
     Text(
         text = label,
         fontSize = 12.sp,
-        color = if (danger) HanimeDanger else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
             .border(
                 1.dp,
-                if (danger) HanimeDanger.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline,
+                if (danger) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline,
                 shape
             )
             .clickable { onClick() }

@@ -34,6 +34,14 @@ import app.amisles.hanime.core.ui.theme.HanimeCardLight
 import app.amisles.hanime.core.ui.theme.HanimeBorderLight
 import app.amisles.hanime.core.ui.theme.HanimeTextPrimaryLight
 import app.amisles.hanime.core.ui.theme.HanimeTextSecondaryLight
+import app.amisles.hanime.core.ui.theme.HanimeError
+import app.amisles.hanime.core.ui.theme.HanimeOnError
+import app.amisles.hanime.core.ui.theme.HanimeErrorContainer
+import app.amisles.hanime.core.ui.theme.HanimeOnErrorContainer
+import app.amisles.hanime.core.ui.theme.HanimeErrorDark
+import app.amisles.hanime.core.ui.theme.HanimeOnErrorDark
+import app.amisles.hanime.core.ui.theme.HanimeErrorContainerDark
+import app.amisles.hanime.core.ui.theme.HanimeOnErrorContainerDark
 import app.amisles.hanime.domain.preferences.ThemeMode
 
 private val HanimeDarkColorScheme = darkColorScheme(
@@ -50,7 +58,10 @@ private val HanimeDarkColorScheme = darkColorScheme(
     surfaceVariant = HanimeBorder,
     onSurfaceVariant = HanimeTextSecondary,
     outline = HanimeBorder,
-    error = HanimePrimary
+    error = HanimeErrorDark,
+    onError = HanimeOnErrorDark,
+    errorContainer = HanimeErrorContainerDark,
+    onErrorContainer = HanimeOnErrorContainerDark
 )
 
 private val HanimeLightColorScheme = lightColorScheme(
@@ -67,7 +78,10 @@ private val HanimeLightColorScheme = lightColorScheme(
     surfaceVariant = HanimeBorderLight,
     onSurfaceVariant = HanimeTextSecondaryLight,
     outline = HanimeBorderLight,
-    error = HanimePrimary
+    error = HanimeError,
+    onError = HanimeOnError,
+    errorContainer = HanimeErrorContainer,
+    onErrorContainer = HanimeOnErrorContainer
 )
 
 @Composable

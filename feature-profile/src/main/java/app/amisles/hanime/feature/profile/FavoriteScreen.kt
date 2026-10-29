@@ -56,7 +56,6 @@ import android.widget.Toast
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
@@ -424,7 +423,7 @@ fun FavoriteScreen(
                 Text(
                     text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
-                    color = HanimeDanger,
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable {
@@ -502,7 +501,7 @@ fun FavoriteScreen(
                     Text(
                         text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
-                        color = HanimeDanger,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)

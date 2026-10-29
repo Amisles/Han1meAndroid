@@ -70,7 +70,6 @@ import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.WrappingActionRow
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.R
 
@@ -785,7 +784,7 @@ fun DownloadScreen(
                 Text(
                     text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
-                    color = HanimeDanger,
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable {
@@ -905,7 +904,7 @@ fun DownloadScreen(
                     Text(
                         text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
-                        color = HanimeDanger,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)

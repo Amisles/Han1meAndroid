@@ -92,7 +92,6 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.HanimeSuccess
 import app.amisles.hanime.core.ui.theme.HanimeWarning
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -831,7 +830,7 @@ private fun DecimalInputRow(
                     textStyle = TextStyle(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (outOfRange) HanimeDanger else MaterialTheme.colorScheme.primary,
+                        color = if (outOfRange) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.End
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -869,7 +868,7 @@ private fun DecimalInputRow(
         Text(
             text = hint,
             fontSize = 10.sp,
-            color = if (outOfRange) HanimeDanger else MaterialTheme.colorScheme.onSurface,
+            color = if (outOfRange) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 6.dp)
         )
     }

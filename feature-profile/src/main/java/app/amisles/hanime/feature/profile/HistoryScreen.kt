@@ -53,7 +53,6 @@ import androidx.compose.material.icons.outlined.History
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
-import app.amisles.hanime.core.ui.theme.HanimeDanger
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.R
 import android.widget.Toast
@@ -358,7 +357,7 @@ fun HistoryScreen(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = stringResource(R.string.common_delete),
-                                    tint = HanimeDanger,
+                                    tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -396,7 +395,7 @@ fun HistoryScreen(
                 Text(
                     text = stringResource(R.string.common_delete),
                     fontSize = 14.sp,
-                    color = HanimeDanger,
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable { showDeleteConfirm = true }
@@ -429,7 +428,7 @@ fun HistoryScreen(
                 Text(
                     text = stringResource(R.string.common_clear),
                     fontSize = 14.sp,
-                    color = HanimeDanger,
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable { showClearConfirm = true }
@@ -494,7 +493,7 @@ fun HistoryScreen(
                     Text(
                         text = stringResource(R.string.common_delete),
                         fontSize = 14.sp,
-                        color = HanimeDanger,
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .weight(1f)
