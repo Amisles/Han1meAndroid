@@ -52,6 +52,9 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -98,7 +101,10 @@ import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
+import app.amisles.hanime.core.ui.theme.CardConfig
+import app.amisles.hanime.core.ui.theme.CardStyle
 import app.amisles.hanime.core.ui.theme.ContrastLevel
+import app.amisles.hanime.core.ui.theme.CornerMode
 import app.amisles.hanime.core.ui.theme.HanimeSuccess
 import app.amisles.hanime.core.ui.theme.HanimeWarning
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -452,6 +458,93 @@ fun CustomizeScreen(
                             UiConfigStore.update { it.copy(thumbnailQuality = defaults.thumbnailQuality) }
                         },
                         onSelect = { quality -> UiConfigStore.update { it.copy(thumbnailQuality = quality) } }
+                    )
+                    RowDivider()
+                    ChoiceRow(
+                        title = stringResource(R.string.customize_card_style),
+                        options = CardStyle.entries.map { it to stringResource(cardStyleLabelRes(it)) },
+                        selected = config.card.style,
+                        isDefault = config.card.style == defaults.card.style,
+                        onReset = {
+                            UiConfigStore.update { it.copy(card = it.card.copy(style = defaults.card.style)) }
+                        },
+                        onSelect = { style -> UiConfigStore.update { it.copy(card = it.card.copy(style = style)) } }
+                    )
+                    RowDivider()
+                    ChoiceRow(
+                        title = stringResource(R.string.customize_card_title_lines),
+                        options = (CardConfig.MIN_TITLE_LINES..CardConfig.MAX_TITLE_LINES).map { lines ->
+                            lines to stringResource(R.string.customize_card_title_lines_value, lines)
+                        },
+                        selected = config.card.titleLines,
+                        isDefault = config.card.titleLines == defaults.card.titleLines,
+                        onReset = {
+                            UiConfigStore.update { it.copy(card = it.card.copy(titleLines = defaults.card.titleLines)) }
+                        },
+                        onSelect = { lines -> UiConfigStore.update { it.copy(card = it.card.copy(titleLines = lines)) } }
+                    )
+                    RowDivider()
+                    Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.customize_card_corner_mode),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (config.card.cornerMode != defaults.card.cornerMode) {
+                                IconAction(
+                                    icon = Icons.Default.RestartAlt,
+                                    enabled = true,
+                                    labelRes = R.string.customize_reset_item,
+                                    onClick = {
+                                        UiConfigStore.update {
+                                            it.copy(card = it.card.copy(cornerMode = defaults.card.cornerMode))
+                                        }
+                                    },
+                                    boxSize = 30.dp,
+                                    iconSize = 17.dp
+                                )
+                            }
+                        }
+                        TwoWaySegment(
+                            firstLabel = stringResource(R.string.customize_card_corner_all),
+                            secondLabel = stringResource(R.string.customize_card_corner_top),
+                            firstSelected = config.card.cornerMode == CornerMode.ALL,
+                            onSelectFirst = {
+                                UiConfigStore.update { it.copy(card = it.card.copy(cornerMode = CornerMode.ALL)) }
+                            },
+                            onSelectSecond = {
+                                UiConfigStore.update { it.copy(card = it.card.copy(cornerMode = CornerMode.TOP)) }
+                            }
+                        )
+                    }
+                    RowDivider()
+                    SettingsSwitchRow(
+                        icon = Icons.Outlined.Person,
+                        title = stringResource(R.string.customize_card_show_author),
+                        checked = config.card.showAuthor,
+                        onCheckedChange = { enabled ->
+                            UiConfigStore.update { it.copy(card = it.card.copy(showAuthor = enabled)) }
+                        }
+                    )
+                    RowDivider()
+                    SettingsSwitchRow(
+                        icon = Icons.Outlined.Schedule,
+                        title = stringResource(R.string.customize_card_show_time),
+                        checked = config.card.showPublishTime,
+                        onCheckedChange = { enabled ->
+                            UiConfigStore.update { it.copy(card = it.card.copy(showPublishTime = enabled)) }
+                        }
+                    )
+                    RowDivider()
+                    SettingsSwitchRow(
+                        icon = Icons.Outlined.Label,
+                        title = stringResource(R.string.customize_card_show_badges),
+                        checked = config.card.showBadges,
+                        onCheckedChange = { enabled ->
+                            UiConfigStore.update { it.copy(card = it.card.copy(showBadges = enabled)) }
+                        }
                     )
                 }
                 Spacer(modifier = Modifier.height(GROUP_GAP))
@@ -1575,6 +1668,14 @@ private fun presetLabelRes(preset: UiPreset): Int = when (preset) {
     UiPreset.STANDARD -> R.string.customize_preset_standard
     UiPreset.COMFORTABLE -> R.string.customize_preset_comfortable
     UiPreset.LARGE -> R.string.customize_preset_large
+}
+
+private fun cardStyleLabelRes(style: CardStyle): Int = when (style) {
+    CardStyle.AUTO -> R.string.customize_card_style_auto
+    CardStyle.FILLED -> R.string.customize_card_style_filled
+    CardStyle.OUTLINED -> R.string.customize_card_style_outlined
+    CardStyle.ELEVATED -> R.string.customize_card_style_elevated
+    CardStyle.PLAIN -> R.string.customize_card_style_plain
 }
 
 private fun seedLabelRes(seed: ThemeSeed): Int = when (seed) {

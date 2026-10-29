@@ -22,7 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.amisles.hanime.core.ui.theme.CardStyle
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.cardSurface
+import app.amisles.hanime.core.ui.theme.thumbnailCornerShape
 import app.amisles.hanime.domain.model.HanimeVideo
 
 /**
@@ -41,20 +44,30 @@ fun VideoGridCard(
     targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
+    val card = cfg.card
     val coverRatio = videoCoverAspectRatio(video)
+    val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
+    val cardStyle = if (card.style == CardStyle.AUTO) CardStyle.PLAIN else card.style
+    val inset = if (cardStyle == CardStyle.PLAIN) 0.dp else 6.dp
+    val thumbShape = thumbnailCornerShape(
+        (cfg.cardCornerRadius.value - inset.value).coerceAtLeast(0f).dp,
+        card.cornerMode
+    )
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // 先 clip 再 clickable，让点按涟漪跟随 8dp 圆角而不是方角
-            .clip(RoundedCornerShape(cfg.cardCornerRadius))
+            .cardSurface(cardStyle, cardShape)
+            // 先 clip 再 clickable，让点按涟漪跟随圆角而不是方角
+            .clip(cardShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(inset)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(coverRatio)
-                .clip(RoundedCornerShape(cfg.cardCornerRadius))
+                .clip(thumbShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             VideoThumbnail(
@@ -74,21 +87,23 @@ fun VideoGridCard(
             lineHeight = cfg.gridTitleLineHeight,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onBackground,
-            minLines = 2,
-            maxLines = 2,
+            minLines = card.titleLines,
+            maxLines = card.titleLines,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = cfg.cardTitleTopPadding)
         )
 
-        if (video.author.isNotEmpty() || video.publishTime.isNotEmpty()) {
+        if ((card.showAuthor && video.author.isNotEmpty()) ||
+            (card.showPublishTime && video.publishTime.isNotEmpty())
+        ) {
             Row(
                 modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                if (video.author.isNotEmpty()) {
+                if (card.showAuthor && video.author.isNotEmpty()) {
                     Text(
                         text = video.author,
                         fontSize = cfg.gridMetaFontSize,
@@ -102,7 +117,7 @@ fun VideoGridCard(
                     )
                 }
                 // 与 VideoCard 一致：作者后接「• 时间」，同处一行，不新增行高
-                if (video.publishTime.isNotEmpty()) {
+                if (card.showPublishTime && video.publishTime.isNotEmpty()) {
                     Text(
                         text = "• ${video.publishTime}",
                         fontSize = cfg.gridMetaFontSize,

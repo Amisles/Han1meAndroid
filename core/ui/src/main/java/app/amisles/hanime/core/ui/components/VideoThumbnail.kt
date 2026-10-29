@@ -134,7 +134,7 @@ private fun ThumbnailBox(
             )
         }
 
-        if (duration.isNotEmpty()) {
+        if (cfg.card.showBadges && duration.isNotEmpty()) {
             Text(
                 text = duration,
                 fontSize = cfg.badgeFontSize,
@@ -148,7 +148,7 @@ private fun ThumbnailBox(
             )
         }
 
-        if (likeRate.isNotEmpty() || viewCount.isNotEmpty()) {
+        if (cfg.card.showBadges && (likeRate.isNotEmpty() || viewCount.isNotEmpty())) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)

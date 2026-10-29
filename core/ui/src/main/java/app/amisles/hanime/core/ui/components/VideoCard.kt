@@ -1,6 +1,5 @@
 package app.amisles.hanime.core.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -31,8 +30,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.core.ui.theme.CardStyle
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
-import app.amisles.hanime.core.ui.theme.surfaceEdge
+import app.amisles.hanime.core.ui.theme.cardSurface
+import app.amisles.hanime.core.ui.theme.thumbnailCornerShape
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -45,18 +46,29 @@ fun VideoCard(
     targetWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
+    val card = cfg.card
     val coverRatio = videoCoverAspectRatio(video)
+    val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
+    val cardStyle = if (card.style == CardStyle.AUTO) CardStyle.PLAIN else card.style
+    val inset = if (cardStyle == CardStyle.PLAIN) 0.dp else 6.dp
+    val thumbShape = thumbnailCornerShape(
+        (cfg.cardCornerRadius.value - inset.value).coerceAtLeast(0f).dp,
+        card.cornerMode
+    )
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .cardSurface(cardStyle, cardShape)
+            .clip(cardShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(inset)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(coverRatio)
-                .clip(RoundedCornerShape(cfg.cardCornerRadius))
+                .clip(thumbShape)
         ) {
             VideoThumbnail(
                 thumbnailUrl = video.thumbnailUrl,
@@ -79,12 +91,12 @@ fun VideoCard(
                 fontSize = cfg.cardTitleFontSize,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground,
-                minLines = 2,
-                maxLines = 2,
+                minLines = card.titleLines,
+                maxLines = card.titleLines,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
-            if (video.author.isNotEmpty()) {
+            if (card.showAuthor && video.author.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -100,7 +112,7 @@ fun VideoCard(
                             .weight(1f, fill = false)
                             .clickable { onAuthorClick(video.author) }
                     )
-                    if (video.publishTime.isNotEmpty()) {
+                    if (card.showPublishTime && video.publishTime.isNotEmpty()) {
                         Text(
                             text = " • ${video.publishTime}",
                             fontSize = cfg.cardMetaFontSize,
@@ -127,14 +139,17 @@ fun VideoListItem(
     thumbnailWidth: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
+    val card = cfg.card
     val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
     // 兜底：缩略图圆角需 thumbR + pad >= cardR，否则左边界会伸到卡片背景之外（浅色阴影下可见）
-    val thumbShape = RoundedCornerShape(
+    val thumbShape = thumbnailCornerShape(
         cfg.listThumbnailCornerRadius.value.coerceIn(
             (cfg.cardCornerRadius.value - cfg.listItemPadding.value).coerceAtLeast(0f),
             cfg.cardCornerRadius.value
-        ).dp
+        ).dp,
+        card.cornerMode
     )
+    val cardStyle = if (card.style == CardStyle.AUTO) CardStyle.OUTLINED else card.style
     val coverRatio = videoCoverAspectRatio(video)
     val baseThumbWidth = thumbnailWidth ?: cfg.listThumbnailWidth
     // 竖版封面按高度反推宽度，使两种卡片的缩略图区高度接近，避免行高大幅跳动
@@ -143,16 +158,15 @@ fun VideoListItem(
     } else {
         baseThumbWidth
     }
-    // 标题区固定两行高并让文字垂直居中：单行标题时空白上下均分，不会全堆在标题与作者之间。
-    // 行高比例与 grid 标题一致（16sp / 12sp），两行高据此换算，等高且不裁切
+    // 标题区固定为配置的行数高度并让文字垂直居中：单行标题时空白上下均分，不会全堆在标题与作者之间。
+    // 行高比例与 grid 标题一致（16sp / 12sp），按行数换算，等高且不裁切
     val titleLineHeight = cfg.listTitleFontSize.value.times(4f / 3f).sp
-    val titleBlockHeight = with(LocalDensity.current) { (titleLineHeight * 2).toDp() }
+    val titleBlockHeight = with(LocalDensity.current) { (titleLineHeight * card.titleLines).toDp() }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, cardShape)
-            .surfaceEdge(cardShape)
+            .cardSurface(cardStyle, cardShape)
             .clip(cardShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(cfg.listItemPadding),
@@ -189,12 +203,12 @@ fun VideoListItem(
                     lineHeight = titleLineHeight,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
+                    maxLines = card.titleLines,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            if (video.author.isNotEmpty()) {
+            if (card.showAuthor && video.author.isNotEmpty()) {
                 Text(
                     text = video.author,
                     fontSize = cfg.listMetaFontSize,
@@ -206,7 +220,9 @@ fun VideoListItem(
                         .clickable { onAuthorClick(video.author) }
                 )
             }
-            Row(
+            val hasStats = video.viewCount.isNotEmpty() || video.likeRate.isNotEmpty()
+            val showTime = card.showPublishTime && video.publishTime.isNotEmpty()
+            if (hasStats || showTime) Row(
                 horizontalArrangement = Arrangement.spacedBy(cfg.listMetaSpacing),
                 modifier = Modifier.padding(top = 4.dp)
             ) {
@@ -237,7 +253,7 @@ fun VideoListItem(
                 }
                 // 发布时间：与 VideoCard 的「作者 • 时间」保持一致，列表行放在统计行末尾，
                 // 不额外占一行高度（首页 / 搜索 / 订阅等列表共用本组件）
-                if (video.publishTime.isNotEmpty()) {
+                if (showTime) {
                     Text(
                         text = video.publishTime,
                         fontSize = cfg.listMetaFontSize,

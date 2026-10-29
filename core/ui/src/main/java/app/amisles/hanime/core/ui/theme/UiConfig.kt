@@ -36,6 +36,7 @@ data class UiConfig(
     val gridMaxColumns: Int = 5,
     val thumbnailQuality: ThumbnailQuality = ThumbnailQuality.STANDARD,
     val appearance: AppearanceConfig = AppearanceConfig(),
+    val card: CardConfig = CardConfig(),
 ) {
     fun gridColumnsFor(availableWidth: Dp): Int {
         val width = availableWidth.value
@@ -79,6 +80,7 @@ data class UiConfig(
             gridGap = gridGap.clamp(0f, 32f),
             gridMinColumns = minCols,
             gridMaxColumns = maxCols,
+            card = card.sanitized(),
         )
     }
 

@@ -52,6 +52,16 @@ object UiConfigCodec {
                     .put("amoled", config.appearance.amoled)
                     .put("contrast", config.appearance.contrast.name)
             )
+            .put(
+                "card",
+                JSONObject()
+                    .put("style", config.card.style.name)
+                    .put("titleLines", config.card.titleLines)
+                    .put("showAuthor", config.card.showAuthor)
+                    .put("showPublishTime", config.card.showPublishTime)
+                    .put("showBadges", config.card.showBadges)
+                    .put("cornerMode", config.card.cornerMode.name)
+            )
 
         val s = JSONObject()
             .put("visibleCount", homeSections.visibleCount)
@@ -111,6 +121,21 @@ object UiConfigCodec {
                 contrast = ContrastLevel.entries.firstOrNull {
                     it.name == c.optJSONObject("appearance")?.optString("contrast")
                 } ?: d.appearance.contrast,
+            ),
+            card = CardConfig(
+                style = CardStyle.entries.firstOrNull { it.name == c.optJSONObject("card")?.optString("style") }
+                    ?: d.card.style,
+                titleLines = c.optJSONObject("card")?.optInt("titleLines", d.card.titleLines)
+                    ?: d.card.titleLines,
+                showAuthor = c.optJSONObject("card")?.optBoolean("showAuthor", d.card.showAuthor)
+                    ?: d.card.showAuthor,
+                showPublishTime = c.optJSONObject("card")?.optBoolean("showPublishTime", d.card.showPublishTime)
+                    ?: d.card.showPublishTime,
+                showBadges = c.optJSONObject("card")?.optBoolean("showBadges", d.card.showBadges)
+                    ?: d.card.showBadges,
+                cornerMode = CornerMode.entries.firstOrNull {
+                    it.name == c.optJSONObject("card")?.optString("cornerMode")
+                } ?: d.card.cornerMode,
             ),
         ).sanitized()
 

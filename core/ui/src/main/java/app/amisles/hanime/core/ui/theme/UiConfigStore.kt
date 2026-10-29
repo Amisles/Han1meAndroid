@@ -44,6 +44,12 @@ object UiConfigStore {
     private const val K_THEME_SEED = "theme_seed"
     private const val K_AMOLED = "amoled"
     private const val K_CONTRAST = "contrast"
+    private const val K_CARD_STYLE = "card_style"
+    private const val K_CARD_TITLE_LINES = "card_title_lines"
+    private const val K_CARD_SHOW_AUTHOR = "card_show_author"
+    private const val K_CARD_SHOW_TIME = "card_show_time"
+    private const val K_CARD_SHOW_BADGES = "card_show_badges"
+    private const val K_CARD_CORNER_MODE = "card_corner_mode"
     private const val K_SECTION_VISIBLE_COUNT = "section_visible_count"
     private const val K_SECTION_LAYOUTS = "section_layouts"
     private const val K_SECTION_ORDER = "section_order"
@@ -205,6 +211,16 @@ object UiConfigStore {
                 contrast = ContrastLevel.entries.firstOrNull { it.name == readRaw(K_CONTRAST) }
                     ?: d.appearance.contrast,
             ),
+            card = CardConfig(
+                style = CardStyle.entries.firstOrNull { it.name == readRaw(K_CARD_STYLE) }
+                    ?: d.card.style,
+                titleLines = readInt(K_CARD_TITLE_LINES, d.card.titleLines),
+                showAuthor = readBoolean(K_CARD_SHOW_AUTHOR, d.card.showAuthor),
+                showPublishTime = readBoolean(K_CARD_SHOW_TIME, d.card.showPublishTime),
+                showBadges = readBoolean(K_CARD_SHOW_BADGES, d.card.showBadges),
+                cornerMode = CornerMode.entries.firstOrNull { it.name == readRaw(K_CARD_CORNER_MODE) }
+                    ?: d.card.cornerMode,
+            ),
         ).sanitized()
     }
 
@@ -240,6 +256,12 @@ object UiConfigStore {
             putString(K_THEME_SEED, cfg.appearance.seed.name)
             putBoolean(K_AMOLED, cfg.appearance.amoled)
             putString(K_CONTRAST, cfg.appearance.contrast.name)
+            putString(K_CARD_STYLE, cfg.card.style.name)
+            putInt(K_CARD_TITLE_LINES, cfg.card.titleLines)
+            putBoolean(K_CARD_SHOW_AUTHOR, cfg.card.showAuthor)
+            putBoolean(K_CARD_SHOW_TIME, cfg.card.showPublishTime)
+            putBoolean(K_CARD_SHOW_BADGES, cfg.card.showBadges)
+            putString(K_CARD_CORNER_MODE, cfg.card.cornerMode.name)
         }
     }
 
