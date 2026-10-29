@@ -6,11 +6,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.util.Rational
-import android.view.OrientationEventListener
 import android.view.WindowManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -147,8 +145,6 @@ fun VideoPlayer(
     onLoopPlaybackChanged: (Boolean) -> Unit = {},
     // 隐私模式遮罩上的「退出」入口；由调用方写回偏好
     onDisablePrivacyMode: () -> Unit = {},
-    // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
-    autoFullscreenEnabled: Boolean = true,
     // 长按临时加速倍率（1.5–3.0），只在按住期间生效
     longPressBoostSpeed: Float = 2f,
     // 双击左右区域快退 / 快进；关闭后双击不再触发跳转，也不会误切控制栏
@@ -161,11 +157,6 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    // 退出全屏时恢复的屏幕方向；若快照到横屏锁定值则回退 UNSPECIFIED，避免退出全屏后停在横屏
-    val initialOrientation = remember(activity) {
-        activity?.requestedOrientation?.takeUnless { it.isLandscapeOrientation }
-            ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-    }
     val initialBarsBehavior = remember(activity) {
         activity?.window?.let { w ->
             WindowCompat.getInsetsController(w, w.decorView).systemBarsBehavior
@@ -242,9 +233,6 @@ fun VideoPlayer(
 
     // 画中画状态
     var isInPip by remember { mutableStateOf(false) }
-
-    // 设备当前物理朝向（由下方 OrientationEventListener 维护，null = 尚未确定），仅用于全屏锁横屏一侧
-    var deviceTilt by remember { mutableStateOf<DeviceTilt?>(null) }
 
     val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val sortedSources = remember(videoSources) {
@@ -508,16 +496,13 @@ fun VideoPlayer(
         }
     }
 
-    // 退出组合时复位系统栏与屏幕方向，避免残留全屏状态
+    // 退出组合时复位系统栏，避免残留全屏状态
     DisposableEffect(activity) {
         onDispose {
             activity?.window?.let { w ->
                 val controller = WindowCompat.getInsetsController(w, w.decorView)
                 controller.show(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior = initialBarsBehavior
-            }
-            if (activity?.requestedOrientation != initialOrientation) {
-                try { activity?.requestedOrientation = initialOrientation } catch (_: Exception) {}
             }
         }
     }
@@ -602,12 +587,9 @@ fun VideoPlayer(
         return PictureInPictureParams.Builder().setAspectRatio(ratio).build()
     }
 
-    // ── 全屏与旋屏 ───────────────────────────────────────────────────────────
-    // 全屏：隐藏系统栏并把方向锁到横屏，退出时复位。方向优先用监听到的物理朝向（deviceTilt）锁到
-    // 具体一侧，而非丢一个 SENSOR_LANDSCAPE 让系统猜——系统「自动旋转」关闭时其方向传感器停用，
-    // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧再翻回来（表现为点全屏瞬间画面上下颠倒再转正）。
-    // 只有朝向未确定或设备本就竖持时才回退 SENSOR_LANDSCAPE。
-    LaunchedEffect(isFullscreen, activity, deviceTilt) {
+    // ── 全屏 ─────────────────────────────────────────────────────────────────
+    // 全屏只接管系统栏显隐；应用锁定竖屏，方向一律不动
+    LaunchedEffect(isFullscreen, activity) {
         if (activity != null) {
             val window = activity.window
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -615,88 +597,11 @@ fun VideoPlayer(
                 insetsController.hide(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                val target = deviceTilt?.landscapeOrientation
-                if (target != null) {
-                    try { activity.requestedOrientation = target } catch (_: Exception) {}
-                } else if (!activity.requestedOrientation.isLandscapeOrientation) {
-                    // 朝向未知或设备竖持（不存在「正确的一侧」）：交给系统的横屏传感器选一个
-                    try {
-                        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                    } catch (_: Exception) {}
-                }
-                // 其余情况：已锁横屏却判到竖屏，多半是左右横置翻转途经竖屏，保持方向不动，待去抖后退出全屏
             } else {
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = initialBarsBehavior
-                try { activity.requestedOrientation = initialOrientation } catch (_: Exception) {}
             }
         }
-    }
-
-    // ── 横屏自动全屏 ─────────────────────────────────────────────────────────
-    // 设备由竖转横时自动进入全屏，由横转竖时自动退出（平板分栏由调用方关闭该行为）。
-    // 用 ref 持有最新状态与回调，避免 Effect 闭包捕获到陈旧的 isFullscreen / 回调。
-    val orientationFlipRef = rememberUpdatedState { landscape: Boolean ->
-        if (autoFullscreenEnabled && !isInPip) {
-            if (landscape && !isFullscreen) onFullscreenToggle(true)
-            else if (!landscape && isFullscreen) onFullscreenToggle(false)
-        }
-    }
-
-    // 监听器始终注册（不随 autoFullscreenEnabled 走）：平板虽不自动全屏，但手动点全屏时同样
-    // 需要 deviceTilt 才能锁到正确一侧，是否触发自动全屏由上面的 ref 内部判断。
-    DisposableEffect(activity) {
-        val act = activity ?: return@DisposableEffect onDispose {}
-        // 上一次已生效的方向（null = 尚未登记），仅在真正翻转时上报
-        var lastLandscape: Boolean? = null
-        var candidateLandscape: Boolean? = null
-        var candidateSince = 0L
-        // 竖屏待确认次数：左右横置互翻必经竖屏，而全屏时 SENSOR_LANDSCAPE 不会让画面经过竖屏，
-        // 若一次判到竖屏就退出会「退出全屏又立刻重进」，故竖屏需连续两次判定才生效
-        var portraitStreak = 0
-        // 上一次真正落地判定时的物理朝向。OrientationEventListener 在一般设备上会以
-        // 传感器采样率持续回调（数十次/秒），原实现每次回调都写 deviceTilt 这个 Compose State，
-        // 即使值不变也会走一次快照写入与失效检查。这里先与已生效值比较，只有真正变化才写入。
-        var appliedTilt: DeviceTilt? = null
-        val listener = object : OrientationEventListener(act) {
-            override fun onOrientationChanged(orientation: Int) {
-                if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) return
-                // 临界区返回 null：维持原判定，等角度稳定后再判
-                val tilt = classifyDeviceTilt(orientation) ?: return
-                // 物理朝向始终同步（左右翻转也要更新，供全屏锁方向用）。
-                // 先比对已生效值：朝向未变时不写 State，避免高频回调反复触发重组检查。
-                if (tilt != appliedTilt) {
-                    appliedTilt = tilt
-                    deviceTilt = tilt
-                }
-                val landscape = tilt.isLandscape
-                val previous = lastLandscape
-                if (previous == landscape) {
-                    portraitStreak = 0
-                    candidateLandscape = null
-                    return
-                }
-                val now = System.currentTimeMillis()
-                if (candidateLandscape != landscape) {
-                    candidateLandscape = landscape
-                    candidateSince = now
-                    return
-                }
-                if (now - candidateSince < FLIP_DEBOUNCE_MS) return
-                candidateLandscape = null
-                if (!landscape && previous != null) {
-                    portraitStreak++
-                    if (portraitStreak < 2) return
-                }
-                portraitStreak = 0
-                lastLandscape = landscape
-                // 首次回调只用于登记当前朝向：起始竖屏无需动作，但起始横屏（横持手机进入详情页）仍应自动全屏
-                if (previous == null && !landscape) return
-                orientationFlipRef.value(landscape)
-            }
-        }
-        listener.enable()
-        onDispose { listener.disable() }
     }
 
     // ── 画中画 ───────────────────────────────────────────────────────────────
