@@ -130,7 +130,7 @@ fun VideoPlayer(
     onPlaybackSpeedChanged: (Float) -> Unit = {},
     onQualityChanged: (String) -> Unit = {},
     onPlaybackEnded: () -> Unit = {},
-    autoPlayNext: Boolean = true,
+    autoPlayNext: Boolean = false,
     onAutoPlayNextChanged: (Boolean) -> Unit = {},
     // 循环播放：开启后当前视频播完自动从头重播（默认关闭）
     isLoopPlayback: Boolean = false,

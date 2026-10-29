@@ -168,7 +168,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     private val _preferredQualityFlow = MutableStateFlow("")
     override val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
 
-    private val _autoPlayNextFlow = MutableStateFlow(true)
+    private val _autoPlayNextFlow = MutableStateFlow(false)
     override val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
     // 循环播放：开启后当前视频播完自动从头重播（由 player.repeatMode 实现）
@@ -259,7 +259,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _themeModeFlow.value = ThemeMode.fromName(readString(SP_THEME_MODE, null))
         _playbackSpeedFlow.value = readFloat(SP_PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = readString(SP_PREFERRED_QUALITY, "").orEmpty()
-        _autoPlayNextFlow.value = readBoolean(SP_AUTO_PLAY_NEXT, true)
+        _autoPlayNextFlow.value = readBoolean(SP_AUTO_PLAY_NEXT, false)
         _loopPlaybackFlow.value = readBoolean(SP_LOOP_PLAYBACK, false)
         _longPressBoostSpeedFlow.value = readFloat(SP_LONG_PRESS_SPEED, DEFAULT_LONG_PRESS_SPEED)
             .coerceIn(MIN_LONG_PRESS_SPEED, MAX_LONG_PRESS_SPEED)
