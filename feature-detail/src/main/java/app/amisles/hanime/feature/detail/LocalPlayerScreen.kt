@@ -28,6 +28,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import java.io.File
@@ -37,10 +38,11 @@ import kotlinx.coroutines.isActive
 /**
  * 本地视频播放页：播放已下载到本机的文件，不依赖任何外部播放器应用。
  *
- * 播放器布局复用详情页的 [VideoPlayer]（控件、手势、倍速菜单、画中画等），故点按钮全屏的行为
- * 与详情页一致——本页只需持有 `isFullscreen` 状态并转成回调。
+ * 播放器布局复用详情页的 [VideoPlayer]（控件、手势、倍速菜单、画中画等），故横屏自动全屏与
+ * 点按钮全屏两项行为与详情页一致——本页只需持有 `isFullscreen` 状态并转成回调。
  *
- * 与详情页的差异：播放器占满整屏并垂直居中；无连播（连播开关仍读写全局偏好，与详情页同源）。
+ * 与详情页的差异：播放器占满整屏并垂直居中；无连播（连播开关仍读写全局偏好，与详情页同源）；
+ * 平板不启用「横屏自动全屏」（横持属常态握持会误触发），但全屏按钮照常可用。
  *
  * 页面为沉浸式：不预留底部导航栏与系统栏内边距，播放器相对整屏居中，返回按钮以叠加方式绘制。
  * 文件不存在时（被清理或删除）不起播，直接给出占位提示。
@@ -54,6 +56,7 @@ fun LocalPlayerScreen(
     val context = LocalContext.current
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
     val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
+    val sizeInfo = currentWindowSizeInfo()
     var isPlayerFullscreen by remember { mutableStateOf(false) }
 
     // 与详情页同理：不能在组合期同步构建播放器，否则整段构建压在页面首帧上
@@ -129,6 +132,7 @@ fun LocalPlayerScreen(
                     isLoopPlayback = loopPlayback,
                     onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
                     onDisablePrivacyMode = { appPrefs.setPrivacyMode(false) },
+                    autoFullscreenEnabled = !sizeInfo.isTablet,
                     longPressBoostSpeed = appPrefs.longPressBoostSpeedFlow.value,
                     doubleTapSeekEnabled = appPrefs.doubleTapSeekFlow.value,
                     // 本地播放没有作品信息：用去掉扩展名的文件名做通知标题
