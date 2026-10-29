@@ -2,7 +2,6 @@ package app.amisles.hanime
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -161,11 +160,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            splashScreen.setOnExitAnimationListener { splashScreenView ->
-                splashScreenView.remove()
-            }
-        }
         super.onCreate(savedInstanceState)
 
         // 走 Application 的语言快照（onCreate 里已预热），不要直接读 Preferences.appLanguage：
