@@ -132,27 +132,29 @@ fun Banner(
                 modifier = Modifier.padding(bottom = 10.dp)
             )
 
-            if (cfg.bannerShowTags && cfg.bannerMaxTags > 0 && bannerData.tags.isNotEmpty()) Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                bannerData.tags.take(cfg.bannerMaxTags).forEach { tag ->
-                    val chipShape = RoundedCornerShape(10.dp)
-                    Text(
-                        text = tag,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        modifier = Modifier
-                            .clip(chipShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.28f),
-                                shape = chipShape
-                            )
-                            .clickable { onTagClick(tag) }
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+            if (cfg.bannerShowTags && cfg.bannerMaxTags > 0 && bannerData.tags.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    bannerData.tags.take(cfg.bannerMaxTags).forEach { tag ->
+                        val chipShape = RoundedCornerShape(10.dp)
+                        Text(
+                            text = tag,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .clip(chipShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.28f),
+                                    shape = chipShape
+                                )
+                                .clickable { onTagClick(tag) }
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
         }
