@@ -75,6 +75,21 @@ internal fun SearchLoadMoreIndicator() {
     }
 }
 
+/** 搜索结果「加载更多失败」页脚：点一下重试同一页，不清空已有结果。 */
+@Composable
+internal fun SearchLoadMoreRetry(onRetry: () -> Unit) {
+    Text(
+        text = stringResource(R.string.search_load_more_failed),
+        fontSize = 13.sp,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onRetry)
+            .padding(20.dp),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    )
+}
+
 /** 搜索结果「没有更多了」页脚：列表与网格共用。 */
 @Composable
 internal fun SearchNoMoreHint() {

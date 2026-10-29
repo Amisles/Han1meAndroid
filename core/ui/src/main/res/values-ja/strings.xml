@@ -932,6 +932,7 @@
     <string name="player_quality_fallback">画質が利用できないため自動で切り替えました</string>
     <string name="settings_dynamic_color">ダイナミックカラー</string>
     <string name="settings_dynamic_color_summary">壁紙の色をテーマに反映します（Android 12 以降）</string>
+    <string name="search_load_more_failed">追加読み込みに失敗しました。タップで再試行</string>
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_removed">お気に入りを解除しました</string>
     <string name="card_search_related">関連動画を検索</string>

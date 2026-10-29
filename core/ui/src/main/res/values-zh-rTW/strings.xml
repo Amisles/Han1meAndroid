@@ -932,6 +932,7 @@
     <string name="player_quality_fallback">目前畫質無法使用，已自動切換</string>
     <string name="settings_dynamic_color">動態取色</string>
     <string name="settings_dynamic_color_summary">跟隨系統桌布配色（Android 12 以上）</string>
+    <string name="search_load_more_failed">載入更多失敗，點擊重試</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜尋相關影片</string>

@@ -81,6 +81,9 @@ class SearchViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _loadMoreError = MutableStateFlow(false)
+    val loadMoreError: StateFlow<Boolean> = _loadMoreError.asStateFlow()
+
     /** 搜索代数：executeSearch 每次自增，界面据此把列表滚回顶部（换词/换条件后不能停留在旧结果的滚动位置）。 */
     private val _searchGeneration = MutableStateFlow(0)
     val searchGeneration: StateFlow<Int> = _searchGeneration.asStateFlow()
@@ -238,6 +241,7 @@ class SearchViewModel @Inject constructor(
         _totalPages.value = 1
         _hasMore.value = true
         _error.value = null
+        _loadMoreError.value = false
         if (hasAnyCriteria()) {
             // 保留上一次结果直到新结果返回，由界面在顶部显示细进度条，避免列表清空后闪成空 spinner
             executeSearch()
@@ -257,6 +261,7 @@ class SearchViewModel @Inject constructor(
         _isLoadingMore.value = false
         _isLoading.value = true
         _error.value = null
+        _loadMoreError.value = false
         currentPageNum = 1
         _currentPage.value = 1
         _hasMore.value = true
@@ -326,6 +331,7 @@ class SearchViewModel @Inject constructor(
         val epoch = ++loadMoreEpoch
         loadMoreJob?.cancel()
         _isLoadingMore.value = true
+        _loadMoreError.value = false
         // 局部页码：不再共享改写 currentPageNum。原实现在失败路径 currentPageNum--，若期间用户
         // 已触发新一轮搜索（resetSearch 把它置 1），这个 -- 就会把页码减成 0，后续每一页都从 0 请求。
         val pageToLoad = currentPageNum + 1
@@ -359,9 +365,7 @@ class SearchViewModel @Inject constructor(
                     }
                     is AppResult.Error -> {
                         _hasMore.value = true
-                        // 记录失败原因。注意：SearchScreen 仅在 videos 为空时渲染 error，
-                        // 而分页失败时列表非空，故此处暂无可见提示（属既有 UI 缺口，未在本次修复范围内）
-                        _error.value = result.message
+                        _loadMoreError.value = true
                     }
                     is AppResult.Loading -> {}
                 }
@@ -371,7 +375,7 @@ class SearchViewModel @Inject constructor(
                 AppLogger.e("SearchViewModel", "加载更多失败: ${e.message}", e)
                 // 不触碰共享游标：本轮失败只是没加载下一页，下一轮仍从同一页继续
                 _hasMore.value = true
-                _error.value = e.message ?: "加载更多失败"
+                _loadMoreError.value = true
             } finally {
                 if (epoch == loadMoreEpoch) _isLoadingMore.value = false
             }

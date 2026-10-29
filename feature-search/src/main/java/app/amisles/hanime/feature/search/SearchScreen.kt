@@ -102,6 +102,7 @@ fun SearchScreen(
     val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
     val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
     val sortValue by viewModel.sort.collectAsStateWithLifecycle()
     val genreValue by viewModel.genre.collectAsStateWithLifecycle()
@@ -652,6 +653,10 @@ fun SearchScreen(
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             SearchLoadMoreIndicator()
                         }
+                    } else if (loadMoreError) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            SearchLoadMoreRetry(onRetry = { viewModel.loadMore() })
+                        }
                     } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             SearchNoMoreHint()
@@ -678,6 +683,8 @@ fun SearchScreen(
                 // 加载中指示器（自动触发加载时显示）
                 if (isLoadingMore) {
                     item { SearchLoadMoreIndicator() }
+                } else if (loadMoreError) {
+                    item { SearchLoadMoreRetry(onRetry = { viewModel.loadMore() }) }
                 } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
                     item { SearchNoMoreHint() }
                 }

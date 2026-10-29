@@ -984,6 +984,7 @@
     <string name="player_quality_fallback">当前画质不可用，已自动切换</string>
     <string name="settings_dynamic_color">动态取色</string>
     <string name="settings_dynamic_color_summary">跟随系统壁纸配色（Android 12 及以上）</string>
+    <string name="search_load_more_failed">加载更多失败，点击重试</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜索相关视频</string>
