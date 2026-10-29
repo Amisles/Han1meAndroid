@@ -992,6 +992,7 @@
     <string name="settings_dynamic_color_summary">Use wallpaper colors (Android 12+)</string>
     <string name="search_load_more_failed">Failed to load more, tap to retry</string>
     <string name="privacy_exit">Turn off privacy mode</string>
+    <string name="settings_subscription_needs_permission">Notification permission not granted; reminders unavailable</string>
     <string name="privacy_tile_label">Privacy mode</string>
     <string name="privacy_player_hidden">Privacy mode is on — video hidden</string>
     <string name="privacy_player_tap_continue">Tap to continue</string>

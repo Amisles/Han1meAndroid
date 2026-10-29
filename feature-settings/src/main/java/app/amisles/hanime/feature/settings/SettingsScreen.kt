@@ -1,8 +1,14 @@
 package app.amisles.hanime.feature.settings
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Environment
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -440,6 +446,19 @@ fun SettingsScreen(
     var showStoragePathDialog by remember { mutableStateOf(false) }
     var longPressMenuExpanded by remember { mutableStateOf(false) }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.setSubscriptionReminder(granted)
+        if (!granted) {
+            Toast.makeText(
+                context,
+                context.getString(app.amisles.hanime.core.ui.R.string.settings_subscription_needs_permission),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     val languageOptions = languageOptionRes()
         .map { LanguageOption(it.first, stringResource(it.second)) }
     val concurrentCountSuffix = stringResource(R.string.settings_concurrent_count_suffix)
@@ -669,12 +688,24 @@ fun SettingsScreen(
 
             // 通知：订阅更新提醒
             SettingsGroupCard {
+                val switchOn: (Boolean) -> Unit = { enabled -> viewModel.setSubscriptionReminder(enabled) }
                 SettingsSwitchRow(
                     icon = Icons.Outlined.NotificationsActive,
                     title = stringResource(R.string.settings_subscription_reminder),
                     subtitle = stringResource(R.string.settings_subscription_reminder_summary),
                     checked = uiState.subscriptionReminder,
-                    onCheckedChange = { enabled -> viewModel.setSubscriptionReminder(enabled) }
+                    onCheckedChange = { enabled ->
+                        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                android.Manifest.permission.POST_NOTIFICATIONS
+                            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            switchOn(enabled)
+                        }
+                    }
                 )
                 SettingsGroupDivider()
                 SettingsSwitchRow(

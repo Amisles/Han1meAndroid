@@ -47,6 +47,10 @@ class SubscriptionReminderWorker @AssistedInject constructor(
     }
 
     private fun notify(count: Int, firstTitle: String) {
+        if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
+            AppLogger.log("SubscriptionReminder", "通知权限未授予，跳过本次提醒")
+            return
+        }
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             manager.createNotificationChannel(

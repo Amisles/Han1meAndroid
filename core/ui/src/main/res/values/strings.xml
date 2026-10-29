@@ -1044,6 +1044,7 @@
     <string name="settings_dynamic_color_summary">跟随系统壁纸配色（Android 12 及以上）</string>
     <string name="search_load_more_failed">加载更多失败，点击重试</string>
     <string name="privacy_exit">退出隐私模式</string>
+    <string name="settings_subscription_needs_permission">未授予通知权限，无法接收更新提醒</string>
     <string name="privacy_tile_label">隐私模式</string>
     <string name="privacy_player_hidden">隐私模式已开启，画面已隐藏</string>
     <string name="privacy_player_tap_continue">轻触画面继续</string>

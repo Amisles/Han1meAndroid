@@ -992,6 +992,7 @@
     <string name="settings_dynamic_color_summary">壁紙の色をテーマに反映します（Android 12 以降）</string>
     <string name="search_load_more_failed">追加読み込みに失敗しました。タップで再試行</string>
     <string name="privacy_exit">プライバシーモードを解除</string>
+    <string name="settings_subscription_needs_permission">通知権限が未許可のため、更新通知を受け取れません</string>
     <string name="privacy_tile_label">プライバシーモード</string>
     <string name="privacy_player_hidden">プライバシーモードが有効です（映像は非表示）</string>
     <string name="privacy_player_tap_continue">タップして再開</string>
