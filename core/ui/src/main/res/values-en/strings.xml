@@ -930,6 +930,8 @@
     <string name="player_error_source">This source is temporarily unavailable. Try again later</string>
     <string name="player_error_unknown">Playback failed. Try again later</string>
     <string name="player_quality_fallback">Quality unavailable, switched automatically</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_dynamic_color_summary">Use wallpaper colors (Android 12+)</string>
     <string name="favorite_added">Added to favorites</string>
     <string name="favorite_removed">Removed from favorites</string>
     <string name="card_search_related">Search related videos</string>

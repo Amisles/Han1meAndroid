@@ -27,6 +27,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 data class SettingsUiState(
     val appLanguage: String = SettingsRepository.LANGUAGE_ZH_CN,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val dynamicColor: Boolean = false,
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
     val downloadRateLimit: Int = 0,
     val downloadWifiOnly: Boolean = false,
@@ -107,6 +108,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(downloadChargingOnly = enabled)
     }.combine(settings.downloadNightOnlyFlow) { state, enabled ->
         state.copy(downloadNightOnly = enabled)
+    }.combine(settings.dynamicColorFlow) { state, enabled ->
+        state.copy(dynamicColor = enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -117,6 +120,7 @@ class SettingsViewModel @Inject constructor(
     private fun initialState(): SettingsUiState = SettingsUiState(
         appLanguage = settings.appLanguage,
         themeMode = settings.themeMode,
+        dynamicColor = settings.dynamicColor,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         downloadRateLimit = settings.downloadRateLimit,
         downloadWifiOnly = settings.downloadWifiOnly,
@@ -153,6 +157,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         settings.setThemeMode(mode)
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        settings.setDynamicColor(enabled)
     }
 
     fun setMaxDownloadConcurrent(count: Int) {

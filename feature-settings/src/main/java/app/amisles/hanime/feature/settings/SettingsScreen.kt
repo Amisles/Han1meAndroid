@@ -88,6 +88,7 @@ import app.amisles.hanime.core.ui.components.SettingsNavRow
 import app.amisles.hanime.core.common.extension.findActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -512,6 +513,16 @@ fun SettingsScreen(
                     selectedValue = uiState.themeMode,
                     onSelect = { mode -> viewModel.setThemeMode(mode) }
                 )
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    SettingsGroupDivider()
+                    SettingsSwitchRow(
+                        icon = Icons.Outlined.Wallpaper,
+                        title = stringResource(R.string.settings_dynamic_color),
+                        subtitle = stringResource(R.string.settings_dynamic_color_summary),
+                        checked = uiState.dynamicColor,
+                        onCheckedChange = { viewModel.setDynamicColor(it) }
+                    )
+                }
                 SettingsGroupDivider()
                 SettingsNavRow(
                     icon = Icons.Outlined.Tune,

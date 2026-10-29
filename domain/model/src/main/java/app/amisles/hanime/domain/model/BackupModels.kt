@@ -25,6 +25,7 @@ enum class BackupConflictPolicy {
 data class BackupSettings(
     val appLanguage: String? = null,
     val themeMode: String? = null,
+    val dynamicColor: Boolean? = null,
     val baseUrl: String? = null,
     val playbackSpeed: Float? = null,
     val preferredQuality: String? = null,

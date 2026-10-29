@@ -27,6 +27,10 @@ interface SettingsRepository {
     val themeModeFlow: StateFlow<ThemeMode>
     fun setThemeMode(mode: ThemeMode)
 
+    val dynamicColor: Boolean
+    val dynamicColorFlow: StateFlow<Boolean>
+    fun setDynamicColor(enabled: Boolean)
+
     // ── 站点 ────────────────────────────────────────────────────────────────
     /** 站点基址，已完成规范化（https + host，去掉路径）。 */
     val baseUrl: String

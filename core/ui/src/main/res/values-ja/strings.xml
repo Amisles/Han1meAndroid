@@ -930,6 +930,8 @@
     <string name="player_error_source">この配信元は一時的に利用できません。後でもう一度お試しください</string>
     <string name="player_error_unknown">再生に失敗しました。後でもう一度お試しください</string>
     <string name="player_quality_fallback">画質が利用できないため自動で切り替えました</string>
+    <string name="settings_dynamic_color">ダイナミックカラー</string>
+    <string name="settings_dynamic_color_summary">壁紙の色をテーマに反映します（Android 12 以降）</string>
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_removed">お気に入りを解除しました</string>
     <string name="card_search_related">関連動画を検索</string>

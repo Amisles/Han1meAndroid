@@ -226,6 +226,7 @@ class BackupManager @Inject constructor(
         appLanguage = settings.appLanguage,
         themeMode = settings.themeMode.name,
         baseUrl = settings.baseUrl,
+        dynamicColor = settings.dynamicColor,
         playbackSpeed = settings.playbackSpeed,
         preferredQuality = settings.preferredQuality,
         autoPlayNext = settings.autoPlayNext,
@@ -245,6 +246,7 @@ class BackupManager @Inject constructor(
         s.themeMode?.let { name ->
             ThemeMode.entries.firstOrNull { it.name == name }?.let { settings.setThemeMode(it) }
         }
+        s.dynamicColor?.let { settings.setDynamicColor(it) }
         s.baseUrl?.let { settings.setBaseUrl(it) }
         s.playbackSpeed?.let { settings.setPlaybackSpeed(it) }
         s.preferredQuality?.let { settings.setPreferredQuality(it) }
@@ -391,6 +393,7 @@ class BackupManager @Inject constructor(
     private fun settingsToJson(s: BackupSettings) = JSONObject().apply {
         s.appLanguage?.let { put("appLanguage", it) }
         s.themeMode?.let { put("themeMode", it) }
+        s.dynamicColor?.let { put("dynamicColor", it) }
         s.baseUrl?.let { put("baseUrl", it) }
         s.playbackSpeed?.let { put("playbackSpeed", it.toDouble()) }
         s.preferredQuality?.let { put("preferredQuality", it) }
@@ -409,6 +412,7 @@ class BackupManager @Inject constructor(
     private fun parseSettings(o: JSONObject) = BackupSettings(
         appLanguage = o.stringOrNull("appLanguage"),
         themeMode = o.stringOrNull("themeMode"),
+        dynamicColor = o.booleanOrNull("dynamicColor"),
         baseUrl = o.stringOrNull("baseUrl"),
         playbackSpeed = o.doubleOrNull("playbackSpeed")?.toFloat(),
         preferredQuality = o.stringOrNull("preferredQuality"),

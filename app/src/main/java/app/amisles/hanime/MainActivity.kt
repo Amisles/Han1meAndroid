@@ -123,8 +123,6 @@ import app.amisles.hanime.feature.settings.CustomizeScreen
 import app.amisles.hanime.feature.settings.DiagnosticsScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
@@ -177,6 +175,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeMode by Preferences.themeModeFlow.collectAsStateWithLifecycle()
+            val dynamicColor by Preferences.dynamicColorFlow.collectAsStateWithLifecycle()
             val uiConfig by UiConfigStore.config.collectAsStateWithLifecycle()
             val homeSections by UiConfigStore.homeSections.collectAsStateWithLifecycle()
             val darkTheme = when (themeMode) {
@@ -184,28 +183,30 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            // 依据主题模式动态调整系统栏图标颜色
-            LaunchedEffect(darkTheme) {
-                val bgArgb = (if (darkTheme) HanimeBackground else HanimeBackgroundLight).toArgb()
-                enableEdgeToEdge(
-                    statusBarStyle = if (darkTheme) {
-                        SystemBarStyle.dark(bgArgb)
-                    } else {
-                        SystemBarStyle.light(bgArgb, bgArgb)
-                    },
-                    navigationBarStyle = if (darkTheme) {
-                        SystemBarStyle.dark(bgArgb)
-                    } else {
-                        SystemBarStyle.light(bgArgb, bgArgb)
-                    }
-                )
-            }
             CompositionLocalProvider(LocalAppPreferences provides PreferencesAppPreferences) {
             HanimeTheme(
                 themeMode = themeMode,
+                dynamicColor = dynamicColor,
                 uiConfig = uiConfig,
                 homeSectionConfig = homeSections
             ) {
+                val barColor = MaterialTheme.colorScheme.background
+                // 系统栏取当前主题背景色：动态取色开启时与内容背景保持一致
+                LaunchedEffect(barColor, darkTheme) {
+                    val bgArgb = barColor.toArgb()
+                    enableEdgeToEdge(
+                        statusBarStyle = if (darkTheme) {
+                            SystemBarStyle.dark(bgArgb)
+                        } else {
+                            SystemBarStyle.light(bgArgb, bgArgb)
+                        },
+                        navigationBarStyle = if (darkTheme) {
+                            SystemBarStyle.dark(bgArgb)
+                        } else {
+                            SystemBarStyle.light(bgArgb, bgArgb)
+                        }
+                    )
+                }
                 HanimeApp(updateRepository = updateRepository)
             }
             }
