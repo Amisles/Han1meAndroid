@@ -418,25 +418,28 @@ fun HanimeApp(
     }
 
     // ── 外链进入：分享 / 深链携带的视频地址 ──────────────────────────────────
-    // onNewIntent 处理应用已在前台的情况；handledIntent 保证同一 intent 只消费一次。
-    var handledIntent by remember { mutableStateOf<Any?>(null) }
+    // onNewIntent 处理应用已在前台的情况；handledIntentTag 存入实例状态，Activity 重建
+    // （切语言 / uiMode 变化）后同一 intent 不会被再次消费。
+    var handledIntentTag by rememberSaveable { mutableStateOf("") }
     var pendingShareIntent by remember { mutableStateOf(activity?.intent) }
     LaunchedEffect(activity) {
         activity?.addOnNewIntentListener { intent -> pendingShareIntent = intent }
     }
     LaunchedEffect(pendingShareIntent) {
         val intent = pendingShareIntent ?: return@LaunchedEffect
-        if (handledIntent == intent) return@LaunchedEffect
+        val tag = listOf(intent.action, intent.data, intent.extras?.keySet()?.sorted()?.joinToString(",") { key -> "$key=${intent.extras?.get(key)}" })
+            .joinToString("|")
+        if (handledIntentTag == tag) return@LaunchedEffect
         when (intent.action) {
             MainActivity.ACTION_OPEN_VIDEO -> {
-                handledIntent = intent
+                handledIntentTag = tag
                 pendingShareIntent = null
                 intent.data?.toString()?.takeIf { it.isNotBlank() }?.let { url ->
                     navController.navigate("detail?videoUrl=${Uri.encode(url)}")
                 }
             }
             MainActivity.ACTION_PLAY_LOCAL -> {
-                handledIntent = intent
+                handledIntentTag = tag
                 pendingShareIntent = null
                 intent.getStringExtra(MainActivity.EXTRA_OPEN_FILE_PATH)?.takeIf { it.isNotBlank() }?.let { path ->
                     navController.navigate("localPlayer?filePath=${Uri.encode(path)}")
