@@ -638,6 +638,12 @@
     <string name="customize_banner_height">大画像の高さ</string>
     <string name="customize_banner_tags">タグを表示</string>
     <string name="customize_banner_max_tags">タグの数</string>
+    <string name="customize_apply">適用</string>
+    <string name="customize_revert">元に戻す</string>
+    <string name="customize_apply_done">適用しました</string>
+    <string name="customize_discard_title">未適用の変更があります</string>
+    <string name="customize_discard_message">戻ると今回の変更はすべて破棄されます。</string>
+    <string name="customize_discard_confirm">破棄して戻る</string>
     <string name="customize_group_appearance">外観</string>
     <string name="customize_seed">アクセントカラー</string>
     <string name="customize_seed_brand">ブランドレッド</string>

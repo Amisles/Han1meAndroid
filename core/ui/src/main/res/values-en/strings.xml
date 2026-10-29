@@ -638,6 +638,12 @@
     <string name="customize_banner_height">Banner height</string>
     <string name="customize_banner_tags">Show tags</string>
     <string name="customize_banner_max_tags">Tag count</string>
+    <string name="customize_apply">Apply</string>
+    <string name="customize_revert">Revert</string>
+    <string name="customize_apply_done">Applied</string>
+    <string name="customize_discard_title">Unapplied changes</string>
+    <string name="customize_discard_message">Going back discards everything you changed.</string>
+    <string name="customize_discard_confirm">Discard and leave</string>
     <string name="customize_group_appearance">Appearance</string>
     <string name="customize_seed">Accent color</string>
     <string name="customize_seed_brand">Brand red</string>

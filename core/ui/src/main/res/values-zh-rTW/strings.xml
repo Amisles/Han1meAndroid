@@ -638,6 +638,12 @@
     <string name="customize_banner_height">大圖高度</string>
     <string name="customize_banner_tags">顯示標籤</string>
     <string name="customize_banner_max_tags">標籤數量</string>
+    <string name="customize_apply">套用</string>
+    <string name="customize_revert">還原</string>
+    <string name="customize_apply_done">已套用</string>
+    <string name="customize_discard_title">有未套用的修改</string>
+    <string name="customize_discard_message">返回將捨棄本次全部調整。</string>
+    <string name="customize_discard_confirm">捨棄並返回</string>
     <string name="customize_group_appearance">外觀</string>
     <string name="customize_seed">主題色</string>
     <string name="customize_seed_brand">品牌紅</string>
