@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.components.SearchField
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.model.BatchVideoItem
@@ -334,7 +335,7 @@ private fun VideoItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                AsyncImage(
+                PrivacyAwareAsyncImage(
                     model = video.thumbnailUrl,
                     contentDescription = video.title,
                     modifier = Modifier

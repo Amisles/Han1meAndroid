@@ -53,6 +53,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.model.ComicDetail
 import app.amisles.hanime.domain.model.ComicItem
@@ -248,7 +249,7 @@ private fun ComicHero(detail: ComicDetail) {
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             if (detail.coverUrl.isNotBlank()) {
-                AsyncImage(
+                PrivacyAwareAsyncImage(
                     model = detail.coverUrl,
                     contentDescription = detail.displayTitle,
                     contentScale = ContentScale.Crop,
@@ -531,7 +532,7 @@ private fun PagePreviewCell(thumb: ComicPageThumb, modifier: Modifier, onClick: 
             .clickable(onClick = onClick)
     ) {
         if (thumb.thumbnailUrl.isNotBlank()) {
-            AsyncImage(
+            PrivacyAwareAsyncImage(
                 model = thumb.thumbnailUrl,
                 contentDescription = stringResource(R.string.comic_reader_page_short, thumb.number),
                 contentScale = ContentScale.Crop,
@@ -604,7 +605,7 @@ private fun ComicRelatedCard(item: ComicItem, onClick: () -> Unit) {
                 .surfaceEdge(shape)
         ) {
             if (item.coverUrl.isNotBlank()) {
-                AsyncImage(
+                PrivacyAwareAsyncImage(
                     model = item.coverUrl,
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,

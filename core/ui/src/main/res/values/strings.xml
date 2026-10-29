@@ -985,6 +985,11 @@
     <string name="settings_dynamic_color">动态取色</string>
     <string name="settings_dynamic_color_summary">跟随系统壁纸配色（Android 12 及以上）</string>
     <string name="search_load_more_failed">加载更多失败，点击重试</string>
+    <string name="privacy_exit">退出隐私模式</string>
+    <string name="privacy_tile_label">隐私模式</string>
+    <string name="privacy_player_hidden">隐私模式已开启，画面已隐藏</string>
+    <string name="settings_privacy_mode">隐私模式</string>
+    <string name="settings_privacy_mode_summary">遮罩封面并暂停、静音播放；可从快捷设置磁贴一键切换</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜索相关视频</string>

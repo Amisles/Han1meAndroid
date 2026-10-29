@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 
 /** 单条评论（含展开 / 收起回复）。 */
 @Composable
@@ -61,7 +62,7 @@ internal fun CommentItem(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.Top
         ) {
-            coil3.compose.AsyncImage(
+            PrivacyAwareAsyncImage(
                 model = comment.avatarUrl,
                 contentDescription = null,
                 modifier = Modifier

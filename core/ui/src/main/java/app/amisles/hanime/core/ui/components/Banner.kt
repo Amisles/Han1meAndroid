@@ -70,12 +70,16 @@ fun Banner(
                         .precision(Precision.INEXACT)
                         .build()
                 }
-                AsyncImage(
-                    model = model,
-                    contentDescription = bannerData.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (LocalPrivacyMode.current) {
+                    PrivacyPlaceholder(modifier = Modifier.fillMaxSize(), iconSize = 28.dp)
+                } else {
+                    AsyncImage(
+                        model = model,
+                        contentDescription = bannerData.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         } else {
             Box(

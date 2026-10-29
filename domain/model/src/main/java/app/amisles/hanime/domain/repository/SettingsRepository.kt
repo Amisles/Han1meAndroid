@@ -31,6 +31,11 @@ interface SettingsRepository {
     val dynamicColorFlow: StateFlow<Boolean>
     fun setDynamicColor(enabled: Boolean)
 
+    /** 隐私模式：遮罩内容图片并在播放页暂停、静音，供公共场合快速切换。 */
+    val privacyMode: Boolean
+    val privacyModeFlow: StateFlow<Boolean>
+    fun setPrivacyMode(enabled: Boolean)
+
     // ── 站点 ────────────────────────────────────────────────────────────────
     /** 站点基址，已完成规范化（https + host，去掉路径）。 */
     val baseUrl: String

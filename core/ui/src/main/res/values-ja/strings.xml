@@ -933,6 +933,11 @@
     <string name="settings_dynamic_color">ダイナミックカラー</string>
     <string name="settings_dynamic_color_summary">壁紙の色をテーマに反映します（Android 12 以降）</string>
     <string name="search_load_more_failed">追加読み込みに失敗しました。タップで再試行</string>
+    <string name="privacy_exit">プライバシーモードを解除</string>
+    <string name="privacy_tile_label">プライバシーモード</string>
+    <string name="privacy_player_hidden">プライバシーモードが有効です（映像は非表示）</string>
+    <string name="settings_privacy_mode">プライバシーモード</string>
+    <string name="settings_privacy_mode_summary">サムネイルを隠して再生を一時停止・消音します。クイック設定から切替できます</string>
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_removed">お気に入りを解除しました</string>
     <string name="card_search_related">関連動画を検索</string>

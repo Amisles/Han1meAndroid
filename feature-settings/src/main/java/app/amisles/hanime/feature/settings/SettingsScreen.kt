@@ -88,6 +88,7 @@ import app.amisles.hanime.core.ui.components.SettingsNavRow
 import app.amisles.hanime.core.common.extension.findActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -561,6 +562,19 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_auto_quality_summary),
                     checked = uiState.autoQuality,
                     onCheckedChange = { enabled -> viewModel.setAutoQuality(enabled) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 隐私：公共场合一键遮罩内容并暂停播放
+            SettingsGroupCard {
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.VisibilityOff,
+                    title = stringResource(R.string.settings_privacy_mode),
+                    subtitle = stringResource(R.string.settings_privacy_mode_summary),
+                    checked = uiState.privacyMode,
+                    onCheckedChange = { enabled -> viewModel.setPrivacyMode(enabled) }
                 )
             }
 

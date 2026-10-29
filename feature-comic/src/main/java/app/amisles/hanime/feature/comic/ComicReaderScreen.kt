@@ -67,6 +67,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.model.ComicReadMode
@@ -303,7 +304,7 @@ private fun ContinuousReader(
 private fun PageImage(url: String, contentScale: ContentScale, modifier: Modifier) {
     Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         if (url.isNotBlank()) {
-            AsyncImage(
+            PrivacyAwareAsyncImage(
                 model = url,
                 contentDescription = null,
                 contentScale = contentScale,
@@ -577,7 +578,7 @@ private fun PageJumpPanel(
                         .surfaceEdge(shape)
                         .clickable { onSelect(number) }
                 ) {
-                    AsyncImage(
+                    PrivacyAwareAsyncImage(
                         model = url,
                         contentDescription = stringResource(R.string.comic_reader_page_short, number),
                         contentScale = ContentScale.Crop,

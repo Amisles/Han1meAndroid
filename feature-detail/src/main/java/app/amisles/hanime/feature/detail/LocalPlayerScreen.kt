@@ -131,6 +131,7 @@ fun LocalPlayerScreen(
                     onAutoPlayNextChanged = { appPrefs.setAutoPlayNext(it) },
                     isLoopPlayback = loopPlayback,
                     onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
+                    onDisablePrivacyMode = { appPrefs.setPrivacyMode(false) },
                     autoFullscreenEnabled = !sizeInfo.isTablet,
                     longPressBoostSpeed = appPrefs.longPressBoostSpeedFlow.value,
                     doubleTapSeekEnabled = appPrefs.doubleTapSeekFlow.value,

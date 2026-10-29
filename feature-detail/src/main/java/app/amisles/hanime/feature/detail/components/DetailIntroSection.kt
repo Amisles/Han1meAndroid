@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.domain.model.VideoDetail
 
 /**
@@ -81,7 +82,7 @@ internal fun DetailIntroSection(
                         }
                 ) {
                     if (detail.authorAvatarUrl.isNotEmpty()) {
-                        coil3.compose.AsyncImage(
+                        PrivacyAwareAsyncImage(
                             model = detail.authorAvatarUrl,
                             contentDescription = stringResource(R.string.cd_author_avatar),
                             modifier = Modifier

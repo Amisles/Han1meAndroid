@@ -12,6 +12,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,10 +35,12 @@ import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -91,6 +94,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
+import app.amisles.hanime.core.ui.components.LocalPrivacyMode
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
@@ -135,6 +140,8 @@ fun VideoPlayer(
     // 循环播放：开启后当前视频播完自动从头重播（默认关闭）
     isLoopPlayback: Boolean = false,
     onLoopPlaybackChanged: (Boolean) -> Unit = {},
+    // 隐私模式遮罩上的「退出」入口；由调用方写回偏好
+    onDisablePrivacyMode: () -> Unit = {},
     // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
     autoFullscreenEnabled: Boolean = true,
     // 长按临时加速倍率（1.5–3.0），只在按住期间生效
@@ -169,6 +176,25 @@ fun VideoPlayer(
     val controlsActivityRef = remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(1f) }
     var isMuted by remember { mutableStateOf(false) }
+
+    val privacyMode = LocalPrivacyMode.current
+    var privacyMuted by remember { mutableStateOf(false) }
+    val appPrefs = LocalAppPreferences.current
+    // 收集偏好流而非依赖重组：磁贴切换时应用可能在后台，重组会被推迟，暂停必须立即生效
+    LaunchedEffect(exoPlayer) {
+        appPrefs.privacyModeFlow.collect { enabled ->
+            if (enabled) {
+                if (exoPlayer.isPlaying) exoPlayer.pause()
+                if (!isMuted) {
+                    exoPlayer.volume = 0f
+                    privacyMuted = true
+                }
+            } else if (privacyMuted) {
+                exoPlayer.volume = volume
+                privacyMuted = false
+            }
+        }
+    }
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
     val gestureScope = rememberCoroutineScope()
     var showSpeedMenu by remember { mutableStateOf(false) }
@@ -1345,6 +1371,45 @@ fun VideoPlayer(
                         onControlTap = { markControlTap() }
                     )
                 )
+            }
+        }
+
+        if (privacyMode) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.97f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {},
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Outlined.VisibilityOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.privacy_player_hidden),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.privacy_exit),
+                        color = HanimePrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .padding(top = 14.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onDisablePrivacyMode() }
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }

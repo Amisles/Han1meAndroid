@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.domain.model.HanimeVideo
 import coil3.compose.AsyncImage
@@ -251,7 +252,7 @@ private fun ArtistChip(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (avatarUrl.isNotEmpty()) {
-            AsyncImage(
+            PrivacyAwareAsyncImage(
                 model = avatarUrl,
                 contentDescription = name,
                 modifier = Modifier

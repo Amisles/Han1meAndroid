@@ -85,6 +85,7 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.ui.CloudflareChallengeDialog
+import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.VideoQuickActionsHost
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -176,6 +177,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by Preferences.themeModeFlow.collectAsStateWithLifecycle()
             val dynamicColor by Preferences.dynamicColorFlow.collectAsStateWithLifecycle()
+            val privacyMode by Preferences.privacyModeFlow.collectAsStateWithLifecycle()
             val uiConfig by UiConfigStore.config.collectAsStateWithLifecycle()
             val homeSections by UiConfigStore.homeSections.collectAsStateWithLifecycle()
             val darkTheme = when (themeMode) {
@@ -183,7 +185,10 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            CompositionLocalProvider(LocalAppPreferences provides PreferencesAppPreferences) {
+            CompositionLocalProvider(
+                LocalAppPreferences provides PreferencesAppPreferences,
+                LocalPrivacyMode provides privacyMode
+            ) {
             HanimeTheme(
                 themeMode = themeMode,
                 dynamicColor = dynamicColor,

@@ -50,6 +50,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_APP_LANGUAGE = "app_language"
     private const val SP_THEME_MODE = "theme_mode"
     private const val SP_DYNAMIC_COLOR = "dynamic_color"
+    private const val SP_PRIVACY_MODE = "privacy_mode"
     private const val SP_PLAYBACK_SPEED = "playback_speed"
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
@@ -166,6 +167,9 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     private val _dynamicColorFlow = MutableStateFlow(false)
     override val dynamicColorFlow: StateFlow<Boolean> = _dynamicColorFlow.asStateFlow()
 
+    private val _privacyModeFlow = MutableStateFlow(false)
+    override val privacyModeFlow: StateFlow<Boolean> = _privacyModeFlow.asStateFlow()
+
     private val _playbackSpeedFlow = MutableStateFlow(1f)
     override val playbackSpeedFlow: StateFlow<Float> = _playbackSpeedFlow.asStateFlow()
 
@@ -262,6 +266,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _appLanguageFlow.value = readString(SP_APP_LANGUAGE, LANGUAGE_ZH_CN) ?: LANGUAGE_ZH_CN
         _themeModeFlow.value = ThemeMode.fromName(readString(SP_THEME_MODE, null))
         _dynamicColorFlow.value = readBoolean(SP_DYNAMIC_COLOR, false)
+        _privacyModeFlow.value = readBoolean(SP_PRIVACY_MODE, false)
         _playbackSpeedFlow.value = readFloat(SP_PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = readString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = readBoolean(SP_AUTO_PLAY_NEXT, false)
@@ -506,6 +511,8 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
 
     override val dynamicColor: Boolean get() = _dynamicColorFlow.value
 
+    override val privacyMode: Boolean get() = _privacyModeFlow.value
+
     override val playbackSpeed: Float get() = _playbackSpeedFlow.value
     override val preferredQuality: String get() = _preferredQualityFlow.value
     override val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
@@ -531,6 +538,11 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     override fun setDynamicColor(enabled: Boolean) {
         sp.edit { putBoolean(SP_DYNAMIC_COLOR, enabled) }
         _dynamicColorFlow.value = enabled
+    }
+
+    override fun setPrivacyMode(enabled: Boolean) {
+        sp.edit { putBoolean(SP_PRIVACY_MODE, enabled) }
+        _privacyModeFlow.value = enabled
     }
 
     /**

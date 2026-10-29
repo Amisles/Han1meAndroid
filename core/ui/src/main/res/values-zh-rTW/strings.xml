@@ -933,6 +933,11 @@
     <string name="settings_dynamic_color">動態取色</string>
     <string name="settings_dynamic_color_summary">跟隨系統桌布配色（Android 12 以上）</string>
     <string name="search_load_more_failed">載入更多失敗，點擊重試</string>
+    <string name="privacy_exit">關閉隱私模式</string>
+    <string name="privacy_tile_label">隱私模式</string>
+    <string name="privacy_player_hidden">隱私模式已開啟，畫面已隱藏</string>
+    <string name="settings_privacy_mode">隱私模式</string>
+    <string name="settings_privacy_mode_summary">遮罩封面並暫停、靜音播放；可從快速設定磚一鍵切換</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜尋相關影片</string>

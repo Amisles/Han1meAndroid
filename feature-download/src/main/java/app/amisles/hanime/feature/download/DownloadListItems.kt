@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import coil3.compose.AsyncImage
 
@@ -154,7 +155,7 @@ internal fun DownloadTaskItem(
             contentAlignment = Alignment.Center
         ) {
             if (task.status == DownloadStatus.COMPLETED && task.thumbnailUrl.isNotEmpty()) {
-                AsyncImage(
+                PrivacyAwareAsyncImage(
                     model = task.thumbnailUrl,
                     contentDescription = task.title,
                     modifier = Modifier.fillMaxSize(),

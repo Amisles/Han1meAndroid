@@ -28,6 +28,7 @@ data class SettingsUiState(
     val appLanguage: String = SettingsRepository.LANGUAGE_ZH_CN,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
+    val privacyMode: Boolean = false,
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
     val downloadRateLimit: Int = 0,
     val downloadWifiOnly: Boolean = false,
@@ -110,6 +111,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(downloadNightOnly = enabled)
     }.combine(settings.dynamicColorFlow) { state, enabled ->
         state.copy(dynamicColor = enabled)
+    }.combine(settings.privacyModeFlow) { state, enabled ->
+        state.copy(privacyMode = enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -121,6 +124,7 @@ class SettingsViewModel @Inject constructor(
         appLanguage = settings.appLanguage,
         themeMode = settings.themeMode,
         dynamicColor = settings.dynamicColor,
+        privacyMode = settings.privacyMode,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         downloadRateLimit = settings.downloadRateLimit,
         downloadWifiOnly = settings.downloadWifiOnly,
@@ -161,6 +165,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setDynamicColor(enabled: Boolean) {
         settings.setDynamicColor(enabled)
+    }
+
+    fun setPrivacyMode(enabled: Boolean) {
+        settings.setPrivacyMode(enabled)
     }
 
     fun setMaxDownloadConcurrent(count: Int) {

@@ -65,6 +65,7 @@ internal fun DetailVideoPlayer(
         onAutoPlayNextChanged = { appPrefs.setAutoPlayNext(it) },
         isLoopPlayback = loopPlayback,
         onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
+        onDisablePrivacyMode = { appPrefs.setPrivacyMode(false) },
         autoFullscreenEnabled = autoFullscreenEnabled,
         longPressBoostSpeed = longPressSpeed,
         doubleTapSeekEnabled = doubleTapSeek,

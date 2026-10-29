@@ -51,6 +51,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.components.VideoCard
 import coil3.compose.AsyncImage
 
@@ -137,7 +138,7 @@ private fun AuthorContent(
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                AsyncImage(
+                PrivacyAwareAsyncImage(
                     model = authorData.authorAvatarUrl,
                     contentDescription = stringResource(R.string.common_author_avatar),
                     modifier = Modifier.size(80.dp).clip(CircleShape),

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.domain.model.ComicItem
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -66,7 +67,7 @@ internal fun ComicGridCard(comic: ComicItem, targetWidth: Dp, onClick: () -> Uni
                 .border(1.dp, MaterialTheme.colorScheme.outline, shape)
         ) {
             if (comic.coverUrl.isNotBlank()) {
-                AsyncImage(
+                PrivacyAwareAsyncImage(
                     model = model,
                     contentDescription = comic.title,
                     modifier = Modifier.fillMaxSize(),

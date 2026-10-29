@@ -24,6 +24,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
     override val autoQualityFlow = Preferences.autoQualityFlow
     override val baseUrlFlow = Preferences.baseUrlFlow
+    override val privacyModeFlow = Preferences.privacyModeFlow
 
     override fun setPlaybackSpeed(speed: Float) = Preferences.setPlaybackSpeed(speed)
     override fun setPreferredQuality(resolution: String) = Preferences.setPreferredQuality(resolution)
@@ -36,6 +37,7 @@ object PreferencesAppPreferences : AppPreferences {
     override fun setLongPressBoostSpeed(speed: Float) = Preferences.setLongPressBoostSpeed(speed)
     override fun setDoubleTapSeek(enabled: Boolean) = Preferences.setDoubleTapSeek(enabled)
     override fun setAutoQuality(enabled: Boolean) = Preferences.setAutoQuality(enabled)
+    override fun setPrivacyMode(enabled: Boolean) = Preferences.setPrivacyMode(enabled)
 
     override val antiHotlinkReferer: String
         get() = VideoAntiHotlink.refererOf(Preferences.baseUrl)

@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 
 /** 回复列表：加载中、错误、列表三态。 */
 @Composable
@@ -124,7 +125,7 @@ internal fun ReplyItem(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Top
     ) {
-        coil3.compose.AsyncImage(
+        PrivacyAwareAsyncImage(
             model = reply.avatarUrl,
             contentDescription = null,
             modifier = Modifier

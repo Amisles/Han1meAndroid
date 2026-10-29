@@ -68,6 +68,17 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <service
+            android:name=".service.PrivacyTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_privacy_mode"
+            android:label="@string/privacy_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- WorkManager 通过 HanimeApplication(Configuration.Provider) 按需初始化，
              必须摘掉 androidx.startup 里的默认初始化器，否则两套初始化会互相覆盖 -->
         <provider

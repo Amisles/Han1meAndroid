@@ -45,6 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.theme.surfaceEdge
+import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.ui.viewmodel.PlaylistDetailViewModel
 import coil3.compose.AsyncImage
 
@@ -123,7 +124,7 @@ private fun PlaylistDetailContent(
                     .padding(15.dp)
             ) {
                 if (detail.coverUrl.isNotEmpty()) {
-                    AsyncImage(
+                    PrivacyAwareAsyncImage(
                         model = detail.coverUrl,
                         contentDescription = stringResource(CoreR.string.common_cover),
                         modifier = Modifier
@@ -147,7 +148,7 @@ private fun PlaylistDetailContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (detail.authorAvatarUrl.isNotEmpty()) {
-                        AsyncImage(
+                        PrivacyAwareAsyncImage(
                             model = detail.authorAvatarUrl,
                             contentDescription = stringResource(CoreR.string.common_author_avatar),
                             modifier = Modifier.size(20.dp).clip(CircleShape),

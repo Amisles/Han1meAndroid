@@ -56,6 +56,11 @@ fun VideoThumbnail(
     val context = LocalContext.current
     val density = LocalDensity.current
 
+    if (LocalPrivacyMode.current) {
+        PrivacyPlaceholder(modifier = modifier.fillMaxSize())
+        return
+    }
+
     var containerWidthPx by remember { mutableStateOf(0) }
     val decodeWidth: Dp? = targetWidth ?: if (containerWidthPx > 0) {
         with(density) { containerWidthPx.toDp() }
