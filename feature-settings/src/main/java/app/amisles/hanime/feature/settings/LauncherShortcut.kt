@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.settings
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -13,7 +14,7 @@ import app.amisles.hanime.core.ui.R
 internal object LauncherShortcut {
 
     private const val SHORTCUT_ID = "custom_launcher_icon"
-    private const val ICON_SIZE = 432
+    private const val ICON_SIZE = 288
 
     /** 桌面不支持固定快捷方式时返回 false；图片无法解码时抛出异常。 */
     fun pin(context: Context, uri: Uri): Boolean {
@@ -24,7 +25,7 @@ internal object LauncherShortcut {
             ?: error("launch intent missing")
         launch.action = Intent.ACTION_MAIN
         launch.addCategory(Intent.CATEGORY_LAUNCHER)
-        val label = context.getString(R.string.app_name)
+        val label = launchLabel(context, launch.component)
         val shortcut = ShortcutInfoCompat.Builder(context, SHORTCUT_ID)
             .setShortLabel(label)
             .setLongLabel(label)
@@ -35,6 +36,14 @@ internal object LauncherShortcut {
         // 同时作为动态快捷方式发布：应用更新后系统才不会回收已固定的快捷方式
         ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
         return ShortcutManagerCompat.requestPinShortcut(context, shortcut, null)
+    }
+
+    private fun launchLabel(context: Context, component: ComponentName?): String {
+        val pm = context.packageManager
+        val label = component?.let {
+            runCatching { pm.getActivityInfo(it, 0).loadLabel(pm).toString() }.getOrNull()
+        }
+        return label?.takeIf { it.isNotBlank() } ?: context.getString(R.string.app_name)
     }
 
     private fun loadSquareBitmap(context: Context, uri: Uri): Bitmap? {
@@ -48,7 +57,10 @@ internal object LauncherShortcut {
         ) {
             sampleSize *= 2
         }
-        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
         val source = resolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, options)
         } ?: return null

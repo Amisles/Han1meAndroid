@@ -26,15 +26,16 @@ class LauncherIconRepository @Inject constructor(
 
     override fun select(icon: LauncherIcon): Boolean = runCatching {
         val pm = context.packageManager
-        // 始终保持恰好一个启用项：全部禁用会让应用从桌面彻底消失
-        LauncherIcon.entries.forEach { variant ->
+        // 先启用目标再关闭其余：中途失败时桌面上至少还留着一个可启动的入口
+        pm.setComponentEnabledSetting(
+            component(icon),
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP
+        )
+        LauncherIcon.entries.filter { it != icon }.forEach { variant ->
             pm.setComponentEnabledSetting(
                 component(variant),
-                if (variant == icon) {
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                } else {
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                },
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                 PackageManager.DONT_KILL_APP
             )
         }
