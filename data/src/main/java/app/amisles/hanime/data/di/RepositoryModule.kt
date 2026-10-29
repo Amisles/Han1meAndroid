@@ -2,10 +2,12 @@ package app.amisles.hanime.data.di
 
 import app.amisles.hanime.data.backup.BackupManager
 import app.amisles.hanime.data.download.DownloadManager
+import app.amisles.hanime.data.icon.LauncherIconRepository
 import app.amisles.hanime.data.repository.HanimeRepository
 import app.amisles.hanime.data.stats.StatsManager
 import app.amisles.hanime.data.update.GitHubUpdateRepository
 import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.domain.repository.AppIconRepository
 import app.amisles.hanime.domain.repository.BackupRepository
 import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.repository.ContentRepository
@@ -69,5 +71,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindStatsRepository(impl: StatsManager): StatsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAppIconRepository(impl: LauncherIconRepository): AppIconRepository
 
 }

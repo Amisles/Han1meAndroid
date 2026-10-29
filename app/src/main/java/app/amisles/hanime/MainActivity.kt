@@ -122,6 +122,7 @@ import app.amisles.hanime.feature.settings.UpdateScreen
 import app.amisles.hanime.feature.settings.UpdateAvailableDialog
 import app.amisles.hanime.feature.settings.CustomizeScreen
 import app.amisles.hanime.feature.settings.DiagnosticsScreen
+import app.amisles.hanime.feature.settings.LauncherIconScreen
 import app.amisles.hanime.ui.screens.VideoListPageScreen
 import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.ui.theme.HanimeTheme
@@ -365,6 +366,7 @@ fun HanimeApp(
         currentRoute != "update" &&
         currentRoute != "login" &&
         currentRoute != "settings" &&
+        currentRoute != "launcherIcon" &&
         currentRoute != "backup" &&
         currentRoute != "crashLog" &&
         currentRoute != "comics" &&
@@ -839,6 +841,7 @@ fun HanimeApp(
                                     "about" -> navController.navigate("about")
                                     "diagnostics" -> navController.navigate("diagnostics")
                                     "customize" -> navController.navigate("customize")
+                                    "launcherIcon" -> navController.navigate("launcherIcon")
                                     "backup" -> navController.navigate("backup")
                                     "crashLog" -> navController.navigate("crashLog")
                                 }
@@ -862,6 +865,11 @@ fun HanimeApp(
                     }
                     composable("customize") {
                         CustomizeScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                    composable("launcherIcon") {
+                        LauncherIconScreen(
                             onBackClick = { navController.popBackStack() }
                         )
                     }

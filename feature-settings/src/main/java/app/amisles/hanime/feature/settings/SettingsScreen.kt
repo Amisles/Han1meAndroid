@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
@@ -530,6 +531,13 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_customize_ui),
                     subtitle = stringResource(R.string.settings_customize_ui_summary),
                     onClick = { onNavigate("customize") }
+                )
+                SettingsGroupDivider()
+                SettingsNavRow(
+                    icon = Icons.Outlined.Apps,
+                    title = stringResource(R.string.settings_launcher_icon),
+                    subtitle = stringResource(R.string.settings_launcher_icon_summary),
+                    onClick = { onNavigate("launcherIcon") }
                 )
             }
 

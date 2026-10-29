@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_calculator_background">#FF3D4A63</color>
+    <color name="ic_launcher_notes_background">#FFE0A02E</color>
+    <color name="ic_launcher_gallery_background">#FF12A594</color>
+    <color name="ic_launcher_music_background">#FF7B61FF</color>
+    <color name="ic_launcher_files_background">#FF2F7BE8</color>
+</resources>
