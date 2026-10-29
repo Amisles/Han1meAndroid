@@ -1,6 +1,7 @@
 package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,12 +38,14 @@ import coil3.size.Precision
  * 首页大图轮播。
  *
  * 点击行为作用在整张大图上（不再单独渲染播放按钮）：有直链时跳详情播放，没有直链时退回按标题搜索。
+ * 标签单独可点，按标签文本跳搜索页。
  */
 @Composable
 fun Banner(
     bannerData: HanimeBanner,
     onPlayClick: () -> Unit = {},
-    onSearchClick: (String) -> Unit = {}
+    onSearchClick: (String) -> Unit = {},
+    onTagClick: (String) -> Unit = {}
 ) {
     val clickable = bannerData.videoUrl.isNotEmpty() || bannerData.title.isNotEmpty()
     Box(
@@ -128,17 +131,25 @@ fun Banner(
             )
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                bannerData.tags.take(6).forEach { tag ->
+                bannerData.tags.take(5).forEach { tag ->
+                    val chipShape = RoundedCornerShape(10.dp)
                     Text(
                         text = tag,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.White.copy(alpha = 0.2f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .clip(chipShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.28f),
+                                shape = chipShape
+                            )
+                            .clickable { onTagClick(tag) }
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }
