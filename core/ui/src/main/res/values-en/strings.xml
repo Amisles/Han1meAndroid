@@ -936,8 +936,9 @@
     <string name="privacy_exit">Turn off privacy mode</string>
     <string name="privacy_tile_label">Privacy mode</string>
     <string name="privacy_player_hidden">Privacy mode is on — video hidden</string>
+    <string name="privacy_player_tap_continue">Tap to continue</string>
     <string name="settings_privacy_mode">Privacy mode</string>
-    <string name="settings_privacy_mode_summary">Mask covers and pause with sound off; toggle from Quick Settings</string>
+    <string name="settings_privacy_mode_summary">Mask covers; pause and cover the player when the screen turns off; toggle from Quick Settings</string>
     <string name="favorite_added">Added to favorites</string>
     <string name="favorite_removed">Removed from favorites</string>
     <string name="card_search_related">Search related videos</string>

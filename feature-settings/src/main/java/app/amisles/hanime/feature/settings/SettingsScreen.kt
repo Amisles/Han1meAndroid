@@ -567,7 +567,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 隐私：公共场合一键遮罩内容并暂停播放
+            // 隐私：公共场合一键遮罩内容
             SettingsGroupCard {
                 SettingsSwitchRow(
                     icon = Icons.Outlined.VisibilityOff,

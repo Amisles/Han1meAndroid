@@ -988,8 +988,9 @@
     <string name="privacy_exit">退出隐私模式</string>
     <string name="privacy_tile_label">隐私模式</string>
     <string name="privacy_player_hidden">隐私模式已开启，画面已隐藏</string>
+    <string name="privacy_player_tap_continue">轻触画面继续</string>
     <string name="settings_privacy_mode">隐私模式</string>
-    <string name="settings_privacy_mode_summary">遮罩封面并暂停、静音播放；可从快捷设置磁贴一键切换</string>
+    <string name="settings_privacy_mode_summary">遮罩封面；息屏时自动暂停播放并遮住播放器，可从快捷设置磁贴一键切换</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜索相关视频</string>

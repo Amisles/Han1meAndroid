@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-/** 快捷设置磁贴：一键切换隐私模式（遮罩封面、暂停并静音播放）。 */
+/** 快捷设置磁贴：一键切换隐私模式（遮罩封面；息屏时暂停并遮住播放器）。 */
 class PrivacyTileService : TileService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

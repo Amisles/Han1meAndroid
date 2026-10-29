@@ -31,7 +31,7 @@ interface SettingsRepository {
     val dynamicColorFlow: StateFlow<Boolean>
     fun setDynamicColor(enabled: Boolean)
 
-    /** 隐私模式：遮罩内容图片并在播放页暂停、静音，供公共场合快速切换。 */
+    /** 隐私模式：遮罩内容图片；播放器照常可用，息屏时自动暂停并遮住播放器。 */
     val privacyMode: Boolean
     val privacyModeFlow: StateFlow<Boolean>
     fun setPrivacyMode(enabled: Boolean)

@@ -2,6 +2,10 @@ package app.amisles.hanime.feature.detail.components
 
 import android.app.Activity
 import android.app.PictureInPictureParams
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
@@ -56,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +84,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -95,7 +101,6 @@ import androidx.media3.ui.PlayerView
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
-import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
@@ -178,22 +183,35 @@ fun VideoPlayer(
     var isMuted by remember { mutableStateOf(false) }
 
     val privacyMode = LocalPrivacyMode.current
-    var privacyMuted by remember { mutableStateOf(false) }
-    val appPrefs = LocalAppPreferences.current
-    // 收集偏好流而非依赖重组：磁贴切换时应用可能在后台，重组会被推迟，暂停必须立即生效
-    LaunchedEffect(exoPlayer) {
-        appPrefs.privacyModeFlow.collect { enabled ->
-            if (enabled) {
-                if (exoPlayer.isPlaying) exoPlayer.pause()
-                if (!isMuted) {
-                    exoPlayer.volume = 0f
-                    privacyMuted = true
-                }
-            } else if (privacyMuted) {
-                exoPlayer.volume = volume
-                privacyMuted = false
+    // 隐私模式只遮罩缩略图，播放器照常可用；遮罩只在息屏后出现，亮屏时保持到用户主动点开
+    var privacyMasked by rememberSaveable { mutableStateOf(false) }
+    var resumeOnUnmask by remember { mutableStateOf(false) }
+
+    LaunchedEffect(privacyMode) {
+        if (!privacyMode) {
+            privacyMasked = false
+            resumeOnUnmask = false
+        }
+    }
+
+    // 息屏必须立即停住画面：接收器在组合期间常驻，不依赖 Activity 的生命周期回调
+    DisposableEffect(context, exoPlayer, privacyMode) {
+        if (!privacyMode) return@DisposableEffect onDispose {}
+        val screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                if (intent?.action != Intent.ACTION_SCREEN_OFF) return
+                resumeOnUnmask = runCatching { exoPlayer.isPlaying }.getOrDefault(false)
+                runCatching { exoPlayer.pause() }
+                privacyMasked = true
             }
         }
+        ContextCompat.registerReceiver(
+            context,
+            screenReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose { runCatching { context.unregisterReceiver(screenReceiver) } }
     }
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
     val gestureScope = rememberCoroutineScope()
@@ -1374,7 +1392,7 @@ fun VideoPlayer(
             }
         }
 
-        if (privacyMode) {
+        if (privacyMode && privacyMasked) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1382,7 +1400,14 @@ fun VideoPlayer(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) {},
+                    ) {
+                        privacyMasked = false
+                        isControlsVisible = true
+                        if (resumeOnUnmask) {
+                            resumeOnUnmask = false
+                            runCatching { exoPlayer.play() }
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1397,6 +1422,12 @@ fun VideoPlayer(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.privacy_player_tap_continue),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                     Text(
                         text = stringResource(R.string.privacy_exit),
