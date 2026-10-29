@@ -18,6 +18,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val autoPlayNextFlow = Preferences.autoPlayNextFlow
     override val loopPlaybackFlow = Preferences.loopPlaybackFlow
     override val searchLayoutModeFlow = Preferences.searchLayoutModeFlow
+    override val pageLayoutModesFlow = Preferences.pageLayoutModesFlow
     override val relatedLayoutModeFlow = Preferences.relatedLayoutModeFlow
     override val comicReadModeFlow = Preferences.comicReadModeFlow
     override val longPressBoostSpeedFlow = Preferences.longPressBoostSpeedFlow
@@ -31,6 +32,9 @@ object PreferencesAppPreferences : AppPreferences {
     override fun setAutoPlayNext(enabled: Boolean) = Preferences.setAutoPlayNext(enabled)
     override fun setLoopPlayback(enabled: Boolean) = Preferences.setLoopPlayback(enabled)
     override fun setSearchLayoutMode(mode: SearchLayoutMode) = Preferences.setSearchLayoutMode(mode)
+    override fun setPageLayoutMode(page: PageLayoutKey, mode: PageLayoutMode) =
+        Preferences.setPageLayoutMode(page, mode)
+    override fun clearPageLayoutMode(page: PageLayoutKey) = Preferences.clearPageLayoutMode(page)
     override fun setRelatedLayoutMode(mode: RelatedLayoutMode) = Preferences.setRelatedLayoutMode(mode)
     override fun setComicReadMode(mode: ComicReadMode) = Preferences.setComicReadMode(mode)
     override fun clearRelatedLayoutMode() = Preferences.clearRelatedLayoutMode()
@@ -44,5 +48,7 @@ object PreferencesAppPreferences : AppPreferences {
 }
 
 private typealias SearchLayoutMode = app.amisles.hanime.domain.preferences.SearchLayoutMode
+private typealias PageLayoutKey = app.amisles.hanime.domain.preferences.PageLayoutKey
+private typealias PageLayoutMode = app.amisles.hanime.domain.preferences.PageLayoutMode
 private typealias ComicReadMode = app.amisles.hanime.domain.model.ComicReadMode
 private typealias RelatedLayoutMode = app.amisles.hanime.domain.preferences.RelatedLayoutMode

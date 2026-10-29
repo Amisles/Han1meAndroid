@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,10 +35,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R as CoreR
+import app.amisles.hanime.core.ui.components.LayoutModeToggle
 import app.amisles.hanime.core.ui.components.VideoCard
+import app.amisles.hanime.core.ui.components.VideoListItem
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.theme.PageLayoutResolver
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
+import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
 import androidx.compose.material3.MaterialTheme
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.ui.viewmodel.VideoListPageViewModel
@@ -52,6 +62,15 @@ fun VideoListPageScreen(
     val videos by viewModel.videos.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val appPrefs = LocalAppPreferences.current
+    val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
+    val sizeInfo = currentWindowSizeInfo()
+    val isGridMode = PageLayoutResolver.isGrid(
+        key = PageLayoutKey.AUTHOR,
+        modes = pageLayouts,
+        legacySearchMode = null,
+        compactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+    )
     val displayTitle = title ?: stringResource(CoreR.string.common_videos)
 
     LaunchedEffect(url) {
@@ -81,7 +100,18 @@ fun VideoListPageScreen(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .weight(1f)
+                )
+                LayoutModeToggle(
+                    isGrid = isGridMode,
+                    onToggle = { grid ->
+                        appPrefs.setPageLayoutMode(
+                            PageLayoutKey.AUTHOR,
+                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                        )
+                    }
                 )
             }
 
@@ -96,9 +126,9 @@ fun VideoListPageScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            } else {
+            } else if (isGridMode) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(currentWindowSizeInfo().gridColumns(LocalUiConfig.current)),
+                    columns = GridCells.Fixed(sizeInfo.gridColumns(LocalUiConfig.current)),
                     contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -108,6 +138,22 @@ fun VideoListPageScreen(
                         key = { it.id }
                     ) { video ->
                         VideoCard(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            onLongClick = { onVideoLongClick(video) }
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(
+                        items = videos,
+                        key = { it.id }
+                    ) { video ->
+                        VideoListItem(
                             video = video,
                             onClick = { onVideoClick(video.videoUrl) },
                             onLongClick = { onVideoLongClick(video) }

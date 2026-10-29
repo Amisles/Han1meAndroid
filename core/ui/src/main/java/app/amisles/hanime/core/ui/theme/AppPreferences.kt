@@ -3,6 +3,9 @@ package app.amisles.hanime.core.ui.theme
 import androidx.compose.runtime.staticCompositionLocalOf
 import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
+import app.amisles.hanime.domain.preferences.PageLayoutModes
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +33,7 @@ interface AppPreferences {
     val autoPlayNextFlow: StateFlow<Boolean>
     val loopPlaybackFlow: StateFlow<Boolean>
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
+    val pageLayoutModesFlow: StateFlow<PageLayoutModes>
     val comicReadModeFlow: StateFlow<ComicReadMode?>
     val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?>
     val longPressBoostSpeedFlow: StateFlow<Float>
@@ -47,6 +51,8 @@ interface AppPreferences {
     fun setAutoPlayNext(enabled: Boolean)
     fun setLoopPlayback(enabled: Boolean)
     fun setSearchLayoutMode(mode: SearchLayoutMode)
+    fun setPageLayoutMode(page: PageLayoutKey, mode: PageLayoutMode)
+    fun clearPageLayoutMode(page: PageLayoutKey)
     fun setComicReadMode(mode: ComicReadMode)
     fun setRelatedLayoutMode(mode: RelatedLayoutMode)
 

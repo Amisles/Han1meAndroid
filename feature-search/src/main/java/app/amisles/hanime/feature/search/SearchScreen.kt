@@ -75,7 +75,9 @@ import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.domain.preferences.SearchLayoutMode
+import app.amisles.hanime.core.ui.theme.PageLayoutResolver
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -178,14 +180,16 @@ fun SearchScreen(
     val showSuggestions = suggestionsOpen && localQuery.isNotBlank() &&
         (matchedHistory.isNotEmpty() || matchedTags.isNotEmpty())
 
-    // 布局模式：用户显式选择优先；从未选择过时按宽度档位取默认（Compact 列表 / 平板网格）
+    // 布局模式：本页布局记忆优先，回落到旧的全局设置，从未选择时按宽度档位取默认
     val sizeInfo = currentWindowSizeInfo()
     val savedLayoutMode by appPrefs.searchLayoutModeFlow.collectAsStateWithLifecycle()
-    val isGridMode = (savedLayoutMode ?: if (sizeInfo.widthClass == WindowWidthSizeClass.Compact) {
-        SearchLayoutMode.LIST
-    } else {
-        SearchLayoutMode.GRID
-    }) == SearchLayoutMode.GRID
+    val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
+    val isGridMode = PageLayoutResolver.isGrid(
+        key = PageLayoutKey.SEARCH,
+        modes = pageLayouts,
+        legacySearchMode = savedLayoutMode?.let { PageLayoutMode.valueOf(it.name) },
+        compactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+    )
 
     // 滚动接近底部自动加载下一页；网格与列表各有一套滚动状态，跟随当前生效的那一套。
     // key 只保留 isGridMode：videos / isLoadingMore / hasMore 每翻一页都会变，若作为 key
@@ -506,8 +510,9 @@ fun SearchScreen(
                 LayoutModeToggle(
                     isGrid = isGridMode,
                     onToggle = { grid ->
-                        appPrefs.setSearchLayoutMode(
-                            if (grid) SearchLayoutMode.GRID else SearchLayoutMode.LIST
+                        appPrefs.setPageLayoutMode(
+                            PageLayoutKey.SEARCH,
+                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
                         )
                     }
                 )

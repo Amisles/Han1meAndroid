@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
@@ -51,9 +55,18 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.History
 import app.amisles.hanime.core.ui.components.SearchField
+import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.PageLayoutResolver
+import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
+import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.R
 import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +95,15 @@ private fun formatWatchedTime(timestamp: Long): String {
     }
 }
 
+private fun formatWatchedTimeRaw(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    val days = diff / (24 * 60 * 60 * 1000)
+    return if (days < 30) "$days d".replace(" ", "") else {
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date(timestamp))
+    }
+}
+
 @Composable
 fun HistoryScreen(
     onBackClick: () -> Unit = {},
@@ -91,6 +113,15 @@ fun HistoryScreen(
     val context = LocalContext.current
     val history by viewModel.history.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val appPrefs = LocalAppPreferences.current
+    val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
+    val sizeInfo = currentWindowSizeInfo()
+    val isGridMode = PageLayoutResolver.isGrid(
+        key = PageLayoutKey.HISTORY,
+        modes = pageLayouts,
+        legacySearchMode = null,
+        compactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+    )
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -167,6 +198,16 @@ fun HistoryScreen(
                 modifier = Modifier.weight(1f)
             )
             if (!isSelectionMode && history.isNotEmpty()) {
+                LayoutModeToggle(
+                    isGrid = isGridMode,
+                    onToggle = { grid ->
+                        appPrefs.setPageLayoutMode(
+                            PageLayoutKey.HISTORY,
+                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                        )
+                    },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
                 Text(
                     text = stringResource(R.string.history_manage),
                     fontSize = 14.sp,
@@ -240,6 +281,34 @@ fun HistoryScreen(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
+                }
+            }
+        } else if (isGridMode && !isSelectionMode) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                gridItems(filteredHistory, key = { it.id }) { video ->
+                    VideoGridCard(
+                        video = HanimeVideo(
+                            id = video.id,
+                            title = video.title,
+                            thumbnailUrl = video.thumbnailUrl,
+                            duration = video.duration,
+                            likeRate = "",
+                            viewCount = "",
+                            author = video.author,
+                            publishTime = formatWatchedTimeRaw(video.watchedAt),
+                            videoUrl = video.videoUrl
+                        ),
+                        onClick = { onVideoClick(video.videoUrl) }
+                    )
+                }
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         } else {

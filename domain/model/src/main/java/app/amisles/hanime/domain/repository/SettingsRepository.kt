@@ -2,6 +2,9 @@ package app.amisles.hanime.domain.repository
 
 import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
+import app.amisles.hanime.domain.preferences.PageLayoutModes
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
@@ -133,6 +136,12 @@ interface SettingsRepository {
     val searchLayoutMode: SearchLayoutMode?
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
     fun setSearchLayoutMode(mode: SearchLayoutMode)
+
+    /** 各列表页的布局记忆；搜索页缺省时回落到旧字段，均为空按宽度档位取默认。 */
+    val pageLayoutModes: PageLayoutModes
+    val pageLayoutModesFlow: StateFlow<PageLayoutModes>
+    fun setPageLayoutMode(page: PageLayoutKey, mode: PageLayoutMode)
+    fun clearPageLayoutMode(page: PageLayoutKey)
 
     /** 漫画阅读方式；null 表示用户从未选择，阅读器按单页翻页起步。 */
     val comicReadMode: ComicReadMode?

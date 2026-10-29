@@ -18,7 +18,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,7 +49,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.PageLayoutResolver
+import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
@@ -71,6 +82,14 @@ fun SubscriptionsScreen(
     val error by viewModel.error.collectAsStateWithLifecycle()
     val selectedQuery by viewModel.selectedQuery.collectAsStateWithLifecycle()
     val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
+    val sizeInfo = currentWindowSizeInfo()
+    val isGridMode = PageLayoutResolver.isGrid(
+        key = PageLayoutKey.SUBSCRIPTIONS,
+        modes = pageLayouts,
+        legacySearchMode = null,
+        compactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+    )
 
     LaunchedEffect(Unit) {
         if (isLogin) viewModel.load(initialQuery)
@@ -102,7 +121,17 @@ fun SubscriptionsScreen(
                 text = stringResource(R.string.subscriptions),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
+            )
+            LayoutModeToggle(
+                isGrid = isGridMode,
+                onToggle = { grid ->
+                    appPrefs.setPageLayoutMode(
+                        PageLayoutKey.SUBSCRIPTIONS,
+                        if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                    )
+                }
             )
         }
 
@@ -161,6 +190,23 @@ fun SubscriptionsScreen(
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                } else if (isGridMode) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        gridItems(videos, key = { it.id }) { video ->
+                            VideoGridCard(
+                                video = video,
+                                onClick = { onVideoClick(video.videoUrl) },
+                                onLongClick = { onVideoLongClick(video) }
+                            )
+                        }
+                        item(span = { GridItemSpan(2) }) { Spacer(modifier = Modifier.height(20.dp)) }
                     }
                 } else {
                     LazyColumn(

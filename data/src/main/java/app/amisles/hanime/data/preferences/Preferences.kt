@@ -4,6 +4,9 @@ import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.model.SessionCookie
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
+import app.amisles.hanime.domain.preferences.PageLayoutModes
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -70,6 +73,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
+    private const val SP_PAGE_LAYOUT_PREFIX = "page_layout_"
 private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
 private const val SP_COMIC_READ_MODE = "comic_read_mode"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
@@ -206,6 +210,9 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     private val _searchLayoutModeFlow = MutableStateFlow<SearchLayoutMode?>(null)
     override val searchLayoutModeFlow: StateFlow<SearchLayoutMode?> = _searchLayoutModeFlow.asStateFlow()
 
+    private val _pageLayoutModesFlow = MutableStateFlow(PageLayoutModes(search = null))
+    override val pageLayoutModesFlow: StateFlow<PageLayoutModes> = _pageLayoutModesFlow.asStateFlow()
+
     // 详情页推荐布局：null 表示未选择，由推荐卡片形态决定默认值
     private val _relatedLayoutModeFlow = MutableStateFlow<RelatedLayoutMode?>(null)
     override val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?> = _relatedLayoutModeFlow.asStateFlow()
@@ -283,6 +290,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
+        _pageLayoutModesFlow.value = readPageLayoutModes()
         _relatedLayoutModeFlow.value = RelatedLayoutMode.fromNameOrNull(readString(SP_RELATED_LAYOUT_MODE, null))
         _comicReadModeFlow.value = ComicReadMode.entries
             .firstOrNull { it.name == readString(SP_COMIC_READ_MODE, null) }
@@ -530,6 +538,8 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
     override val autoQuality: Boolean get() = _autoQualityFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
+
+    override val pageLayoutModes: PageLayoutModes get() = _pageLayoutModesFlow.value
     override val relatedLayoutMode: RelatedLayoutMode? get() = _relatedLayoutModeFlow.value
     override val comicReadMode: ComicReadMode? get() = _comicReadModeFlow.value
 
@@ -773,6 +783,47 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         sp.edit { putString(SP_SEARCH_LAYOUT_MODE, mode.name) }
         _searchLayoutModeFlow.value = mode
     }
+
+    override fun setPageLayoutMode(page: PageLayoutKey, mode: PageLayoutMode) {
+        sp.edit { putString(SP_PAGE_LAYOUT_PREFIX + page.name, mode.name) }
+        _pageLayoutModesFlow.value = _pageLayoutModesFlow.value.copyOf(page, mode)
+    }
+
+    override fun clearPageLayoutMode(page: PageLayoutKey) {
+        sp.edit { remove(SP_PAGE_LAYOUT_PREFIX + page.name) }
+        _pageLayoutModesFlow.value = _pageLayoutModesFlow.value.copyOf(page, null)
+    }
+
+    private fun readPageLayoutModes(): PageLayoutModes {
+        val modes = PageLayoutModes()
+        var changed = false
+        var snapshot = modes
+        PageLayoutKey.entries.forEach { key ->
+            val stored = PageLayoutMode.fromNameOrNull(readString(SP_PAGE_LAYOUT_PREFIX + key.name, null))
+            if (stored != null) {
+                snapshot = snapshot.copyOf(key, stored)
+                changed = true
+            }
+        }
+        // 布局记忆 v2 之前只有搜索页的旧字段；把它迁移进来，其余页保持未选择
+        if (!changed) {
+            SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))?.let { legacy ->
+                snapshot = snapshot.copyOf(PageLayoutKey.SEARCH, PageLayoutMode.valueOf(legacy.name))
+                sp.edit { putString(SP_PAGE_LAYOUT_PREFIX + PageLayoutKey.SEARCH.name, legacy.name) }
+            }
+        }
+        return snapshot
+    }
+
+    private fun PageLayoutModes.copyOf(page: PageLayoutKey, mode: PageLayoutMode?): PageLayoutModes =
+        when (page) {
+            PageLayoutKey.HOME -> copy(home = mode)
+            PageLayoutKey.SEARCH -> copy(search = mode)
+            PageLayoutKey.FAVORITE -> copy(favorite = mode)
+            PageLayoutKey.HISTORY -> copy(history = mode)
+            PageLayoutKey.SUBSCRIPTIONS -> copy(subscriptions = mode)
+            PageLayoutKey.AUTHOR -> copy(author = mode)
+        }
 
     override fun setRelatedLayoutMode(mode: RelatedLayoutMode) {
         sp.edit { putString(SP_RELATED_LAYOUT_MODE, mode.name) }

@@ -1,5 +1,6 @@
 package app.amisles.hanime.feature.profile
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,13 +59,34 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import android.widget.Toast
 import app.amisles.hanime.domain.model.FavoriteVideo
+import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
+import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
+import app.amisles.hanime.core.ui.theme.PageLayoutResolver
+import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
+import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 
 private val ROW_THUMB_WIDTH = 140.dp
+
+private fun FavoriteVideo.toHanimeVideo() = HanimeVideo(
+    id = id,
+    title = title,
+    thumbnailUrl = thumbnailUrl,
+    duration = duration,
+    likeRate = likeRate,
+    viewCount = viewCount,
+    author = author,
+    publishTime = "",
+    videoUrl = videoUrl
+)
 
 internal enum class FavoriteSortMode { RECENT, TITLE, AUTHOR }
 
@@ -74,6 +100,15 @@ fun FavoriteScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val appPrefs = LocalAppPreferences.current
+    val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
+    val sizeInfo = currentWindowSizeInfo()
+    val isGridMode = PageLayoutResolver.isGrid(
+        key = PageLayoutKey.FAVORITE,
+        modes = pageLayouts,
+        legacySearchMode = null,
+        compactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+    )
 
     // 本地库写入失败（磁盘满 / DB 损坏）：列表会刷新回滚，这里补一条提示说明「为什么没生效」
     LaunchedEffect(Unit) {
@@ -179,6 +214,16 @@ fun FavoriteScreen(
                 modifier = Modifier.weight(1f)
             )
             if (!isSelectionMode && favorites.isNotEmpty()) {
+                LayoutModeToggle(
+                    isGrid = isGridMode,
+                    onToggle = { grid ->
+                        appPrefs.setPageLayoutMode(
+                            PageLayoutKey.FAVORITE,
+                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                        )
+                    },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
                 Box {
                     Text(
                         text = stringResource(R.string.favorite_sort),
@@ -305,6 +350,40 @@ fun FavoriteScreen(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
+                }
+            }
+        } else if (isGridMode && !isSelectionMode) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (visibleFavorites.isEmpty()) {
+                    item(span = { GridItemSpan(2) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 60.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.favorite_search_empty),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                gridItems(visibleFavorites, key = { it.id }) { video ->
+                    VideoGridCard(
+                        video = video.toHanimeVideo(),
+                        onClick = { onVideoClick(video.videoUrl) }
+                    )
+                }
+                item(span = { GridItemSpan(2) }) {
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         } else {
