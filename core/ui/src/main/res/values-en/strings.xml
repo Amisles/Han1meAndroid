@@ -924,6 +924,12 @@
     <string name="watch_stats_hours">%1$d h %2$d min</string>
     <string name="settings_watch_stats">Watch stats</string>
     <string name="share_link_unrecognized">Could not find a video link in the shared content</string>
+    <string name="player_error_network">Network connection failed. Check your network and retry</string>
+    <string name="player_error_expired">The video link has expired. Try another quality</string>
+    <string name="player_error_decode">This format is not supported on this device. Try another quality</string>
+    <string name="player_error_source">This source is temporarily unavailable. Try again later</string>
+    <string name="player_error_unknown">Playback failed. Try again later</string>
+    <string name="player_quality_fallback">Quality unavailable, switched automatically</string>
     <string name="favorite_added">Added to favorites</string>
     <string name="favorite_removed">Removed from favorites</string>
     <string name="card_search_related">Search related videos</string>

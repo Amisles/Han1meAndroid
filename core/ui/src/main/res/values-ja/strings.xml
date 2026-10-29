@@ -924,6 +924,12 @@
     <string name="watch_stats_hours">%1$d 時間 %2$d 分</string>
     <string name="settings_watch_stats">視聴統計</string>
     <string name="share_link_unrecognized">共有内容に動画リンクが見つかりませんでした</string>
+    <string name="player_error_network">ネットワーク接続に失敗しました。確認して再試行してください</string>
+    <string name="player_error_expired">動画リンクが無効です。別の画質をお試しください</string>
+    <string name="player_error_decode">この端末では再生できない形式です。別の画質をお試しください</string>
+    <string name="player_error_source">この配信元は一時的に利用できません。後でもう一度お試しください</string>
+    <string name="player_error_unknown">再生に失敗しました。後でもう一度お試しください</string>
+    <string name="player_quality_fallback">画質が利用できないため自動で切り替えました</string>
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_removed">お気に入りを解除しました</string>
     <string name="card_search_related">関連動画を検索</string>

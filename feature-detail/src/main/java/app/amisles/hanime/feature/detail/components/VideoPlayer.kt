@@ -224,6 +224,8 @@ fun VideoPlayer(
     var lastPlaybackState by remember { mutableStateOf(Player.STATE_IDLE) }
     // 播放失败：非空即进入可重试的失败态
     var playbackError by remember { mutableStateOf<PlaybackException?>(null) }
+    // 链接类错误自动降档重试只做一次，避免多档全部失效时反复切换
+    var autoErrorRetryUsed by remember { mutableStateOf(false) }
     // 用 ref 持有最新值，避免 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
     val sourcesRef = rememberUpdatedState(sortedSources)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
@@ -371,6 +373,19 @@ fun VideoPlayer(
                 super.onPlayerError(error)
                 isBuffering = false
                 isSwitchingQuality = false
+                val sources = sourcesRef.value
+                val index = sources.indexOfFirst { it.url == currentSourceUrl }
+                val linkBroken = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE
+                if (linkBroken && !autoErrorRetryUsed && index > 0) {
+                    autoErrorRetryUsed = true
+                    playbackError = null
+                    gestureHint = context.getString(R.string.player_quality_fallback)
+                    switchQuality(sources[index - 1])
+                    exoPlayer.playWhenReady = true
+                    return
+                }
                 // 保留错误用于渲染可重试的失败态；把 isReady 置 true 会让播放按钮显示为可播放却不响应
                 playbackError = error
             }
@@ -982,10 +997,11 @@ fun VideoPlayer(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = stringResource(R.string.detail_load_failed),
+                    text = stringResource(playbackErrorTextRes(currentPlaybackError)),
                     color = Color.White,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
                 )
                 Text(
                     text = currentPlaybackError.errorCodeName,
@@ -1332,4 +1348,17 @@ fun VideoPlayer(
             }
         }
     }
+}
+
+private fun playbackErrorTextRes(error: PlaybackException): Int = when (error.errorCode) {
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> R.string.player_error_network
+    PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+    PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+    PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE -> R.string.player_error_expired
+    PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+    PlaybackException.ERROR_CODE_DECODING_FAILED -> R.string.player_error_decode
+    PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+    PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED -> R.string.player_error_source
+    else -> R.string.player_error_unknown
 }

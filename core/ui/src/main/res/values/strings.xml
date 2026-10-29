@@ -976,6 +976,12 @@
     <string name="watch_stats_hours">%1$d 小时 %2$d 分</string>
     <string name="settings_watch_stats">观看统计</string>
     <string name="share_link_unrecognized">未能识别链接中的视频地址</string>
+    <string name="player_error_network">网络连接失败，请检查网络后重试</string>
+    <string name="player_error_expired">视频地址已失效，可切换其他画质</string>
+    <string name="player_error_decode">设备不支持该视频格式，试试其他画质</string>
+    <string name="player_error_source">该视频源暂不可用，请稍后重试</string>
+    <string name="player_error_unknown">播放失败，请稍后重试</string>
+    <string name="player_quality_fallback">当前画质不可用，已自动切换</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜索相关视频</string>

@@ -924,6 +924,12 @@
     <string name="watch_stats_hours">%1$d 小時 %2$d 分</string>
     <string name="settings_watch_stats">觀看統計</string>
     <string name="share_link_unrecognized">未能識別連結中的影片位址</string>
+    <string name="player_error_network">網路連線失敗，請檢查網路後重試</string>
+    <string name="player_error_expired">影片位址已失效，可切換其他畫質</string>
+    <string name="player_error_decode">裝置不支援該影片格式，試試其他畫質</string>
+    <string name="player_error_source">該影片來源暫時無法使用，請稍後重試</string>
+    <string name="player_error_unknown">播放失敗，請稍後重試</string>
+    <string name="player_quality_fallback">目前畫質無法使用，已自動切換</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜尋相關影片</string>
