@@ -402,7 +402,7 @@ class DownloadManager @Inject constructor(
         thumbnailUrl: String,
         videoId: String
     ): Int {
-        if (url.isBlank() || !(url.startsWith("http://") || url.startsWith("https://"))) {
+        if (url.isBlank() || !url.startsWith("https://")) {
             // 脱敏：直链带时效签名，落盘后等同于泄露访问凭据
             AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"${url.redactUrlForLog()}\" (title=$title, videoId=$videoId)")
             return RESULT_INVALID_URL
