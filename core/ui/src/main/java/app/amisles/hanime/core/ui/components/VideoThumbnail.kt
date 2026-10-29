@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +36,6 @@ import coil3.request.ImageRequest
 import coil3.size.Dimension
 import coil3.size.Precision
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
-import app.amisles.hanime.core.ui.theme.ThumbnailQuality
 import app.amisles.hanime.core.ui.theme.UiConfig
 
 @Composable
@@ -56,11 +56,18 @@ fun VideoThumbnail(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    val model: Any? = if (thumbnailUrl.isEmpty() || quality == ThumbnailQuality.STANDARD || targetWidth == null) {
-        thumbnailUrl
+    var containerWidthPx by remember { mutableStateOf(0) }
+    val decodeWidth: Dp? = targetWidth ?: if (containerWidthPx > 0) {
+        with(density) { containerWidthPx.toDp() }
     } else {
-        remember(thumbnailUrl, quality, targetWidth, aspectRatio, density) {
-            val widthPx = (with(density) { targetWidth.roundToPx() } * quality.sizeScale).toInt().coerceAtLeast(1)
+        null
+    }
+
+    val model: Any? = if (thumbnailUrl.isEmpty() || decodeWidth == null) {
+        null
+    } else {
+        remember(thumbnailUrl, quality, decodeWidth, aspectRatio, density) {
+            val widthPx = (with(density) { decodeWidth.roundToPx() } * quality.sizeScale).toInt().coerceAtLeast(1)
             val heightPx = (widthPx / aspectRatio).toInt().coerceAtLeast(1)
             ImageRequest.Builder(context)
                 .data(thumbnailUrl)
@@ -81,6 +88,11 @@ fun VideoThumbnail(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .onSizeChanged { size ->
+                if (targetWidth == null && size.width != containerWidthPx) {
+                    containerWidthPx = size.width
+                }
+            }
     )
 }
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,17 +15,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeBanner
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.size.Dimension
+import coil3.size.Precision
 
 /**
  * 首页大图轮播。
@@ -51,12 +58,25 @@ fun Banner(
             }
     ) {
         if (bannerData.imageUrl.isNotEmpty()) {
-            AsyncImage(
-                model = bannerData.imageUrl,
-                contentDescription = bannerData.title,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val density = LocalDensity.current
+                val widthPx = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
+                val heightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
+                val context = LocalContext.current
+                val model = remember(bannerData.imageUrl, widthPx, heightPx) {
+                    ImageRequest.Builder(context)
+                        .data(bannerData.imageUrl)
+                        .size(Dimension.Pixels(widthPx), Dimension.Pixels(heightPx))
+                        .precision(Precision.INEXACT)
+                        .build()
+                }
+                AsyncImage(
+                    model = model,
+                    contentDescription = bannerData.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         } else {
             Box(
                 modifier = Modifier
