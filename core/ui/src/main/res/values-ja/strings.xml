@@ -867,6 +867,8 @@
     <string name="comic_directory_count">%1$d 件</string>
     <string name="comic_tag_filter_hint">タグを検索</string>
     <string name="comic_artist_filter_hint">作者を検索</string>
+    <string name="comic_directory_fetching">%1$sを取得中… (｡･ω･｡)ﾉ</string>
+    <string name="comic_directory_parsing">%1$sを解析中… (๑•̀ㅂ•́)و✧</string>
     <string name="comic_directory_empty">まだありません</string>
     <string name="comic_directory_filter_empty">一致する項目がありません</string>
     <string name="comic_directory_tag_empty">このタグの漫画はありません</string>

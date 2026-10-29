@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.model.ComicDirectoryEntry
 import app.amisles.hanime.domain.model.ComicDirectoryKind
+import app.amisles.hanime.domain.model.ComicDirectoryPhase
 import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.result.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,18 +33,24 @@ class ComicDirectoryViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _phase = MutableStateFlow<ComicDirectoryPhase?>(null)
+    val phase: StateFlow<ComicDirectoryPhase?> = _phase.asStateFlow()
+
     private var loadJob: Job? = null
     private var loadedKind: ComicDirectoryKind? = null
 
-    fun load(kind: ComicDirectoryKind) {
-        if (_isLoading.value || loadedKind == kind) return
+    fun load(kind: ComicDirectoryKind, refresh: Boolean = false) {
+        if (_isLoading.value || (loadedKind == kind && !refresh)) return
         loadedKind = kind
         loadJob?.cancel()
         _isLoading.value = true
         _error.value = null
+        _phase.value = ComicDirectoryPhase.FETCHING
         loadJob = viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) { comics.getComicDirectory(kind) }
+                val result = withContext(Dispatchers.IO) {
+                    comics.getComicDirectory(kind, refresh) { phase -> _phase.value = phase }
+                }
                 when (result) {
                     is AppResult.Success -> {
                         _entries.value = result.data
@@ -59,13 +66,13 @@ class ComicDirectoryViewModel @Inject constructor(
                 _error.value = e.message ?: "加载漫画目录失败"
             } finally {
                 _isLoading.value = false
+                _phase.value = null
             }
         }
     }
 
     fun retry() {
         val kind = loadedKind ?: return
-        loadedKind = null
-        load(kind)
+        load(kind, refresh = true)
     }
 }

@@ -867,6 +867,8 @@
     <string name="comic_directory_count">%1$d 項</string>
     <string name="comic_tag_filter_hint">搜尋標籤</string>
     <string name="comic_artist_filter_hint">搜尋作者</string>
+    <string name="comic_directory_fetching">正在取得%1$s列表… (｡･ω･｡)ﾉ</string>
+    <string name="comic_directory_parsing">正在解析%1$s… (๑•̀ㅂ•́)و✧</string>
     <string name="comic_directory_empty">暫無內容</string>
     <string name="comic_directory_filter_empty">沒有符合項目</string>
     <string name="comic_directory_tag_empty">此標籤下暫無漫畫</string>

@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.repository
 
 import android.database.SQLException
+import app.amisles.hanime.data.cache.ComicDirectoryCacheStore
 import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
@@ -28,6 +29,7 @@ import app.amisles.hanime.domain.model.ComicChapter
 import app.amisles.hanime.domain.model.ComicDetail
 import app.amisles.hanime.domain.model.ComicDirectoryEntry
 import app.amisles.hanime.domain.model.ComicDirectoryKind
+import app.amisles.hanime.domain.model.ComicDirectoryPhase
 import app.amisles.hanime.domain.model.ComicDirectoryResult
 import app.amisles.hanime.domain.model.ComicPage
 import app.amisles.hanime.domain.model.ComicProgress
@@ -89,6 +91,7 @@ class HanimeRepository @Inject constructor(
     private val comicReaderParser: ComicReaderParser,
     private val comicDirectoryParser: ComicDirectoryParser,
     private val comicDirectoryResultParser: ComicDirectoryResultParser,
+    private val comicDirectoryCache: ComicDirectoryCacheStore,
     private val comicProgressDao: ComicProgressDao
 ) : ContentRepository, LibraryRepository, AccountRepository, ComicRepository {
 
@@ -107,11 +110,21 @@ class HanimeRepository @Inject constructor(
 
 
     override suspend fun getComicDirectory(
-        kind: ComicDirectoryKind
+        kind: ComicDirectoryKind,
+        refresh: Boolean,
+        onPhase: (ComicDirectoryPhase) -> Unit
     ): AppResult<List<ComicDirectoryEntry>> {
+        if (!refresh) {
+            val cached = comicDirectoryCache.read(kind)
+            if (cached != null) return AppResult.success(cached)
+        }
         return try {
+            onPhase(ComicDirectoryPhase.FETCHING)
             val result = networkService.fetchComicDirectoryPage(kind)
-            AppResult.success(comicDirectoryParser.parse(result.html, result.baseUrl, kind))
+            onPhase(ComicDirectoryPhase.PARSING)
+            val entries = comicDirectoryParser.parse(result.html, result.baseUrl, kind)
+            comicDirectoryCache.write(kind, entries)
+            AppResult.success(entries)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

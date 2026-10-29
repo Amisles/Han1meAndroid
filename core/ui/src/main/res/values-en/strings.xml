@@ -867,6 +867,8 @@
     <string name="comic_directory_count">%1$d items</string>
     <string name="comic_tag_filter_hint">Search tags</string>
     <string name="comic_artist_filter_hint">Search artists</string>
+    <string name="comic_directory_fetching">Loading %1$s… (｡･ω･｡)ﾉ</string>
+    <string name="comic_directory_parsing">Parsing %1$s… (๑•̀ㅂ•́)و✧</string>
     <string name="comic_directory_empty">Nothing here yet</string>
     <string name="comic_directory_filter_empty">No matches</string>
     <string name="comic_directory_tag_empty">No comics under this tag</string>

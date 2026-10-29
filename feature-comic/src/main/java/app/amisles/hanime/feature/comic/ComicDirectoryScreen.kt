@@ -50,6 +50,7 @@ import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.domain.model.ComicDirectoryEntry
 import app.amisles.hanime.domain.model.ComicDirectoryKind
+import app.amisles.hanime.domain.model.ComicDirectoryPhase
 
 private val TAG_CELL_MIN_WIDTH = 108.dp
 private val ARTIST_CELL_MIN_WIDTH = 148.dp
@@ -74,6 +75,7 @@ fun ComicDirectoryScreen(
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val phase by viewModel.phase.collectAsStateWithLifecycle()
     var query by rememberSaveable(kind) { mutableStateOf("") }
     val visible = remember(entries, query) {
         val keyword = query.trim()
@@ -130,12 +132,7 @@ fun ComicDirectoryScreen(
             )
 
             when {
-                isLoading && entries.isEmpty() -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
+                isLoading && entries.isEmpty() -> ComicDirectoryLoading(kind = kind, phase = phase)
                 error != null && entries.isEmpty() -> KaomojiErrorView(
                     message = error,
                     onRetry = { viewModel.retry() },
@@ -160,6 +157,31 @@ fun ComicDirectoryScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ComicDirectoryLoading(kind: ComicDirectoryKind, phase: ComicDirectoryPhase?) {
+    val title = stringResource(kind.titleRes())
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        Text(
+            text = stringResource(
+                if (phase == ComicDirectoryPhase.PARSING) {
+                    R.string.comic_directory_parsing
+                } else {
+                    R.string.comic_directory_fetching
+                },
+                title
+            ),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 14.dp)
+        )
     }
 }
 
