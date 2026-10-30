@@ -31,10 +31,10 @@ class LibraryRepositoryImpl @Inject constructor(
     override suspend fun addFavorite(video: FavoriteVideo): Boolean {
         return try {
             favoriteDao.addFavorite(video.toEntity())
-            AppLogger.log("HanimeRepository", "Favorite added successfully")
+            AppLogger.log("LibraryRepositoryImpl", "Favorite added successfully")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error adding favorite: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error adding favorite: ${e.message}", e)
             false
         }
     }
@@ -43,10 +43,10 @@ class LibraryRepositoryImpl @Inject constructor(
     override suspend fun removeFavorite(videoId: String): Boolean {
         return try {
             favoriteDao.removeFavoriteById(videoId)
-            AppLogger.log("HanimeRepository", "Favorite removed successfully")
+            AppLogger.log("LibraryRepositoryImpl", "Favorite removed successfully")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error removing favorite: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error removing favorite: ${e.message}", e)
             false
         }
     }
@@ -60,10 +60,10 @@ class LibraryRepositoryImpl @Inject constructor(
         if (videoIds.isEmpty()) return true
         return try {
             favoriteDao.removeFavoritesByIds(videoIds)
-            AppLogger.log("HanimeRepository", "Favorites removed: ${videoIds.size}")
+            AppLogger.log("LibraryRepositoryImpl", "Favorites removed: ${videoIds.size}")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error removing favorites: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error removing favorites: ${e.message}", e)
             false
         }
     }
@@ -73,7 +73,7 @@ class LibraryRepositoryImpl @Inject constructor(
         return try {
             favoriteDao.isFavorite(videoId)
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error checking favorite: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error checking favorite: ${e.message}", e)
             false
         }
     }
@@ -82,10 +82,10 @@ class LibraryRepositoryImpl @Inject constructor(
     override suspend fun getAllFavorites(): List<FavoriteVideo> {
         return try {
             val favorites = favoriteDao.getAllFavorites().map { it.toDomain() }
-            AppLogger.log("HanimeRepository", "Got ${favorites.size} favorites")
+            AppLogger.log("LibraryRepositoryImpl", "Got ${favorites.size} favorites")
             favorites
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error getting favorites: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error getting favorites: ${e.message}", e)
             emptyList()
         }
     }
@@ -95,7 +95,7 @@ class LibraryRepositoryImpl @Inject constructor(
         return try {
             favoriteDao.getFavoriteCount()
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error getting favorite count: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error getting favorite count: ${e.message}", e)
             0
         }
     }
@@ -110,7 +110,7 @@ class LibraryRepositoryImpl @Inject constructor(
             favoriteGroupDao.upsertGroup(group.toEntity())
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error saving favorite group: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error saving favorite group: ${e.message}", e)
             false
         }
     }
@@ -123,7 +123,7 @@ class LibraryRepositoryImpl @Inject constructor(
             favoriteGroupDao.deleteGroup(groupId)
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error deleting favorite group: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error deleting favorite group: ${e.message}", e)
             false
         }
     }
@@ -134,7 +134,7 @@ class LibraryRepositoryImpl @Inject constructor(
             favoriteDao.setFavoriteGroup(videoId, groupId)
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error moving favorite: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error moving favorite: ${e.message}", e)
             false
         }
     }
@@ -145,7 +145,7 @@ class LibraryRepositoryImpl @Inject constructor(
         return try {
             favoriteDao.setFavoriteGroupForIds(videoIds, groupId) == videoIds.size
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error moving favorites: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error moving favorites: ${e.message}", e)
             false
         }
     }
@@ -161,7 +161,7 @@ class LibraryRepositoryImpl @Inject constructor(
             favoriteDao.setFavoriteTags(videoId, normalized.joinToString(","))
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error saving favorite tags: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error saving favorite tags: ${e.message}", e)
             false
         }
     }
@@ -170,10 +170,10 @@ class LibraryRepositoryImpl @Inject constructor(
     override suspend fun addWatchHistory(history: WatchHistory): Boolean {
         return try {
             watchHistoryDao.addWatchHistory(history.toEntity())
-            AppLogger.log("HanimeRepository", "Watch history added successfully")
+            AppLogger.log("LibraryRepositoryImpl", "Watch history added successfully")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error adding watch history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error adding watch history: ${e.message}", e)
             false
         }
     }
@@ -187,7 +187,7 @@ class LibraryRepositoryImpl @Inject constructor(
         return try {
             watchHistoryDao.updatePlaybackProgress(videoId, position, duration) > 0
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error updating watch progress: " + e.message, e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error updating watch progress: " + e.message, e)
             false
         }
     }
@@ -199,7 +199,7 @@ class LibraryRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "markWatched: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "markWatched: ${e.message}", e)
             false
         }
 
@@ -208,7 +208,7 @@ class LibraryRepositoryImpl @Inject constructor(
         return try {
             watchHistoryDao.getWatchHistoryById(videoId)?.toDomain()
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error getting watch history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error getting watch history: ${e.message}", e)
             null
         }
     }
@@ -227,10 +227,10 @@ class LibraryRepositoryImpl @Inject constructor(
     override suspend fun removeWatchHistory(videoId: String): Boolean {
         return try {
             watchHistoryDao.removeWatchHistory(videoId)
-            AppLogger.log("HanimeRepository", "Watch history removed successfully")
+            AppLogger.log("LibraryRepositoryImpl", "Watch history removed successfully")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error removing watch history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error removing watch history: ${e.message}", e)
             false
         }
     }
@@ -244,10 +244,10 @@ class LibraryRepositoryImpl @Inject constructor(
         if (videoIds.isEmpty()) return true
         return try {
             watchHistoryDao.removeWatchHistoriesByIds(videoIds)
-            AppLogger.log("HanimeRepository", "Watch histories removed: ${videoIds.size}")
+            AppLogger.log("LibraryRepositoryImpl", "Watch histories removed: ${videoIds.size}")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error removing watch histories: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error removing watch histories: ${e.message}", e)
             false
         }
     }
@@ -256,10 +256,10 @@ class LibraryRepositoryImpl @Inject constructor(
     override suspend fun clearWatchHistory(): Boolean {
         return try {
             watchHistoryDao.clearWatchHistory()
-            AppLogger.log("HanimeRepository", "Watch history cleared successfully")
+            AppLogger.log("LibraryRepositoryImpl", "Watch history cleared successfully")
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error clearing watch history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error clearing watch history: ${e.message}", e)
             false
         }
     }
@@ -269,7 +269,7 @@ class LibraryRepositoryImpl @Inject constructor(
         return try {
             watchHistoryDao.getWatchHistoryCount()
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error getting watch history count: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error getting watch history count: ${e.message}", e)
             0
         }
     }
@@ -291,7 +291,7 @@ class LibraryRepositoryImpl @Inject constructor(
             )
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error adding search history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error adding search history: ${e.message}", e)
             false
         }
     }
@@ -302,7 +302,7 @@ class LibraryRepositoryImpl @Inject constructor(
             searchHistoryDao.removeSearch(query)
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error removing search history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error removing search history: ${e.message}", e)
             false
         }
     }
@@ -313,7 +313,7 @@ class LibraryRepositoryImpl @Inject constructor(
             searchHistoryDao.clearAllSearch()
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error clearing search history: ${e.message}", e)
+            AppLogger.logError("LibraryRepositoryImpl", "Error clearing search history: ${e.message}", e)
             false
         }
     }

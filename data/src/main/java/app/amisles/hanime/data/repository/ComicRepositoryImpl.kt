@@ -44,12 +44,12 @@ class ComicRepositoryImpl @Inject constructor(
     override suspend fun getComics(page: Int): AppResult<ComicPage> {
         return try {
             val result = networkService.fetchComicsPage(page)
-            AppLogger.log("HanimeRepository", "Comics HTML received, length: " + result.html.length)
+            AppLogger.log("ComicRepositoryImpl", "Comics HTML received, length: " + result.html.length)
             AppResult.success(comicPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getComics: " + e.message, e)
+            AppLogger.logError("ComicRepositoryImpl", "Error in getComics: " + e.message, e)
             AppResult.error(e.message ?: "加载漫画失败", e)
         }
     }
@@ -75,7 +75,7 @@ class ComicRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getComicDirectory: " + e.message, e)
+            AppLogger.logError("ComicRepositoryImpl", "Error in getComicDirectory: " + e.message, e)
             val fallback = if (kind == ComicDirectoryKind.TAG) "加载标签失败" else "加载作者失败"
             AppResult.error(e.message ?: fallback, e)
         }
@@ -93,7 +93,7 @@ class ComicRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getComicDirectoryResult: " + e.message, e)
+            AppLogger.logError("ComicRepositoryImpl", "Error in getComicDirectoryResult: " + e.message, e)
             AppResult.error(e.message ?: "加载漫画列表失败", e)
         }
     }
@@ -106,7 +106,7 @@ class ComicRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getComicDetail: " + e.message, e)
+            AppLogger.logError("ComicRepositoryImpl", "Error in getComicDetail: " + e.message, e)
             AppResult.error(e.message ?: "加载漫画详情失败", e)
         }
     }
@@ -119,7 +119,7 @@ class ComicRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getComicChapter: " + e.message, e)
+            AppLogger.logError("ComicRepositoryImpl", "Error in getComicChapter: " + e.message, e)
             AppResult.error(e.message ?: "加载漫画失败", e)
         }
     }
@@ -143,7 +143,7 @@ class ComicRepositoryImpl @Inject constructor(
             if (updated == 0) comicProgressDao.upsert(progress.toEntity())
             true
         } catch (e: SQLException) {
-            AppLogger.logError("HanimeRepository", "Error saving comic progress: " + e.message, e)
+            AppLogger.logError("ComicRepositoryImpl", "Error saving comic progress: " + e.message, e)
             false
         }
     }

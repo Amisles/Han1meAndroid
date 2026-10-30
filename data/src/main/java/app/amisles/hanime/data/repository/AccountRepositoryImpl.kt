@@ -33,12 +33,12 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun getComments(videoId: String, page: Int): AppResult<List<Comment>> {
         return try {
             val json = networkService.fetchComments(videoId, page)
-            AppLogger.log("HanimeRepository", "Comments JSON received, length: ${json.length}")
+            AppLogger.log("AccountRepositoryImpl", "Comments JSON received, length: ${json.length}")
             AppResult.success(commentParser.parse(json))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getComments: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in getComments: ${e.message}", e)
             AppResult.error(e.message ?: "加载评论失败", e)
         }
     }
@@ -47,12 +47,12 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun getReplies(commentId: String): AppResult<List<Reply>> {
         return try {
             val json = networkService.fetchReplies(commentId)
-            AppLogger.log("HanimeRepository", "Replies JSON received, length: ${json.length}")
+            AppLogger.log("AccountRepositoryImpl", "Replies JSON received, length: ${json.length}")
             AppResult.success(commentParser.parseReplies(json))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getReplies: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in getReplies: ${e.message}", e)
             AppResult.error(e.message ?: "加载回复失败", e)
         }
     }
@@ -84,14 +84,14 @@ class AccountRepositoryImpl @Inject constructor(
                 csrfToken = csrfToken,
                 userId = userId
             )
-            AppLogger.log("HanimeRepository", "postComment JSON received, length: ${json.length}")
+            AppLogger.log("AccountRepositoryImpl", "postComment JSON received, length: ${json.length}")
             val parsed = commentParser.parsePostedComment(json)
                 ?: return AppResult.error("评论发表成功但解析失败")
             AppResult.success(parsed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in postComment: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in postComment: ${e.message}", e)
             AppResult.error(e.message ?: "发表评论失败", e)
         }
     }
@@ -129,7 +129,7 @@ class AccountRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in toggleCommentLike: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in toggleCommentLike: ${e.message}", e)
             AppResult.error(e.message ?: "评论点赞失败", e)
         }
     }
@@ -159,14 +159,14 @@ class AccountRepositoryImpl @Inject constructor(
                 replyText = replyText,
                 csrfToken = csrfToken
             )
-            AppLogger.log("HanimeRepository", "replyComment JSON received, length: ${json.length}")
+            AppLogger.log("AccountRepositoryImpl", "replyComment JSON received, length: ${json.length}")
             val parsed = commentParser.parsePostedReply(json)
                 ?: return AppResult.error("回复发表成功但解析失败")
             AppResult.success(parsed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in replyComment: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in replyComment: ${e.message}", e)
             AppResult.error(e.message ?: "回复评论失败", e)
         }
     }
@@ -202,14 +202,14 @@ class AccountRepositoryImpl @Inject constructor(
                 artistId = artistId,
                 willSubscribe = willSubscribe
             )
-            AppLogger.log("HanimeRepository", "toggleSubscribe JSON received, length: ${json.length}")
+            AppLogger.log("AccountRepositoryImpl", "toggleSubscribe JSON received, length: ${json.length}")
             val parsed = subscribeParser.parse(json)
                 ?: return AppResult.error("订阅操作失败")
             AppResult.success(parsed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in toggleSubscribe: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in toggleSubscribe: ${e.message}", e)
             AppResult.error(e.message ?: "订阅操作失败", e)
         }
     }
@@ -246,7 +246,7 @@ class AccountRepositoryImpl @Inject constructor(
                 return AppResult.error("无法确认登录用户，请重新登录后再试")
             }
             val result = networkService.fetchAccountEditPage(userId)
-            AppLogger.log("HanimeRepository", "Account edit page HTML length: ${result.html.length}")
+            AppLogger.log("AccountRepositoryImpl", "Account edit page HTML length: ${result.html.length}")
             val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
                 ?: return AppResult.error("登录状态可能已失效，请重新登录后再试")
             Preferences.saveUserName(profile.name)
@@ -254,7 +254,7 @@ class AccountRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getAccountProfile: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in getAccountProfile: ${e.message}", e)
             AppResult.error(e.message ?: "加载账户资料失败", e)
         }
     }
@@ -296,7 +296,7 @@ class AccountRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in updateAccountProfile: ${e.message}", e)
+            AppLogger.logError("AccountRepositoryImpl", "Error in updateAccountProfile: ${e.message}", e)
             AppResult.error(e.message ?: "更新账户资料失败", e)
         }
     }
@@ -365,7 +365,7 @@ class AccountRepositoryImpl @Inject constructor(
             onSuccess = { AppResult.success(it) },
             onFailure = { e ->
                 if (e is CancellationException) throw e
-                AppLogger.logError("HanimeRepository", "Login failed: ${e.message}", e)
+                AppLogger.logError("AccountRepositoryImpl", "Login failed: ${e.message}", e)
                 AppResult.error(e.message ?: "登录失败", e)
             }
         )

@@ -41,12 +41,12 @@ class ContentRepositoryImpl @Inject constructor(
     override suspend fun getHomeData(): AppResult<HomePageData> {
         return try {
             val result = networkService.fetchHomePageWithBaseUrl()
-            AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(homePageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getHomeData: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in getHomeData: ${e.message}", e)
             AppResult.error(e.message ?: "加载首页失败", e)
         }
     }
@@ -56,14 +56,14 @@ class ContentRepositoryImpl @Inject constructor(
     override fun getHomeDataStream(): Flow<HomeDataEvent> = flow {
         try {
             val result = networkService.fetchHomePageWithBaseUrl()
-            AppLogger.log("HanimeRepository", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             emitAll(homePageParser.parseStreaming(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             // 收集方取消时必须原样抛出：Exception 是 CancellationException 的父类，
             // 若在此吞掉，取消无法上抛，页面销毁后仍会向 UI 派发 Error 事件
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getHomeDataStream: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in getHomeDataStream: ${e.message}", e)
             emit(HomeDataEvent.Error(e.message ?: "加载首页失败"))
         }
     }.flowOn(Dispatchers.IO)
@@ -72,12 +72,12 @@ class ContentRepositoryImpl @Inject constructor(
     override suspend fun searchVideos(query: String, genre: String?, sort: String?, page: Int): AppResult<List<HanimeVideo>> {
         return try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
-            AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in searchVideos: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in searchVideos: ${e.message}", e)
             AppResult.error(e.message ?: "搜索失败", e)
         }
     }
@@ -95,12 +95,12 @@ class ContentRepositoryImpl @Inject constructor(
     ): AppResult<SearchResult> {
         return try {
             val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page, tags, broad, date, duration)
-            AppLogger.log("HanimeRepository", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parseWithPagination(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in searchVideosWithPagination: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in searchVideosWithPagination: ${e.message}", e)
             AppResult.error(e.message ?: "搜索失败", e)
         }
     }
@@ -109,14 +109,14 @@ class ContentRepositoryImpl @Inject constructor(
     override suspend fun getVideoDetail(videoUrl: String): AppResult<VideoDetail> {
         return try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
-            AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             val detail = watchPageParser.parse(result.html, result.baseUrl)
                 ?: return AppResult.error("无法解析视频详情页")
             AppResult.success(detail)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getVideoDetail: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in getVideoDetail: ${e.message}", e)
             AppResult.error(e.message ?: "加载视频详情失败", e)
         }
     }
@@ -130,12 +130,12 @@ class ContentRepositoryImpl @Inject constructor(
     override fun getVideoDetailStream(videoUrl: String): Flow<VideoDetailEvent> = flow {
         try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
-            AppLogger.log("HanimeRepository", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             emitAll(watchPageParser.parseStreaming(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getVideoDetailStream: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in getVideoDetailStream: ${e.message}", e)
             emit(VideoDetailEvent.Error(e.message ?: "加载视频详情失败"))
         }
     }.flowOn(Dispatchers.IO)
@@ -144,12 +144,12 @@ class ContentRepositoryImpl @Inject constructor(
     override suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
         return try {
             val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
-            AppLogger.log("HanimeRepository", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
+            AppLogger.log("ContentRepositoryImpl", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(downloadPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            AppLogger.logError("HanimeRepository", "Error in getDownloadQualities: ${e.message}", e)
+            AppLogger.logError("ContentRepositoryImpl", "Error in getDownloadQualities: ${e.message}", e)
             AppResult.error(e.message ?: "获取下载画质失败", e)
         }
     }
