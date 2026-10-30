@@ -129,7 +129,7 @@ class DownloadManager @Inject constructor(
     private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
     private val activeSlots = AtomicInteger(0)
-    private val downloadServiceStarted = AtomicBoolean(false)
+    private val serviceBridge = DownloadServiceBridge(context) { hasActiveDownload() }
     // 各任务最近一次已转发的整数百分比，用于抑制「百分比未变」的重复跨进程通知
     private val lastNotifiedPercent = ConcurrentHashMap<Int, Int>()
 
@@ -212,7 +212,7 @@ class DownloadManager @Inject constructor(
 
     init {
         onProgressUpdate = { taskId, title, progress, status ->
-            forwardToService(context, title, progress, status, taskId)
+            serviceBridge.forwardProgress(title, progress, status, taskId)
         }
 
         scope.launch {
@@ -656,7 +656,7 @@ class DownloadManager @Inject constructor(
                 updateTask(task.id) { it.copy(status = DownloadStatus.PENDING) }
             }
             // 通知栏说明等待原因，避免用户以为下载卡死。
-            // 本方法在调用方的 tasksLock 内执行：forwardToService 是跨进程 IPC，
+            // 本方法在调用方的 tasksLock 内执行：serviceBridge.forwardProgress 是跨进程 IPC，
             // 不能同步跑在锁里（updateTask 已把同类转发移出锁外），这里挪到 IO 作用域异步转发。
             val gateNoticeTaskId = task.id
             val gateNoticeTitle = task.title
@@ -802,7 +802,7 @@ class DownloadManager @Inject constructor(
     }
 
     private fun gateProgress(task: DownloadTask): Int =
-        if (task.totalBytes > 0) (task.downloadedBytes * 100 / task.totalBytes).toInt() else 0
+        DownloadQueuePolicy.progressPercent(task.downloadedBytes, task.totalBytes)
 
     private fun startNextPendingTask() {
         // 闸门判定含跨进程读取（粘性广播 / ConnectivityManager），必须在锁外
@@ -840,18 +840,15 @@ class DownloadManager @Inject constructor(
      * 只读 ConcurrentHashMap，不做任何磁盘 I/O —— 这是持锁执行的关键约束：
      * 持锁做 I/O 会让主线程上的 pauseDownload / cancelDownload / startDownload 长时间等锁。
      */
-    private fun pickPendingTaskLocked(exclude: Set<Int>): DownloadTask? {
-        val pending = taskMap.values.filter {
-            it.status == DownloadStatus.PENDING && !downloadJobs.containsKey(it.id) && it.id !in exclude
-        }
-        if (pending.isEmpty()) return null
-        // 队列顺序优先，未列入的自定义顺序按 id 升序（先加的排前面），保证行为可预期
-        val order = queueOrder
-        val pendingTask = pending.minWithOrNull(
-            compareBy({ order.indexOf(it.id).takeIf { i -> i >= 0 } ?: Int.MAX_VALUE }, { it.id })
+    private fun pickPendingTaskLocked(exclude: Set<Int>): DownloadTask? =
+        DownloadQueuePolicy.pickPendingTask(
+            tasks = taskMap.values,
+            activeJobIds = downloadJobs.keys,
+            exclude = exclude,
+            queueOrder = queueOrder,
+            activeSlots = activeSlots.get(),
+            concurrencyLimit = concurrencyLimit
         )
-        return pendingTask?.takeIf { activeSlots.get() < concurrencyLimit }
-    }
 
     override fun adoptDownloadIdCeiling(maxId: Int) {
         if (maxId <= 0) return
@@ -1080,11 +1077,11 @@ class DownloadManager @Inject constructor(
             // 仅锁定内记录需回调的信息，真正回调移出锁外执行（见下方 D2 说明）。
             val candidate = when (newTask.status) {
                 DownloadStatus.DOWNLOADING -> if (newTask.totalBytes > 0) {
-                    ProgressUpdate(taskId, newTask.title, (newTask.downloadedBytes * 100 / newTask.totalBytes).toInt(), newTask.status)
+                    ProgressUpdate(taskId, newTask.title, DownloadQueuePolicy.progressPercent(newTask.downloadedBytes, newTask.totalBytes), newTask.status)
                 } else null
                 DownloadStatus.PAUSED -> ProgressUpdate(
                     taskId, newTask.title,
-                    if (newTask.totalBytes > 0) (newTask.downloadedBytes * 100 / newTask.totalBytes).toInt() else 0,
+                    DownloadQueuePolicy.progressPercent(newTask.downloadedBytes, newTask.totalBytes),
                     newTask.status
                 )
                 DownloadStatus.COMPLETED, DownloadStatus.FAILED ->
@@ -1095,7 +1092,7 @@ class DownloadManager @Inject constructor(
             // 调用 + 通知重绘，而整数百分比多数未变。状态切换始终转发，保证通知语义不丢。
             if (candidate != null) {
                 val last = lastNotifiedPercent[taskId]
-                if (statusChanged || last == null || last != candidate.progress) {
+                if (DownloadQueuePolicy.shouldForwardProgress(statusChanged, last, candidate.progress)) {
                     lastNotifiedPercent[taskId] = candidate.progress
                     progressUpdate = candidate
                 }
@@ -1111,7 +1108,7 @@ class DownloadManager @Inject constructor(
             ?.let { taskMap[taskId]?.filePath }
             .orEmpty()
         if (completedPath.isNotBlank()) {
-            forwardToService(context, progressUpdate!!.title, 100, DownloadStatus.COMPLETED, taskId, completedPath)
+            serviceBridge.forwardProgress(progressUpdate!!.title, 100, DownloadStatus.COMPLETED, taskId, completedPath)
         }
     }
     internal fun trackCall(taskId: Int, call: Call) {
@@ -1151,11 +1148,12 @@ class DownloadManager @Inject constructor(
      * 进度类落盘节流：距上次落盘超过 [PROGRESS_PERSIST_INTERVAL_MS] 才允许写 DB。
      * 状态切换（由调用方判断）不走此节流，始终立即落盘。
      */
-    private fun shouldPersistProgress(taskId: Int): Boolean {
-        val now = System.currentTimeMillis()
-        val last = lastPersistTime[taskId] ?: 0L
-        return now - last >= PROGRESS_PERSIST_INTERVAL_MS
-    }
+    private fun shouldPersistProgress(taskId: Int): Boolean =
+        DownloadQueuePolicy.shouldPersistProgress(
+            lastPersistAt = lastPersistTime[taskId] ?: 0L,
+            now = System.currentTimeMillis(),
+            intervalMs = PROGRESS_PERSIST_INTERVAL_MS
+        )
 
     /** 提交一次落盘。只入队不直接写库，实际写入由 init 中的单消费者协程串行执行。 */
     private fun persistTask(task: DownloadTask) {
@@ -1284,7 +1282,7 @@ class DownloadManager @Inject constructor(
         pauseEpoch.remove(taskId)
         // 任务记录已删除，无法再走 updateTask 进度通道；必须显式通知前台服务撤销该任务的
         // 常驻通知并重算活动集合，否则通知（ongoing 不可划掉）与 dataSync 前台服务会永久残留。
-        forwardRemoveToService(taskId)
+        serviceBridge.forwardRemove(taskId)
         AppLogger.log("DownloadManager", "Download cancelled: $taskId")
 
         if (removed == null) {
@@ -1629,68 +1627,6 @@ class DownloadManager @Inject constructor(
      * 下载中使用 startForegroundService 以确保服务在前台运行；
      * 完成/失败时服务应已在前台运行，使用 startService 更新最终通知并停止服务。
      */
-    private fun forwardToService(
-        context: Context,
-        title: String,
-        progress: Int,
-        status: DownloadStatus,
-        taskId: Int,
-        filePath: String = ""
-    ) {
-        val intent = Intent().apply {
-            setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
-            putExtra(EXTRA_TASK_ID, taskId)
-            putExtra(EXTRA_TITLE, title)
-            putExtra(EXTRA_PROGRESS, progress)
-            putExtra(EXTRA_STATUS, status.name)
-            if (filePath.isNotBlank()) putExtra(EXTRA_FILE_PATH, filePath)
-        }
-        val firstTime = downloadServiceStarted.compareAndSet(false, true)
-        try {
-            if (firstTime) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        } catch (e: IllegalStateException) {
-            downloadServiceStarted.set(false)
-            runCatching { context.startForegroundService(intent) }.onFailure { se ->
-                AppLogger.log(
-                    "DownloadManager",
-                    "转发进度到 DownloadService 被系统拒绝: ${e.message} / ${se.message}"
-                )
-            }
-        } catch (e: SecurityException) {
-            // 权限受限（通知 / 前台服务类型）：同样复位标志，允许下次重新尝试
-            downloadServiceStarted.set(false)
-        }
-        // 收到终态/暂停且已无活动任务时复位标记，允许下次新下载重新走 startForegroundService。
-        // 服务在「无活动任务」时会退出前台并 stopSelf，此处必须复位，否则后续恢复下载会走
-        // startService（服务已不在前台，后台启动会被系统拒绝），导致该次下载完全没有通知。
-        if (status == DownloadStatus.COMPLETED || status == DownloadStatus.FAILED ||
-            status == DownloadStatus.PAUSED
-        ) {
-            if (!hasActiveDownload()) downloadServiceStarted.set(false)
-        }
-    }
-
-    /**
-     * 通知 DownloadService 撤销某个已被取消/删除任务的通知。
-     *
-     * cancelDownload 会直接删掉任务记录（不再产生任何 updateTask 回调），因此必须走独立通道。
-     * 用 startService 而非 startForegroundService：这只是清理一个已存在的通知，不承担前台义务。
-     */
-    private fun forwardRemoveToService(taskId: Int) {
-        val intent = Intent().apply {
-            setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
-            action = ACTION_REMOVE_TASK
-            putExtra(EXTRA_TASK_ID, taskId)
-        }
-        runCatching { context.startService(intent) }.onFailure { e ->
-            AppLogger.log("DownloadManager", "转发取消通知被系统拒绝（通知可能残留到进程结束）: ${e.message}")
-        }
-        if (!hasActiveDownload()) downloadServiceStarted.set(false)
-    }
 
     /** 是否还有处于 DOWNLOADING / PENDING 的任务（决定前台服务是否应保持活动）。 */
     private fun hasActiveDownload(): Boolean = taskMap.values.any {
