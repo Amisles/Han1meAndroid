@@ -393,15 +393,8 @@ class CommentViewModel @Inject constructor(
             likeCount = 0,
             replyTo = target.replyToUsername
         )
-        // +1 回复数
-        _comments.value = _comments.value.map { c ->
-            if (c.id == target.commentId) c.copy(replyCount = c.replyCount + 1) else c
-        }
-        // 追加临时回复
-        _repliesCache.value = _repliesCache.value.toMutableMap().apply {
-            val list = this[target.commentId] ?: emptyList()
-            this[target.commentId] = list + optimisticReply
-        }
+        _comments.value = CommentOptimistic.adjustReplyCount(_comments.value, target.commentId, 1)
+        _repliesCache.value = CommentOptimistic.appendReply(_repliesCache.value, target.commentId, optimisticReply)
         _expandedReplies.value = _expandedReplies.value + target.commentId
 
         viewModelScope.launch {
@@ -419,10 +412,12 @@ class CommentViewModel @Inject constructor(
                     is AppResult.Success -> {
                         val newReply = result.data
                         // 用服务端返回的回复替换临时项：先剔除临时项（防 loadReplies 竞态覆盖），再追加
-                        _repliesCache.value = _repliesCache.value.toMutableMap().apply {
-                            val list = this[target.commentId] ?: emptyList()
-                            this[target.commentId] = list.filter { it.id != optimisticReply.id } + newReply
-                        }
+                        _repliesCache.value = CommentOptimistic.replaceReply(
+                            _repliesCache.value,
+                            target.commentId,
+                            optimisticReply.id,
+                            newReply
+                        )
                         _activeReplyTarget.value = null
                         AppLogger.d("CommentViewModel", "Reply posted for comment ${target.commentId}, replyId=${newReply.id}")
                     }
@@ -455,13 +450,8 @@ class CommentViewModel @Inject constructor(
      * 例如同一条评论的回复列表在此期间被重新拉取、或其它评论的点赞已乐观写入。
      */
     private fun rollbackOptimisticReply(commentId: String, optimisticId: String) {
-        _comments.value = _comments.value.map { c ->
-            if (c.id == commentId) c.copy(replyCount = (c.replyCount - 1).coerceAtLeast(0)) else c
-        }
-        _repliesCache.value = _repliesCache.value.toMutableMap().apply {
-            val list = this[commentId] ?: return@apply
-            this[commentId] = list.filter { it.id != optimisticId }
-        }
+        _comments.value = CommentOptimistic.adjustReplyCount(_comments.value, commentId, -1)
+        _repliesCache.value = CommentOptimistic.removeReply(_repliesCache.value, commentId, optimisticId)
     }
 
     /** 清除回复提交的错误状态。 */
@@ -563,11 +553,7 @@ class CommentViewModel @Inject constructor(
 
         // 回滚按 comment.id 在新列表里定位，切页后必须放弃，否则会写坏新视频的评论
         val requestVideoId = ctx.videoId
-        val willLike = comment.likeStatus != 1
-        val optimistic = comment.copy(
-            likeStatus = if (willLike) 1 else 0,
-            likeCount = (comment.likeCount + if (willLike) 1 else -1).coerceAtLeast(0)
-        )
+        val optimistic = CommentOptimistic.toggleLike(comment)
         _comments.value = _comments.value.map { if (it.id == comment.id) optimistic else it }
         _likingComments.value = _likingComments.value + comment.id
 
@@ -588,7 +574,7 @@ class CommentViewModel @Inject constructor(
                 }
                 when (result) {
                     is AppResult.Success -> {
-                        AppLogger.d("CommentViewModel", "Comment like toggled for ${comment.id}, willLike=$willLike")
+                        AppLogger.d("CommentViewModel", "Comment like toggled for ${comment.id}, willLike=${optimistic.likeStatus == 1}")
                     }
                     is AppResult.Error -> {
                         _comments.value = _comments.value.map { if (it.id == comment.id) comment else it }
