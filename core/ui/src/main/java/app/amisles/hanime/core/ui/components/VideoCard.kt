@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.CardStyle
+import app.amisles.hanime.core.ui.theme.cardGeometry
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.cardSurface
 import app.amisles.hanime.core.ui.theme.thumbnailCornerShape
@@ -48,27 +49,21 @@ fun VideoCard(
     val cfg = LocalUiConfig.current
     val card = cfg.card
     val coverRatio = videoCoverAspectRatio(video)
-    val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
-    val cardStyle = if (card.style == CardStyle.AUTO) CardStyle.PLAIN else card.style
-    val inset = if (cardStyle == CardStyle.PLAIN) 0.dp else 6.dp
-    val thumbShape = thumbnailCornerShape(
-        (cfg.cardCornerRadius.value - inset.value).coerceAtLeast(0f).dp,
-        card.cornerMode
-    )
+    val geometry = cardGeometry(cfg)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .cardSurface(cardStyle, cardShape)
-            .clip(cardShape)
+            .cardSurface(geometry.style, geometry.shape)
+            .clip(geometry.shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(inset)
+            .padding(geometry.inset)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(coverRatio)
-                .clip(thumbShape)
+                .clip(geometry.thumbShape)
         ) {
             VideoThumbnail(
                 thumbnailUrl = video.thumbnailUrl,

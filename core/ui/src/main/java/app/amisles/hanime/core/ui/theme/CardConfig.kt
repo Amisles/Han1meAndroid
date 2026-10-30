@@ -36,6 +36,28 @@ data class CardConfig(
     }
 }
 
+@Immutable
+data class CardGeometry(
+    val style: CardStyle,
+    val shape: RoundedCornerShape,
+    val inset: Dp,
+    val thumbShape: RoundedCornerShape
+)
+
+fun cardGeometry(cfg: UiConfig): CardGeometry {
+    val style = if (cfg.card.style == CardStyle.AUTO) CardStyle.PLAIN else cfg.card.style
+    val inset = if (style == CardStyle.PLAIN) 0.dp else 6.dp
+    return CardGeometry(
+        style = style,
+        shape = RoundedCornerShape(cfg.cardCornerRadius),
+        inset = inset,
+        thumbShape = thumbnailCornerShape(
+            (cfg.cardCornerRadius.value - inset.value).coerceAtLeast(0f).dp,
+            cfg.card.cornerMode
+        )
+    )
+}
+
 /** 卡片容器修饰符；须置于 clickable 之前、内容 padding 之前。 */
 @Composable
 fun Modifier.cardSurface(style: CardStyle, shape: RoundedCornerShape): Modifier = when (style) {

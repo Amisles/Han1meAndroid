@@ -22,10 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.amisles.hanime.core.ui.theme.CardStyle
+import app.amisles.hanime.core.ui.theme.cardGeometry
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.cardSurface
-import app.amisles.hanime.core.ui.theme.thumbnailCornerShape
 import app.amisles.hanime.domain.model.HanimeVideo
 
 /**
@@ -46,28 +45,22 @@ fun VideoGridCard(
     val cfg = LocalUiConfig.current
     val card = cfg.card
     val coverRatio = videoCoverAspectRatio(video)
-    val cardShape = RoundedCornerShape(cfg.cardCornerRadius)
-    val cardStyle = if (card.style == CardStyle.AUTO) CardStyle.PLAIN else card.style
-    val inset = if (cardStyle == CardStyle.PLAIN) 0.dp else 6.dp
-    val thumbShape = thumbnailCornerShape(
-        (cfg.cardCornerRadius.value - inset.value).coerceAtLeast(0f).dp,
-        card.cornerMode
-    )
+    val geometry = cardGeometry(cfg)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .cardSurface(cardStyle, cardShape)
+            .cardSurface(geometry.style, geometry.shape)
             // 先 clip 再 clickable，让点按涟漪跟随圆角而不是方角
-            .clip(cardShape)
+            .clip(geometry.shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(inset)
+            .padding(geometry.inset)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(coverRatio)
-                .clip(thumbShape)
+                .clip(geometry.thumbShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             VideoThumbnail(
