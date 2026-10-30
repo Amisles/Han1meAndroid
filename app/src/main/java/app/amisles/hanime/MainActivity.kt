@@ -14,9 +14,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -61,20 +59,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.navigation.NavController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.CloudflareChallenge
-import app.amisles.hanime.domain.model.ComicDirectoryKind
-import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.feature.settings.openReleasePage
@@ -91,37 +83,8 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.ui.viewmodel.VideoQuickActionsViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.ui.components.NavRail
-import app.amisles.hanime.feature.detail.DetailScreen
-import app.amisles.hanime.feature.detail.LocalPlayerScreen
-import app.amisles.hanime.feature.download.DownloadScreen
-import app.amisles.hanime.feature.profile.FavoriteScreen
-import app.amisles.hanime.feature.profile.HistoryScreen
-import app.amisles.hanime.feature.home.HomeScreen
-import app.amisles.hanime.feature.profile.LoginScreen
 import app.amisles.hanime.feature.profile.ProfileScreen
-import app.amisles.hanime.feature.profile.AccountProfileScreen
-import app.amisles.hanime.feature.profile.SubscriptionsScreen
-import app.amisles.hanime.feature.profile.WatchStatsScreen
-import app.amisles.hanime.feature.search.SearchScreen
-import app.amisles.hanime.feature.settings.AboutScreen
-import app.amisles.hanime.feature.settings.AuthorScreen
-import app.amisles.hanime.feature.comic.ComicDetailScreen
-import app.amisles.hanime.feature.comic.ComicDirectoryResultScreen
-import app.amisles.hanime.feature.comic.ComicDirectoryScreen
-import app.amisles.hanime.feature.comic.ComicReaderScreen
-import app.amisles.hanime.feature.comic.ComicScreen
-import app.amisles.hanime.feature.settings.BackupScreen
-import app.amisles.hanime.feature.settings.CrashLogScreen
-import app.amisles.hanime.ui.screens.PlaylistDetailScreen
-import app.amisles.hanime.ui.screens.PlaylistListPageScreen
-import app.amisles.hanime.feature.settings.SettingsScreen
-import app.amisles.hanime.feature.settings.UpdateScreen
 import app.amisles.hanime.feature.settings.UpdateAvailableDialog
-import app.amisles.hanime.feature.settings.CustomizeScreen
-import app.amisles.hanime.feature.settings.DiagnosticsScreen
-import app.amisles.hanime.feature.settings.LauncherIconScreen
-import app.amisles.hanime.ui.screens.VideoListPageScreen
-import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
@@ -130,12 +93,13 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.abs
 import app.amisles.hanime.navigation.baseRoute
-import app.amisles.hanime.navigation.comicDirectoryRoute
-import app.amisles.hanime.navigation.genreApiValueOf
-import app.amisles.hanime.navigation.moreUrlPageRoute
+import app.amisles.hanime.navigation.navigateToSearch
+import app.amisles.hanime.navigation.navigateToTab
+import app.amisles.hanime.navigation.NAV_TRANSITION_DURATION_MS
+import app.amisles.hanime.navigation.NAV_TRANSITION_EXIT_DURATION_MS
+import app.amisles.hanime.navigation.HanimeNavGraph
 import app.amisles.hanime.navigation.shouldShowBottomBar
 import app.amisles.hanime.navigation.searchRoute
-import app.amisles.hanime.navigation.sortApiValueOf
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -220,10 +184,8 @@ class MainActivity : ComponentActivity() {
 }
 
 /** 路由转场进场时长（毫秒）。首帧成本下移后，短促淡入即可掩盖残余开销。 */
-private const val TRANSITION_DURATION_MS = 220
 
 /** 退场时长略短于进场：让目标页更快接管画面，减少两页同时绘制的帧数。 */
-private const val TRANSITION_EXIT_DURATION_MS = 160
 
 /** 首页右滑唤出抽屉：触发距离、触发速度与横向位移消抖阈值。 */
 private const val HOME_SWIPE_OPEN_DP = 96f
@@ -232,29 +194,6 @@ private const val HOME_SWIPE_SLOP_DP = 8f
 
 /** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 
-/**
- * 回到栈根后压入目标路由，供「切 Tab」与「跳搜索」共用。
- *
- * 不能用 saveState / restoreState：扁平图下 popUpTo 的目标恒为 startDestination，
- * 保存与恢复共用同一个 destination id —— pop 时把被弹出的页面存到该 id 下，
- * restore 紧接着又把它取回来，表现为「点 Tab 没有反应」或「回到上一次的详情页」。
- */
-private fun NavController.navigateToRoot(route: String) {
-    navigate(route) {
-        popUpTo(graph.startDestinationId) { saveState = false }
-        launchSingleTop = true
-        restoreState = false
-    }
-}
-
-/** 跳转到搜索页。 */
-private fun NavController.navigateToSearch(route: String) = navigateToRoot(route)
-
-/** 切换底部导航 / 导航栏的 Tab；目标已是当前 Tab 时不动。 */
-private fun NavController.navigateToTab(route: String) {
-    if (currentDestination?.route?.baseRoute() == route) return
-    navigateToRoot(route)
-}
 
 @Composable
 fun HanimeApp(
@@ -377,10 +316,10 @@ fun HanimeApp(
                     // 内容内边距在同一帧由 ~80dp 突变为 0，与目标页首帧叠加成一次明显掉帧。
                     AnimatedVisibility(
                         visible = showBottomBar && !useRail,
-                        enter = slideInVertically(animationSpec = tween(TRANSITION_DURATION_MS)) { it } +
-                            fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)),
-                        exit = slideOutVertically(animationSpec = tween(TRANSITION_EXIT_DURATION_MS)) { it } +
-                            fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS))
+                        enter = slideInVertically(animationSpec = tween(NAV_TRANSITION_DURATION_MS)) { it } +
+                            fadeIn(animationSpec = tween(NAV_TRANSITION_DURATION_MS)),
+                        exit = slideOutVertically(animationSpec = tween(NAV_TRANSITION_EXIT_DURATION_MS)) { it } +
+                            fadeOut(animationSpec = tween(NAV_TRANSITION_EXIT_DURATION_MS))
                     ) {
                         BottomNav(
                             currentRoute = currentRoute,
@@ -399,9 +338,11 @@ fun HanimeApp(
                         .navigationBarsPadding()
                         .padding(bottom = innerPadding.calculateBottomPadding())
                 }
-                NavHost(
+                HanimeNavGraph(
                     navController = navController,
-                    startDestination = "home",
+                    onOpenProfile = { profileOpen = true },
+                    onVideoLongClick = onVideoLongClick,
+                    onFavoriteAll = { videos -> quickActionsVm.favoriteAll(videos) },
                     modifier = if (useRail || currentRoute.startsWith("localPlayer")) {
                         navModifier
                     } else {
@@ -411,483 +352,8 @@ fun HanimeApp(
                             velocityThresholdPx = swipeVelocityThresholdPx,
                             onOpen = swipeOpenProfile
                         )
-                    },
-                    enterTransition = {
-                        fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)) +
-                            slideInHorizontally(
-                                animationSpec = tween(TRANSITION_DURATION_MS),
-                                initialOffsetX = { it / 10 }
-                            )
-                    },
-                    exitTransition = {
-                        fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS))
-                    },
-                    popEnterTransition = {
-                        fadeIn(animationSpec = tween(TRANSITION_DURATION_MS)) +
-                            slideInHorizontally(
-                                animationSpec = tween(TRANSITION_DURATION_MS),
-                                initialOffsetX = { -it / 10 }
-                            )
-                    },
-                    popExitTransition = {
-                        fadeOut(animationSpec = tween(TRANSITION_EXIT_DURATION_MS)) +
-                            slideOutHorizontally(
-                                animationSpec = tween(TRANSITION_DURATION_MS),
-                                targetOffsetX = { it / 10 }
-                            )
                     }
-                ) {
-                    composable("home") {
-                        HomeScreen(
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                            // 保持 saveState / launchSingleTop / restoreState 不变：
-                            // 它们是底部 Tab 状态保存机制的一部分，navigateToTab 依赖这套配对。
-                            //
-                            // 附带 ts 时间戳：条目可能被 launchSingleTop / restoreState 复用，
-                            // 此时参数相同会被 ViewModel 的指纹判为「已注入」而跳过。
-                            // 时间戳让每次「点大图」都是一次可区分的新意图，
-                            // 而「从详情页返回」参数不变，仍会被正确跳过。
-                            onSearchClick = { keyword ->
-                                navController.navigateToSearch(searchRoute(keyword = keyword)) },
-                            onGenreSearch = { genre ->
-                                navController.navigateToSearch(searchRoute(genre = genre)) },
-                            onNavigateToSearch = {
-                                navController.navigateToSearch(searchRoute()) },
-                            onAuthorClick = { author ->
-                                navController.navigateToSearch(searchRoute(keyword = author)) },
-                            onViewMore = { section ->
-                                val sortApiValue = sortApiValueOf(section)
-                                val genreApiValue = if (sortApiValue == null) genreApiValueOf(section) else null
-                                if (sortApiValue != null || genreApiValue != null) {
-                                    navController.navigateToSearch(
-                                        if (sortApiValue != null) searchRoute(sort = sortApiValue)
-                                        else searchRoute(genre = genreApiValue)
-                                    )
-                                } else if (section.moreUrl.isNotBlank()) {
-                                    moreUrlPageRoute(section.moreUrl)?.let { route ->
-                                        navController.navigate(route) {
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = false
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = false
-                                        }
-                                    }
-                                } },
-                            onProfileClick = { profileOpen = true },
-                            onComicClick = { navController.navigate("comics") },
-                            onVideoLongClick = onVideoLongClick
-                        )
-                    }
-                    composable("comics") {
-                        ComicScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onComicClick = { comicId ->
-                                navController.navigate("comicDetail?comicId=" + Uri.encode(comicId))
-                            },
-                            onTagsClick = { navController.navigate("comicTags") },
-                            onArtistsClick = { navController.navigate("comicArtists") }
-                        )
-                    }
-                    composable("comicTags") {
-                        ComicDirectoryScreen(
-                            kind = ComicDirectoryKind.TAG,
-                            onBackClick = { navController.popBackStack() },
-                            onEntryClick = { entry ->
-                                navController.navigate(
-                                    comicDirectoryRoute(ComicDirectoryKind.TAG, entry.name, entry.url)
-                                )
-                            }
-                        )
-                    }
-                    composable("comicArtists") {
-                        ComicDirectoryScreen(
-                            kind = ComicDirectoryKind.ARTIST,
-                            onBackClick = { navController.popBackStack() },
-                            onEntryClick = { entry ->
-                                navController.navigate(
-                                    comicDirectoryRoute(ComicDirectoryKind.ARTIST, entry.name, entry.url)
-                                )
-                            }
-                        )
-                    }
-                    composable(
-                        route = "comicDirectory?kind={kind}&name={name}&url={url}",
-                        arguments = listOf(
-                            navArgument("kind") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            },
-                            navArgument("name") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            },
-                            navArgument("url") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val args = backStackEntry.arguments
-                        ComicDirectoryResultScreen(
-                            kind = ComicDirectoryKind.entries.firstOrNull {
-                                it.name == args?.getString("kind")
-                            } ?: ComicDirectoryKind.TAG,
-                            title = args?.getString("name").orEmpty(),
-                            url = args?.getString("url").orEmpty(),
-                            onBackClick = { navController.popBackStack() },
-                            onComicClick = { comicId ->
-                                navController.navigate("comicDetail?comicId=" + Uri.encode(comicId))
-                            }
-                        )
-                    }
-                    composable(
-                        route = "comicDetail?comicId={comicId}",
-                        arguments = listOf(navArgument("comicId") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val comicId = backStackEntry.arguments?.getString("comicId").orEmpty()
-                        ComicDetailScreen(
-                            comicId = comicId,
-                            onBackClick = { navController.popBackStack() },
-                            onReadClick = { id, page, title, coverUrl ->
-                                navController.navigate(
-                                    "comicReader?comicId=" + Uri.encode(id) +
-                                        "&page=" + page +
-                                        "&title=" + Uri.encode(title) +
-                                        "&cover=" + Uri.encode(coverUrl)
-                                )
-                            },
-                            onComicClick = { id ->
-                                navController.navigate("comicDetail?comicId=" + Uri.encode(id)) {
-                                    popUpTo("comicDetail?comicId={comicId}") { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-                    composable(
-                        route = "comicReader?comicId={comicId}&page={page}&title={title}&cover={cover}",
-                        arguments = listOf(
-                            navArgument("comicId") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            },
-                            navArgument("page") {
-                                type = NavType.IntType
-                                defaultValue = 1
-                            },
-                            navArgument("title") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            },
-                            navArgument("cover") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val args = backStackEntry.arguments
-                        ComicReaderScreen(
-                            comicId = args?.getString("comicId").orEmpty(),
-                            startPage = args?.getInt("page") ?: 1,
-                            title = args?.getString("title").orEmpty(),
-                            coverUrl = args?.getString("cover").orEmpty(),
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable(
-                        route = "search?keyword={keyword}&genre={genre}&sort={sort}&ts={ts}",
-                        arguments = listOf(
-                            navArgument("keyword") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null },
-                            navArgument("genre") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null },
-                            navArgument("sort") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null },
-                            // 仅用于区分「同参数的新一次点按」，不参与搜索条件
-                            navArgument("ts") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val keyword = backStackEntry.arguments?.getString("keyword")
-                        val genre = backStackEntry.arguments?.getString("genre")
-                        val sort = backStackEntry.arguments?.getString("sort")
-                        val ts = backStackEntry.arguments?.getString("ts")
-                        SearchScreen(
-                            initialKeyword = keyword,
-                            initialGenre = genre,
-                            initialSort = sort,
-                            initialToken = ts,
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                            onAuthorClick = { author ->
-                                navController.navigateToSearch(searchRoute(keyword = author))
-                            },
-                            onVideoLongClick = onVideoLongClick
-                        )
-                    }
-                    composable("download") {
-                        DownloadScreen(
-                            onPlayLocalVideo = { filePath ->
-                                navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
-                            }
-                        )
-                    }
-                    composable(
-                        route = "subscriptions?query={query}",
-                        arguments = listOf(navArgument("query") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val query = backStackEntry.arguments?.getString("query") ?: ""
-                        SubscriptionsScreen(
-                            initialQuery = query,
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                            onNavigateToLogin = {
-                                navController.navigate("login")
-                            },
-                            onVideoLongClick = onVideoLongClick
-                        )
-                    }
-                    composable("accountEdit") {
-                        AccountProfileScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onNavigateToLogin = {
-                                navController.navigate("login")
-                            }
-                        )
-                    }
-                    composable("favorite") {
-                        FavoriteScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                            }
-                        )
-                    }
-                    composable("watchStats") {
-                        WatchStatsScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("history") {
-                        HistoryScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                            }
-                        )
-                    }
-                    composable("update") {
-                        UpdateScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("about") {
-                        AboutScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("settings") {
-                        SettingsScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onNavigate = { route ->
-                                when (route) {
-                                    "about" -> navController.navigate("about")
-                                    "diagnostics" -> navController.navigate("diagnostics")
-                                    "customize" -> navController.navigate("customize")
-                                    "launcherIcon" -> navController.navigate("launcherIcon")
-                                    "backup" -> navController.navigate("backup")
-                                    "crashLog" -> navController.navigate("crashLog")
-                                }
-                            }
-                        )
-                    }
-                    composable("diagnostics") {
-                        DiagnosticsScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("crashLog") {
-                        CrashLogScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("backup") {
-                        BackupScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("customize") {
-                        CustomizeScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("launcherIcon") {
-                        LauncherIconScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("batchDownload") {
-                        BatchDownloadScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                    composable("login") {
-                        LoginScreen(
-                            onBackClick = { navController.popBackStack() },
-                            onLoginSuccess = { navController.popBackStack() },
-                            onNavigateToSettings = { navController.navigate("settings") }
-                        )
-                    }
-                    composable(
-                        route = "author?authorPageUrl={authorPageUrl}",
-                        arguments = listOf(navArgument("authorPageUrl") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val authorPageUrl = backStackEntry.arguments?.getString("authorPageUrl")
-                        AuthorScreen(
-                            authorPageUrl = authorPageUrl ?: "",
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                            onViewAllVideos = { url ->
-                                navController.navigate("videoListPage?url=${Uri.encode(url)}") },
-                            onViewAllPlaylists = { url ->
-                                navController.navigate("playlistListPage?url=${Uri.encode(url)}") },
-                            onPlaylistClick = { url ->
-                                navController.navigate("playlistDetail?url=${Uri.encode(url)}")
-                            }
-                        )
-                    }
-                    composable(
-                        route = "videoListPage?url={url}",
-                        arguments = listOf(navArgument("url") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val url = backStackEntry.arguments?.getString("url")
-                        VideoListPageScreen(
-                            url = url ?: "",
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                            },
-                            onVideoLongClick = onVideoLongClick
-                        )
-                    }
-                    composable(
-                        route = "playlistListPage?url={url}",
-                        arguments = listOf(navArgument("url") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val url = backStackEntry.arguments?.getString("url")
-                        PlaylistListPageScreen(
-                            url = url ?: "",
-                            onBackClick = { navController.popBackStack() },
-                            onPlaylistClick = { playlistUrl ->
-                                navController.navigate("playlistDetail?url=${Uri.encode(playlistUrl)}")
-                            }
-                        )
-                    }
-                    composable(
-                        route = "playlistDetail?url={url}",
-                        arguments = listOf(navArgument("url") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val url = backStackEntry.arguments?.getString("url")
-                        PlaylistDetailScreen(
-                            url = url ?: "",
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { videoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
-                            },
-                            onVideoLongClick = onVideoLongClick,
-                            onFavoriteAll = { videos -> quickActionsVm.favoriteAll(videos) }
-                        )
-                    }
-                    composable(
-                        route = "detail?videoUrl={videoUrl}",
-                        arguments = listOf(navArgument("videoUrl") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val videoUrl = backStackEntry.arguments?.getString("videoUrl")
-                        DetailScreen(
-                            videoUrl = videoUrl,
-                            onBackClick = { navController.popBackStack() },
-                            onVideoClick = { newVideoUrl ->
-                                navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
-                            onVideoLongClick = onVideoLongClick,
-                            onAutoPlayNext = { nextUrl ->
-                                // 自动连播是「同屏换片」，替换当前条目，避免返回时逐集回退
-                                navController.navigate("detail?videoUrl=${Uri.encode(nextUrl)}") {
-                                    popUpTo("detail?videoUrl={videoUrl}") { inclusive = true }
-                                } },
-                            onTagClick = { tag ->
-                                navController.navigateToSearch(searchRoute(keyword = tag)) },
-                            onAuthorClick = { author ->
-                                navController.navigateToSearch(searchRoute(keyword = author)) },
-                            onAuthorPageClick = { authorPageUrl ->
-                                navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}") },
-                            onNavigateToLogin = {
-                                navController.navigate("login") },
-                            onNavigateToSettings = {
-                                navController.navigate("settings")
-                            }
-                        )
-                    }
-                    // 本地视频播放页：普通入栈导航，系统返回即回到下载页
-                    composable(
-                        route = "localPlayer?filePath={filePath}",
-                        arguments = listOf(navArgument("filePath") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        LocalPlayerScreen(
-                            filePath = backStackEntry.arguments?.getString("filePath"),
-                            onBackClick = { navController.popBackStack() }
-                        )
-                    }
-                }
+                )
             }
         }
 
