@@ -41,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +70,8 @@ import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
+import app.amisles.hanime.core.ui.components.BottomActionBar
+import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 
@@ -480,48 +481,22 @@ fun FavoriteScreen(
     }
 
     if (isSelectionMode && selectedIds.isNotEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentAlignment = Alignment.BottomCenter
+        BottomActionBar(
+            label = stringResource(R.string.search_selected_count, selectedIds.size)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 15.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.search_selected_count, selectedIds.size),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.common_delete),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clickable {
-                            deleteTargetId = null // 批量删除标记
-                            // 文案在组合期取值：clickable 的 lambda 不是组合型作用域，不能直接调 stringResource
-                            deleteTargetTitle = batchDeleteTitle
-                            showDeleteConfirm = true
-                        }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-                Text(
-                    text = stringResource(R.string.favorite_group_label),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clickable { showMoveDialog = true }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+            BottomBarAction(
+                text = stringResource(R.string.common_delete),
+                color = MaterialTheme.colorScheme.error,
+                onClick = {
+                    deleteTargetId = null
+                    deleteTargetTitle = batchDeleteTitle
+                    showDeleteConfirm = true
+                }
+            )
+            BottomBarAction(
+                text = stringResource(R.string.favorite_group_label),
+                onClick = { showMoveDialog = true }
+            )
         }
     }
 

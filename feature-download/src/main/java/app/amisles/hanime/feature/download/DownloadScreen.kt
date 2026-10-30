@@ -50,7 +50,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +70,8 @@ import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
+import app.amisles.hanime.core.ui.components.BottomActionBar
+import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
 
 enum class DownloadFilter {
@@ -762,89 +763,43 @@ fun DownloadScreen(
     }
 
     if (isSelectionMode && selectedIds.isNotEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentAlignment = Alignment.BottomCenter
+        BottomActionBar(
+            label = stringResource(R.string.search_selected_count, selectedIds.size)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 15.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.search_selected_count, selectedIds.size),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.common_delete),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clickable {
-                            deleteTargetId = null // 批量删除标记
-                            showDeleteConfirm = true
-                        }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+            BottomBarAction(
+                text = stringResource(R.string.common_delete),
+                color = MaterialTheme.colorScheme.error,
+                onClick = {
+                    deleteTargetId = null
+                    showDeleteConfirm = true
+                }
+            )
         }
     }
 
     if (!isSelectionMode && tasks.isNotEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentAlignment = Alignment.BottomCenter
+        BottomActionBar(
+            label = stringResource(R.string.download_task_count, tasks.size),
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 15.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.download_task_count, tasks.size),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                if (failedTasks.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.download_retry_all),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .clickable {
-                                viewModel.retryAllFailed()
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.download_retry_all_toast, failedTasks.size),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.common_manage),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clickable { isSelectionMode = true }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+            if (failedTasks.isNotEmpty()) {
+                BottomBarAction(
+                    text = stringResource(R.string.download_retry_all),
+                    horizontalPadding = 12.dp,
+                    onClick = {
+                        viewModel.retryAllFailed()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.download_retry_all_toast, failedTasks.size),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 )
             }
+            BottomBarAction(
+                text = stringResource(R.string.common_manage),
+                onClick = { isSelectionMode = true }
+            )
         }
     }
 

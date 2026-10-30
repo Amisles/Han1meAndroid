@@ -41,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,6 +67,8 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
+import app.amisles.hanime.core.ui.components.BottomActionBar
+import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
 import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
@@ -443,68 +444,27 @@ fun HistoryScreen(
     }
 
     if (isSelectionMode && selectedIds.isNotEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentAlignment = Alignment.BottomCenter
+        BottomActionBar(
+            label = stringResource(R.string.history_selected_count, selectedIds.size)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 15.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.history_selected_count, selectedIds.size),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.common_delete),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clickable { showDeleteConfirm = true }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+            BottomBarAction(
+                text = stringResource(R.string.common_delete),
+                color = MaterialTheme.colorScheme.error,
+                onClick = { showDeleteConfirm = true }
+            )
         }
     }
 
     if (!isSelectionMode && history.isNotEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Transparent),
-            contentAlignment = Alignment.BottomCenter
+        BottomActionBar(
+            label = stringResource(R.string.history_count, filteredHistory.size),
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 15.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.history_count, filteredHistory.size),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.common_clear),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clickable { showClearConfirm = true }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+            BottomBarAction(
+                text = stringResource(R.string.common_clear),
+                color = MaterialTheme.colorScheme.error,
+                onClick = { showClearConfirm = true }
+            )
         }
     }
 
