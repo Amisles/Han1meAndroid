@@ -15,14 +15,17 @@ class UiConfigCodecTest {
 
     @Test
     fun `layouts round trip`() {
-        val layouts = mapOf("最新上市" to HomeSectionLayout.GRID, "本日排行" to HomeSectionLayout.CAROUSEL)
+        val layouts: Map<String, HomeSectionLayout> = mapOf(
+            "最新上市" to HomeSectionLayout.GRID,
+            "本日排行" to HomeSectionLayout.CAROUSEL
+        )
         val decoded = UiConfigCodec.decodeLayouts(UiConfigCodec.encodeLayouts(layouts))
         assertEquals(layouts, decoded)
     }
 
     @Test
     fun `empty layouts encode to empty string and decode back to empty map`() {
-        assertEquals("", UiConfigCodec.encodeLayouts(emptyMap()))
+        assertEquals("", UiConfigCodec.encodeLayouts(emptyMap<String, HomeSectionLayout>()))
         assertTrue(UiConfigCodec.decodeLayouts("").isEmpty())
     }
 
