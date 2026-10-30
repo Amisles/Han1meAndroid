@@ -13,6 +13,20 @@ android {
 
     defaultConfig {
         minSdk = 30
+
+        buildConfigField("String", "AGP_VERSION", "\"${libs.versions.agp.get()}\"")
+        buildConfigField("String", "KOTLIN_VERSION", "\"${libs.versions.kotlin.get()}\"")
+        buildConfigField("String", "KSP_VERSION", "\"${libs.versions.ksp.get()}\"")
+        buildConfigField("String", "CORE_KTX_VERSION", "\"${libs.versions.coreKtx.get()}\"")
+        buildConfigField("String", "LIFECYCLE_VERSION", "\"${libs.versions.lifecycle.get()}\"")
+        buildConfigField("String", "ACTIVITY_VERSION", "\"${libs.versions.activityCompose.get()}\"")
+        buildConfigField("String", "COMPOSE_BOM_VERSION", "\"${libs.versions.composeBom.get()}\"")
+        buildConfigField("String", "NAVIGATION_VERSION", "\"${libs.versions.navigationCompose.get()}\"")
+        buildConfigField("String", "MEDIA3_VERSION", "\"${libs.versions.media3.get()}\"")
+        buildConfigField("String", "OKHTTP_VERSION", "\"${libs.versions.okhttp.get()}\"")
+        buildConfigField("String", "COIL_VERSION", "\"${libs.versions.coil.get()}\"")
+        buildConfigField("String", "JSOUP_VERSION", "\"${libs.versions.jsoup.get()}\"")
+        buildConfigField("String", "ROOM_VERSION", "\"${libs.versions.room.get()}\"")
     }
 
     compileOptions {
@@ -22,6 +36,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

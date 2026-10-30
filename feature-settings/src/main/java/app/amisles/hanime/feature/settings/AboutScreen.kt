@@ -79,91 +79,91 @@ private fun appFeatureRes(): List<Pair<ImageVector, Int>> = listOf(
 private val openSourceProjects = listOf(
     OpenSourceProject(
         name = "Android Gradle Plugin",
-        version = "9.2.1",
+        version = BuildConfig.AGP_VERSION,
         descriptionRes = R.string.about_oss_agp_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/build/releases/gradle-plugin"
     ),
     OpenSourceProject(
         name = "Kotlin",
-        version = "2.4.10",
+        version = BuildConfig.KOTLIN_VERSION,
         descriptionRes = R.string.about_oss_kotlin_desc,
         license = "Apache 2.0",
         url = "https://kotlinlang.org"
     ),
     OpenSourceProject(
         name = "Jetpack Compose BOM",
-        version = "2026.06.00",
+        version = BuildConfig.COMPOSE_BOM_VERSION,
         descriptionRes = R.string.about_oss_compose_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/compose"
     ),
     OpenSourceProject(
         name = "Media3 ExoPlayer",
-        version = "1.10.1",
+        version = BuildConfig.MEDIA3_VERSION,
         descriptionRes = R.string.about_oss_exoplayer_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/media/media3"
     ),
     OpenSourceProject(
         name = "OkHttp",
-        version = "5.4.0",
+        version = BuildConfig.OKHTTP_VERSION,
         descriptionRes = R.string.about_oss_okhttp_desc,
         license = "Apache 2.0",
         url = "https://square.github.io/okhttp"
     ),
     OpenSourceProject(
         name = "Jsoup",
-        version = "1.22.2",
+        version = BuildConfig.JSOUP_VERSION,
         descriptionRes = R.string.about_oss_jsoup_desc,
         license = "MIT",
         url = "https://jsoup.org"
     ),
     OpenSourceProject(
         name = "Coil 3",
-        version = "3.5.0",
+        version = BuildConfig.COIL_VERSION,
         descriptionRes = R.string.about_oss_coil_desc,
         license = "Apache 2.0",
         url = "https://coil-kt.github.io/coil"
     ),
     OpenSourceProject(
         name = "Room",
-        version = "2.8.4",
+        version = BuildConfig.ROOM_VERSION,
         descriptionRes = R.string.about_oss_room_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/room"
     ),
     OpenSourceProject(
         name = "Navigation Compose",
-        version = "2.9.8",
+        version = BuildConfig.NAVIGATION_VERSION,
         descriptionRes = R.string.about_oss_navigation_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/compose/navigation"
     ),
     OpenSourceProject(
         name = "Lifecycle",
-        version = "2.10.0",
+        version = BuildConfig.LIFECYCLE_VERSION,
         descriptionRes = R.string.about_oss_lifecycle_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/lifecycle"
     ),
     OpenSourceProject(
         name = "Activity Compose",
-        version = "1.12.3",
+        version = BuildConfig.ACTIVITY_VERSION,
         descriptionRes = R.string.about_oss_activity_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/activity"
     ),
     OpenSourceProject(
         name = "KSP",
-        version = "2.3.10",
+        version = BuildConfig.KSP_VERSION,
         descriptionRes = R.string.about_oss_ksp_desc,
         license = "Apache 2.0",
         url = "https://kotlinlang.org/docs/ksp-overview.html"
     ),
     OpenSourceProject(
         name = "AndroidX Core KTX",
-        version = "1.13.1",
+        version = BuildConfig.CORE_KTX_VERSION,
         descriptionRes = R.string.about_oss_corektx_desc,
         license = "Apache 2.0",
         url = "https://developer.android.com/kotlin/ktx"
