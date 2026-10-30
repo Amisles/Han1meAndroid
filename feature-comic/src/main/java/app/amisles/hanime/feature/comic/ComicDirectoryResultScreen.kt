@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,9 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -157,48 +154,38 @@ fun ComicDirectoryResultScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val gap = COMIC_GRID_GAP.dp
-                        val cardWidth = (maxWidth - COMIC_GRID_PADDING.dp * 2 - gap * (COMIC_GRID_COLUMNS - 1)) / COMIC_GRID_COLUMNS
-                        LazyVerticalGrid(
-                            state = gridState,
-                            columns = GridCells.Fixed(COMIC_GRID_COLUMNS),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = COMIC_GRID_PADDING.dp),
-                            horizontalArrangement = Arrangement.spacedBy(gap),
-                            verticalArrangement = Arrangement.spacedBy(gap),
-                            contentPadding = PaddingValues(top = 2.dp, bottom = 24.dp)
-                        ) {
-                            items(items = items, key = { it.id }) { comic ->
-                                ComicGridCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
-                            }
-                            if (isLoadingMore) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(20.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                }
-                            } else if (!hasMore && currentPage > 1) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Text(
-                                        text = stringResource(R.string.comic_directory_no_more),
-                                        fontSize = 12.5.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 18.dp)
+                    else -> ComicGrid(
+                        state = gridState,
+                        contentPadding = PaddingValues(top = 2.dp, bottom = 24.dp)
+                    ) { cardWidth ->
+                        items(items = items, key = { it.id }) { comic ->
+                            ComicGridCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
+                        }
+                        if (isLoadingMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
+                            }
+                        } else if (!hasMore && currentPage > 1) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = stringResource(R.string.comic_directory_no_more),
+                                    fontSize = 12.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 18.dp)
+                                )
                             }
                         }
                     }

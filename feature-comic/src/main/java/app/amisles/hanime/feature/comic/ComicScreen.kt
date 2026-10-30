@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,9 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -124,43 +121,33 @@ fun ComicScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val gap = COMIC_GRID_GAP.dp
-                val cardWidth = (maxWidth - COMIC_GRID_PADDING.dp * 2 - gap * (COMIC_GRID_COLUMNS - 1)) / COMIC_GRID_COLUMNS
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(COMIC_GRID_COLUMNS),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = COMIC_GRID_PADDING.dp),
-                    horizontalArrangement = Arrangement.spacedBy(gap),
-                    verticalArrangement = Arrangement.spacedBy(gap),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
-                ) {
-                    sections.forEachIndexed { index, section ->
-                        item(
-                            key = "comic-section-" + index,
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            ComicSectionHeader(section.title)
-                        }
-                        items(section.items, key = { index.toString() + "-" + it.id }) { comic ->
-                            ComicGridCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
-                        }
+            else -> ComicGrid(
+                state = gridState,
+                contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
+            ) { cardWidth ->
+                sections.forEachIndexed { index, section ->
+                    item(
+                        key = "comic-section-" + index,
+                        span = { GridItemSpan(maxLineSpan) }
+                    ) {
+                        ComicSectionHeader(section.title)
                     }
-                    if (isLoadingMore) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
+                    items(section.items, key = { index.toString() + "-" + it.id }) { comic ->
+                        ComicGridCard(comic, cardWidth, onClick = { onComicClick(comic.id) })
+                    }
+                }
+                if (isLoadingMore) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
                         }
                     }
                 }
