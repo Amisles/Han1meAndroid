@@ -6,6 +6,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import app.amisles.hanime.navigation.genreApiValueOf
+import app.amisles.hanime.navigation.moreUrlPageRoute
+import app.amisles.hanime.navigation.sortApiValueOf
+import app.amisles.hanime.navigation.moreUrlGenreToken
 
 /**
  * 「查看更多」跳转目标的回归测试。
