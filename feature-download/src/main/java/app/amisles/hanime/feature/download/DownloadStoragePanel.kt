@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 
@@ -83,7 +84,7 @@ internal fun DownloadStorageBubble(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = stringResource(R.string.download_storage_free, formatFileSize(info.freeBytes)),
+                text = stringResource(R.string.download_storage_free, formatBytes(info.freeBytes)),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -100,7 +101,7 @@ internal fun DownloadStorageBubble(
         )
 
         Text(
-            text = stringResource(R.string.download_storage_used, formatFileSize(info.usedBytes)),
+            text = stringResource(R.string.download_storage_used, formatBytes(info.usedBytes)),
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -139,7 +140,7 @@ internal fun DownloadStorageBubble(
                     text = stringResource(
                         R.string.download_storage_orphans,
                         info.orphanPartmapCount,
-                        formatFileSize(info.orphanPartmapBytes)
+                        formatBytes(info.orphanPartmapBytes)
                     ),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.error,

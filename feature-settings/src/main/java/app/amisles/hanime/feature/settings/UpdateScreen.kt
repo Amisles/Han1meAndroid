@@ -45,21 +45,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.components.ScreenHeader
+import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.domain.model.AppUpdate
 import androidx.compose.material3.IconButton
-
-/** 把字节数格式化成 `12.3 MB`；0 或负数返回空串（调用方据此隐藏该行）。 */
-internal fun formatApkSize(bytes: Long): String {
-    if (bytes <= 0L) return ""
-    val mb = bytes / 1024.0 / 1024.0
-    return if (mb >= 1.0) {
-        String.format(java.util.Locale.US, "%.1f MB", mb)
-    } else {
-        String.format(java.util.Locale.US, "%.0f KB", bytes / 1024.0)
-    }
-}
 
 /**
  * 在浏览器中打开发行版页面 / 安装包直链。
@@ -394,7 +384,7 @@ private fun UpdateAvailableCard(
                 }
             }
 
-            val sizeText = formatApkSize(update.apkSizeBytes)
+            val sizeText = if (update.apkSizeBytes > 0L) formatBytes(update.apkSizeBytes) else ""
             if (sizeText.isNotBlank()) {
                 Text(
                     text = stringResource(R.string.update_package_size, sizeText),

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.surfaceEdge
@@ -190,7 +191,7 @@ internal fun DownloadTaskItem(
 
             if (task.status == DownloadStatus.DOWNLOADING) {
                 Text(
-                    text = "${formatFileSize(task.downloadedBytes)} / ${formatFileSize(task.totalBytes)}",
+                    text = "${formatBytes(task.downloadedBytes)} / ${formatBytes(task.totalBytes)}",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -217,7 +218,7 @@ internal fun DownloadTaskItem(
                 )
             } else if (task.status == DownloadStatus.COMPLETED) {
                 Text(
-                    text = formatFileSize(task.totalBytes),
+                    text = formatBytes(task.totalBytes),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -237,7 +238,7 @@ internal fun DownloadTaskItem(
                 )
             } else if (task.status == DownloadStatus.FAILED) {
                 Text(
-                    text = formatFileSize(task.downloadedBytes) + " / " + formatFileSize(task.totalBytes),
+                    text = formatBytes(task.downloadedBytes) + " / " + formatBytes(task.totalBytes),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -259,7 +260,7 @@ internal fun DownloadTaskItem(
                 }
             } else if (task.status == DownloadStatus.PAUSED) {
                 Text(
-                    text = "${formatFileSize(task.downloadedBytes)} / ${formatFileSize(task.totalBytes)}",
+                    text = "${formatBytes(task.downloadedBytes)} / ${formatBytes(task.totalBytes)}",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -351,15 +352,5 @@ internal fun DownloadTaskItem(
                 }
             }
         }
-    }
-}
-
-fun formatFileSize(bytes: Long): String {
-    return when {
-        bytes <= 0 -> "0 B"
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
-        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
-        else -> String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0))
     }
 }
