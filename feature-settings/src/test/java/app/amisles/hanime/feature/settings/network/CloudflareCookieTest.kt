@@ -1,4 +1,4 @@
-package app.amisles.hanime.ui
+package app.amisles.hanime.feature.settings.network
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
