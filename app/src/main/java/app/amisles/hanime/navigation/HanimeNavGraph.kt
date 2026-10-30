@@ -37,9 +37,9 @@ import app.amisles.hanime.feature.settings.DiagnosticsScreen
 import app.amisles.hanime.feature.settings.LauncherIconScreen
 import app.amisles.hanime.feature.settings.SettingsScreen
 import app.amisles.hanime.feature.settings.UpdateScreen
-import app.amisles.hanime.ui.screens.PlaylistDetailScreen
-import app.amisles.hanime.ui.screens.PlaylistListPageScreen
-import app.amisles.hanime.ui.screens.VideoListPageScreen
+import app.amisles.hanime.feature.home.list.PlaylistDetailScreen
+import app.amisles.hanime.feature.home.list.PlaylistListPageScreen
+import app.amisles.hanime.feature.home.list.VideoListPageScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController

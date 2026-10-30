@@ -1,4 +1,4 @@
-package app.amisles.hanime.ui.screens
+package app.amisles.hanime.feature.home.list
 import androidx.compose.foundation.layout.aspectRatio
 
 import androidx.compose.foundation.background
@@ -39,7 +39,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.theme.surfaceEdge
-import app.amisles.hanime.ui.viewmodel.PlaylistListPageViewModel
 
 private val ROW_THUMB_WIDTH = 130.dp
 

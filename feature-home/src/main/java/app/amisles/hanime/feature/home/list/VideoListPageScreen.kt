@@ -1,4 +1,4 @@
-package app.amisles.hanime.ui.screens
+package app.amisles.hanime.feature.home.list
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +48,6 @@ import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import androidx.compose.material3.MaterialTheme
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.ui.viewmodel.VideoListPageViewModel
 
 @Composable
 fun VideoListPageScreen(

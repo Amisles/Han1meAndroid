@@ -1,11 +1,11 @@
-package app.amisles.hanime.ui.viewmodel
+package app.amisles.hanime.feature.home.list
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.remote.NetworkService
-import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.model.PlaylistSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,13 +16,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
-class VideoListPageViewModel @Inject constructor(
+class PlaylistListPageViewModel @Inject constructor(
     private val networkService: NetworkService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val _videos = MutableStateFlow<List<HanimeVideo>>(emptyList())
-    val videos: StateFlow<List<HanimeVideo>> = _videos.asStateFlow()
+    private val _playlists = MutableStateFlow<List<PlaylistSummary>>(emptyList())
+    val playlists: StateFlow<List<PlaylistSummary>> = _playlists.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -30,12 +30,12 @@ class VideoListPageViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun loadVideos(url: String) {
+    fun loadPlaylists(url: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                _videos.value = networkService.fetchVideoListPage(url).distinctBy { it.id }
+                _playlists.value = networkService.fetchPlaylistListPage(url).distinctBy { it.playlistUrl }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

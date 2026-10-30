@@ -1,4 +1,4 @@
-package app.amisles.hanime.ui.viewmodel
+package app.amisles.hanime.feature.home.list
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
