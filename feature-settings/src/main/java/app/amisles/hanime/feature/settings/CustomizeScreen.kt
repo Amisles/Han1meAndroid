@@ -53,6 +53,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DragHandle
 import androidx.compose.material.icons.outlined.Label
@@ -114,6 +116,7 @@ import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import app.amisles.hanime.core.ui.theme.CardConfig
 import app.amisles.hanime.core.ui.theme.CardStyle
 import app.amisles.hanime.core.ui.theme.ContrastLevel
+import app.amisles.hanime.core.ui.theme.ContinueCardStyle
 import app.amisles.hanime.core.ui.theme.CornerMode
 import app.amisles.hanime.core.ui.theme.HanimeSuccess
 import app.amisles.hanime.core.ui.theme.HanimeWarning
@@ -698,6 +701,74 @@ fun CustomizeScreen(
                                     updateConfig { it.copy(bannerMaxTags = v.roundToInt()) }
                                 }
                             )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(GROUP_GAP))
+                }
+
+                item(key = "home_header") {
+                    GroupLabel(stringResource(R.string.customize_group_home_header))
+                    SettingsGroupCard {
+                        SettingsSwitchRow(
+                            icon = Icons.Outlined.Home,
+                            title = stringResource(R.string.customize_compact_header),
+                            subtitle = stringResource(R.string.customize_compact_header_summary),
+                            checked = config.compactHomeHeader,
+                            onCheckedChange = { enabled ->
+                                updateConfig { it.copy(compactHomeHeader = enabled) }
+                            }
+                        )
+                        RowDivider()
+                        SettingsSwitchRow(
+                            icon = Icons.Outlined.Category,
+                            title = stringResource(R.string.customize_category_bar),
+                            subtitle = stringResource(R.string.customize_category_bar_summary),
+                            checked = config.homeShowCategoryBar,
+                            onCheckedChange = { enabled ->
+                                updateConfig { it.copy(homeShowCategoryBar = enabled) }
+                            }
+                        )
+                        RowDivider()
+                        Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = stringResource(R.string.customize_continue_style),
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (config.continueCardStyle != defaults.continueCardStyle) {
+                                    IconAction(
+                                        icon = Icons.Default.RestartAlt,
+                                        enabled = true,
+                                        labelRes = R.string.customize_reset_item,
+                                        onClick = {
+                                            updateConfig {
+                                                it.copy(continueCardStyle = defaults.continueCardStyle)
+                                            }
+                                        },
+                                        boxSize = 30.dp,
+                                        iconSize = 17.dp
+                                    )
+                                }
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ContinueCardStyle.entries.forEach { style ->
+                                    ChosenChip(
+                                        selected = style == config.continueCardStyle,
+                                        label = stringResource(continueStyleLabelRes(style)),
+                                        onClick = {
+                                            updateConfig { it.copy(continueCardStyle = style) }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(GROUP_GAP))
@@ -2025,6 +2096,11 @@ private fun presetLabelRes(preset: UiPreset): Int = when (preset) {
     UiPreset.STANDARD -> R.string.customize_preset_standard
     UiPreset.COMFORTABLE -> R.string.customize_preset_comfortable
     UiPreset.LARGE -> R.string.customize_preset_large
+}
+
+private fun continueStyleLabelRes(style: ContinueCardStyle): Int = when (style) {
+    ContinueCardStyle.COVER -> R.string.customize_continue_cover
+    ContinueCardStyle.MINIMAL -> R.string.customize_continue_minimal
 }
 
 private fun navStyleLabelRes(style: NavigationStyle): Int = when (style) {

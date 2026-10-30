@@ -67,6 +67,9 @@ object UiConfigCodec {
             .put("bannerMaxTags", config.bannerMaxTags)
             .put("navigationStyle", config.navigationStyle.name)
             .put("navBarShowLabels", config.navBarShowLabels)
+            .put("compactHomeHeader", config.compactHomeHeader)
+            .put("homeShowCategoryBar", config.homeShowCategoryBar)
+            .put("continueCardStyle", config.continueCardStyle.name)
 
         val s = JSONObject()
             .put("visibleCount", homeSections.visibleCount)
@@ -154,6 +157,10 @@ object UiConfigCodec {
             navigationStyle = NavigationStyle.entries
                 .firstOrNull { it.name == c.optString("navigationStyle") } ?: d.navigationStyle,
             navBarShowLabels = c.optBoolean("navBarShowLabels", d.navBarShowLabels),
+            compactHomeHeader = c.optBoolean("compactHomeHeader", d.compactHomeHeader),
+            homeShowCategoryBar = c.optBoolean("homeShowCategoryBar", d.homeShowCategoryBar),
+            continueCardStyle = ContinueCardStyle.entries
+                .firstOrNull { it.name == c.optString("continueCardStyle") } ?: d.continueCardStyle,
         ).sanitized()
 
         val hd = HomeSectionConfig.Default

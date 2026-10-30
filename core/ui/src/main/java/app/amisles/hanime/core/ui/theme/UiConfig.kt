@@ -42,6 +42,9 @@ data class UiConfig(
     val bannerMaxTags: Int = 5,
     val navigationStyle: NavigationStyle = NavigationStyle.AUTO,
     val navBarShowLabels: Boolean = false,
+    val compactHomeHeader: Boolean = false,
+    val homeShowCategoryBar: Boolean = true,
+    val continueCardStyle: ContinueCardStyle = ContinueCardStyle.COVER,
 ) {
     fun gridColumnsFor(availableWidth: Dp): Int {
         val width = availableWidth.value
@@ -115,5 +118,7 @@ enum class ThumbnailQuality(val sizeScale: Float) {
 }
 
 enum class NavigationStyle { AUTO, BOTTOM, RAIL }
+
+enum class ContinueCardStyle { COVER, MINIMAL }
 
 val LocalUiConfig = staticCompositionLocalOf { UiConfig.Default }

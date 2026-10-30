@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.theme.LocalUiConfig
 
 private fun brandParts(siteUrl: String?): Triple<String, String, String> {
     val host = runCatching { android.net.Uri.parse(siteUrl).host?.lowercase() }.getOrNull()
@@ -42,11 +43,12 @@ fun Header(
     onProfileClick: (() -> Unit)? = null,
     onComicClick: (() -> Unit)? = null
 ) {
+    val compact = LocalUiConfig.current.compactHomeHeader
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 15.dp, vertical = 10.dp),
+            .padding(horizontal = 15.dp, vertical = if (compact) 4.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (onProfileClick != null) {
@@ -55,7 +57,7 @@ fun Header(
                 contentDescription = stringResource(R.string.profile_open),
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(if (compact) 32.dp else 38.dp)
                     .clickable { onProfileClick() }
                     .padding(end = 10.dp)
             )
@@ -63,29 +65,30 @@ fun Header(
         if (title != null) {
             Text(
                 text = title,
-                fontSize = 18.sp,
+                fontSize = if (compact) 15.sp else 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
         } else {
             val (initial, name, tld) = brandParts(siteUrl)
+            val brandSize = if (compact) 16.sp else 20.sp
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = initial,
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 20.sp,
+                    fontSize = brandSize,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = name,
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 20.sp,
+                    fontSize = brandSize,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = tld,
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 20.sp,
+                    fontSize = brandSize,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -99,7 +102,7 @@ fun Header(
                 contentDescription = stringResource(R.string.comic_entry),
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
-                    .size(30.dp)
+                    .size(if (compact) 26.dp else 30.dp)
                     .clickable { onComicClick() }
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -110,7 +113,7 @@ fun Header(
             contentDescription = stringResource(R.string.common_search),
             tint = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
-                .size(30.dp)
+                .size(if (compact) 26.dp else 30.dp)
                 .clickable { onSearchNavigate() }
         )
     }

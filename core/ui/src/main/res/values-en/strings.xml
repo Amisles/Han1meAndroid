@@ -644,6 +644,14 @@
     <string name="customize_discard_title">Unapplied changes</string>
     <string name="customize_discard_message">Going back discards everything you changed.</string>
     <string name="customize_discard_confirm">Discard and leave</string>
+    <string name="customize_group_home_header">Home header</string>
+    <string name="customize_compact_header">Compact header</string>
+    <string name="customize_compact_header_summary">Reduce the height and font size of the home header</string>
+    <string name="customize_category_bar">Show category bar</string>
+    <string name="customize_category_bar_summary">Hide the category shortcuts on top of the home page</string>
+    <string name="customize_continue_style">Continue watching card</string>
+    <string name="customize_continue_cover">Cover</string>
+    <string name="customize_continue_minimal">Minimal</string>
     <string name="customize_group_navigation">Navigation</string>
     <string name="customize_nav_style">Navigation style</string>
     <string name="customize_nav_style_hint">Bottom bar fits phones; side rail suits tablets and large screens.</string>

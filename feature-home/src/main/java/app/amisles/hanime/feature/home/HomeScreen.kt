@@ -150,9 +150,9 @@ private fun buildPlans(
     homeConfig: HomeSectionConfig,
     isCompactWidth: Boolean,
     columns: Int
-): List<SectionPlan> = homeConfig.applyOrder(sections).mapIndexed { index, section ->
+): List<SectionPlan> = homeConfig.arrange(sections).mapIndexed { index, section ->
     val mode = renderMode(homeConfig.layoutFor(section.title), isCompactWidth)
-    val videos = section.videos.take(homeConfig.visibleCount)
+    val videos = section.videos.take(homeConfig.countFor(section.title))
     val rowVideos = when (mode) {
         SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> videos.chunked(columns)
         SectionRenderMode.LIST_COLUMN, SectionRenderMode.CAROUSEL -> emptyList()
@@ -262,11 +262,11 @@ fun HomeScreenContent(
     val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
         rowThumbnailWidth(cfg, sizeInfo.widthDp, sizeInfo.contentMaxWidth, columns, isCompactWidth)
     }
-    val sectionTitleToIndex: Map<String, Int> = remember(plans, banner, isLoading, error, sections) {
+    val sectionTitleToIndex: Map<String, Int> = remember(plans, banner, isLoading, error, sections, cfg.homeShowCategoryBar) {
         val map = mutableMapOf<String, Int>()
         var idx = 0
         idx++ // header
-        idx++ // category
+        if (cfg.homeShowCategoryBar) idx++ // category
         if (!isLoading) {
             if (error != null && sections.isNotEmpty()) idx++ // 刷新失败提示行
             if (banner != null) idx++ // banner
@@ -310,25 +310,27 @@ fun HomeScreenContent(
             )
         }
 
-        item(key = "home-category", contentType = HomeItemType.CATEGORY) {
-            CategoryScroll(
-                selectedCategory = selectedCategory,
-                onCategorySelected = { category ->
-                    selectedCategory = category
-                    val targetIndex = sectionTitleToIndex[category]
-                    if (targetIndex != null) {
-                        scope.launch {
-                            listState.smoothScrollToItem(
-                                index = targetIndex,
-                                offset = -20,
-                                durationMs = 700
-                            )
+        if (cfg.homeShowCategoryBar) {
+            item(key = "home-category", contentType = HomeItemType.CATEGORY) {
+                CategoryScroll(
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { category ->
+                        selectedCategory = category
+                        val targetIndex = sectionTitleToIndex[category]
+                        if (targetIndex != null) {
+                            scope.launch {
+                                listState.smoothScrollToItem(
+                                    index = targetIndex,
+                                    offset = -20,
+                                    durationMs = 700
+                                )
+                            }
+                        } else {
+                            onGenreSearch(category)
                         }
-                    } else {
-                        onGenreSearch(category)
                     }
-                }
-            )
+                )
+            }
         }
 
         if (isLoading) {

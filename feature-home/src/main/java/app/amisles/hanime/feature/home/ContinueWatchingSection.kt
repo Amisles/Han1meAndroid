@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.VideoThumbnail
+import app.amisles.hanime.core.ui.theme.ContinueCardStyle
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.domain.model.WatchHistory
 
@@ -58,6 +60,7 @@ internal fun ContinueWatchingSection(
 ) {
     if (items.isEmpty()) return
     val cfg = LocalUiConfig.current
+    val minimal = cfg.continueCardStyle == ContinueCardStyle.MINIMAL
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -76,50 +79,53 @@ internal fun ContinueWatchingSection(
                 var showActions by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier
-                        .width(CONTINUE_CARD_WIDTH)
+                        .width(if (minimal) 250.dp else CONTINUE_CARD_WIDTH)
                         .clip(RoundedCornerShape(cfg.cardCornerRadius))
                         .combinedClickable(
                             onClick = { onItemClick(history) },
                             onLongClick = { showActions = true }
                         )
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(cfg.thumbnailAspectRatio)
-                            .clip(RoundedCornerShape(cfg.cardCornerRadius))
-                    ) {
-                        VideoThumbnail(
-                            thumbnailUrl = history.thumbnailUrl,
-                            duration = history.duration,
-                            likeRate = "",
-                            viewCount = "",
-                            crop = true,
-                            targetWidth = CONTINUE_CARD_WIDTH
-                        )
-                        if (history.playbackDuration > 0L) {
-                            LinearProgressIndicator(
-                                progress = {
-                                    (history.playbackPosition.toFloat() / history.playbackDuration.toFloat())
-                                        .coerceIn(0f, 1f)
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(3.dp)
-                                    .align(Alignment.BottomCenter),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
+                    if (!minimal) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(cfg.thumbnailAspectRatio)
+                                .clip(RoundedCornerShape(cfg.cardCornerRadius))
+                        ) {
+                            VideoThumbnail(
+                                thumbnailUrl = history.thumbnailUrl,
+                                duration = history.duration,
+                                likeRate = "",
+                                viewCount = "",
+                                crop = true,
+                                targetWidth = CONTINUE_CARD_WIDTH
                             )
+                            if (history.playbackDuration > 0L) {
+                                LinearProgressIndicator(
+                                    progress = {
+                                        (history.playbackPosition.toFloat() / history.playbackDuration.toFloat())
+                                            .coerceIn(0f, 1f)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                        .align(Alignment.BottomCenter),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
+                                )
+                            }
                         }
                     }
 
                     Text(
                         text = history.title,
                         fontSize = 13.sp,
+                        fontWeight = if (minimal) FontWeight.SemiBold else FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 6.dp)
+                        modifier = Modifier.padding(top = if (minimal) 0.dp else 6.dp)
                     )
 
                     Row(

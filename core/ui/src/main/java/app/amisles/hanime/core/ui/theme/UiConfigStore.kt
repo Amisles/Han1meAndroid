@@ -55,6 +55,9 @@ object UiConfigStore {
     private const val K_BANNER_MAX_TAGS = "banner_max_tags"
     private const val K_NAV_STYLE = "nav_style"
     private const val K_NAV_LABELS = "nav_labels"
+    private const val K_COMPACT_HEADER = "compact_home_header"
+    private const val K_CATEGORY_BAR = "home_category_bar"
+    private const val K_CONTINUE_STYLE = "continue_card_style"
     private const val K_SECTION_VISIBLE_COUNT = "section_visible_count"
     private const val K_SECTION_LAYOUTS = "section_layouts"
     private const val K_SECTION_ORDER = "section_order"
@@ -235,6 +238,10 @@ object UiConfigStore {
             navigationStyle = NavigationStyle.entries.firstOrNull { it.name == readRaw(K_NAV_STYLE) }
                 ?: d.navigationStyle,
             navBarShowLabels = readBoolean(K_NAV_LABELS, d.navBarShowLabels),
+            compactHomeHeader = readBoolean(K_COMPACT_HEADER, d.compactHomeHeader),
+            homeShowCategoryBar = readBoolean(K_CATEGORY_BAR, d.homeShowCategoryBar),
+            continueCardStyle = ContinueCardStyle.entries.firstOrNull { it.name == readRaw(K_CONTINUE_STYLE) }
+                ?: d.continueCardStyle,
         ).sanitized()
     }
 
@@ -281,6 +288,9 @@ object UiConfigStore {
             putInt(K_BANNER_MAX_TAGS, cfg.bannerMaxTags)
             putString(K_NAV_STYLE, cfg.navigationStyle.name)
             putBoolean(K_NAV_LABELS, cfg.navBarShowLabels)
+            putBoolean(K_COMPACT_HEADER, cfg.compactHomeHeader)
+            putBoolean(K_CATEGORY_BAR, cfg.homeShowCategoryBar)
+            putString(K_CONTINUE_STYLE, cfg.continueCardStyle.name)
         }
     }
 

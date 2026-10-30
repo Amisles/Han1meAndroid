@@ -644,6 +644,14 @@
     <string name="customize_discard_title">有未套用的修改</string>
     <string name="customize_discard_message">返回將捨棄本次全部調整。</string>
     <string name="customize_discard_confirm">捨棄並返回</string>
+    <string name="customize_group_home_header">首頁標題欄</string>
+    <string name="customize_compact_header">緊湊標題欄</string>
+    <string name="customize_compact_header_summary">降低首頁頂部標題欄的高度與字號</string>
+    <string name="customize_category_bar">顯示分類條</string>
+    <string name="customize_category_bar_summary">關閉後不再顯示首頁頂部的分類快捷入口</string>
+    <string name="customize_continue_style">繼續觀看卡片</string>
+    <string name="customize_continue_cover">封面</string>
+    <string name="customize_continue_minimal">極簡</string>
     <string name="customize_group_navigation">導覽</string>
     <string name="customize_nav_style">導覽形態</string>
     <string name="customize_nav_style_hint">底部欄適合手機直持；側欄適合平板與大螢幕。</string>

@@ -644,6 +644,14 @@
     <string name="customize_discard_title">未適用の変更があります</string>
     <string name="customize_discard_message">戻ると今回の変更はすべて破棄されます。</string>
     <string name="customize_discard_confirm">破棄して戻る</string>
+    <string name="customize_group_home_header">ホームのヘッダー</string>
+    <string name="customize_compact_header">コンパクトなヘッダー</string>
+    <string name="customize_compact_header_summary">ホーム上部ヘッダーの高さと文字サイズを下げます</string>
+    <string name="customize_category_bar">カテゴリーバーを表示</string>
+    <string name="customize_category_bar_summary">オフにするとホーム上部のカテゴリーショートカットを隠します</string>
+    <string name="customize_continue_style">続きから見るカード</string>
+    <string name="customize_continue_cover">カバー</string>
+    <string name="customize_continue_minimal">ミニマル</string>
     <string name="customize_group_navigation">ナビゲーション</string>
     <string name="customize_nav_style">ナビゲーション形式</string>
     <string name="customize_nav_style_hint">下部バーはスマホ向き、サイドバーはタブレットや大画面向きです。</string>

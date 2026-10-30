@@ -668,6 +668,14 @@
     <string name="customize_discard_title">有未应用的修改</string>
     <string name="customize_discard_message">返回将丢弃本次全部调整。</string>
     <string name="customize_discard_confirm">丢弃并返回</string>
+    <string name="customize_group_home_header">首页头部</string>
+    <string name="customize_compact_header">紧凑标题栏</string>
+    <string name="customize_compact_header_summary">降低首页顶部标题栏的高度与字号</string>
+    <string name="customize_category_bar">显示分类条</string>
+    <string name="customize_category_bar_summary">关闭后不再显示首页顶部的分类快捷入口</string>
+    <string name="customize_continue_style">继续观看卡片</string>
+    <string name="customize_continue_cover">封面</string>
+    <string name="customize_continue_minimal">极简</string>
     <string name="customize_group_navigation">导航</string>
     <string name="customize_nav_style">导航形态</string>
     <string name="customize_nav_style_hint">底部栏适合手机竖持；侧栏适合平板与大屏。</string>
