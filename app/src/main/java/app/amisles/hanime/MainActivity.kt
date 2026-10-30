@@ -133,6 +133,7 @@ import app.amisles.hanime.navigation.baseRoute
 import app.amisles.hanime.navigation.comicDirectoryRoute
 import app.amisles.hanime.navigation.genreApiValueOf
 import app.amisles.hanime.navigation.moreUrlPageRoute
+import app.amisles.hanime.navigation.shouldShowBottomBar
 import app.amisles.hanime.navigation.searchRoute
 import app.amisles.hanime.navigation.sortApiValueOf
 
@@ -267,29 +268,7 @@ fun HanimeApp(
     // 导航栏传入的是短路由 "search"，两者永不相等，会让 Tab 的「已在当前页则不动」守卫失效。
     val currentRoute = navBackStackEntry?.destination?.route?.baseRoute() ?: "home"
 
-    val showBottomBar = !currentRoute.startsWith("detail") &&
-        currentRoute != "about" &&
-        currentRoute != "update" &&
-        currentRoute != "login" &&
-        currentRoute != "settings" &&
-        currentRoute != "launcherIcon" &&
-        currentRoute != "backup" &&
-        currentRoute != "crashLog" &&
-        currentRoute != "comics" &&
-        currentRoute != "comicTags" &&
-        currentRoute != "comicArtists" &&
-        !currentRoute.startsWith("comicDirectory") &&
-        currentRoute != "watchStats" &&
-        currentRoute != "batchDownload" &&
-        !currentRoute.startsWith("subscriptions") &&
-        !currentRoute.startsWith("author") &&
-        !currentRoute.startsWith("videoListPage") &&
-        !currentRoute.startsWith("playlistListPage") &&
-        !currentRoute.startsWith("playlistDetail") &&
-        !currentRoute.startsWith("accountEdit") &&
-        !currentRoute.startsWith("localPlayer") &&
-        !currentRoute.startsWith("comicDetail") &&
-        !currentRoute.startsWith("comicReader")
+    val showBottomBar = shouldShowBottomBar(currentRoute)
 
     val sizeInfo = currentWindowSizeInfo()
     val uiCfg = UiConfigStore.config.collectAsStateWithLifecycle().value
