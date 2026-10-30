@@ -273,6 +273,7 @@ fun CustomizeScreen(
                     labelRes = R.string.customize_reset,
                     onClick = { showResetDialog = true }
                 )
+                Spacer(modifier = Modifier.width(8.dp))
             }
         )
 
