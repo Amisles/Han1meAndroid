@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +38,9 @@ sealed class Screen(val route: String, val labelResId: Int, val icon: androidx.c
 
 val screens = listOf(Screen.Home, Screen.Search, Screen.Download)
 
+/** 底部导航栏单个条目的最小高度（含点击热区），图标与文字在其中垂直居中。 */
+private val BottomNavItemMinHeight = 56.dp
+
 @Composable
 fun BottomNav(
     currentRoute: String,
@@ -60,8 +64,7 @@ fun BottomNav(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { /* 仅消费触摸事件，不执行操作 */ }
-            .navigationBarsPadding()
-            .padding(top = 4.dp, bottom = 6.dp),
+            .navigationBarsPadding(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -70,11 +73,12 @@ fun BottomNav(
                 Column(
                     modifier = Modifier
                         .widthIn(min = 56.dp)
+                        .heightIn(min = BottomNavItemMinHeight)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onNavigate(screen.route) }
-                        .padding(vertical = 2.dp),
+                        ) { onNavigate(screen.route) },
+                    verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
