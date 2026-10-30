@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.History
 import app.amisles.hanime.core.ui.components.SearchField
@@ -69,6 +68,7 @@ import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
+import app.amisles.hanime.core.ui.components.SelectionTopBar
 import app.amisles.hanime.core.ui.R
 import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
@@ -167,38 +167,12 @@ fun HistoryScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 15.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+        SelectionTopBar(
+            title = if (isSelectionMode) stringResource(R.string.history_selected_count, selectedIds.size) else stringResource(R.string.history_title),
+            isSelectionMode = isSelectionMode,
+            onBack = onBackClick,
+            onExitSelection = { isSelectionMode = false }
         ) {
-            IconButton(
-                onClick = {
-                    if (isSelectionMode) {
-                        isSelectionMode = false
-                    } else {
-                        onBackClick()
-                    }
-                },
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = if (isSelectionMode) stringResource(R.string.common_cancel) else stringResource(R.string.common_back),
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = if (isSelectionMode) stringResource(R.string.history_selected_count, selectedIds.size) else stringResource(R.string.history_title),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
-            )
             if (!isSelectionMode && history.isNotEmpty()) {
                 LayoutModeToggle(
                     isGrid = isGridMode,
