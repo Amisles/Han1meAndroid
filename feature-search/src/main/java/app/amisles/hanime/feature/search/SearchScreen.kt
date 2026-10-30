@@ -7,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,11 +18,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
@@ -63,16 +58,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
-import app.amisles.hanime.core.ui.components.SearchField
-import app.amisles.hanime.core.ui.components.VideoGridCard
-import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.core.ui.model.Category
 import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.theme.PageLayoutResolver
@@ -282,31 +273,21 @@ fun SearchScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
         ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(start = 15.dp, end = 15.dp, top = 10.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SearchField(
-                value = localQuery,
-                onValueChange = {
-                    localQuery = it
-                    suggestionsOpen = it.isNotBlank()
-                },
-                placeholder = stringResource(R.string.search_placeholder),
-                onSearch = {
-                    suggestionsOpen = false
-                    viewModel.submitSearch(localQuery)
-                },
-                onClear = {
-                    suggestionsOpen = false
-                    viewModel.setQuery("")
-                },
-                modifier = Modifier.weight(1f)
-            )
-        }
+        SearchTopBar(
+            value = localQuery,
+            onValueChange = {
+                localQuery = it
+                suggestionsOpen = it.isNotBlank()
+            },
+            onSearch = {
+                suggestionsOpen = false
+                viewModel.submitSearch(localQuery)
+            },
+            onClear = {
+                suggestionsOpen = false
+                viewModel.setQuery("")
+            }
+        )
 
         Column(
             modifier = Modifier
@@ -629,71 +610,21 @@ fun SearchScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        } else if (isGridMode) {
-            // 网格列数按「实测可用宽度」算而非只看宽度档位，横屏手机 / 分屏 / 折叠屏都能正确响应
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val cfg = LocalUiConfig.current
-                val columns = remember(maxWidth, cfg) { cfg.gridColumnsFor(maxWidth) }
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(columns),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 15.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
-                ) {
-                    items(items = videos, key = { it.id }) { video ->
-                        VideoGridCard(
-                            video = video,
-                            onClick = { onVideoClick(video.videoUrl) },
-                            onAuthorClick = onAuthorClick,
-                            onLongClick = { onVideoLongClick(video) }
-                        )
-                    }
-
-                    // 网格页脚需横跨整行，故显式指定 span
-                    if (isLoadingMore) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            SearchLoadMoreIndicator()
-                        }
-                    } else if (loadMoreError) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            SearchLoadMoreRetry(onRetry = { viewModel.loadMore() })
-                        }
-                    } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            SearchNoMoreHint()
-                        }
-                    }
-                }
-            }
         } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(items = videos, key = { it.id }) { video ->
-                    VideoListItem(
-                        video = video,
-                        onClick = { onVideoClick(video.videoUrl) },
-                        onAuthorClick = onAuthorClick,
-                        onLongClick = { onVideoLongClick(video) }
-                    )
-                }
-
-                // 加载中指示器（自动触发加载时显示）
-                if (isLoadingMore) {
-                    item { SearchLoadMoreIndicator() }
-                } else if (loadMoreError) {
-                    item { SearchLoadMoreRetry(onRetry = { viewModel.loadMore() }) }
-                } else if (!hasMore && videos.isNotEmpty() && totalPages > 1) {
-                    item { SearchNoMoreHint() }
-                }
-            }
+            SearchResultList(
+                videos = videos,
+                isGridMode = isGridMode,
+                isLoadingMore = isLoadingMore,
+                loadMoreError = loadMoreError,
+                hasMore = hasMore,
+                totalPages = totalPages,
+                gridState = gridState,
+                listState = listState,
+                onVideoClick = onVideoClick,
+                onAuthorClick = onAuthorClick,
+                onVideoLongClick = onVideoLongClick,
+                onLoadMore = { viewModel.loadMore() }
+            )
         }
     }
         if (showTagSheet) {
