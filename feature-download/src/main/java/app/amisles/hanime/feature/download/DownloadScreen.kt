@@ -67,10 +67,10 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Storage
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
-import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
+import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.R
 
 enum class DownloadFilter {
@@ -849,84 +849,31 @@ fun DownloadScreen(
     }
 
     if (showDeleteConfirm) {
-        FullScreenOverlayDialog(
+        ConfirmDeleteDialog(
+            title = stringResource(R.string.download_delete_title),
+            message = if (deleteTargetId != null) {
+                stringResource(R.string.download_delete_message)
+            } else {
+                stringResource(R.string.download_delete_message_multiple, selectedIds.size)
+            },
             onDismiss = {
                 deleteTargetId = null
                 showDeleteConfirm = false
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    .padding(20.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {},
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.download_delete_title),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = if (deleteTargetId != null) {
-                        stringResource(R.string.download_delete_message)
-                    } else {
-                        stringResource(R.string.download_delete_message_multiple, selectedIds.size)
-                    },
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.common_cancel),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                deleteTargetId = null
-                                showDeleteConfirm = false
-                            }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stringResource(R.string.common_delete),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                if (deleteTargetId != null) {
-                                    // 单条删除：已完成任务会连带删除本地文件
-                                    viewModel.cancelDownload(deleteTargetId!!)
-                                } else {
-                                    selectedIds.forEach { taskId ->
-                                        viewModel.cancelDownload(taskId)
-                                    }
-                                    isSelectionMode = false
-                                }
-                                deleteTargetId = null
-                                showDeleteConfirm = false
-                            }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
+            },
+            onConfirm = {
+                if (deleteTargetId != null) {
+                    viewModel.cancelDownload(deleteTargetId!!)
+                } else {
+                    selectedIds.forEach { taskId ->
+                        viewModel.cancelDownload(taskId)
+                    }
+                    isSelectionMode = false
                 }
-            }
-        }
+                deleteTargetId = null
+                showDeleteConfirm = false
+            },
+            messageTextAlign = TextAlign.Center
+        )
     }
 
     // 面板展开时铺一层透明遮罩：点击空白处即收起。

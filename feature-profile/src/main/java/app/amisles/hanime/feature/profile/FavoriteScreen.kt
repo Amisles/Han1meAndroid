@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,6 +70,7 @@ import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
+import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
 
@@ -538,69 +538,20 @@ fun FavoriteScreen(
     }
 
     if (showDeleteConfirm) {
-        FullScreenOverlayDialog(onDismiss = { showDeleteConfirm = false }) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    .padding(20.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {},
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.favorite_delete_title),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = stringResource(R.string.favorite_delete_confirm_message, deleteTargetTitle),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.common_cancel),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { showDeleteConfirm = false }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stringResource(R.string.common_delete),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                if (deleteTargetId != null) {
-                                    // 单个删除
-                                    viewModel.removeFavorite(deleteTargetId!!)
-                                } else {
-                                    // 批量删除
-                                    viewModel.removeFavorites(selectedIds.toList())
-                                    isSelectionMode = false
-                                }
-                                showDeleteConfirm = false
-                            }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
+        ConfirmDeleteDialog(
+            title = stringResource(R.string.favorite_delete_title),
+            message = stringResource(R.string.favorite_delete_confirm_message, deleteTargetTitle),
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                if (deleteTargetId != null) {
+                    viewModel.removeFavorite(deleteTargetId!!)
+                } else {
+                    viewModel.removeFavorites(selectedIds.toList())
+                    isSelectionMode = false
                 }
+                showDeleteConfirm = false
             }
-        }
+        )
     }
 }
 

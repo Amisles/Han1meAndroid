@@ -67,6 +67,7 @@ import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
+import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.R
 import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
@@ -508,81 +509,28 @@ fun HistoryScreen(
     }
 
     if (showDeleteConfirm) {
-        FullScreenOverlayDialog(
+        ConfirmDeleteDialog(
+            title = stringResource(R.string.history_delete_title),
+            message = if (deleteTargetId != null) {
+                stringResource(R.string.history_delete_message_single)
+            } else {
+                stringResource(R.string.history_delete_message, selectedIds.size)
+            },
             onDismiss = {
                 deleteTargetId = null
                 showDeleteConfirm = false
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                    .padding(20.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {},
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(R.string.history_delete_title),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = if (deleteTargetId != null) {
-                        stringResource(R.string.history_delete_message_single)
-                    } else {
-                        stringResource(R.string.history_delete_message, selectedIds.size)
-                    },
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.common_cancel),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                deleteTargetId = null
-                                showDeleteConfirm = false
-                            }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stringResource(R.string.common_delete),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                if (deleteTargetId != null) {
-                                    // 单条删除
-                                    viewModel.removeHistory(deleteTargetId!!)
-                                } else {
-                                    viewModel.removeHistories(selectedIds.toList())
-                                    isSelectionMode = false
-                                }
-                                deleteTargetId = null
-                                showDeleteConfirm = false
-                            }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
-                    )
+            },
+            onConfirm = {
+                if (deleteTargetId != null) {
+                    viewModel.removeHistory(deleteTargetId!!)
+                } else {
+                    viewModel.removeHistories(selectedIds.toList())
+                    isSelectionMode = false
                 }
+                deleteTargetId = null
+                showDeleteConfirm = false
             }
-        }
+        )
     }
 
     if (showClearConfirm) {
