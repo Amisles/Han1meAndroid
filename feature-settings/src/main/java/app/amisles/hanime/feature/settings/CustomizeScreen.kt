@@ -44,7 +44,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
@@ -68,7 +67,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -107,6 +105,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsSwitchRow
@@ -267,7 +266,7 @@ fun CustomizeScreen(
         ScreenHeader(
             title = stringResource(R.string.customize_title),
             onBackClick = requestBack,
-            action = {
+            actions = {
                 IconAction(
                     icon = Icons.Default.RestartAlt,
                     enabled = true,
@@ -1018,43 +1017,6 @@ fun CustomizeScreen(
                 }
             }
         )
-    }
-}
-
-/* ───────────────────────── 标题栏 ───────────────────────── */
-
-@Composable
-private fun ScreenHeader(
-    title: String,
-    onBackClick: () -> Unit,
-    action: (@Composable () -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onBackClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.common_back),
-                tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Text(
-            text = title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f)
-        )
-        if (action != null) {
-            action()
-            Spacer(modifier = Modifier.width(8.dp))
-        }
     }
 }
 

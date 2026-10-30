@@ -21,10 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
+import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
@@ -106,31 +105,10 @@ fun CrashLogScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = stringResource(R.string.crash_log_title),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 48.dp)
-            )
-        }
+        ScreenHeader(
+            title = stringResource(R.string.crash_log_title),
+            onBackClick = onBackClick
+        )
 
         if (records.isEmpty()) {
             Box(

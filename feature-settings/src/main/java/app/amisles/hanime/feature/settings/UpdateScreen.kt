@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -30,7 +29,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,9 +44,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.domain.model.AppUpdate
+import androidx.compose.material3.IconButton
 
 /** 把字节数格式化成 `12.3 MB`；0 或负数返回空串（调用方据此隐藏该行）。 */
 internal fun formatApkSize(bytes: Long): String {
@@ -91,44 +91,27 @@ fun UpdateScreen(
             .statusBarsPadding()
     ) {
         // 顶栏
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(24.dp)
-                )
+        ScreenHeader(
+            title = stringResource(R.string.update_title),
+            onBackClick = onBackClick,
+            actions = {
+                IconButton(
+                    onClick = { viewModel.check(force = true) },
+                    enabled = uiState !is UpdateUiState.Checking
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.update_check_now),
+                        tint = if (uiState is UpdateUiState.Checking) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onBackground
+                        },
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
-            Text(
-                text = stringResource(R.string.update_title),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(
-                onClick = { viewModel.check(force = true) },
-                enabled = uiState !is UpdateUiState.Checking
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.update_check_now),
-                    tint = if (uiState is UpdateUiState.Checking) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onBackground
-                    },
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
+        )
 
         Column(
             modifier = Modifier
