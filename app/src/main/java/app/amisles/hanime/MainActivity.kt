@@ -75,7 +75,7 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.NavigationStyle
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.ui.CloudflareChallengeDialog
+import app.amisles.hanime.feature.settings.network.CloudflareChallengeDialog
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.VideoQuickActionsHost

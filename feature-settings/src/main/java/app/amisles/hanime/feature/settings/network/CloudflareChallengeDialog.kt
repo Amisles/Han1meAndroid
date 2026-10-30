@@ -1,4 +1,4 @@
-package app.amisles.hanime.ui
+package app.amisles.hanime.feature.settings.network
 
 import android.content.Intent
 import android.net.Uri
