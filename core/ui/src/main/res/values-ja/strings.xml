@@ -690,6 +690,8 @@
     <string name="customize_sample_author">サンプル投稿者</string>
     <string name="customize_group_home_sections">ホームセクション</string>
     <string name="customize_section_visible_count">セクションごとの表示件数</string>
+    <string name="customize_section_count">このセクションの件数</string>
+    <string name="customize_section_pin">このセクションを固定</string>
     <string name="customize_section_order">セクションの順序</string>
     <string name="customize_section_layout_auto">自動</string>
     <string name="customize_section_layout_list">リスト</string>

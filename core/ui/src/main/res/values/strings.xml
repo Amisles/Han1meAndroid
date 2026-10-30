@@ -714,6 +714,8 @@
     <string name="customize_sample_author">示例作者</string>
     <string name="customize_group_home_sections">首页分区</string>
     <string name="customize_section_visible_count">每区显示条数</string>
+    <string name="customize_section_count">该区条数</string>
+    <string name="customize_section_pin">置顶该分区</string>
     <string name="customize_section_order">分区顺序</string>
     <string name="customize_section_layout_auto">自动</string>
     <string name="customize_section_layout_list">列表</string>

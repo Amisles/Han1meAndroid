@@ -58,6 +58,9 @@ object UiConfigStore {
     private const val K_SECTION_VISIBLE_COUNT = "section_visible_count"
     private const val K_SECTION_LAYOUTS = "section_layouts"
     private const val K_SECTION_ORDER = "section_order"
+    private const val K_SECTION_HIDDEN = "section_hidden"
+    private const val K_SECTION_PINNED = "section_pinned"
+    private const val K_SECTION_COUNTS = "section_counts"
 
     @Volatile
     private var initialized = false
@@ -295,6 +298,9 @@ object UiConfigStore {
             visibleCount = readInt(K_SECTION_VISIBLE_COUNT, d.visibleCount),
             layouts = UiConfigCodec.decodeLayouts(readRaw(K_SECTION_LAYOUTS)),
             order = UiConfigCodec.decodeOrder(readRaw(K_SECTION_ORDER)),
+            hidden = UiConfigCodec.decodeOrder(readRaw(K_SECTION_HIDDEN)).toSet(),
+            pinned = UiConfigCodec.decodeOrder(readRaw(K_SECTION_PINNED)),
+            visibleCounts = UiConfigCodec.decodeCounts(readRaw(K_SECTION_COUNTS)),
         ).sanitized()
     }
 
@@ -303,6 +309,12 @@ object UiConfigStore {
             putInt(K_SECTION_VISIBLE_COUNT, cfg.visibleCount)
             putString(K_SECTION_LAYOUTS, UiConfigCodec.encodeLayouts(cfg.layouts))
             putString(K_SECTION_ORDER, UiConfigCodec.encodeOrder(cfg.order))
+            putString(K_SECTION_HIDDEN, UiConfigCodec.encodeOrder(cfg.hidden.toList()))
+            putString(K_SECTION_PINNED, UiConfigCodec.encodeOrder(cfg.pinned))
+            putString(
+                K_SECTION_COUNTS,
+                UiConfigCodec.encodeLayouts(cfg.visibleCounts.mapValues { it.value.toString() })
+            )
         }
     }
 

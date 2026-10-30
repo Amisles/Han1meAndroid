@@ -690,6 +690,8 @@
     <string name="customize_sample_author">Sample author</string>
     <string name="customize_group_home_sections">Home sections</string>
     <string name="customize_section_visible_count">Items per section</string>
+    <string name="customize_section_count">Items in this section</string>
+    <string name="customize_section_pin">Pin this section</string>
     <string name="customize_section_order">Section order</string>
     <string name="customize_section_layout_auto">Auto</string>
     <string name="customize_section_layout_list">List</string>

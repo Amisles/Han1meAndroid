@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DarkMode
@@ -95,6 +96,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -779,6 +781,27 @@ fun CustomizeScreen(
                                     next[title] = mode
                                 }
                                 cfg.copy(layouts = next)
+                            }
+                        },
+                        onHideChange = { title, hidden ->
+                            updateSections { cfg ->
+                                cfg.copy(hidden = if (hidden) cfg.hidden + title else cfg.hidden - title)
+                            }
+                        },
+                        onPinChange = { title, pinned ->
+                            updateSections { cfg ->
+                                cfg.copy(
+                                    pinned = if (pinned) {
+                                        (listOf(title) + cfg.pinned).distinct()
+                                    } else {
+                                        cfg.pinned - title
+                                    }
+                                )
+                            }
+                        },
+                        onCountChange = { title, count ->
+                            updateSections { cfg ->
+                                cfg.copy(visibleCounts = cfg.visibleCounts + (title to count))
                             }
                         }
                     )
@@ -1639,7 +1662,10 @@ private fun SectionOrderCard(
     expandedTitle: String,
     onToggleExpand: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
-    onLayoutChange: (String, HomeSectionLayout) -> Unit
+    onLayoutChange: (String, HomeSectionLayout) -> Unit,
+    onHideChange: (String, Boolean) -> Unit,
+    onPinChange: (String, Boolean) -> Unit,
+    onCountChange: (String, Int) -> Unit
 ) {
     SettingsGroupCard {
         Text(
@@ -1656,24 +1682,55 @@ private fun SectionOrderCard(
                 title = titleFor(title),
                 layout = layout,
                 layoutLabel = stringResource(sectionLayoutLabelRes(layout)),
+                hidden = homeSections.isHidden(title),
+                pinned = title in homeSections.pinned,
                 canMoveUp = index > 0,
                 canMoveDown = index < order.lastIndex,
                 onToggleExpand = { onToggleExpand(title) },
                 onMoveUp = { onMove(index, -1) },
-                onMoveDown = { onMove(index, 1) }
+                onMoveDown = { onMove(index, 1) },
+                onToggleHide = { onHideChange(title, !homeSections.isHidden(title)) },
+                onTogglePin = { onPinChange(title, title !in homeSections.pinned) }
             )
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
-                LayoutChooser(
-                    selected = layout,
-                    onSelect = { mode ->
-                        onLayoutChange(title, mode)
-                        onToggleExpand(title)
-                    }
-                )
+                Column(
+                    modifier = Modifier.padding(start = CARD_INNER_H, end = CARD_INNER_H, bottom = CARD_INNER_V)
+                ) {
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                        modifier = Modifier.padding(bottom = 10.dp)
+                    )
+                    LayoutChooser(
+                        selected = layout,
+                        onSelect = { mode ->
+                            onLayoutChange(title, mode)
+                            onToggleExpand(title)
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.customize_section_count),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                    )
+                    SliderRow(
+                        title = titleFor(title),
+                        valueText = homeSections.countFor(title).toString(),
+                        value = homeSections.countFor(title).toFloat(),
+                        range = HomeSectionConfig.MIN_VISIBLE_COUNT.toFloat()..HomeSectionConfig.MAX_VISIBLE_COUNT.toFloat(),
+                        defaultValue = homeSections.visibleCount.toFloat(),
+                        isDefault = homeSections.countFor(title) == homeSections.visibleCount,
+                        ticks = HomeSectionConfig.MAX_VISIBLE_COUNT - HomeSectionConfig.MIN_VISIBLE_COUNT + 1,
+                        onReset = { onCountChange(title, homeSections.visibleCount) },
+                        onPreview = { v -> onCountChange(title, v.roundToInt()) },
+                        onCommit = { v -> onCountChange(title, v.roundToInt()) }
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -1685,11 +1742,15 @@ private fun SectionOrderRow(
     title: String,
     layout: HomeSectionLayout,
     layoutLabel: String,
+    hidden: Boolean,
+    pinned: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onToggleExpand: () -> Unit,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
+    onToggleHide: () -> Unit,
+    onTogglePin: () -> Unit
 ) {
     Row(
         modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = 10.dp),
@@ -1702,11 +1763,27 @@ private fun SectionOrderRow(
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(9.dp))
+        Icon(
+            imageVector = Icons.Default.PushPin,
+            contentDescription = stringResource(R.string.customize_section_pin),
+            tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+            modifier = Modifier
+                .size(16.dp)
+                .clickable { onTogglePin() }
+        )
+        Spacer(modifier = Modifier.width(7.dp))
         Text(
             text = title,
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f)
+            color = if (hidden) {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+            } else {
+                MaterialTheme.colorScheme.onBackground
+            },
+            textDecoration = if (hidden) TextDecoration.LineThrough else null,
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onToggleHide() }
         )
         Box(
             modifier = Modifier
@@ -1734,7 +1811,7 @@ private fun SectionOrderRow(
         Spacer(modifier = Modifier.width(2.dp))
         IconAction(
             icon = Icons.Default.KeyboardArrowUp,
-            enabled = canMoveUp,
+            enabled = canMoveUp && !hidden,
             labelRes = R.string.customize_section_move_up,
             onClick = onMoveUp,
             boxSize = 30.dp,
@@ -1742,7 +1819,7 @@ private fun SectionOrderRow(
         )
         IconAction(
             icon = Icons.Default.KeyboardArrowDown,
-            enabled = canMoveDown,
+            enabled = canMoveDown && !hidden,
             labelRes = R.string.customize_section_move_down,
             onClick = onMoveDown,
             boxSize = 30.dp,

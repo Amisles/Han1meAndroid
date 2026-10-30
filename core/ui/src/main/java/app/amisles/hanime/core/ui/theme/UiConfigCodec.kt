@@ -72,6 +72,12 @@ object UiConfigCodec {
             .put("visibleCount", homeSections.visibleCount)
             .put("layouts", encodeLayouts(homeSections.layouts))
             .put("order", encodeOrder(homeSections.order))
+            .put("hidden", encodeOrder(homeSections.hidden.toList()))
+            .put("pinned", encodeOrder(homeSections.pinned))
+            .put(
+                "visibleCounts",
+                encodeLayouts(homeSections.visibleCounts.mapValues { it.value.toString() })
+            )
 
         return JSONObject()
             .put("marker", MARKER)
@@ -156,13 +162,16 @@ object UiConfigCodec {
             visibleCount = s?.optInt("visibleCount", hd.visibleCount) ?: hd.visibleCount,
             layouts = decodeLayouts(s?.optString("layouts").orEmpty()),
             order = decodeOrder(s?.optString("order").orEmpty()),
+            hidden = decodeOrder(s?.optString("hidden").orEmpty()).toSet(),
+            pinned = decodeOrder(s?.optString("pinned").orEmpty()),
+            visibleCounts = decodeCounts(s?.optString("visibleCounts").orEmpty()),
         ).sanitized()
 
         return UiConfigImport.Success(config, homeSections)
     }
 
-    fun encodeLayouts(layouts: Map<String, HomeSectionLayout>): String =
-        layouts.entries.joinToString(SEP) { "${it.key}=${it.value.name}" }
+    fun encodeLayouts(layouts: Map<String, *>): String =
+        layouts.entries.joinToString(SEP) { "${it.key}=${it.value}" }
 
     fun decodeLayouts(raw: String): Map<String, HomeSectionLayout> {
         if (raw.isEmpty()) return emptyMap()
@@ -176,6 +185,9 @@ object UiConfigCodec {
         }
         return result
     }
+
+    fun decodeCounts(raw: String): Map<String, Int> =
+        decodeLayouts(raw).mapValues { (_, value) -> value.name.toIntOrNull() ?: 0 }
 
     fun encodeOrder(order: List<String>): String = order.joinToString(SEP)
 
