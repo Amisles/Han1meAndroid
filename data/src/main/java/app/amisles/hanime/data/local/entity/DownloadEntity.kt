@@ -3,6 +3,9 @@ package app.amisles.hanime.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.model.DownloadTask
+
 /**
  * 下载任务表实体。
  *
@@ -24,4 +27,32 @@ data class DownloadEntity(
     val thumbnailUrl: String = "",
     val videoId: String = "",
     val errorMessage: String = ""
+)
+
+fun DownloadTask.toEntity(): DownloadEntity = DownloadEntity(
+    id = id,
+    title = title,
+    quality = quality,
+    url = url,
+    totalBytes = totalBytes,
+    downloadedBytes = downloadedBytes,
+    status = status.name,
+    filePath = filePath,
+    thumbnailUrl = thumbnailUrl,
+    videoId = videoId,
+    errorMessage = errorMessage
+)
+
+fun DownloadEntity.toTask(): DownloadTask = DownloadTask(
+    id = id,
+    title = title,
+    quality = quality,
+    url = url,
+    totalBytes = totalBytes,
+    downloadedBytes = downloadedBytes,
+    status = runCatching { DownloadStatus.valueOf(status) }.getOrDefault(DownloadStatus.PENDING),
+    filePath = filePath,
+    thumbnailUrl = thumbnailUrl,
+    videoId = videoId,
+    errorMessage = errorMessage
 )

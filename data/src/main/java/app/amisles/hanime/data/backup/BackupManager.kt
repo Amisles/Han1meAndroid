@@ -9,8 +9,8 @@ import app.amisles.hanime.data.local.database.FavoriteDatabase
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
-import app.amisles.hanime.data.local.entity.DownloadEntity
 import app.amisles.hanime.data.local.entity.SearchHistoryEntity
+import app.amisles.hanime.data.local.entity.toTask
 import app.amisles.hanime.data.local.entity.toDomain
 import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.domain.model.BackupConflictPolicy
@@ -508,34 +508,6 @@ class BackupManager @Inject constructor(
 
     private fun JSONObject.doubleOrNull(key: String): Double? =
         if (has(key) && !isNull(key)) optDouble(key) else null
-
-    private fun DownloadEntity.toTask() = DownloadTask(
-        id = id,
-        title = title,
-        quality = quality,
-        url = url,
-        totalBytes = totalBytes,
-        downloadedBytes = downloadedBytes,
-        status = runCatching { DownloadStatus.valueOf(status) }.getOrDefault(DownloadStatus.PENDING),
-        filePath = filePath,
-        thumbnailUrl = thumbnailUrl,
-        videoId = videoId,
-        errorMessage = errorMessage
-    )
-
-    private fun DownloadTask.toEntity() = DownloadEntity(
-        id = id,
-        title = title,
-        quality = quality,
-        url = url,
-        totalBytes = totalBytes,
-        downloadedBytes = downloadedBytes,
-        status = status.name,
-        filePath = filePath,
-        thumbnailUrl = thumbnailUrl,
-        videoId = videoId,
-        errorMessage = errorMessage
-    )
 
     companion object {
         /**

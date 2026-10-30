@@ -5,7 +5,7 @@ import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStorageInfo
-import app.amisles.hanime.data.local.entity.DownloadEntity
+import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
@@ -1172,20 +1172,6 @@ class DownloadManager @Inject constructor(
         pendingDelete.add(taskId)
         persistSignal.trySend(Unit)
     }
-
-    private fun DownloadTask.toEntity() = DownloadEntity(
-        id = id,
-        title = title,
-        quality = quality,
-        url = url,
-        totalBytes = totalBytes,
-        downloadedBytes = downloadedBytes,
-        status = status.name,
-        filePath = filePath,
-        thumbnailUrl = thumbnailUrl,
-        videoId = videoId,
-        errorMessage = errorMessage
-    )
 
     /** 读取任务当前的暂停序号；从未暂停过为 0。 */
     private fun pauseEpochOf(taskId: Int): Long = pauseEpoch[taskId]?.get() ?: 0L
