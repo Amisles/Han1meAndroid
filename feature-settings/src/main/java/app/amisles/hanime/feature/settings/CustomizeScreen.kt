@@ -24,11 +24,6 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.Label
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -53,16 +48,10 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
-import app.amisles.hanime.core.ui.theme.CardConfig
-import app.amisles.hanime.core.ui.theme.CardStyle
-import app.amisles.hanime.core.ui.theme.ContrastLevel
 import app.amisles.hanime.core.ui.theme.ContinueCardStyle
-import app.amisles.hanime.core.ui.theme.CornerMode
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
-import app.amisles.hanime.core.ui.theme.NavigationStyle
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
-import app.amisles.hanime.core.ui.theme.ThumbnailQuality
 import app.amisles.hanime.core.ui.theme.UiConfig
 import app.amisles.hanime.core.ui.theme.UiConfigCodec
 import app.amisles.hanime.core.ui.theme.UiConfigImport
@@ -98,37 +87,25 @@ fun CustomizeScreen(
     val appliedSections by UiConfigStore.homeSections.collectAsStateWithLifecycle()
     val relatedLayout by appPrefs.relatedLayoutModeFlow.collectAsStateWithLifecycle()
 
-    var draftConfig by remember { mutableStateOf(appliedConfig) }
-    var draftSections by remember { mutableStateOf(appliedSections) }
-    var draftRelatedLayout by remember { mutableStateOf(relatedLayout) }
+    val draft = rememberCustomizeDraft(appliedConfig, appliedSections, relatedLayout)
     var previewHeight by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
 
-    val updateConfig: ((UiConfig) -> UiConfig) -> Unit = { transform ->
-        draftConfig = transform(draftConfig).sanitized()
-    }
-    val updateSections: ((HomeSectionConfig) -> HomeSectionConfig) -> Unit = { transform ->
-        draftSections = transform(draftSections).sanitized()
-    }
+    val updateConfig: ((UiConfig) -> UiConfig) -> Unit = { transform -> draft.updateConfig(transform) }
+    val updateSections: ((HomeSectionConfig) -> HomeSectionConfig) -> Unit = { transform -> draft.updateSections(transform) }
 
-    val dirty = draftConfig != appliedConfig ||
-        draftSections != appliedSections ||
-        draftRelatedLayout != relatedLayout
+    val dirty = draft.dirty
 
     val applyDraft: () -> Unit = {
-        UiConfigStore.set(draftConfig)
-        UiConfigStore.setHomeSections(draftSections)
-        if (draftRelatedLayout != relatedLayout) {
-            val target = draftRelatedLayout
+        UiConfigStore.set(draft.config)
+        UiConfigStore.setHomeSections(draft.sections)
+        if (draft.relatedLayout != relatedLayout) {
+            val target = draft.relatedLayout
             if (target == null) appPrefs.clearRelatedLayoutMode() else appPrefs.setRelatedLayoutMode(target)
         }
         Toast.makeText(context, context.getString(R.string.customize_apply_done), Toast.LENGTH_SHORT).show()
     }
-    val revertDraft: () -> Unit = {
-        draftConfig = appliedConfig
-        draftSections = appliedSections
-        draftRelatedLayout = relatedLayout
-    }
+    val revertDraft: () -> Unit = { draft.revert() }
 
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
     val requestBack: () -> Unit = {
@@ -136,8 +113,8 @@ fun CustomizeScreen(
     }
     BackHandler(enabled = dirty) { showDiscardDialog = true }
 
-    val config = draftConfig
-    val homeSections = draftSections
+    val config = draft.config
+    val homeSections = draft.sections
     val activePreset = remember(config) { UiPreset.of(config) }
     val defaults = UiConfig.Default
     val sectionDefaults = HomeSectionConfig.Default
@@ -220,150 +197,9 @@ fun CustomizeScreen(
                     Spacer(modifier = Modifier.height(GROUP_GAP))
                 }
 
-                item(key = "navigation") {
-                GroupLabel(stringResource(R.string.customize_group_navigation))
-                SettingsGroupCard {
-                    Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = stringResource(R.string.customize_nav_style),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (config.navigationStyle != defaults.navigationStyle) {
-                                IconAction(
-                                    icon = Icons.Default.RestartAlt,
-                                    enabled = true,
-                                    labelRes = R.string.customize_reset_item,
-                                    onClick = {
-                                        updateConfig {
-                                            it.copy(navigationStyle = defaults.navigationStyle)
-                                        }
-                                    },
-                                    boxSize = 30.dp,
-                                    iconSize = 17.dp
-                                )
-                            }
-                        }
-                        Text(
-                            text = stringResource(R.string.customize_nav_style_hint),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 3.dp, bottom = 8.dp)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            NavigationStyle.entries.forEach { style ->
-                                ChosenChip(
-                                    selected = style == config.navigationStyle,
-                                    label = stringResource(navStyleLabelRes(style)),
-                                    onClick = { updateConfig { it.copy(navigationStyle = style) } },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(GROUP_GAP))
-            }
+                item(key = "navigation") { NavigationSection(config, defaults, updateConfig) }
 
-            item(key = "appearance") {
-                    GroupLabel(stringResource(R.string.customize_group_appearance))
-                    SettingsGroupCard {
-                        Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = stringResource(R.string.customize_seed),
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = stringResource(seedLabelRes(config.appearance.seed)),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (config.appearance.seed != defaults.appearance.seed) {
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    IconAction(
-                                        icon = Icons.Default.RestartAlt,
-                                        enabled = true,
-                                        labelRes = R.string.customize_reset_item,
-                                        onClick = {
-                                            updateConfig {
-                                                it.copy(appearance = it.appearance.copy(seed = defaults.appearance.seed))
-                                            }
-                                        },
-                                        boxSize = 30.dp,
-                                        iconSize = 17.dp
-                                    )
-                                }
-                            }
-                            SeedRow(
-                                selected = config.appearance.seed,
-                                onSelect = { seed ->
-                                    updateConfig { it.copy(appearance = it.appearance.copy(seed = seed)) }
-                                }
-                            )
-                        }
-                        RowDivider()
-                        SettingsSwitchRow(
-                            icon = Icons.Outlined.DarkMode,
-                            title = stringResource(R.string.customize_amoled),
-                            subtitle = stringResource(R.string.customize_amoled_summary),
-                            checked = config.appearance.amoled,
-                            onCheckedChange = { enabled ->
-                                updateConfig { it.copy(appearance = it.appearance.copy(amoled = enabled)) }
-                            }
-                        )
-                        RowDivider()
-                        Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = stringResource(R.string.customize_contrast),
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                if (config.appearance.contrast != defaults.appearance.contrast) {
-                                    IconAction(
-                                        icon = Icons.Default.RestartAlt,
-                                        enabled = true,
-                                        labelRes = R.string.customize_reset_item,
-                                        onClick = {
-                                            updateConfig {
-                                                it.copy(
-                                                    appearance = it.appearance.copy(contrast = defaults.appearance.contrast)
-                                                )
-                                            }
-                                        },
-                                        boxSize = 30.dp,
-                                        iconSize = 17.dp
-                                    )
-                                }
-                            }
-                            TwoWaySegment(
-                                firstLabel = stringResource(R.string.customize_contrast_standard),
-                                secondLabel = stringResource(R.string.customize_contrast_high),
-                                firstSelected = config.appearance.contrast == ContrastLevel.STANDARD,
-                                onSelectFirst = {
-                                    updateConfig {
-                                        it.copy(appearance = it.appearance.copy(contrast = ContrastLevel.STANDARD))
-                                    }
-                                },
-                                onSelectSecond = {
-                                    updateConfig {
-                                        it.copy(appearance = it.appearance.copy(contrast = ContrastLevel.HIGH))
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(GROUP_GAP))
-                }
+                item(key = "appearance") { AppearanceSection(config, defaults, updateConfig) }
 
                 item(key = "related-layout") {
                     GroupLabel(stringResource(R.string.customize_group_related))
@@ -376,12 +212,12 @@ fun CustomizeScreen(
                                     color = MaterialTheme.colorScheme.onBackground,
                                     modifier = Modifier.weight(1f)
                                 )
-                                if (draftRelatedLayout != null) {
+                                if (draft.relatedLayout != null) {
                                     Text(
                                         text = stringResource(R.string.customize_reset),
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.clickable { draftRelatedLayout = null }
+                                        modifier = Modifier.clickable { draft.setRelatedLayout(null) }
                                     )
                                 }
                             }
@@ -394,189 +230,18 @@ fun CustomizeScreen(
                             TwoWaySegment(
                                 firstLabel = stringResource(R.string.customize_layout_list),
                                 secondLabel = stringResource(R.string.customize_layout_grid),
-                                firstSelected = draftRelatedLayout != RelatedLayoutMode.GRID,
-                                onSelectFirst = { draftRelatedLayout = RelatedLayoutMode.LIST },
-                                onSelectSecond = { draftRelatedLayout = RelatedLayoutMode.GRID }
+                                firstSelected = draft.relatedLayout != RelatedLayoutMode.GRID,
+                                onSelectFirst = { draft.setRelatedLayout(RelatedLayoutMode.LIST) },
+                                onSelectSecond = { draft.setRelatedLayout(RelatedLayoutMode.GRID) }
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(GROUP_GAP))
                 }
 
-                item(key = "typography") {
-                    GroupLabel(stringResource(R.string.customize_group_typography))
-                    SettingsGroupCard {
-                        DecimalInputRow(
-                            title = stringResource(R.string.customize_font_scale),
-                            value = config.fontScale,
-                            range = FONT_SCALE_RANGE,
-                            unit = "×",
-                            hint = stringResource(
-                                R.string.customize_font_scale_hint,
-                                formatDecimal(FONT_SCALE_RANGE.start),
-                                formatDecimal(FONT_SCALE_RANGE.endInclusive)
-                            ),
-                            isDefault = config.fontScale == defaults.fontScale,
-                            onReset = { updateConfig { it.copy(fontScale = defaults.fontScale) } },
-                            onCommit = { v -> updateConfig { it.copy(fontScale = v) } }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(GROUP_GAP))
-                }
+                item(key = "typography") { TypographySection(config, defaults, updateConfig) }
 
-                item(key = "card") {
-                    GroupLabel(stringResource(R.string.customize_group_card))
-                    SettingsGroupCard {
-                        SliderRow(
-                            title = stringResource(R.string.customize_aspect_ratio),
-                            valueText = String.format(Locale.US, "%.2f:1", config.thumbnailAspectRatio),
-                            value = config.thumbnailAspectRatio,
-                            range = 1f..2f,
-                            defaultValue = defaults.thumbnailAspectRatio,
-                            isDefault = config.thumbnailAspectRatio == defaults.thumbnailAspectRatio,
-                            onReset = {
-                                updateConfig { it.copy(thumbnailAspectRatio = defaults.thumbnailAspectRatio) }
-                            },
-                            onPreview = { v ->
-                                updateConfig { it.copy(thumbnailAspectRatio = (v * 100).roundToInt() / 100f) }
-                            },
-                            onCommit = { v ->
-                                updateConfig { it.copy(thumbnailAspectRatio = (v * 100).roundToInt() / 100f) }
-                            }
-                        )
-                        RowDivider()
-                        SliderRow(
-                            title = stringResource(R.string.customize_card_radius),
-                            valueText = "${config.cardCornerRadius.value.roundToInt()}dp",
-                            value = config.cardCornerRadius.value,
-                            range = 0f..24f,
-                            defaultValue = defaults.cardCornerRadius.value,
-                            isDefault = config.cardCornerRadius == defaults.cardCornerRadius,
-                            onReset = { updateConfig { it.copy(cardCornerRadius = defaults.cardCornerRadius) } },
-                            onPreview = { v ->
-                                updateConfig { it.copy(cardCornerRadius = v.roundToInt().toFloat().dp) }
-                            },
-                            onCommit = { v ->
-                                updateConfig { it.copy(cardCornerRadius = v.roundToInt().toFloat().dp) }
-                            }
-                        )
-                        RowDivider()
-                        SliderRow(
-                            title = stringResource(R.string.customize_list_thumb_width),
-                            valueText = "${config.listThumbnailWidth.value.roundToInt()}dp",
-                            value = config.listThumbnailWidth.value,
-                            range = 100f..200f,
-                            defaultValue = defaults.listThumbnailWidth.value,
-                            isDefault = config.listThumbnailWidth == defaults.listThumbnailWidth,
-                            onReset = { updateConfig { it.copy(listThumbnailWidth = defaults.listThumbnailWidth) } },
-                            onPreview = { v ->
-                                updateConfig { it.copy(listThumbnailWidth = v.roundToInt().toFloat().dp) }
-                            },
-                            onCommit = { v ->
-                                updateConfig { it.copy(listThumbnailWidth = v.roundToInt().toFloat().dp) }
-                            }
-                        )
-                        RowDivider()
-                        ChoiceRow(
-                            title = stringResource(R.string.customize_image_quality),
-                            options = ThumbnailQuality.entries.map { it to stringResource(qualityLabelRes(it)) },
-                            selected = config.thumbnailQuality,
-                            isDefault = config.thumbnailQuality == defaults.thumbnailQuality,
-                            onReset = {
-                                updateConfig { it.copy(thumbnailQuality = defaults.thumbnailQuality) }
-                            },
-                            onSelect = { quality -> updateConfig { it.copy(thumbnailQuality = quality) } }
-                        )
-                        RowDivider()
-                        ChoiceRow(
-                            title = stringResource(R.string.customize_card_style),
-                            options = CardStyle.entries.map { it to stringResource(cardStyleLabelRes(it)) },
-                            selected = config.card.style,
-                            isDefault = config.card.style == defaults.card.style,
-                            onReset = {
-                                updateConfig { it.copy(card = it.card.copy(style = defaults.card.style)) }
-                            },
-                            onSelect = { style -> updateConfig { it.copy(card = it.card.copy(style = style)) } }
-                        )
-                        RowDivider()
-                        ChoiceRow(
-                            title = stringResource(R.string.customize_card_title_lines),
-                            options = (CardConfig.MIN_TITLE_LINES..CardConfig.MAX_TITLE_LINES).map { lines ->
-                                lines to stringResource(R.string.customize_card_title_lines_value, lines)
-                            },
-                            selected = config.card.titleLines,
-                            isDefault = config.card.titleLines == defaults.card.titleLines,
-                            onReset = {
-                                updateConfig { it.copy(card = it.card.copy(titleLines = defaults.card.titleLines)) }
-                            },
-                            onSelect = { lines -> updateConfig { it.copy(card = it.card.copy(titleLines = lines)) } }
-                        )
-                        RowDivider()
-                        Column(modifier = Modifier.padding(horizontal = CARD_INNER_H, vertical = CARD_INNER_V)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = stringResource(R.string.customize_card_corner_mode),
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                if (config.card.cornerMode != defaults.card.cornerMode) {
-                                    IconAction(
-                                        icon = Icons.Default.RestartAlt,
-                                        enabled = true,
-                                        labelRes = R.string.customize_reset_item,
-                                        onClick = {
-                                            updateConfig {
-                                                it.copy(card = it.card.copy(cornerMode = defaults.card.cornerMode))
-                                            }
-                                        },
-                                        boxSize = 30.dp,
-                                        iconSize = 17.dp
-                                    )
-                                }
-                            }
-                            TwoWaySegment(
-                                firstLabel = stringResource(R.string.customize_card_corner_all),
-                                secondLabel = stringResource(R.string.customize_card_corner_top),
-                                firstSelected = config.card.cornerMode == CornerMode.ALL,
-                                onSelectFirst = {
-                                    updateConfig { it.copy(card = it.card.copy(cornerMode = CornerMode.ALL)) }
-                                },
-                                onSelectSecond = {
-                                    updateConfig { it.copy(card = it.card.copy(cornerMode = CornerMode.TOP)) }
-                                }
-                            )
-                        }
-                        RowDivider()
-                        SettingsSwitchRow(
-                            icon = Icons.Outlined.Person,
-                            title = stringResource(R.string.customize_card_show_author),
-                            checked = config.card.showAuthor,
-                            onCheckedChange = { enabled ->
-                                updateConfig { it.copy(card = it.card.copy(showAuthor = enabled)) }
-                            }
-                        )
-                        RowDivider()
-                        SettingsSwitchRow(
-                            icon = Icons.Outlined.Schedule,
-                            title = stringResource(R.string.customize_card_show_time),
-                            checked = config.card.showPublishTime,
-                            onCheckedChange = { enabled ->
-                                updateConfig { it.copy(card = it.card.copy(showPublishTime = enabled)) }
-                            }
-                        )
-                        RowDivider()
-                        SettingsSwitchRow(
-                            icon = Icons.Outlined.Label,
-                            title = stringResource(R.string.customize_card_show_badges),
-                            checked = config.card.showBadges,
-                            onCheckedChange = { enabled ->
-                                updateConfig { it.copy(card = it.card.copy(showBadges = enabled)) }
-                            }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(GROUP_GAP))
-                }
+                item(key = "card") { CardSection(config, defaults, updateConfig) }
 
                 item(key = "banner") {
                     GroupLabel(stringResource(R.string.customize_group_banner))
@@ -696,42 +361,9 @@ fun CustomizeScreen(
                     Spacer(modifier = Modifier.height(GROUP_GAP))
                 }
 
-                item(key = "nav_labels") {
-                    SettingsGroupCard {
-                        SettingsSwitchRow(
-                            icon = Icons.Outlined.TextFields,
-                            title = stringResource(R.string.customize_nav_labels),
-                            subtitle = stringResource(R.string.customize_nav_labels_summary),
-                            checked = config.navBarShowLabels,
-                            onCheckedChange = { enabled ->
-                                updateConfig { it.copy(navBarShowLabels = enabled) }
-                            }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(GROUP_GAP))
-                }
+                item(key = "nav_labels") { NavLabelsSection(config, defaults, updateConfig) }
 
-                item(key = "grid") {
-                    GroupLabel(stringResource(R.string.customize_group_grid))
-                    SettingsGroupCard {
-                        SliderRow(
-                            title = stringResource(R.string.customize_grid_target_width),
-                            valueText = "${config.gridTargetWidth.value.roundToInt()}dp",
-                            value = config.gridTargetWidth.value,
-                            range = 96f..320f,
-                            defaultValue = defaults.gridTargetWidth.value,
-                            isDefault = config.gridTargetWidth == defaults.gridTargetWidth,
-                            onReset = { updateConfig { it.copy(gridTargetWidth = defaults.gridTargetWidth) } },
-                            onPreview = { v ->
-                                updateConfig { it.copy(gridTargetWidth = v.roundToInt().toFloat().dp) }
-                            },
-                            onCommit = { v ->
-                                updateConfig { it.copy(gridTargetWidth = v.roundToInt().toFloat().dp) }
-                            }
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(GROUP_GAP))
-                }
+                item(key = "grid") { GridSection(config, defaults, updateConfig) }
 
                 item(key = "home_sections") {
                     GroupLabel(stringResource(R.string.customize_group_home_sections))
@@ -808,7 +440,7 @@ fun CustomizeScreen(
                             icon = Icons.Default.Share,
                             title = stringResource(R.string.customize_export),
                             onClick = {
-                                copyToClipboard(context, UiConfigCodec.export(draftConfig, draftSections))
+                                copyToClipboard(context, UiConfigCodec.export(draft.config, draft.sections))
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.customize_export_done),
@@ -865,8 +497,7 @@ fun CustomizeScreen(
             confirmLabel = stringResource(R.string.common_confirm),
             onConfirm = {
                 UiConfigStore.reset()
-                draftConfig = UiConfig.Default
-                draftSections = HomeSectionConfig.Default
+                draft.replace(UiConfig.Default, HomeSectionConfig.Default)
                 Toast.makeText(context, context.getString(R.string.customize_reset_done), Toast.LENGTH_SHORT).show()
                 showResetDialog = false
             },
@@ -893,8 +524,7 @@ fun CustomizeScreen(
                         val result = UiConfigStore.importFromText(importInput)
                         val messageRes = when (result) {
                             is UiConfigImport.Success -> {
-                                draftConfig = UiConfigStore.config.value
-                                draftSections = UiConfigStore.homeSections.value
+                                draft.replace(UiConfigStore.config.value, UiConfigStore.homeSections.value)
                                 R.string.customize_import_done
                             }
                             UiConfigImport.UnsupportedVersion -> R.string.customize_import_version
