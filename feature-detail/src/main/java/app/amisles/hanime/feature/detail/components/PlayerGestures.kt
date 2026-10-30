@@ -18,17 +18,17 @@ import androidx.compose.ui.unit.dp
 
 internal fun Modifier.playerGestures(
     onControlsVisibleChange: (Boolean) -> Unit,
-    isControlsVisible: Boolean,
+    isControlsVisible: () -> Boolean,
     controlsActivityRef: MutableLongState,
-    longPressBoostSpeed: Float,
+    longPressBoostSpeed: () -> Float,
     volumeState: MutableFloatState,
     exoPlayer: ExoPlayer,
     density: Density,
     context: android.content.Context,
-    menuOpen: Boolean,
-    isInPip: Boolean,
-    playerWidth: Float,
-    playerHeight: Float,
+    menuOpen: () -> Boolean,
+    isInPip: () -> Boolean,
+    playerWidth: () -> Float,
+    playerHeight: () -> Float,
     gestureScope: CoroutineScope,
     gestureHintState: MutableState<String?>,
     lastTapTimeState: MutableLongState,
@@ -44,7 +44,7 @@ internal fun Modifier.playerGestures(
     seekForward: () -> Unit,
     setBrightness: (Float) -> Unit,
     setLongPressBoost: (Boolean) -> Unit,
-    doubleTapSeekEnabled: Boolean
+    doubleTapSeekEnabled: () -> Boolean
 ): Modifier = this
     .pointerInput(Unit) {
         // 阈值按屏幕密度换算成像素：固定 8px 在高密度屏上只有约 3dp，远低于系统 touch slop，
@@ -86,14 +86,14 @@ internal fun Modifier.playerGestures(
                         longPressJob?.cancel()
                         // 浮层打开期间不处理点击：滑动浮层时父级未判定拖动，moved 仍为 false，
                         // 松手会被当成空白点击而隐藏控件，浮层随之关闭
-                        if (!moved && !isZoom && !menuOpen) {
+                        if (!moved && !isZoom && !menuOpen()) {
                             // 视为一次点击
                             val now = System.currentTimeMillis()
                             if (now - lastTapTimeState.value < 300L) {
                                 lastTapTimeState.value = 0L
                                 // 关闭双击快进时：既不跳转也不切换控制栏，否则连点会让显隐抖动
-                                if (doubleTapSeekEnabled && !isInPip) {
-                                    val rewind = downX < playerWidth / 2f
+                                if (doubleTapSeekEnabled() && !isInPip()) {
+                                    val rewind = downX < playerWidth() / 2f
                                     if (rewind) seekBackward() else seekForward()
                                     gestureHintState.value = if (rewind)
                                         context.getString(R.string.player_rewind_15s)
@@ -107,7 +107,7 @@ internal fun Modifier.playerGestures(
                                     isControlTapState.value = false
                                     lastTapTimeState.value = 0L
                                 } else {
-                                    onControlsVisibleChange(!isControlsVisible)
+                                    onControlsVisibleChange(!isControlsVisible())
                                     showSpeedMenuState.value = false
                                     showQualityMenuState.value = false
                                     showMoreMenuState.value = false
@@ -168,23 +168,23 @@ internal fun Modifier.playerGestures(
                             // 启动长按加速定时器：单指静止按住满 1s 才触发加速，松手/移动/缩放即取消
                             longPressJob = gestureScope.launch {
                                 delay(1000L)
-                                if (!menuOpen && !longPressFired && !moved && !isZoom && dragMode == null) {
+                                if (!menuOpen() && !longPressFired && !moved && !isZoom && dragMode == null) {
                                     longPressFired = true
                                     setLongPressBoost(true)
                                     showSpeedMenuState.value = false
                                     showQualityMenuState.value = false
                                     gestureHintState.value = context.getString(
                                         R.string.player_long_press_boost,
-                                        trimSpeedText(longPressBoostSpeed)
+                                        trimSpeedText(longPressBoostSpeed())
                                     )
                                 }
                             }
-                            if (!menuOpen) {
+                            if (!menuOpen()) {
                                 event.changes.forEach { it.consume() }
                             }
                             continue
                         }
-                        if (menuOpen) {
+                        if (menuOpen()) {
                             // 浮层打开期间不判定拖动：滑动应由浮层自身消费
                             lastX = x
                             lastY = y
@@ -193,7 +193,7 @@ internal fun Modifier.playerGestures(
                         if (dragMode == null) {
                             val mode = gestureMath.onMove(
                                 x = x, y = y, lastX = lastX, lastY = lastY,
-                                downX = downX, playerWidth = playerWidth
+                                downX = downX, playerWidth = playerWidth()
                             )
                             if (mode != null) {
                                 moved = true
@@ -213,7 +213,7 @@ internal fun Modifier.playerGestures(
                                         startPosition = seekStartPos,
                                         startX = startX,
                                         currentX = x,
-                                        playerWidth = playerWidth,
+                                        playerWidth = playerWidth(),
                                         duration = dur
                                     )
                                     if (dur > 0) {
@@ -221,16 +221,16 @@ internal fun Modifier.playerGestures(
                                     }
                                 }
                                 DragMode.BRIGHTNESS -> {
-                                    if (playerHeight > 0f) {
-                                        val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight)
+                                    if (playerHeight() > 0f) {
+                                        val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight())
                                         brightnessState.value = (brightnessState.value + delta).coerceIn(0f, 1f)
                                         setBrightness(brightnessState.value)
                                         gestureHintState.value = context.getString(R.string.player_brightness, (brightnessState.value * 100).toInt())
                                     }
                                 }
                                 DragMode.VOLUME -> {
-                                    if (playerHeight > 0f) {
-                                        val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight)
+                                    if (playerHeight() > 0f) {
+                                        val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight())
                                         volumeState.value = (volumeState.value + delta).coerceIn(0f, 1f)
                                         exoPlayer.volume = volumeState.value
                                         isMutedState.value = volumeState.value == 0f
@@ -245,7 +245,7 @@ internal fun Modifier.playerGestures(
 
                     // 浮层打开时不接管手势：弹层是本 Box 的子节点，父级先消费会让
                     // 子级的垂直滚动收不到未消费事件，表现为浮层无法上下滑动。
-                    if (!menuOpen) {
+                    if (!menuOpen()) {
                         // 消费事件，避免父级（如页面/列表）误响应本播放器手势
                         event.changes.forEach { it.consume() }
                     }

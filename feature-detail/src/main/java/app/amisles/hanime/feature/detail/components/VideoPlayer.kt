@@ -641,15 +641,15 @@ fun VideoPlayer(
                 exoPlayer = exoPlayer,
                 density = density,
                 context = context,
-                menuOpen = menuOpenRef.value,
-    isControlsVisible = isControlsVisible,
+                menuOpen = { menuOpenRef.value },
+    isControlsVisible = { isControlsVisible },
     onControlsVisibleChange = { isControlsVisible = it },
     controlsActivityRef = controlsActivityRef,
-    longPressBoostSpeed = longPressBoostSpeed,
+    longPressBoostSpeed = { longPressBoostSpeed },
     volumeState = volumeState,
-                isInPip = isInPip,
-                playerWidth = playerWidth,
-                playerHeight = playerHeight,
+                isInPip = { isInPip },
+                playerWidth = { playerWidth },
+                playerHeight = { playerHeight },
                             gestureScope = gestureScope,
                 gestureHintState = gestureHintState,
                 lastTapTimeState = lastTapTimeState,
@@ -665,7 +665,7 @@ fun VideoPlayer(
                 seekForward = { seekForward() },
                 setBrightness = { setBrightness(it) },
                 setLongPressBoost = { setLongPressBoost(it) },
-                doubleTapSeekEnabled = doubleTapSeekEnabled
+                doubleTapSeekEnabled = { doubleTapSeekEnabled }
             )
     ) {
         AndroidView(
