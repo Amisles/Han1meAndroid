@@ -42,6 +42,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -220,6 +221,18 @@ fun HanimeApp(
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
+    var homeReselectTick by rememberSaveable { mutableIntStateOf(0) }
+    var searchReselectTick by rememberSaveable { mutableIntStateOf(0) }
+    var downloadReselectTick by rememberSaveable { mutableIntStateOf(0) }
+    val onTabNavigate: (String) -> Unit = { route ->
+        if (!navController.navigateToTab(route)) {
+            when (route) {
+                "home" -> homeReselectTick++
+                "search" -> searchReselectTick++
+                "download" -> downloadReselectTick++
+            }
+        }
+    }
     val quickActionsVm: VideoQuickActionsViewModel = hiltViewModel()
     var favoriteSheetVideo by remember { mutableStateOf<HanimeVideo?>(null) }
     val onVideoLongClick: (HanimeVideo) -> Unit = { video ->
@@ -302,7 +315,7 @@ fun HanimeApp(
             if (showBottomBar && useRail) {
                 NavRail(
                     currentRoute = currentRoute,
-                    onNavigate = { route -> navController.navigateToTab(route) },
+                    onNavigate = onTabNavigate,
                     showLabels = uiCfg.navBarShowLabels
                 )
             }
@@ -323,7 +336,7 @@ fun HanimeApp(
                     ) {
                         BottomNav(
                             currentRoute = currentRoute,
-                            onNavigate = { route -> navController.navigateToTab(route) },
+                            onNavigate = onTabNavigate,
                             showLabels = uiCfg.navBarShowLabels
                         )
                     }
@@ -343,6 +356,9 @@ fun HanimeApp(
                     onOpenProfile = { profileOpen = true },
                     onVideoLongClick = onVideoLongClick,
                     onFavoriteAll = { videos -> quickActionsVm.favoriteAll(videos) },
+                    homeReselectTick = homeReselectTick,
+                    searchReselectTick = searchReselectTick,
+                    downloadReselectTick = downloadReselectTick,
                     modifier = if (useRail || currentRoute.startsWith("localPlayer")) {
                         navModifier
                     } else {

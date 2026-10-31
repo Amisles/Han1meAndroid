@@ -12,11 +12,12 @@ internal fun NavController.navigateToRoot(route: String) {
 
 internal fun NavController.navigateToSearch(route: String) = navigateToRoot(route)
 
-internal fun NavController.navigateToTab(route: String) {
-    if (currentDestination?.route?.baseRoute() == route) return
+internal fun NavController.navigateToTab(route: String): Boolean {
+    if (currentDestination?.route?.baseRoute() == route) return false
     navigate(route) {
         popUpTo(graph.startDestinationId) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
+    return true
 }

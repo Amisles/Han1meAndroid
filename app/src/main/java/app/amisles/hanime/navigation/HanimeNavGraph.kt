@@ -54,6 +54,9 @@ internal fun HanimeNavGraph(
     onOpenProfile: () -> Unit,
     onVideoLongClick: (HanimeVideo) -> Unit,
     onFavoriteAll: (List<HanimeVideo>) -> Unit,
+    homeReselectTick: Int = 0,
+    searchReselectTick: Int = 0,
+    downloadReselectTick: Int = 0,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -87,6 +90,7 @@ internal fun HanimeNavGraph(
     ) {
         composable("home") {
             HomeScreen(
+                reselectTick = homeReselectTick,
                 onVideoClick = { videoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                 // 保持 saveState / launchSingleTop / restoreState 不变：
@@ -285,6 +289,7 @@ internal fun HanimeNavGraph(
                 initialGenre = genre,
                 initialSort = sort,
                 initialToken = ts,
+                reselectTick = searchReselectTick,
                 onVideoClick = { videoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                 onAuthorClick = { author ->
@@ -295,6 +300,7 @@ internal fun HanimeNavGraph(
         }
         composable("download") {
             DownloadScreen(
+                reselectTick = downloadReselectTick,
                 onPlayLocalVideo = { filePath ->
                     navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
                 }
