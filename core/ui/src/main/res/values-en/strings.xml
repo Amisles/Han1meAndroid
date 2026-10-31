@@ -1051,4 +1051,5 @@
     <string name="update_download_signature_mismatch">The package signature does not match this app, so installation was cancelled.</string>
     <string name="update_download_storage">Could not write the package. Check available storage.</string>
     <string name="update_install_failed">Could not start the installer. Please download it in the browser.</string>
+    <string name="comment_like_failed">Could not like the comment. Please try again.</string>
 </resources>

@@ -1051,4 +1051,5 @@
     <string name="update_download_signature_mismatch">パッケージの署名がアプリと一致しないため、インストールを中止しました。</string>
     <string name="update_download_storage">パッケージを書き込めません。空き容量を確認してください。</string>
     <string name="update_install_failed">インストーラーを起動できませんでした。ブラウザから手動でダウンロードしてください。</string>
+    <string name="comment_like_failed">いいねに失敗しました。しばらくしてから再試行してください。</string>
 </resources>

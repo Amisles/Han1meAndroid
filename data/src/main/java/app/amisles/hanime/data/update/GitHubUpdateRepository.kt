@@ -151,10 +151,8 @@ class GitHubUpdateRepository @Inject constructor(
                 .build()
             downloadClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return@withContext ApkDownloadResult.Failure(
-                        ApkFailureReason.HTTP,
-                        "HTTP ${response.code}"
-                    )
+                    AppLogger.log(TAG, "下载安装包失败（HTTP ${response.code}）")
+                    return@withContext ApkDownloadResult.Failure(ApkFailureReason.HTTP)
                 }
                 val total = response.body.contentLength()
                 response.body.byteStream().use { input ->
@@ -184,7 +182,8 @@ class GitHubUpdateRepository @Inject constructor(
             val mismatch = verifyApkPackage(target)
             if (mismatch != null) {
                 target.delete()
-                return@withContext ApkDownloadResult.Failure(ApkFailureReason.SIGNATURE, mismatch)
+                AppLogger.log(TAG, "安装包校验失败: $mismatch")
+                return@withContext ApkDownloadResult.Failure(ApkFailureReason.SIGNATURE)
             }
             onProgress(1f)
             AppLogger.log(TAG, "安装包已下载并通过校验: ${target.length()} bytes")
@@ -195,11 +194,11 @@ class GitHubUpdateRepository @Inject constructor(
         } catch (e: IOException) {
             temp.delete()
             AppLogger.log(TAG, "下载安装包失败（网络）: ${e.message}")
-            ApkDownloadResult.Failure(ApkFailureReason.NETWORK, e.message.orEmpty(), e)
+            ApkDownloadResult.Failure(ApkFailureReason.NETWORK, e)
         } catch (e: Exception) {
             temp.delete()
             AppLogger.logError(TAG, "下载安装包失败: ${e.message}", e)
-            ApkDownloadResult.Failure(ApkFailureReason.UNKNOWN, e.message.orEmpty(), e)
+            ApkDownloadResult.Failure(ApkFailureReason.UNKNOWN, e)
         }
     }
 

@@ -52,7 +52,6 @@ sealed class ApkDownloadResult {
 
     data class Failure(
         val reason: ApkFailureReason,
-        val detail: String = "",
         val throwable: Throwable? = null
     ) : ApkDownloadResult()
 }

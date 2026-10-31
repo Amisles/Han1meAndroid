@@ -212,7 +212,13 @@ class CommentViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "Error loading comments: ${e.message}", e)
-                if (isSameVideoAsRequest(requestVideoId)) _commentsError.value = e.message
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _commentsError.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.comment_load_failed)
+                    )
+                }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isLoadingComments.value = false
             }
@@ -264,7 +270,11 @@ class CommentViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "loadMoreComments failed: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _commentsError.value = e.message
+                    _commentsError.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.comment_load_failed)
+                    )
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isLoadingMoreComments.value = false
@@ -321,7 +331,13 @@ class CommentViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "Error loading replies: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _repliesError.value = _repliesError.value + (commentId to e.message)
+                    _repliesError.value = _repliesError.value + (
+                        commentId to ErrorMapper.message(
+                            context,
+                            e,
+                            context.getString(R.string.comment_reply_load_failed)
+                        )
+                        )
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) {
@@ -453,7 +469,11 @@ class CommentViewModel @Inject constructor(
                 AppLogger.e("CommentViewModel", "Error posting reply: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
                     rollbackOptimisticReply(target.commentId, optimisticReply.id)
-                    _replyError.value = e.message
+                    _replyError.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.comment_post_failed)
+                    )
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isPostingReply.value = false
@@ -543,7 +563,13 @@ class CommentViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "Error posting comment: ${e.message}", e)
-                if (isSameVideoAsRequest(requestVideoId)) _postCommentError.value = e.message
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _postCommentError.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.comment_post_failed)
+                    )
+                }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) _isPostingComment.value = false
             }
@@ -616,7 +642,11 @@ class CommentViewModel @Inject constructor(
                 AppLogger.e("CommentViewModel", "Error toggling comment like: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
                     _comments.value = _comments.value.map { if (it.id == comment.id) comment else it }
-                    _commentLikeError.value = e.message
+                    _commentLikeError.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.comment_like_failed)
+                    )
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) {
