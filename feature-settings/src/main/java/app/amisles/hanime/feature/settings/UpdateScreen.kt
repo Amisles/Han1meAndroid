@@ -29,6 +29,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -72,6 +73,7 @@ fun UpdateScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val autoCheck by viewModel.autoCheckEnabled.collectAsStateWithLifecycle()
     val skippedVersion by viewModel.skippedVersion.collectAsStateWithLifecycle()
+    val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Column(
@@ -175,9 +177,13 @@ fun UpdateScreen(
                 is UpdateUiState.Available -> UpdateAvailableCard(
                     update = state.update,
                     currentVersion = state.currentVersion,
-                    onDownload = { openReleasePage(context, state.update.apkUrl.ifBlank { state.update.htmlUrl }) },
+                    onDownload = {
+                        viewModel.clearDownloadState()
+                        viewModel.downloadAndInstall(state.update)
+                    },
                     onOpenRelease = { openReleasePage(context, state.update.htmlUrl) },
-                    onSkip = { viewModel.skipCurrentVersion() }
+                    onSkip = { viewModel.skipCurrentVersion() },
+                    downloadState = downloadState
                 )
 
                 // 被跳过的版本与「已是最新」必须分开呈现：
@@ -185,9 +191,13 @@ fun UpdateScreen(
                 is UpdateUiState.Skipped -> UpdateAvailableCard(
                     update = state.update,
                     currentVersion = state.currentVersion,
-                    onDownload = { openReleasePage(context, state.update.apkUrl.ifBlank { state.update.htmlUrl }) },
+                    onDownload = {
+                        viewModel.clearDownloadState()
+                        viewModel.downloadAndInstall(state.update)
+                    },
                     onOpenRelease = { openReleasePage(context, state.update.htmlUrl) },
                     onSkip = { viewModel.clearSkippedVersion() },
+                    downloadState = downloadState,
                     skipped = true
                 )
 
@@ -338,6 +348,7 @@ private fun UpdateAvailableCard(
     onDownload: () -> Unit,
     onOpenRelease: () -> Unit,
     onSkip: () -> Unit,
+    downloadState: UpdateDownloadState = UpdateDownloadState.Idle,
     /** true 表示该版本已被用户跳过，卡片以「已忽略」的措辞呈现。 */
     skipped: Boolean = false
 ) {
@@ -421,15 +432,42 @@ private fun UpdateAvailableCard(
 
             Spacer(Modifier.height(16.dp))
 
+            val downloading = downloadState as? UpdateDownloadState.Downloading
             Button(
                 onClick = onDownload,
+                enabled = downloading == null,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
-                    text = stringResource(
-                        if (update.hasApk) R.string.update_download else R.string.update_open_release
-                    )
+                    text = when {
+                        downloading != null -> stringResource(
+                            R.string.update_downloading,
+                            (downloading.progress * 100).toInt()
+                        )
+
+                        update.hasApk -> stringResource(R.string.update_download)
+                        else -> stringResource(R.string.update_open_release)
+                    }
+                )
+            }
+
+            if (downloading != null) {
+                LinearProgressIndicator(
+                    progress = { downloading.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                )
+            }
+
+            val downloadFailure = downloadState as? UpdateDownloadState.Failed
+            if (downloadFailure != null) {
+                Text(
+                    text = downloadFailure.message,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
 

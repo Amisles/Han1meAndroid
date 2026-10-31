@@ -70,7 +70,6 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
-import app.amisles.hanime.feature.settings.openReleasePage
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.NavigationStyle
@@ -215,9 +214,6 @@ fun HanimeApp(
     val sizeInfo = currentWindowSizeInfo()
     val uiCfg = UiConfigStore.config.collectAsStateWithLifecycle().value
     val useRail = uiCfg.resolvedNavStyle(sizeInfo.isTablet) == NavigationStyle.RAIL
-
-    // 打开发行版页面 / 安装包直链需要 Context；在组合期取一次即可
-    val appContext = LocalContext.current
 
     val activity = LocalContext.current as? ComponentActivity
 
@@ -537,10 +533,8 @@ fun HanimeApp(
         UpdateAvailableDialog(
             update = pendingUpdate,
             onUpdate = {
-                // 有安装包直链时直接下载，否则退到发行版页面让用户自行选择
-                val url = pendingUpdate.apkUrl.ifBlank { pendingUpdate.htmlUrl }
-                openReleasePage(appContext, url)
                 dismissedUpdateVersion = pendingUpdate.versionName
+                navController.navigate("update")
             },
             onSkipVersion = {
                 updateRepository.skipVersion(pendingUpdate.versionName)

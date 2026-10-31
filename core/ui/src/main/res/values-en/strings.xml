@@ -1047,4 +1047,9 @@
     <string name="cd_downloaded">Downloaded</string>
     <string name="cd_favorite">In favorites</string>
     <string name="cd_watched">Watched</string>
+    <string name="update_downloading">Downloading %1$d%%</string>
+    <string name="update_download_failed">Could not download the package. Please download it in the browser.</string>
+    <string name="update_download_signature_mismatch">The package signature does not match this app, so installation was cancelled.</string>
+    <string name="update_download_storage">Could not write the package. Check available storage.</string>
+    <string name="update_install_failed">Could not start the installer. Please download it in the browser.</string>
 </resources>

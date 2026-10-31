@@ -1,16 +1,23 @@
 package app.amisles.hanime.data.update
 
 import android.content.Context
+import android.content.pm.PackageManager
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.ApkDownloadResult
+import app.amisles.hanime.domain.model.ApkFailureReason
 import app.amisles.hanime.domain.model.AppUpdate
 import app.amisles.hanime.domain.model.UpdateCheckResult
 import app.amisles.hanime.domain.repository.UpdateRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,6 +87,18 @@ class GitHubUpdateRepository @Inject constructor(
         // 刻意不挂 CookieJar：见类注释第 1 点
         .build()
 
+    /**
+     * 下载安装包用的 client。
+     *
+     * 不能复用 [client]：后者设了 16 秒的 callTimeout，那是给「一次 API 查询」定的，
+     * 用在几 MB 的 APK 上会让下载在 16 秒后必然中断。
+     */
+    private val downloadClient = OkHttpClient.Builder()
+        .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(30L, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
+
     /** 串行化检查：启动检查与用户手动检查可能同时发生，避免重复请求与状态互踩。 */
     private val checkMutex = Mutex()
 
@@ -107,6 +126,99 @@ class GitHubUpdateRepository @Inject constructor(
 
     override fun setAutoCheckEnabled(enabled: Boolean) {
         Preferences.setAutoCheckUpdateEnabled(enabled)
+    }
+
+    override suspend fun downloadApk(
+        update: AppUpdate,
+        onProgress: (Float) -> Unit
+    ): ApkDownloadResult = withContext(Dispatchers.IO) {
+        if (update.apkUrl.isBlank()) {
+            return@withContext ApkDownloadResult.Failure(ApkFailureReason.NO_APK)
+        }
+        val dir = File(context.cacheDir, "updates")
+        if (!dir.exists() && !dir.mkdirs()) {
+            return@withContext ApkDownloadResult.Failure(ApkFailureReason.STORAGE)
+        }
+        val temp = File(dir, "update.apk.part")
+        val target = File(dir, "update.apk")
+        temp.delete()
+        try {
+            val request = Request.Builder()
+                .url(update.apkUrl)
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/octet-stream")
+                .get()
+                .build()
+            downloadClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext ApkDownloadResult.Failure(
+                        ApkFailureReason.HTTP,
+                        "HTTP ${response.code}"
+                    )
+                }
+                val total = response.body.contentLength()
+                response.body.byteStream().use { input ->
+                    FileOutputStream(temp).use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var written = 0L
+                        var lastReport = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            written += read
+                            val now = System.currentTimeMillis()
+                            if (total > 0 && now - lastReport >= 120) {
+                                lastReport = now
+                                onProgress((written.toFloat() / total).coerceIn(0f, 1f))
+                            }
+                        }
+                        output.flush()
+                    }
+                }
+            }
+            target.delete()
+            if (!temp.renameTo(target)) {
+                return@withContext ApkDownloadResult.Failure(ApkFailureReason.STORAGE)
+            }
+            val mismatch = verifyApkPackage(target)
+            if (mismatch != null) {
+                target.delete()
+                return@withContext ApkDownloadResult.Failure(ApkFailureReason.SIGNATURE, mismatch)
+            }
+            onProgress(1f)
+            AppLogger.log(TAG, "安装包已下载并通过校验: ${target.length()} bytes")
+            ApkDownloadResult.Success(target.absolutePath)
+        } catch (e: CancellationException) {
+            temp.delete()
+            throw e
+        } catch (e: IOException) {
+            temp.delete()
+            AppLogger.log(TAG, "下载安装包失败（网络）: ${e.message}")
+            ApkDownloadResult.Failure(ApkFailureReason.NETWORK, e.message.orEmpty(), e)
+        } catch (e: Exception) {
+            temp.delete()
+            AppLogger.logError(TAG, "下载安装包失败: ${e.message}", e)
+            ApkDownloadResult.Failure(ApkFailureReason.UNKNOWN, e.message.orEmpty(), e)
+        }
+    }
+
+    private fun verifyApkPackage(apk: File): String? {
+        val pm = context.packageManager
+        val archive = runCatching {
+            pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
+        }.getOrNull() ?: return "unreadable"
+        if (archive.packageName != context.packageName) return "package mismatch"
+        val archiveSigners = archive.signingInfo?.apkContentsSigners.orEmpty()
+        val installedSigners = runCatching {
+            pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+                .signingInfo?.apkContentsSigners.orEmpty()
+        }.getOrDefault(emptyArray())
+        if (archiveSigners.isEmpty() || installedSigners.isEmpty()) return "no signer"
+        val digest = MessageDigest.getInstance("SHA-256")
+        val archiveDigest = digest.digest(archiveSigners.first().toByteArray())
+        val installedDigest = digest.digest(installedSigners.first().toByteArray())
+        return if (archiveDigest.contentEquals(installedDigest)) null else "signature mismatch"
     }
 
     override fun skipVersion(versionName: String) {

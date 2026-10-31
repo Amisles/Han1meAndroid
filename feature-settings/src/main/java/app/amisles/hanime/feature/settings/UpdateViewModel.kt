@@ -1,18 +1,24 @@
 package app.amisles.hanime.feature.settings
 
 import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
+import app.amisles.hanime.domain.model.ApkDownloadResult
+import app.amisles.hanime.domain.model.ApkFailureReason
 import app.amisles.hanime.domain.model.AppUpdate
 import app.amisles.hanime.domain.model.UpdateCheckResult
 import app.amisles.hanime.domain.repository.UpdateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +53,14 @@ sealed interface UpdateUiState {
     ) : UpdateUiState
 }
 
+/** 安装包下载状态。 */
+sealed interface UpdateDownloadState {
+    data object Idle : UpdateDownloadState
+    data class Downloading(val progress: Float) : UpdateDownloadState
+    data object Launched : UpdateDownloadState
+    data class Failed(val message: String) : UpdateDownloadState
+}
+
 /**
  * 更新页 ViewModel。
  *
@@ -63,6 +77,11 @@ class UpdateViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val uiState: StateFlow<UpdateUiState> = _uiState.asStateFlow()
+
+    private val _downloadState = MutableStateFlow<UpdateDownloadState>(UpdateDownloadState.Idle)
+    val downloadState: StateFlow<UpdateDownloadState> = _downloadState.asStateFlow()
+
+    private var downloadJob: Job? = null
 
     val currentVersion: String = updates.currentVersion
 
@@ -108,6 +127,72 @@ class UpdateViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun downloadAndInstall(update: AppUpdate) {
+        if (update.apkUrl.isBlank()) {
+            openReleasePage(context, update.htmlUrl)
+            return
+        }
+        if (_downloadState.value is UpdateDownloadState.Downloading) return
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            _downloadState.value = UpdateDownloadState.Downloading(0f)
+            val result = updates.downloadApk(update) { progress ->
+                _downloadState.value = UpdateDownloadState.Downloading(progress)
+            }
+            _downloadState.value = when (result) {
+                is ApkDownloadResult.Success ->
+                    if (installApk(result.filePath)) {
+                        UpdateDownloadState.Launched
+                    } else {
+                        UpdateDownloadState.Failed(
+                            context.getString(R.string.update_install_failed)
+                        )
+                    }
+
+                is ApkDownloadResult.Failure -> UpdateDownloadState.Failed(failureMessage(result))
+            }
+        }
+    }
+
+    fun clearDownloadState() {
+        if (_downloadState.value is UpdateDownloadState.Downloading) return
+        _downloadState.value = UpdateDownloadState.Idle
+    }
+
+    private fun failureMessage(result: ApkDownloadResult.Failure): String = when (result.reason) {
+        ApkFailureReason.SIGNATURE ->
+            context.getString(R.string.update_download_signature_mismatch)
+
+        ApkFailureReason.STORAGE -> context.getString(R.string.update_download_storage)
+
+        ApkFailureReason.NETWORK, ApkFailureReason.UNKNOWN -> ErrorMapper.message(
+            context,
+            result.throwable,
+            context.getString(R.string.update_download_failed)
+        )
+
+        ApkFailureReason.NO_APK, ApkFailureReason.HTTP ->
+            context.getString(R.string.update_download_failed)
+    }
+
+    private fun installApk(path: String): Boolean = runCatching {
+        val uri = FileProvider.getUriForFile(
+            context,
+            context.packageName + ".fileprovider",
+            File(path)
+        )
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        )
+        true
+    }.getOrElse { e ->
+        AppLogger.e("UpdateViewModel", "拉起安装程序失败: ${e.message}", e)
+        false
     }
 
     fun setAutoCheckEnabled(enabled: Boolean) {

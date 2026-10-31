@@ -37,6 +37,26 @@ data class AppUpdate(
  * 「确实没有新版本」是两种截然不同的状态，界面必须能区分 —— 前者应提示「检查失败」，
  * 后者应提示「已是最新版本」。合并成同一个 null 会让后者永远无法被正确表达。
  */
+/** 安装包下载失败的原因，界面据此给出可操作的提示。 */
+enum class ApkFailureReason {
+    NO_APK,
+    NETWORK,
+    HTTP,
+    STORAGE,
+    SIGNATURE,
+    UNKNOWN
+}
+
+sealed class ApkDownloadResult {
+    data class Success(val filePath: String) : ApkDownloadResult()
+
+    data class Failure(
+        val reason: ApkFailureReason,
+        val detail: String = "",
+        val throwable: Throwable? = null
+    ) : ApkDownloadResult()
+}
+
 sealed class UpdateCheckResult {
     /** 已是最新版本；[currentVersion] 用于展示。 */
     data class UpToDate(val currentVersion: String) : UpdateCheckResult()

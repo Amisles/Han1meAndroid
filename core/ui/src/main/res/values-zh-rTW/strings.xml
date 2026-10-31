@@ -1047,4 +1047,9 @@
     <string name="cd_downloaded">已下載</string>
     <string name="cd_favorite">已收藏</string>
     <string name="cd_watched">已看完</string>
+    <string name="update_downloading">正在下載 %1$d%%</string>
+    <string name="update_download_failed">下載安裝包失敗，請在瀏覽器中手動下載</string>
+    <string name="update_download_signature_mismatch">安裝包簽章與應用不一致，已取消安裝</string>
+    <string name="update_download_storage">無法寫入安裝包，請檢查儲存空間</string>
+    <string name="update_install_failed">無法啟動安裝程式，請在瀏覽器中手動下載</string>
 </resources>

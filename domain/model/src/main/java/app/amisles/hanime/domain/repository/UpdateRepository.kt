@@ -1,5 +1,7 @@
 package app.amisles.hanime.domain.repository
 
+import app.amisles.hanime.domain.model.ApkDownloadResult
+import app.amisles.hanime.domain.model.AppUpdate
 import app.amisles.hanime.domain.model.UpdateCheckResult
 import kotlinx.coroutines.flow.StateFlow
 
@@ -34,6 +36,16 @@ interface UpdateRepository {
         includePrerelease: Boolean = false,
         force: Boolean = false
     ): UpdateCheckResult
+
+    /**
+     * 下载更新安装包并校验其与应用签名一致。
+     *
+     * @param onProgress 0..1 的下载进度。
+     */
+    suspend fun downloadApk(
+        update: AppUpdate,
+        onProgress: (Float) -> Unit
+    ): ApkDownloadResult
 
     /**
      * 把某个版本记为「不再提示」。
