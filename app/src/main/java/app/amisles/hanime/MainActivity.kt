@@ -78,9 +78,11 @@ import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.feature.settings.network.CloudflareChallengeDialog
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
+import app.amisles.hanime.core.ui.components.LocalVideoLocalState
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.VideoQuickActionsHost
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.ui.viewmodel.VideoLocalStateViewModel
 import app.amisles.hanime.ui.viewmodel.VideoQuickActionsViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.ui.components.NavRail
@@ -234,6 +236,8 @@ fun HanimeApp(
         }
     }
     val quickActionsVm: VideoQuickActionsViewModel = hiltViewModel()
+    val videoLocalStateVm: VideoLocalStateViewModel = hiltViewModel()
+    val videoLocalState by videoLocalStateVm.state.collectAsStateWithLifecycle()
     var favoriteSheetVideo by remember { mutableStateOf<HanimeVideo?>(null) }
     val onVideoLongClick: (HanimeVideo) -> Unit = { video ->
         favoriteSheetVideo = video
@@ -351,25 +355,27 @@ fun HanimeApp(
                         .navigationBarsPadding()
                         .padding(bottom = innerPadding.calculateBottomPadding())
                 }
-                HanimeNavGraph(
-                    navController = navController,
-                    onOpenProfile = { profileOpen = true },
-                    onVideoLongClick = onVideoLongClick,
-                    onFavoriteAll = { videos -> quickActionsVm.favoriteAll(videos) },
-                    homeReselectTick = homeReselectTick,
-                    searchReselectTick = searchReselectTick,
-                    downloadReselectTick = downloadReselectTick,
-                    modifier = if (useRail || currentRoute.startsWith("localPlayer")) {
-                        navModifier
-                    } else {
-                        navModifier.swipeToOpenDrawer(
-                            touchSlopPx = swipeTouchSlopPx,
-                            openThresholdPx = swipeOpenThresholdPx,
-                            velocityThresholdPx = swipeVelocityThresholdPx,
-                            onOpen = swipeOpenProfile
-                        )
-                    }
-                )
+                CompositionLocalProvider(LocalVideoLocalState provides videoLocalState) {
+                    HanimeNavGraph(
+                        navController = navController,
+                        onOpenProfile = { profileOpen = true },
+                        onVideoLongClick = onVideoLongClick,
+                        onFavoriteAll = { videos -> quickActionsVm.favoriteAll(videos) },
+                        homeReselectTick = homeReselectTick,
+                        searchReselectTick = searchReselectTick,
+                        downloadReselectTick = downloadReselectTick,
+                        modifier = if (useRail || currentRoute.startsWith("localPlayer")) {
+                            navModifier
+                        } else {
+                            navModifier.swipeToOpenDrawer(
+                                touchSlopPx = swipeTouchSlopPx,
+                                openThresholdPx = swipeOpenThresholdPx,
+                                velocityThresholdPx = swipeVelocityThresholdPx,
+                                onOpen = swipeOpenProfile
+                            )
+                        }
+                    )
+                }
             }
         }
 

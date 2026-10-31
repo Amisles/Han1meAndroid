@@ -12,6 +12,14 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
     fun getAllWatchHistory(): Flow<List<WatchHistoryEntity>>
 
+    @Query(
+        """
+        SELECT id FROM watch_history
+        WHERE playback_duration > 0 AND playback_position * 100 >= playback_duration * 90
+        """
+    )
+    fun getWatchedIds(): Flow<List<String>>
+
     @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
     suspend fun getAllOnce(): List<WatchHistoryEntity>
 

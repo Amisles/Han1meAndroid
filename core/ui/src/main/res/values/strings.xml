@@ -1096,4 +1096,7 @@
     <string name="error_network_tls">安全连接失败，请检查网络环境或更换镜像站</string>
     <string name="error_network_generic">网络请求失败，请稍后重试</string>
     <string name="comment_like_failed">点赞失败，请稍后重试</string>
+    <string name="cd_downloaded">已下载</string>
+    <string name="cd_favorite">已收藏</string>
+    <string name="cd_watched">已看完</string>
 </resources>

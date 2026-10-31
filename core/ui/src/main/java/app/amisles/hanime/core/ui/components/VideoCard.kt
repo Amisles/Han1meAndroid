@@ -72,7 +72,8 @@ fun VideoCard(
                 viewCount = video.viewCount,
                 crop = true,
                 targetWidth = targetWidth,
-                aspectRatioOverride = coverRatio
+                aspectRatioOverride = coverRatio,
+                videoId = video.id
             )
         }
 
@@ -176,6 +177,7 @@ fun VideoListItem(
             crop = true,
             targetWidth = thumbWidth,
             aspectRatioOverride = coverRatio,
+            videoId = video.id,
             modifier = Modifier
                 .width(thumbWidth)
                 .aspectRatio(coverRatio)

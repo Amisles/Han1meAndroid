@@ -1044,4 +1044,7 @@
     <string name="error_network_tls">安全な接続に失敗しました。ネットワーク環境を確認するか、ミラーサイトを変更してください。</string>
     <string name="error_network_generic">リクエストに失敗しました。しばらくしてから再試行してください。</string>
     <string name="comment_like_failed">いいねに失敗しました。しばらくしてから再試行してください。</string>
+    <string name="cd_downloaded">ダウンロード済み</string>
+    <string name="cd_favorite">お気に入り</string>
+    <string name="cd_watched">視聴済み</string>
 </resources>

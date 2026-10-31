@@ -5,11 +5,15 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FavoriteDao {
     @Query("SELECT * FROM favorites ORDER BY createdAt DESC")
     suspend fun getAllFavorites(): List<FavoriteVideoEntity>
+
+    @Query("SELECT id FROM favorites")
+    fun getFavoriteIds(): Flow<List<String>>
 
     @Query("SELECT EXISTS(SELECT * FROM favorites WHERE id = :videoId)")
     suspend fun isFavorite(videoId: String): Boolean

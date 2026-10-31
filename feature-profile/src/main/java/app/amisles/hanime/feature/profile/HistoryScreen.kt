@@ -350,6 +350,7 @@ fun HistoryScreen(
                             viewCount = "",
                             crop = true,
                             targetWidth = ROW_THUMB_WIDTH,
+                            videoId = video.id,
                             modifier = Modifier
                                 .width(ROW_THUMB_WIDTH)
                                 .aspectRatio(16f / 9f)

@@ -1044,4 +1044,7 @@
     <string name="error_network_tls">Secure connection failed. Check your network or switch to another mirror.</string>
     <string name="error_network_generic">Request failed. Please try again later.</string>
     <string name="comment_like_failed">Could not like the comment. Please try again.</string>
+    <string name="cd_downloaded">Downloaded</string>
+    <string name="cd_favorite">In favorites</string>
+    <string name="cd_watched">Watched</string>
 </resources>

@@ -69,7 +69,8 @@ fun VideoGridCard(
                 viewCount = video.viewCount,
                 crop = true,
                 targetWidth = targetWidth,
-                aspectRatioOverride = coverRatio
+                aspectRatioOverride = coverRatio,
+                videoId = video.id
             )
         }
 

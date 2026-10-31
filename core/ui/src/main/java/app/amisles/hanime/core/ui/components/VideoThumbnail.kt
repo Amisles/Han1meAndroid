@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,10 +27,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -35,6 +40,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Dimension
 import coil3.size.Precision
+import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.UiConfig
 
@@ -48,7 +54,8 @@ fun VideoThumbnail(
     crop: Boolean = false,
     targetWidth: Dp? = null,
     // 竖版封面（如里番）与配置里的横版比例不同，需按实际比例算解码高度
-    aspectRatioOverride: Float? = null
+    aspectRatioOverride: Float? = null,
+    videoId: String = ""
 ) {
     val cfg = LocalUiConfig.current
     val quality = cfg.thumbnailQuality
@@ -90,6 +97,7 @@ fun VideoThumbnail(
         viewCount = viewCount,
         contentScale = if (crop) ContentScale.Crop else ContentScale.FillWidth,
         cfg = cfg,
+        videoId = videoId,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -102,6 +110,22 @@ fun VideoThumbnail(
 }
 
 @Composable
+private fun LocalStateBadge(icon: ImageVector, description: String) {
+    Box(
+        modifier = Modifier
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+            .padding(2.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = Color.White,
+            modifier = Modifier.size(11.dp)
+        )
+    }
+}
+
+@Composable
 private fun ThumbnailBox(
     model: Any?,
     hasThumbnail: Boolean,
@@ -110,6 +134,7 @@ private fun ThumbnailBox(
     viewCount: String,
     contentScale: ContentScale,
     cfg: UiConfig,
+    videoId: String,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -146,6 +171,31 @@ private fun ThumbnailBox(
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(3.dp))
                     .padding(horizontal = 3.dp, vertical = 1.dp)
             )
+        }
+
+        val localState = LocalVideoLocalState.current
+        if (cfg.card.showBadges && videoId.isNotEmpty()) {
+            val downloaded = localState.isDownloaded(videoId)
+            val favorite = localState.isFavorite(videoId)
+            val watched = localState.isWatched(videoId)
+            if (downloaded || favorite || watched) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    if (downloaded) {
+                        LocalStateBadge(Icons.Filled.DownloadDone, stringResource(R.string.cd_downloaded))
+                    }
+                    if (favorite) {
+                        LocalStateBadge(Icons.Filled.Favorite, stringResource(R.string.cd_favorite))
+                    }
+                    if (watched) {
+                        LocalStateBadge(Icons.Filled.Check, stringResource(R.string.cd_watched))
+                    }
+                }
+            }
         }
 
         if (cfg.card.showBadges && (likeRate.isNotEmpty() || viewCount.isNotEmpty())) {

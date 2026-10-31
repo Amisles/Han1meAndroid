@@ -28,6 +28,10 @@ class LibraryRepositoryImpl @Inject constructor(
     private val searchHistoryDao: SearchHistoryDao
 ) : LibraryRepository {
 
+    override fun getFavoriteIdsFlow(): Flow<List<String>> = favoriteDao.getFavoriteIds()
+
+    override fun getWatchedIdsFlow(): Flow<List<String>> = watchHistoryDao.getWatchedIds()
+
     override suspend fun addFavorite(video: FavoriteVideo): Boolean {
         return try {
             favoriteDao.addFavorite(video.toEntity())
