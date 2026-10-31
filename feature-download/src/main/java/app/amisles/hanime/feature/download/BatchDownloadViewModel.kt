@@ -11,6 +11,7 @@ import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -261,7 +262,10 @@ class BatchDownloadViewModel @Inject constructor(
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
                 _state.update { it.copy(
                     isSearching = false,
-                    error = context.getString(R.string.batch_search_failed_detail, e.message ?: "")
+                    error = context.getString(
+                        R.string.batch_search_failed_detail,
+                        ErrorMapper.message(context, e, context.getString(R.string.common_load_failed))
+                    )
                 )}
             }
         }

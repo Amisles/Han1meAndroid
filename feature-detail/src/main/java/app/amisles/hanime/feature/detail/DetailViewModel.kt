@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.ContentRepository
@@ -145,7 +146,11 @@ class DetailViewModel @Inject constructor(
                 .catch { e ->
                     // 仅当主信息尚未到达时才关闭骨架屏，避免尾部异常把已渲染内容误判为失败
                     if (!mainArrived) _isLoading.value = false
-                    _error.value = e.message ?: context.getString(R.string.error_load_detail_failed)
+                    _error.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.error_load_detail_failed)
+                    )
                 }
                 .collect { event ->
                     when (event) {
@@ -203,7 +208,11 @@ class DetailViewModel @Inject constructor(
                         }
                         is VideoDetailEvent.Error -> {
                             AppLogger.e("DetailViewModel", "Error loading video detail stream: ${event.message}")
-                            _error.value = event.message
+                            _error.value = ErrorMapper.message(
+                                context,
+                                event.exception,
+                                event.message
+                            )
                             _isLoading.value = false
                         }
                     }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.PlaylistSummary
 import kotlinx.coroutines.CancellationException
@@ -40,7 +41,11 @@ class PlaylistListPageViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 // 解析等运行期异常（非 IOException）同样要落到错误态，否则会逃逸出 viewModelScope 并崩溃
-                _error.value = e.message ?: context.getString(R.string.common_load_failed)
+                _error.value = ErrorMapper.message(
+                    context,
+                    e,
+                    context.getString(R.string.common_load_failed)
+                )
             } finally {
                 _isLoading.value = false
             }

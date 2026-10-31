@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.ComicDetail
 import app.amisles.hanime.domain.model.ComicProgress
 import app.amisles.hanime.domain.repository.ComicRepository
@@ -53,7 +54,13 @@ class ComicDetailViewModel @Inject constructor(
                 when (result) {
                     is AppResult.Success ->
                         _state.value = _state.value.copy(detail = result.data, error = null)
-                    is AppResult.Error -> _state.value = _state.value.copy(error = result.message)
+                    is AppResult.Error -> _state.value = _state.value.copy(
+                        error = ErrorMapper.message(
+                            context,
+                            result.exception,
+                            context.getString(R.string.common_load_failed)
+                        )
+                    )
                     is AppResult.Loading -> Unit
                 }
             } catch (e: CancellationException) {
@@ -61,7 +68,11 @@ class ComicDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.logError("ComicDetailViewModel", "加载漫画详情失败: " + e.message, e)
                 _state.value = _state.value.copy(
-                    error = e.message ?: context.getString(R.string.common_load_failed)
+                    error = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
                 )
             } finally {
                 _state.value = _state.value.copy(isLoading = false)

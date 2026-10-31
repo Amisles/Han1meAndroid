@@ -1039,4 +1039,9 @@
     <string name="permission_notification_later">あとで</string>
     <string name="permission_open_settings">システム設定を開く</string>
     <string name="download_permission_media_action">以前のダウンロードを探す</string>
+    <string name="error_network_unavailable">ネットワークに接続できません。接続を確認して再試行してください。</string>
+    <string name="error_network_timeout">接続がタイムアウトしました。サイトが混雑している可能性があります。再試行してください。</string>
+    <string name="error_network_tls">安全な接続に失敗しました。ネットワーク環境を確認するか、ミラーサイトを変更してください。</string>
+    <string name="error_network_generic">リクエストに失敗しました。しばらくしてから再試行してください。</string>
+    <string name="comment_like_failed">いいねに失敗しました。しばらくしてから再試行してください。</string>
 </resources>

@@ -1,7 +1,10 @@
 package app.amisles.hanime.feature.search
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
@@ -16,13 +19,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     // 搜索页既要读站点内容，也要读写本地搜索历史 —— 两个窄接口分别注入
     private val content: ContentRepository,
-    private val library: LibraryRepository
+    private val library: LibraryRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     /**
@@ -301,7 +306,7 @@ class SearchViewModel @Inject constructor(
                     }
                     is AppResult.Error -> {
                         _videos.value = emptyList()
-                        _error.value = result.message
+                        _error.value = ErrorMapper.message(context, result.exception, result.message)
                     }
                     is AppResult.Loading -> {}
                 }
@@ -312,7 +317,7 @@ class SearchViewModel @Inject constructor(
                 // 解析/URL 构建等运行期异常若逃逸出 viewModelScope 会直接崩溃，且会跳过加载态复位
                 AppLogger.e("SearchViewModel", "搜索失败: ${e.message}", e)
                 _videos.value = emptyList()
-                _error.value = e.message ?: "搜索失败"
+                _error.value = ErrorMapper.message(context, e, context.getString(R.string.common_load_failed))
             } finally {
                 // 仅当本任务仍是最新一轮搜索时才复位，避免被取消的旧任务误清新一轮的加载态
                 if (epoch == searchEpoch) _isLoading.value = false

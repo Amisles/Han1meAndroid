@@ -9,6 +9,7 @@ import app.amisles.hanime.domain.model.AuthorPageDataEvent
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,7 +53,11 @@ class AuthorViewModel @Inject constructor(
             content.getAuthorPageStream(authorPageUrl)
                 .catch { e ->
                     if (!firstEventArrived) _isLoading.value = false
-                    _error.value = e.message ?: context.getString(R.string.common_load_failed)
+                    _error.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
                 }
                 .collect { event ->
                     if (!firstEventArrived) {
@@ -89,7 +94,11 @@ class AuthorViewModel @Inject constructor(
                                 pendingPlaylists = event.playlists
                             }
                         }
-                        is AuthorPageDataEvent.Error -> _error.value = event.message
+                        is AuthorPageDataEvent.Error -> _error.value = ErrorMapper.message(
+                            context,
+                            event.exception,
+                            event.message
+                        )
                     }
                 }
         }

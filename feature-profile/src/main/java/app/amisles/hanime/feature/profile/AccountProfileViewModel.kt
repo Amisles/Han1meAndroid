@@ -8,6 +8,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -71,7 +72,11 @@ class AccountProfileViewModel @Inject constructor(
                     is AppResult.Error -> {
                         // 加载失败必须清空令牌：否则重试会带着空/过期令牌提交，服务端返回 419/403
                         csrfToken = ""
-                        _error.value = result.message
+                        _error.value = ErrorMapper.message(
+                            context,
+                            result.exception,
+                            context.getString(R.string.common_load_failed)
+                        )
                     }
                     else -> {}
                 }
@@ -81,7 +86,11 @@ class AccountProfileViewModel @Inject constructor(
                 // 解析等运行期异常若逃逸出 viewModelScope 会直接崩溃，且会跳过加载态复位
                 AppLogger.e("AccountProfileViewModel", "加载账户资料失败: ${e.message}", e)
                 csrfToken = ""
-                _error.value = e.message ?: context.getString(R.string.common_load_failed)
+                _error.value = ErrorMapper.message(
+                    context,
+                    e,
+                    context.getString(R.string.common_load_failed)
+                )
             } finally {
                 _isLoading.value = false
             }
@@ -114,7 +123,13 @@ class AccountProfileViewModel @Inject constructor(
                         _updateState.value = AccountUpdateState.Success
                     }
                     is AppResult.Error -> {
-                        _updateState.value = AccountUpdateState.Error(result.message)
+                        _updateState.value = AccountUpdateState.Error(
+                            ErrorMapper.message(
+                                context,
+                                result.exception,
+                                context.getString(R.string.common_load_failed)
+                            )
+                        )
                     }
                     else -> _updateState.value = AccountUpdateState.Idle
                 }
@@ -124,7 +139,11 @@ class AccountProfileViewModel @Inject constructor(
                 // 否则 _updateState 会永久停留在 Loading，提交按钮一直转圈
                 AppLogger.e("AccountProfileViewModel", "更新账户资料失败: ${e.message}", e)
                 _updateState.value = AccountUpdateState.Error(
-                    e.message ?: context.getString(R.string.common_load_failed)
+                    ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
                 )
             }
         }

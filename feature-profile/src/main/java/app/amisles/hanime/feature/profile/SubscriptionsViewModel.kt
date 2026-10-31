@@ -7,6 +7,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.SubscribedArtist
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +59,11 @@ class SubscriptionsViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _error.value = e.message ?: context.getString(R.string.common_load_failed)
+                _error.value = ErrorMapper.message(
+                    context,
+                    e,
+                    context.getString(R.string.common_load_failed)
+                )
             } finally {
                 // 被取消（loadJob?.cancel）时跳过，避免把新一轮加载的 isLoading 误置回 false
                 if (coroutineContext.isActive) {

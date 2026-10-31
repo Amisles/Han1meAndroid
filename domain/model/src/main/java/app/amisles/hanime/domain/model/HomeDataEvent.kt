@@ -4,5 +4,5 @@ package app.amisles.hanime.domain.model
 sealed interface HomeDataEvent {
     data class Banner(val banner: HanimeBanner?) : HomeDataEvent
     data class Section(val section: HomeSection) : HomeDataEvent
-    data class Error(val message: String) : HomeDataEvent
+    data class Error(val message: String, val exception: Throwable? = null) : HomeDataEvent
 }

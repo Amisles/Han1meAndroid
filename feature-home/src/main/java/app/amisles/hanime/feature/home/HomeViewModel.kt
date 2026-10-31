@@ -10,6 +10,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -134,7 +135,11 @@ class HomeViewModel @Inject constructor(
             repository.getHomeDataStream()
                 .catch { e ->
                     streamFailed = true
-                    _error.value = e.message ?: context.getString(R.string.error_load_home_failed)
+                    _error.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.error_load_home_failed)
+                    )
                 }
                 .collect { event ->
                     if (!firstEventArrived) {
@@ -164,7 +169,11 @@ class HomeViewModel @Inject constructor(
                                 }
                             }
                         }
-                        is HomeDataEvent.Error -> _error.value = event.message
+                        is HomeDataEvent.Error -> _error.value = ErrorMapper.message(
+                            context,
+                            event.exception,
+                            event.message
+                        )
                     }
                 }
             flushJob?.cancel()

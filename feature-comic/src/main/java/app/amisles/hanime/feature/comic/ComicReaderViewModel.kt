@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.ComicChapter
 import app.amisles.hanime.domain.model.ComicProgress
 import app.amisles.hanime.domain.repository.ComicRepository
@@ -91,7 +92,13 @@ class ComicReaderViewModel @Inject constructor(
                         scheduleSave(page)
                     }
 
-                    is AppResult.Error -> _state.value = _state.value.copy(error = result.message)
+                    is AppResult.Error -> _state.value = _state.value.copy(
+                        error = ErrorMapper.message(
+                            context,
+                            result.exception,
+                            context.getString(R.string.common_load_failed)
+                        )
+                    )
                     is AppResult.Loading -> Unit
                 }
             } catch (e: CancellationException) {
@@ -99,7 +106,11 @@ class ComicReaderViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.logError("ComicReaderViewModel", "加载漫画失败: " + e.message, e)
                 _state.value = _state.value.copy(
-                    error = e.message ?: context.getString(R.string.common_load_failed)
+                    error = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
                 )
             } finally {
                 _state.value = _state.value.copy(isLoading = false)

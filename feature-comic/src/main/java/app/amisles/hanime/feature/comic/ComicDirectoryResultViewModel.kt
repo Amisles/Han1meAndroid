@@ -1,14 +1,18 @@
 package app.amisles.hanime.feature.comic
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.ComicDirectoryResult
 import app.amisles.hanime.domain.model.ComicItem
 import app.amisles.hanime.domain.model.ComicSort
 import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.result.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,7 +25,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ComicDirectoryResultViewModel @Inject constructor(
-    private val comics: ComicRepository
+    private val comics: ComicRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _items = MutableStateFlow<List<ComicItem>>(emptyList())
@@ -79,7 +84,11 @@ class ComicDirectoryResultViewModel @Inject constructor(
                 if (gen != generation) return@launch
                 when (result) {
                     is AppResult.Success -> apply(result.data, requested)
-                    is AppResult.Error -> _error.value = result.message
+                    is AppResult.Error -> _error.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        context.getString(R.string.common_load_failed)
+                    )
                     is AppResult.Loading -> Unit
                 }
             } catch (e: CancellationException) {
@@ -87,7 +96,11 @@ class ComicDirectoryResultViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (gen == generation) {
                     AppLogger.logError("ComicDirectoryResultViewModel", "加载更多漫画失败: " + e.message, e)
-                    _error.value = e.message ?: "加载更多漫画失败"
+                    _error.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
                 }
             } finally {
                 if (gen == generation) _isLoadingMore.value = false
@@ -115,7 +128,11 @@ class ComicDirectoryResultViewModel @Inject constructor(
                 if (gen != generation) return@launch
                 when (result) {
                     is AppResult.Success -> apply(result.data, 1)
-                    is AppResult.Error -> _error.value = result.message
+                    is AppResult.Error -> _error.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        context.getString(R.string.common_load_failed)
+                    )
                     is AppResult.Loading -> Unit
                 }
             } catch (e: CancellationException) {
@@ -123,7 +140,11 @@ class ComicDirectoryResultViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (gen == generation) {
                     AppLogger.logError("ComicDirectoryResultViewModel", "加载漫画列表失败: " + e.message, e)
-                    _error.value = e.message ?: "加载漫画列表失败"
+                    _error.value = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
                 }
             } finally {
                 if (gen == generation) _isLoading.value = false

@@ -1,14 +1,18 @@
 package app.amisles.hanime.feature.comic
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.ComicDirectoryEntry
 import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.domain.model.ComicDirectoryPhase
 import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.result.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,7 +25,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ComicDirectoryViewModel @Inject constructor(
-    private val comics: ComicRepository
+    private val comics: ComicRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _entries = MutableStateFlow<List<ComicDirectoryEntry>>(emptyList())
@@ -56,14 +61,18 @@ class ComicDirectoryViewModel @Inject constructor(
                         _entries.value = result.data
                         _error.value = null
                     }
-                    is AppResult.Error -> _error.value = result.message
+                    is AppResult.Error -> _error.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        context.getString(R.string.common_load_failed)
+                    )
                     is AppResult.Loading -> Unit
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 AppLogger.logError("ComicDirectoryViewModel", "加载漫画目录失败: " + e.message, e)
-                _error.value = e.message ?: "加载漫画目录失败"
+                _error.value = ErrorMapper.message(context, e, context.getString(R.string.common_load_failed))
             } finally {
                 _isLoading.value = false
                 _phase.value = null

@@ -15,5 +15,5 @@ sealed interface VideoDetailEvent {
     data class Playlist(val playlist: PlaylistInfo?) : VideoDetailEvent
 
     /** 解析/网络失败。 */
-    data class Error(val message: String) : VideoDetailEvent
+    data class Error(val message: String, val exception: Throwable? = null) : VideoDetailEvent
 }

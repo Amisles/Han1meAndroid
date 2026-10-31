@@ -7,6 +7,7 @@ import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +49,13 @@ class LoginViewModel @Inject constructor(
                 val result = repository.login(cleanEmail, password)
                 when (result) {
                     is AppResult.Success -> _uiState.value = UiState.Success(result.data.length)
-                    is AppResult.Error -> _uiState.value = UiState.Error(result.message)
+                    is AppResult.Error -> _uiState.value = UiState.Error(
+                        ErrorMapper.message(
+                            context,
+                            result.exception,
+                            context.getString(R.string.common_load_failed)
+                        )
+                    )
                     is AppResult.Loading -> {}
                 }
             } catch (e: CancellationException) {
@@ -56,7 +63,13 @@ class LoginViewModel @Inject constructor(
             } catch (e: Exception) {
                 // 否则 _uiState 会永久停留在 Loading，登录按钮一直转圈
                 AppLogger.e("LoginViewModel", "登录失败: ${e.message}", e)
-                _uiState.value = UiState.Error(e.message ?: context.getString(R.string.common_load_failed))
+                _uiState.value = UiState.Error(
+                    ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
+                )
             }
         }
     }

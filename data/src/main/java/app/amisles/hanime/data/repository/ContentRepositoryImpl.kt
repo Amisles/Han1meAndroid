@@ -64,7 +64,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getHomeDataStream: ${e.message}", e)
-            emit(HomeDataEvent.Error(e.message ?: "加载首页失败"))
+            emit(HomeDataEvent.Error(e.message ?: "加载首页失败", e))
         }
     }.flowOn(Dispatchers.IO)
 
@@ -136,7 +136,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getVideoDetailStream: ${e.message}", e)
-            emit(VideoDetailEvent.Error(e.message ?: "加载视频详情失败"))
+            emit(VideoDetailEvent.Error(e.message ?: "加载视频详情失败", e))
         }
     }.flowOn(Dispatchers.IO)
 

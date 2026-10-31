@@ -60,11 +60,11 @@ class WatchPageParser @Inject constructor(
             val related = parseRelatedVideos(doc, baseUrl, playlist)
             emit(VideoDetailEvent.RelatedVideos(related))
         } catch (e: IndexOutOfBoundsException) {
-            emit(VideoDetailEvent.Error(e.message ?: "解析详情页失败"))
+            emit(VideoDetailEvent.Error(e.message ?: "解析详情页失败", e))
         } catch (e: NullPointerException) {
-            emit(VideoDetailEvent.Error(e.message ?: "解析详情页失败"))
+            emit(VideoDetailEvent.Error(e.message ?: "解析详情页失败", e))
         } catch (e: IllegalArgumentException) {
-            emit(VideoDetailEvent.Error(e.message ?: "解析详情页失败"))
+            emit(VideoDetailEvent.Error(e.message ?: "解析详情页失败", e))
         }
     }
 

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.AppUpdate
 import app.amisles.hanime.domain.model.UpdateCheckResult
 import app.amisles.hanime.domain.repository.UpdateRepository
@@ -97,7 +99,13 @@ class UpdateViewModel @Inject constructor(
             } catch (e: Exception) {
                 // 仓储已把预期异常收敛为 Failure，这里兜住真正的意外，避免页面卡在 Checking
                 AppLogger.e("UpdateViewModel", "检查更新异常: ${e.message}", e)
-                _uiState.value = UpdateUiState.Failed(e.message ?: "检查更新失败")
+                _uiState.value = UpdateUiState.Failed(
+                    ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.common_load_failed)
+                    )
+                )
             }
         }
     }

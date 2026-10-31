@@ -4,5 +4,5 @@ sealed interface AuthorPageDataEvent {
     data class Profile(val data: AuthorPageData) : AuthorPageDataEvent
     data class Videos(val videos: List<HanimeVideo>) : AuthorPageDataEvent
     data class Playlists(val playlists: List<PlaylistSummary>) : AuthorPageDataEvent
-    data class Error(val message: String) : AuthorPageDataEvent
+    data class Error(val message: String, val exception: Throwable? = null) : AuthorPageDataEvent
 }
