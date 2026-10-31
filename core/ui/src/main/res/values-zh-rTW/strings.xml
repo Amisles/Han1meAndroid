@@ -1043,7 +1043,6 @@
     <string name="error_network_timeout">連線逾時，站點可能較慢，請重試</string>
     <string name="error_network_tls">安全連線失敗，請檢查網路環境或更換鏡像站</string>
     <string name="error_network_generic">網路請求失敗，請稍後重試</string>
-    <string name="comment_like_failed">按讚失敗，請稍後重試</string>
     <string name="cd_downloaded">已下載</string>
     <string name="cd_favorite">已收藏</string>
     <string name="cd_watched">已看完</string>

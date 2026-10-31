@@ -254,7 +254,9 @@ fun HomeScreenContent(
     LaunchedEffect(reselectTick) {
         if (reselectTick == handledReselectTick) return@LaunchedEffect
         handledReselectTick = reselectTick
-        listState.animateScrollToItem(0)
+        if (listState.layoutInfo.totalItemsCount > 0) {
+            listState.animateScrollToItem(0)
+        }
     }
     val pullState = rememberPullToRefreshState()
     val sizeInfo = currentWindowSizeInfo()

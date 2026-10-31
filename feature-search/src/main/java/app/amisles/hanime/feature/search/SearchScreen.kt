@@ -124,8 +124,8 @@ fun SearchScreen(
     androidx.compose.runtime.LaunchedEffect(reselectTick) {
         if (reselectTick == handledReselectTick) return@LaunchedEffect
         handledReselectTick = reselectTick
-        gridState.scrollToItem(0)
-        listState.scrollToItem(0)
+        if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
+        if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
     }
 
     // 人机校验通过后自动重搜，与首页一致。

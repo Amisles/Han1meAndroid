@@ -156,7 +156,9 @@ fun DownloadScreen(
     LaunchedEffect(reselectTick) {
         if (reselectTick == handledReselectTick) return@LaunchedEffect
         handledReselectTick = reselectTick
-        listState.animateScrollToItem(0)
+        if (listState.layoutInfo.totalItemsCount > 0) {
+            listState.animateScrollToItem(0)
+        }
     }
 
     // 一次遍历同时完成分组与 id 索引：原来分别做 4 次 filter + 1 次 associateBy，

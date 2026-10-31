@@ -67,6 +67,7 @@ internal fun DetailRelatedVideoCard(
             viewCount = "",
             crop = true,
             targetWidth = thumbWidth,
+            videoId = video.id,
             modifier = Modifier
                 .width(thumbWidth)
                 .aspectRatio(thumbRatio)

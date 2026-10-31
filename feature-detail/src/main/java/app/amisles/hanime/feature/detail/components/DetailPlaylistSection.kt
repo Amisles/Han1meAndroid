@@ -126,7 +126,8 @@ internal fun DetailPlaylistVideos(
                         likeRate = video.likeRate,
                         viewCount = video.viewCount,
                         crop = true,
-                        targetWidth = CELL_WIDTH
+                        targetWidth = CELL_WIDTH,
+                        videoId = video.id
                     )
                 }
                 val titleBlockHeight = with(LocalDensity.current) {

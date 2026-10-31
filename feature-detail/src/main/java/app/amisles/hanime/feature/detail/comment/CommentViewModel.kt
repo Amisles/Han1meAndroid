@@ -440,7 +440,7 @@ class CommentViewModel @Inject constructor(
                         _replyError.value = ErrorMapper.message(
                             context,
                             result.exception,
-                            context.getString(R.string.comment_post_failed)
+                            result.message
                         )
                         AppLogger.e("CommentViewModel", "Error posting reply: ${result.message}", result.exception)
                     }
@@ -534,7 +534,7 @@ class CommentViewModel @Inject constructor(
                         _postCommentError.value = ErrorMapper.message(
                             context,
                             result.exception,
-                            context.getString(R.string.comment_post_failed)
+                            result.message
                         )
                     }
                     is AppResult.Loading -> {}
@@ -603,7 +603,7 @@ class CommentViewModel @Inject constructor(
                         _commentLikeError.value = ErrorMapper.message(
                             context,
                             result.exception,
-                            context.getString(R.string.comment_like_failed)
+                            result.message
                         )
                         AppLogger.e("CommentViewModel", "Error toggling comment like: ${result.message}", result.exception)
                     }
