@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -40,7 +39,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -124,8 +122,7 @@ private fun DownloadSearchField(
 @Composable
 fun DownloadScreen(
     // 点「播放」：交给上层跳转到应用内的本地播放页，不再走外部播放器 Intent
-    onPlayLocalVideo: (String) -> Unit = {},
-    reselectTick: Int = 0
+    onPlayLocalVideo: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val viewModel: DownloadViewModel = hiltViewModel()
@@ -151,15 +148,6 @@ fun DownloadScreen(
     var sortMenuExpanded by remember { mutableStateOf(false) }
     // 文件名搜索关键词：纯本地过滤已下载任务，输入即生效，不触发任何网络请求
     var nameQuery by rememberSaveable { mutableStateOf("") }
-    val listState = rememberLazyListState()
-    var handledReselectTick by rememberSaveable { mutableIntStateOf(reselectTick) }
-    LaunchedEffect(reselectTick) {
-        if (reselectTick == handledReselectTick) return@LaunchedEffect
-        handledReselectTick = reselectTick
-        if (listState.layoutInfo.totalItemsCount > 0) {
-            listState.animateScrollToItem(0)
-        }
-    }
 
     // 一次遍历同时完成分组与 id 索引：原来分别做 4 次 filter + 1 次 associateBy，
     // 每次重组都要把整个任务表扫 5 遍；下载进度每 500ms 更新一次，代价随任务数线性增长。
@@ -492,7 +480,6 @@ fun DownloadScreen(
             }
         } else {
             LazyColumn(
-                state = listState,
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (gateState.blocked && downloadingTasks.isNotEmpty()) {

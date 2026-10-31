@@ -41,11 +41,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -184,8 +182,7 @@ fun HomeScreen(
     onViewMore: (HomeSection) -> Unit = {},
     onProfileClick: (() -> Unit)? = null,
     onComicClick: (() -> Unit)? = null,
-    onVideoLongClick: (HanimeVideo) -> Unit = {},
-    reselectTick: Int = 0
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -220,8 +217,7 @@ fun HomeScreen(
         onComicClick = onComicClick,
         onVideoLongClick = onVideoLongClick,
         onMarkContinueWatched = { id -> viewModel.markContinueItemWatched(id) },
-        onRemoveContinueItem = { id -> viewModel.removeContinueItem(id) },
-        reselectTick = reselectTick
+        onRemoveContinueItem = { id -> viewModel.removeContinueItem(id) }
     )
 }
 
@@ -245,19 +241,10 @@ fun HomeScreenContent(
     onComicClick: (() -> Unit)? = null,
     onVideoLongClick: (HanimeVideo) -> Unit = {},
     onMarkContinueWatched: (String) -> Unit = {},
-    onRemoveContinueItem: (String) -> Unit = {},
-    reselectTick: Int = 0
+    onRemoveContinueItem: (String) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var handledReselectTick by rememberSaveable { mutableIntStateOf(reselectTick) }
-    LaunchedEffect(reselectTick) {
-        if (reselectTick == handledReselectTick) return@LaunchedEffect
-        handledReselectTick = reselectTick
-        if (listState.layoutInfo.totalItemsCount > 0) {
-            listState.animateScrollToItem(0)
-        }
-    }
     val pullState = rememberPullToRefreshState()
     val sizeInfo = currentWindowSizeInfo()
     val cfg = LocalUiConfig.current

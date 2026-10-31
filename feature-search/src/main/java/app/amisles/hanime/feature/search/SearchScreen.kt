@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -64,8 +63,7 @@ fun SearchScreen(
      */
     initialToken: String? = null,
     onAuthorClick: (String) -> Unit = {},
-    onVideoLongClick: (HanimeVideo) -> Unit = {},
-    reselectTick: Int = 0
+    onVideoLongClick: (HanimeVideo) -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
     val viewModel: SearchViewModel = hiltViewModel()
@@ -120,13 +118,6 @@ fun SearchScreen(
     val broadLocal = remember { mutableStateOf(broadValue) }
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
-    var handledReselectTick by rememberSaveable { mutableIntStateOf(reselectTick) }
-    androidx.compose.runtime.LaunchedEffect(reselectTick) {
-        if (reselectTick == handledReselectTick) return@LaunchedEffect
-        handledReselectTick = reselectTick
-        if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
-        if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
-    }
 
     // 人机校验通过后自动重搜，与首页一致。
     //

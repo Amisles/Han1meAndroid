@@ -54,9 +54,6 @@ internal fun HanimeNavGraph(
     onOpenProfile: () -> Unit,
     onVideoLongClick: (HanimeVideo) -> Unit,
     onFavoriteAll: (List<HanimeVideo>) -> Unit,
-    homeReselectTick: Int = 0,
-    searchReselectTick: Int = 0,
-    downloadReselectTick: Int = 0,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -90,9 +87,11 @@ internal fun HanimeNavGraph(
     ) {
         composable("home") {
             HomeScreen(
-                reselectTick = homeReselectTick,
                 onVideoClick = { videoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                // 保持 saveState / launchSingleTop / restoreState 不变：
+                // 它们是底部 Tab 状态保存机制的一部分，navigateToTab 依赖这套配对。
+                //
                 // 附带 ts 时间戳：条目可能被 launchSingleTop / restoreState 复用，
                 // 此时参数相同会被 ViewModel 的指纹判为「已注入」而跳过。
                 // 时间戳让每次「点大图」都是一次可区分的新意图，
@@ -286,7 +285,6 @@ internal fun HanimeNavGraph(
                 initialGenre = genre,
                 initialSort = sort,
                 initialToken = ts,
-                reselectTick = searchReselectTick,
                 onVideoClick = { videoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
                 onAuthorClick = { author ->
@@ -297,7 +295,6 @@ internal fun HanimeNavGraph(
         }
         composable("download") {
             DownloadScreen(
-                reselectTick = downloadReselectTick,
                 onPlayLocalVideo = { filePath ->
                     navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
                 }
