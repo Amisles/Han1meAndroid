@@ -382,6 +382,18 @@ fun DownloadScreen(
                         onClick = { viewModel.resumeAll() }
                     )
                 }
+                if (downloadLaunchers.notificationPermissionMissing) {
+                    QueueActionButton(
+                        label = stringResource(R.string.permission_notification_title),
+                        onClick = downloadLaunchers.requestNotificationPermission
+                    )
+                }
+                if (downloadLaunchers.mediaPermissionMissing) {
+                    QueueActionButton(
+                        label = stringResource(R.string.download_permission_media_action),
+                        onClick = downloadLaunchers.requestMediaPermission
+                    )
+                }
             }
         }
 

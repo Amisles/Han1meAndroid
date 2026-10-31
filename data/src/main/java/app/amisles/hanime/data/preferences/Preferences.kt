@@ -69,6 +69,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_DOWNLOAD_NIGHT_ONLY = "download_night_only"
     private const val SP_DOWNLOAD_QUEUE_ORDER = "download_queue_order"
     private const val SP_ACKNOWLEDGED_CRASH = "acknowledged_crash_file"
+    private const val SP_NOTIFICATION_PROMPT_SHOWN = "notification_prompt_shown"
     private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
@@ -713,6 +714,13 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
 
     override fun setAcknowledgedCrashFile(name: String) {
         sp.edit { putString(SP_ACKNOWLEDGED_CRASH, name) }
+    }
+
+    val notificationPromptShown: Boolean
+        get() = readBoolean(SP_NOTIFICATION_PROMPT_SHOWN, false)
+
+    fun markNotificationPromptShown() {
+        sp.edit { putBoolean(SP_NOTIFICATION_PROMPT_SHOWN, true) }
     }
 
     override fun setSubscriptionReminder(enabled: Boolean) {

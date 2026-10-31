@@ -1033,4 +1033,10 @@
     <string name="playlist_favorite_done">Added %1$d videos to favorites</string>
     <string name="playlist_favorite_exists">All videos are already in favorites</string>
     <string name="settings_watch_stats_summary">Computes weekly watch time, top authors and completion rate locally; hide the entry when off</string>
+    <string name="permission_notification_title">Turn on notifications</string>
+    <string name="permission_notification_message">With notifications on you can control playback from the notification shade and the lock screen, and download progress shows there too. Playback and downloads keep working without it.</string>
+    <string name="permission_notification_allow">Turn on</string>
+    <string name="permission_notification_later">Not now</string>
+    <string name="permission_open_settings">Open system settings</string>
+    <string name="download_permission_media_action">Recover old downloads</string>
 </resources>

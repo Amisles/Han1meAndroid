@@ -20,11 +20,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +58,7 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.feature.detail.components.DetailBackButton
@@ -140,24 +144,24 @@ fun DetailScreen(
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
 
-    // 播放通知需要 POST_NOTIFICATIONS（Android 13+）。此前只有下载页申请过，
-    // 用户在详情页直接播放时通知会被静默丢弃，而前台服务仍在运行，表现为「功能坏了」。
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* 拒绝也不阻断播放：只是没有媒体通知 */ }
-    var notificationPermissionAsked by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!notificationPermissionAsked) {
-            notificationPermissionAsked = true
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+    ) { }
+    var showNotificationRationale by remember { mutableStateOf(false) }
+    LaunchedEffect(videoDetail?.title) {
+        if (videoDetail == null) return@LaunchedEffect
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            return@LaunchedEffect
         }
+        if (Preferences.notificationPromptShown) return@LaunchedEffect
+        Preferences.markNotificationPromptShown()
+        delay(1200)
+        showNotificationRationale = true
     }
 
     var showDownloadDialog by remember { mutableStateOf(false) }
@@ -611,6 +615,28 @@ fun DetailScreen(
                 shape = RoundedCornerShape(8.dp)
             )
         }
+    }
+
+    if (showNotificationRationale) {
+        AlertDialog(
+            onDismissRequest = { showNotificationRationale = false },
+            title = { Text(stringResource(R.string.permission_notification_title)) },
+            text = { Text(stringResource(R.string.permission_notification_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showNotificationRationale = false
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }) {
+                    Text(stringResource(R.string.permission_notification_allow))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotificationRationale = false }) {
+                    Text(stringResource(R.string.permission_notification_later))
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     }
 
     if (showLoginUnsupportedDialog) {

@@ -1033,4 +1033,10 @@
     <string name="playlist_favorite_done">已收藏 %1$d 個影片</string>
     <string name="playlist_favorite_exists">清單中的影片均已收藏</string>
     <string name="settings_watch_stats_summary">純本機計算本週觀看時長、常看作者與完成率；關閉後不顯示入口</string>
+    <string name="permission_notification_title">開啟通知</string>
+    <string name="permission_notification_message">開啟通知後，切到背景或鎖屏時仍可透過通知列控制播放，下載進度也會顯示在通知列。不開啟不影響播放與下載。</string>
+    <string name="permission_notification_allow">去開啟</string>
+    <string name="permission_notification_later">暫不</string>
+    <string name="permission_open_settings">去系統設定</string>
+    <string name="download_permission_media_action">找回舊下載</string>
 </resources>

@@ -1085,4 +1085,10 @@
     <string name="playlist_favorite_done">已收藏 %1$d 个视频</string>
     <string name="playlist_favorite_exists">列表中的视频均已收藏</string>
     <string name="settings_watch_stats_summary">纯本地计算本周观看时长、常看作者与完成率；关闭后不展示入口</string>
+    <string name="permission_notification_title">开启通知</string>
+    <string name="permission_notification_message">开启通知后，切到后台或锁屏时仍可通过通知栏控制播放，下载进度也会显示在通知栏。不开启不影响播放与下载。</string>
+    <string name="permission_notification_allow">去开启</string>
+    <string name="permission_notification_later">暂不</string>
+    <string name="permission_open_settings">去系统设置</string>
+    <string name="download_permission_media_action">找回旧下载</string>
 </resources>
