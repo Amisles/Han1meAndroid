@@ -254,7 +254,7 @@ fun DetailScreen(
         }
     }
 
-    // 播放结束处理：保存进度；若开启连播则自动播放下一集（相关影片首条有效直链）
+    // 播放结束处理：保存进度；若开启连播则自动播放下一集
     fun handlePlaybackEnded() {
         val player = exoPlayer ?: return
         val pos = player.currentPosition
@@ -263,7 +263,12 @@ fun DetailScreen(
         }
         // 复用已收集的 StateFlow 值，避免同步读加密存储
         if (autoPlayNext) {
-            val next = videoDetail?.relatedVideos?.firstOrNull { it.videoUrl.isNotBlank() }
+            val next = nextEpisodeOf(
+                playlist = videoDetail?.playlist,
+                relatedVideos = videoDetail?.relatedVideos.orEmpty(),
+                currentVideoId = viewModel.videoId,
+                currentVideoUrl = videoUrl.orEmpty()
+            )
             if (next != null) {
                 onAutoPlayNext(next.videoUrl)
             }
