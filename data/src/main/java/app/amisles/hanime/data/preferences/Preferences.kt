@@ -73,6 +73,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_SUBSCRIPTION_REMINDER = "subscription_reminder_enabled"
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
+    private const val SP_SUBSCRIPTIONS_HIDE_WATCHED = "subscriptions_hide_watched"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
     private const val SP_PAGE_LAYOUT_PREFIX = "page_layout_"
 private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
@@ -163,6 +164,9 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
 
     private val _watchStatsEnabledFlow = MutableStateFlow(true)
     override val watchStatsEnabledFlow: StateFlow<Boolean> = _watchStatsEnabledFlow.asStateFlow()
+
+    private val _subscriptionsHideWatchedFlow = MutableStateFlow(false)
+    override val subscriptionsHideWatchedFlow: StateFlow<Boolean> = _subscriptionsHideWatchedFlow.asStateFlow()
 
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
     override val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
@@ -268,6 +272,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _downloadNightOnlyFlow.value = readBoolean(SP_DOWNLOAD_NIGHT_ONLY, false)
         _subscriptionReminderFlow.value = readBoolean(SP_SUBSCRIPTION_REMINDER, false)
         _watchStatsEnabledFlow.value = readBoolean(SP_WATCH_STATS_ENABLED, true)
+        _subscriptionsHideWatchedFlow.value = readBoolean(SP_SUBSCRIPTIONS_HIDE_WATCHED, false)
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
         // 清洗失败时回退默认地址
         val rawBaseUrl = readString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
@@ -731,6 +736,13 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     override fun setWatchStatsEnabled(enabled: Boolean) {
         sp.edit { putBoolean(SP_WATCH_STATS_ENABLED, enabled) }
         _watchStatsEnabledFlow.value = enabled
+    }
+
+    override val subscriptionsHideWatched: Boolean get() = _subscriptionsHideWatchedFlow.value
+
+    override fun setSubscriptionsHideWatched(enabled: Boolean) {
+        sp.edit { putBoolean(SP_SUBSCRIPTIONS_HIDE_WATCHED, enabled) }
+        _subscriptionsHideWatchedFlow.value = enabled
     }
 
     override val subscriptionSeenVideoIds: Set<String>

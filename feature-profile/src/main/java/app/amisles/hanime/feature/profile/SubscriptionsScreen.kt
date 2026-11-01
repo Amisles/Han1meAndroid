@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.LocalVideoLocalState
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.PageLayoutResolver
@@ -90,6 +92,9 @@ fun SubscriptionsScreen(
         legacySearchMode = null,
         compactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
     )
+    val hideWatched by appPrefs.subscriptionsHideWatchedFlow.collectAsStateWithLifecycle()
+    val watchedIds = LocalVideoLocalState.current.watched
+    val visibleVideos = if (hideWatched) videos.filter { it.id !in watchedIds } else videos
 
     LaunchedEffect(Unit) {
         if (isLogin) viewModel.load(initialQuery)
@@ -178,7 +183,18 @@ fun SubscriptionsScreen(
                 }
 
                 // 当前范围标题：呼应官网「全部订阅」/「该作者的所有作品」语义
-                ScopeHeader(selectedQuery = selectedQuery)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ScopeHeader(selectedQuery = selectedQuery)
+                    Spacer(modifier = Modifier.weight(1f))
+                    FilterChip(
+                        selected = hideWatched,
+                        onClick = { appPrefs.setSubscriptionsHideWatched(!hideWatched) },
+                        label = { Text(stringResource(R.string.subscriptions_hide_watched), fontSize = 12.sp) }
+                    )
+                }
 
                 if (videos.isEmpty()) {
                     Box(
@@ -191,6 +207,17 @@ fun SubscriptionsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                } else if (visibleVideos.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(top = 60.dp),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Text(
+                            text = stringResource(R.string.subscriptions_all_watched),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 } else if (isGridMode) {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
@@ -199,7 +226,7 @@ fun SubscriptionsScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        gridItems(videos, key = { it.id }) { video ->
+                        gridItems(visibleVideos, key = { it.id }) { video ->
                             VideoGridCard(
                                 video = video,
                                 onClick = { onVideoClick(video.videoUrl) },
@@ -214,7 +241,7 @@ fun SubscriptionsScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(videos, key = { it.id }) { video ->
+                        items(visibleVideos, key = { it.id }) { video ->
                             VideoListItem(
                                 video = video,
                                 onClick = { onVideoClick(video.videoUrl) },
@@ -253,9 +280,7 @@ private fun ScopeHeader(selectedQuery: String) {
     Text(
         text = text,
         fontSize = 13.sp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 15.dp, vertical = 4.dp)
+        modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp)
     )
 }
 

@@ -160,6 +160,11 @@ interface SettingsRepository {
     val watchStatsEnabledFlow: StateFlow<Boolean>
     fun setWatchStatsEnabled(enabled: Boolean)
 
+    /** 订阅页隐藏已看完条目。 */
+    val subscriptionsHideWatched: Boolean
+    val subscriptionsHideWatchedFlow: StateFlow<Boolean>
+    fun setSubscriptionsHideWatched(enabled: Boolean)
+
     companion object {
         const val DEFAULT_BASE_URL = "https://hanime1.me"
 

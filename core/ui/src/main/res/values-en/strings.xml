@@ -492,6 +492,8 @@
     <string name="subscriptions_not_logged_in">Please log in to view your subscriptions</string>
     <string name="subscriptions_empty">No subscription videos yet</string>
     <string name="subscriptions_load_failed">Failed to load subscriptions</string>
+        <string name="subscriptions_hide_watched">Hide watched</string>
+    <string name="subscriptions_all_watched">Nothing new to watch</string>
     <string name="profile_download_manager">Downloads</string>
     <string name="profile_batch_download">Batch Download</string>
     <string name="profile_settings">Settings</string>

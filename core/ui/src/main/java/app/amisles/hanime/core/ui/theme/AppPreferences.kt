@@ -41,6 +41,7 @@ interface AppPreferences {
     val autoQualityFlow: StateFlow<Boolean>
     val baseUrlFlow: StateFlow<String>
     val privacyModeFlow: StateFlow<Boolean>
+    val subscriptionsHideWatchedFlow: StateFlow<Boolean>
 
     // ── 写入 ────────────────────────────────────────────────────────────────
     // 播放器与搜索页需要就地改设置（例如倍速菜单、布局切换）。若把这些留在 Composable
@@ -62,6 +63,7 @@ interface AppPreferences {
     fun setDoubleTapSeek(enabled: Boolean)
     fun setPrivacyMode(enabled: Boolean)
     fun setAutoQuality(enabled: Boolean)
+    fun setSubscriptionsHideWatched(enabled: Boolean)
 
     /**
      * 当前站点应注入的防盗链 Referer（结尾带 /）。

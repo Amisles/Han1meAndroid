@@ -508,6 +508,8 @@
     <string name="subscriptions_not_logged_in">请先登录后查看订阅内容</string>
     <string name="subscriptions_empty">暂无订阅内容</string>
     <string name="subscriptions_load_failed">订阅内容加载失败</string>
+        <string name="subscriptions_hide_watched">隐藏已看完</string>
+    <string name="subscriptions_all_watched">已看完的都隐藏啦</string>
     <string name="profile_download_manager">下载管理</string>
     <string name="profile_batch_download">批量下载</string>
     <string name="profile_settings">设置</string>
