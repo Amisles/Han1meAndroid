@@ -773,6 +773,7 @@
         <string name="weekly_report_title">每週觀找回顧</string>
     <string name="weekly_report_body">上週共觀看 %1$s，看完了 %2$d 部影片</string>
     <string name="weekly_report_top_author">最常看：%1$s</string>
+        <string name="comic_reader_toggle_black">切換純黑底色</string>
 
     <!-- History (extra) -->
     <string name="history_title">觀看歷史</string>

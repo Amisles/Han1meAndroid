@@ -35,6 +35,7 @@ interface AppPreferences {
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
     val pageLayoutModesFlow: StateFlow<PageLayoutModes>
     val comicReadModeFlow: StateFlow<ComicReadMode?>
+    val comicReaderBlackFlow: StateFlow<Boolean>
     val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?>
     val longPressBoostSpeedFlow: StateFlow<Float>
     val doubleTapSeekFlow: StateFlow<Boolean>
@@ -55,6 +56,7 @@ interface AppPreferences {
     fun setPageLayoutMode(page: PageLayoutKey, mode: PageLayoutMode)
     fun clearPageLayoutMode(page: PageLayoutKey)
     fun setComicReadMode(mode: ComicReadMode)
+    fun setComicReaderBlack(enabled: Boolean)
     fun setRelatedLayoutMode(mode: RelatedLayoutMode)
 
     /** 清除用户选择，恢复按推荐卡片形态取默认值。 */

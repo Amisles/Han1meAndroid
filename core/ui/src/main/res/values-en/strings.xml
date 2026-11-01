@@ -773,6 +773,7 @@
         <string name="weekly_report_title">Weekly recap</string>
     <string name="weekly_report_body">You watched for %1$s and finished %2$d video(s) last week</string>
     <string name="weekly_report_top_author">Most watched: %1$s</string>
+        <string name="comic_reader_toggle_black">Toggle black background</string>
 
     <!-- History (extra) -->
     <string name="history_title">Watch History</string>

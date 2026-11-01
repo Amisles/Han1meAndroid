@@ -501,6 +501,7 @@
         <string name="weekly_report_title">週間まとめ</string>
     <string name="weekly_report_body">先週は %1$s 視聴し、%2$d 本を視聴完了しました</string>
     <string name="weekly_report_top_author">よく見た作者：%1$s</string>
+        <string name="comic_reader_toggle_black">黒背景に切り替え</string>
         <string name="subscriptions_hide_watched">視聴済みを隠す</string>
     <string name="subscriptions_all_watched">新しい動画はありません</string>
     <string name="profile_download_manager">ダウンロード管理</string>

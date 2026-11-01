@@ -148,6 +148,11 @@ interface SettingsRepository {
     val comicReadModeFlow: StateFlow<ComicReadMode?>
     fun setComicReadMode(mode: ComicReadMode)
 
+    /** 漫画阅读器纯黑底色。 */
+    val comicReaderBlack: Boolean
+    val comicReaderBlackFlow: StateFlow<Boolean>
+    fun setComicReaderBlack(enabled: Boolean)
+
     /** null 表示未选择，详情页按推荐卡片形态取默认值。 */
     val relatedLayoutMode: RelatedLayoutMode?
     val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?>

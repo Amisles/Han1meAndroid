@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.outlined.InvertColors
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,6 +46,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.common.util.VolumeKeyPager
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -89,6 +94,7 @@ fun ComicReaderScreen(
     val prefs = LocalAppPreferences.current
     val savedMode by prefs.comicReadModeFlow.collectAsStateWithLifecycle()
     val mode = savedMode ?: ComicReadMode.Paged
+    val blackBackground by prefs.comicReaderBlackFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(comicId, startPage) {
         viewModel.load(comicId, startPage, title, coverUrl)
@@ -98,12 +104,26 @@ fun ComicReaderScreen(
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
     var jumpTarget by remember { mutableStateOf<Int?>(null) }
 
+    DisposableEffect(state.pageCount, mode) {
+        VolumeKeyPager.handler = { turnForward ->
+            val current = viewModel.state.value.currentPage
+            val target = if (turnForward) current + 1 else current - 1
+            if (target in 1..viewModel.state.value.pageCount) {
+                jumpTarget = target
+                true
+            } else {
+                false
+            }
+        }
+        onDispose { VolumeKeyPager.handler = null }
+    }
+
     val toggleChrome = { chromeVisible = !chromeVisible }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(if (blackBackground) Color.Black else MaterialTheme.colorScheme.background)
     ) {
         val chapter = state.chapter
         if (chapter != null && state.hasPages) {
@@ -111,6 +131,7 @@ fun ComicReaderScreen(
                 ComicReadMode.Paged -> PagedReader(
                     pages = chapter.pages,
                     startPage = state.currentPage,
+                    blackBackground = blackBackground,
                     jumpTarget = jumpTarget,
                     onJumpHandled = { jumpTarget = null },
                     onJumpTo = { jumpTarget = it },
@@ -121,6 +142,7 @@ fun ComicReaderScreen(
                 ComicReadMode.Continuous -> ContinuousReader(
                     pages = chapter.pages,
                     startPage = state.currentPage,
+                    blackBackground = blackBackground,
                     jumpTarget = jumpTarget,
                     onJumpHandled = { jumpTarget = null },
                     onPageChanged = viewModel::onPageChanged,
@@ -133,6 +155,8 @@ fun ComicReaderScreen(
                     title = state.title.ifBlank { title },
                     pageCount = state.pageCount,
                     mode = mode,
+                    blackBackground = blackBackground,
+                    onBlackBackgroundChange = { prefs.setComicReaderBlack(it) },
                     onModeChange = { prefs.setComicReadMode(it) },
                     onBackClick = onBackClick,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -188,6 +212,7 @@ fun ComicReaderScreen(
 private fun PagedReader(
     pages: List<String>,
     startPage: Int,
+    blackBackground: Boolean,
     jumpTarget: Int?,
     onJumpHandled: () -> Unit,
     onJumpTo: (Int) -> Unit,
@@ -219,6 +244,7 @@ private fun PagedReader(
         Box(modifier = Modifier.fillMaxSize()) {
             PageImage(
                 url = pages.getOrNull(index).orEmpty(),
+                blackBackground = blackBackground,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
@@ -255,6 +281,7 @@ private fun RowScope.TapZone(weight: Float, onClick: () -> Unit) {
 private fun ContinuousReader(
     pages: List<String>,
     startPage: Int,
+    blackBackground: Boolean,
     jumpTarget: Int?,
     onJumpHandled: () -> Unit,
     onPageChanged: (Int) -> Unit,
@@ -291,6 +318,7 @@ private fun ContinuousReader(
         items(items = pages, key = { it }) { url ->
             PageImage(
                 url = url,
+                blackBackground = blackBackground,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -301,8 +329,12 @@ private fun ContinuousReader(
 }
 
 @Composable
-private fun PageImage(url: String, contentScale: ContentScale, modifier: Modifier) {
-    Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
+private fun PageImage(url: String, blackBackground: Boolean, contentScale: ContentScale, modifier: Modifier) {
+    Box(
+        modifier = modifier.background(
+            if (blackBackground) Color.Black else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
         if (url.isNotBlank()) {
             PrivacyAwareAsyncImage(
                 model = url,
@@ -319,6 +351,8 @@ private fun ReaderTopBar(
     title: String,
     pageCount: Int,
     mode: ComicReadMode,
+    blackBackground: Boolean,
+    onBlackBackgroundChange: (Boolean) -> Unit,
     onModeChange: (ComicReadMode) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -363,6 +397,17 @@ private fun ReaderTopBar(
                 text = stringResource(R.string.comic_pages_count, pageCount),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        IconButton(
+            onClick = { onBlackBackgroundChange(!blackBackground) },
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.InvertColors,
+                contentDescription = stringResource(R.string.comic_reader_toggle_black),
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
             )
         }
         ModeSwitch(mode = mode, onModeChange = onModeChange)

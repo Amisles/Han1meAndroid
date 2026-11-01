@@ -79,6 +79,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_PAGE_LAYOUT_PREFIX = "page_layout_"
 private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
 private const val SP_COMIC_READ_MODE = "comic_read_mode"
+private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     /** 用户选择「不再提示」的版本号；空串表示没有跳过任何版本。 */
     private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
     /** 是否允许启动时自动检查更新。 */
@@ -230,6 +231,9 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     private val _comicReadModeFlow = MutableStateFlow<ComicReadMode?>(null)
     override val comicReadModeFlow: StateFlow<ComicReadMode?> = _comicReadModeFlow.asStateFlow()
 
+    private val _comicReaderBlackFlow = MutableStateFlow(false)
+    override val comicReaderBlackFlow: StateFlow<Boolean> = _comicReaderBlackFlow.asStateFlow()
+
     // ── 应用更新 ────────────────────────────────────────────────────────────
     // 「不再提示」记录的是版本号而非时间戳：跳过 1.6.0 后，1.7.0 发布时仍会重新提示。
     private val _skippedUpdateVersionFlow = MutableStateFlow("")
@@ -305,6 +309,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _relatedLayoutModeFlow.value = RelatedLayoutMode.fromNameOrNull(readString(SP_RELATED_LAYOUT_MODE, null))
         _comicReadModeFlow.value = ComicReadMode.entries
             .firstOrNull { it.name == readString(SP_COMIC_READ_MODE, null) }
+        _comicReaderBlackFlow.value = readBoolean(SP_COMIC_READER_BLACK, false)
         _skippedUpdateVersionFlow.value = readString(SP_SKIPPED_UPDATE_VERSION, "").orEmpty()
         _autoCheckUpdateFlow.value = readBoolean(SP_AUTO_CHECK_UPDATE, true)
         migrateLegacyLoginCookieDomain()
@@ -865,6 +870,13 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     override fun setComicReadMode(mode: ComicReadMode) {
         sp.edit { putString(SP_COMIC_READ_MODE, mode.name) }
         _comicReadModeFlow.value = mode
+    }
+
+    override val comicReaderBlack: Boolean get() = _comicReaderBlackFlow.value
+
+    override fun setComicReaderBlack(enabled: Boolean) {
+        sp.edit { putBoolean(SP_COMIC_READER_BLACK, enabled) }
+        _comicReaderBlackFlow.value = enabled
     }
 
     override fun clearRelatedLayoutMode() {

@@ -21,6 +21,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val pageLayoutModesFlow = Preferences.pageLayoutModesFlow
     override val relatedLayoutModeFlow = Preferences.relatedLayoutModeFlow
     override val comicReadModeFlow = Preferences.comicReadModeFlow
+    override val comicReaderBlackFlow = Preferences.comicReaderBlackFlow
     override val longPressBoostSpeedFlow = Preferences.longPressBoostSpeedFlow
     override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
     override val autoQualityFlow = Preferences.autoQualityFlow
@@ -38,6 +39,7 @@ object PreferencesAppPreferences : AppPreferences {
     override fun clearPageLayoutMode(page: PageLayoutKey) = Preferences.clearPageLayoutMode(page)
     override fun setRelatedLayoutMode(mode: RelatedLayoutMode) = Preferences.setRelatedLayoutMode(mode)
     override fun setComicReadMode(mode: ComicReadMode) = Preferences.setComicReadMode(mode)
+    override fun setComicReaderBlack(enabled: Boolean) = Preferences.setComicReaderBlack(enabled)
     override fun clearRelatedLayoutMode() = Preferences.clearRelatedLayoutMode()
     override fun setLongPressBoostSpeed(speed: Float) = Preferences.setLongPressBoostSpeed(speed)
     override fun setDoubleTapSeek(enabled: Boolean) = Preferences.setDoubleTapSeek(enabled)

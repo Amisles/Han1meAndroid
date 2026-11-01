@@ -3,6 +3,7 @@ package app.amisles.hanime
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -65,6 +66,7 @@ import androidx.navigation.compose.rememberNavController
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
+import app.amisles.hanime.core.common.util.VolumeKeyPager
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -116,6 +118,19 @@ class MainActivity : ComponentActivity() {
         /** 由 DownloadService 的失败通知拉起，直达下载页并定位到出错任务。 */
         const val ACTION_OPEN_DOWNLOADS = "app.amisles.hanime.action.OPEN_DOWNLOADS"
         const val EXTRA_HIGHLIGHT_TASK_ID = "extra_highlight_task_id"
+
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                if (VolumeKeyPager.handler?.invoke(true) == true) return true
+            }
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (VolumeKeyPager.handler?.invoke(false) == true) return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     /** 更新仓储：HanimeApp 需要它在启动时发起静默检查。 */
