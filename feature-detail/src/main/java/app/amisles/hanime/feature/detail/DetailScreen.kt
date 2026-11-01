@@ -136,7 +136,10 @@ fun DetailScreen(
     // 会让首次进入的事件必然丢失）。初始值与「尚未加载视频」都表现为空串，直接跳过。
     LaunchedEffect(viewModel, commentVm) {
         viewModel.videoSwitched.collect { videoId ->
-            if (videoId.isNotEmpty()) commentVm.selectVideo(videoId)
+            if (videoId.isNotEmpty()) {
+                commentVm.selectVideo(videoId)
+                commentVm.loadComments()
+            }
         }
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
