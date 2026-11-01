@@ -177,6 +177,7 @@ class DownloadManager @Inject constructor(
      */
     private val pendingPersist = ConcurrentHashMap<Int, DownloadTask>()
     private val pendingDelete: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+    private val persistLock = Any()
     private val persistSignal = Channel<Unit>(Channel.CONFLATED)
     /** 默认下载目录：公共 Download/Hanime（见 [resolveDefaultDownloadDir]），卸载应用不会被清掉。 */
     private val defaultDownloadDir: File by lazy {
@@ -218,19 +219,15 @@ class DownloadManager @Inject constructor(
         scope.launch {
             for (signal in persistSignal) {
                 runCatching {
-                    // 一次性取走当前全部待写项：期间的中间态已在上面的 map 里被覆盖，
-                    // 因此这里拿到的就是每个任务的最终状态，写一次即正确。
-                    val deletedIds = pendingDelete.toList().also { pendingDelete.removeAll(it.toSet()) }
-                    val batch = pendingPersist.values.toList().also { items ->
-                        // 逐个 remove 而非 clear：消费期间新产生的快照不能被误删
-                        items.forEach { pendingPersist.remove(it.id) }
+                    val (deletedIds, batch) = synchronized(persistLock) {
+                        val deletes = pendingDelete.toList()
+                        pendingDelete.clear()
+                        val writes = pendingPersist.values.toList()
+                        pendingPersist.clear()
+                        deletes to writes
                     }
-                    deletedIds.forEach { id ->
-                        val stillPending = pendingDelete.contains(id)
-                        if (!stillPending) downloadDao.deleteDownload(id)
-                    }
+                    deletedIds.forEach { id -> downloadDao.deleteDownload(id) }
                     if (batch.isNotEmpty()) {
-                        // 批量 upsert 在单事务内完成，避免 N 次独立 fsync
                         downloadDao.upsertAll(batch.map { it.toEntity() })
                     }
                 }.onFailure { e ->
@@ -1157,17 +1154,19 @@ class DownloadManager @Inject constructor(
 
     /** 提交一次落盘。只入队不直接写库，实际写入由 init 中的单消费者协程串行执行。 */
     private fun persistTask(task: DownloadTask) {
-        pendingDelete.remove(task.id)
-        pendingPersist[task.id] = task
-        // CONFLATED：队列里已有未消费信号时直接丢弃本次，合并效果等价但无内存积压
+        synchronized(persistLock) {
+            pendingDelete.remove(task.id)
+            pendingPersist[task.id] = task
+        }
         persistSignal.trySend(Unit)
     }
 
     /** 提交一次删除。与 [persistTask] 共用同一队列，避免删除与在途更新竞争。 */
     private fun persistDelete(taskId: Int) {
-        // 删除哨兵必须覆盖同 id 的在途 upsert，否则旧快照可能在删除之后才落库，任务「复活」
-        pendingPersist.remove(taskId)
-        pendingDelete.add(taskId)
+        synchronized(persistLock) {
+            pendingPersist.remove(taskId)
+            pendingDelete.add(taskId)
+        }
         persistSignal.trySend(Unit)
     }
 
