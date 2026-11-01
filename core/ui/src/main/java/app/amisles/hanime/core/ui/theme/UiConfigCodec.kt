@@ -77,10 +77,7 @@ object UiConfigCodec {
             .put("order", encodeOrder(homeSections.order))
             .put("hidden", encodeOrder(homeSections.hidden.toList()))
             .put("pinned", encodeOrder(homeSections.pinned))
-            .put(
-                "visibleCounts",
-                encodeLayouts(homeSections.visibleCounts.mapValues { it.value.toString() })
-            )
+            .put("visibleCounts", encodeCounts(homeSections.visibleCounts))
 
         return JSONObject()
             .put("marker", MARKER)
@@ -193,8 +190,21 @@ object UiConfigCodec {
         return result
     }
 
-    fun decodeCounts(raw: String): Map<String, Int> =
-        decodeLayouts(raw).mapValues { (_, value) -> value.name.toIntOrNull() ?: 0 }
+    fun encodeCounts(counts: Map<String, Int>): String =
+        counts.entries.joinToString(SEP) { "${it.key}=${it.value}" }
+
+    fun decodeCounts(raw: String): Map<String, Int> {
+        if (raw.isEmpty()) return emptyMap()
+        val result = mutableMapOf<String, Int>()
+        raw.split(SEP).forEach { entry ->
+            val at = entry.lastIndexOf('=')
+            if (at <= 0) return@forEach
+            val title = entry.substring(0, at)
+            val value = entry.substring(at + 1).toIntOrNull() ?: return@forEach
+            if (title.isNotEmpty()) result[title] = value
+        }
+        return result
+    }
 
     fun encodeOrder(order: List<String>): String = order.joinToString(SEP)
 

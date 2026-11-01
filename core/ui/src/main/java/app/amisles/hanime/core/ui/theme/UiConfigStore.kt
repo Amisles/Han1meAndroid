@@ -321,10 +321,7 @@ object UiConfigStore {
             putString(K_SECTION_ORDER, UiConfigCodec.encodeOrder(cfg.order))
             putString(K_SECTION_HIDDEN, UiConfigCodec.encodeOrder(cfg.hidden.toList()))
             putString(K_SECTION_PINNED, UiConfigCodec.encodeOrder(cfg.pinned))
-            putString(
-                K_SECTION_COUNTS,
-                UiConfigCodec.encodeLayouts(cfg.visibleCounts.mapValues { it.value.toString() })
-            )
+            putString(K_SECTION_COUNTS, UiConfigCodec.encodeCounts(cfg.visibleCounts))
         }
     }
 
