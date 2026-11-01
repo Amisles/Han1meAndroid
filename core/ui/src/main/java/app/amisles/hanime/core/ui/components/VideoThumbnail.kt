@@ -75,8 +75,10 @@ fun VideoThumbnail(
         null
     }
 
-    val model: Any? = if (thumbnailUrl.isEmpty() || decodeWidth == null) {
+    val model: Any? = if (thumbnailUrl.isEmpty()) {
         null
+    } else if (decodeWidth == null) {
+        thumbnailUrl
     } else {
         remember(thumbnailUrl, quality, decodeWidth, aspectRatio, density) {
             val widthPx = (with(density) { decodeWidth.roundToPx() } * quality.sizeScale).toInt().coerceAtLeast(1)
