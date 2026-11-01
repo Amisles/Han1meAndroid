@@ -103,3 +103,5 @@ internal const val MANIFEST_ENTRY = "manifest.json"
 internal const val PARTMAP_DIR = "partmap/"
 // 单个位图上限：块数上限 4096，按每块 1 bit 也远小于此值，留足余量防异常压缩包
 internal const val MAX_MIGRATION_ENTRY_BYTES = 4 * 1024 * 1024
+internal const val MAX_MIGRATION_TOTAL_BYTES = 32L * 1024 * 1024
+internal const val MAX_MIGRATION_ENTRY_COUNT = 4096

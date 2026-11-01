@@ -1567,12 +1567,19 @@ class DownloadManager @Inject constructor(
     override suspend fun importMigration(bytes: ByteArray): Int = withContext(Dispatchers.IO) {
         val dir = resolveDownloadDir()
         val entries = LinkedHashMap<String, ByteArray>()
+        var totalBytes = 0L
+        var entryCount = 0
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 if (entry.isDirectory) continue
-                // entry.size 在流式读取时常为 -1，必须自己计边读边限长，否则异常包可撑爆内存
-                val data = readEntryLimited(zip) ?: continue
+                if (++entryCount > MAX_MIGRATION_ENTRY_COUNT) {
+                    throw IllegalArgumentException("迁移包条目数量过多")
+                }
+                val remaining = MAX_MIGRATION_TOTAL_BYTES - totalBytes
+                if (remaining <= 0L) throw IllegalArgumentException("迁移包解压后过大")
+                val data = readEntryLimited(zip, remaining)
+                totalBytes += data.size
                 entries[entry.name] = data
             }
         }
@@ -1612,8 +1619,8 @@ class DownloadManager @Inject constructor(
         imported
     }
 
-    /** 逐条读入并限长；超过上限返回 null 并跳过该条目。 */
-    private fun readEntryLimited(zip: ZipInputStream): ByteArray? {
+    private fun readEntryLimited(zip: ZipInputStream, remainingBudget: Long): ByteArray {
+        val limit = minOf(MAX_MIGRATION_ENTRY_BYTES.toLong(), remainingBudget)
         val out = ByteArrayOutputStream()
         val buffer = ByteArray(64 * 1024)
         var total = 0L
@@ -1621,7 +1628,7 @@ class DownloadManager @Inject constructor(
             val read = zip.read(buffer)
             if (read < 0) break
             total += read
-            if (total > MAX_MIGRATION_ENTRY_BYTES) return null
+            if (total > limit) throw IllegalArgumentException("迁移包条目过大")
             out.write(buffer, 0, read)
         }
         return out.toByteArray()
