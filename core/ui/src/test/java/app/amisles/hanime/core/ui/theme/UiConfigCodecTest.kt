@@ -62,4 +62,18 @@ class UiConfigCodecTest {
         val raw = listOf("A", "", "B", "").joinToString("\u0001")
         assertEquals(listOf("A", "B"), UiConfigCodec.decodeOrder(raw))
     }
+
+    @Test
+    fun `counts round trip`() {
+        val counts = mapOf("最新上市" to 8, "本日排行" to 3)
+        assertEquals(counts, UiConfigCodec.decodeCounts(UiConfigCodec.encodeCounts(counts)))
+        assertEquals("", UiConfigCodec.encodeCounts(emptyMap()))
+        assertTrue(UiConfigCodec.decodeCounts("").isEmpty())
+    }
+
+    @Test
+    fun `decodeCounts skips malformed entries instead of dropping the whole map`() {
+        val raw = listOf("正常=8", "坏条目", "非数字=X", "=6", "标题=3").joinToString("\u0001")
+        assertEquals(mapOf("正常" to 8, "标题" to 3), UiConfigCodec.decodeCounts(raw))
+    }
 }
