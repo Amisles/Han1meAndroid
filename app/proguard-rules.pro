@@ -61,3 +61,14 @@
 -keepclassmembers class kotlinx.coroutines.** {
     volatile <fields>;
 }
+
+# ===========================================
+# Coil
+# ===========================================
+
+# 网络层经 META-INF/services/coil3.util.FetcherServiceLoaderTarget 注册，
+# R8 full mode 下若实现类被改名会导致 release 包没有任何网络 fetcher，网络图片全部静默失败
+-keep class coil3.network.okhttp.internal.OkHttpNetworkFetcherServiceLoaderTarget { *; }
+-keep class coil3.util.FetcherServiceLoaderTarget
+-keep class coil3.util.KeyerServiceLoaderTarget
+-keepnames class coil3.network.okhttp.OkHttpNetworkFetcher { *; }
