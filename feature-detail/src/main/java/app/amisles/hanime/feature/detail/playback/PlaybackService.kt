@@ -66,12 +66,13 @@ class PlaybackService : MediaSessionService() {
      * 因此这里主动停止服务，由 [PlaybackSessionBridge] 在下次 bind 时重试。
      */
     private fun ensureSession() {
-        if (session != null) return
         val player = PlaybackSessionBridge.player
+        if (session?.player !== player) releaseSession()
         if (player == null) {
             stopSelf()
             return
         }
+        if (session != null) return
         val sessionActivity = buildSessionActivity()
         if (sessionActivity == null) {
             stopSelf()
@@ -147,13 +148,16 @@ class PlaybackService : MediaSessionService() {
         )
     }
 
-    override fun onDestroy() {
-        // 只释放会话，不碰播放器：播放器归页面所有，重复释放会崩溃
+    private fun releaseSession() {
         session?.let { s ->
             removeSession(s)
             runCatching { s.release() }
         }
         session = null
+    }
+
+    override fun onDestroy() {
+        releaseSession()
         // 通知桥接层：本服务已结束，下次播放可重新拉起
         PlaybackSessionBridge.onServiceStopped()
         super.onDestroy()
