@@ -18,6 +18,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.model.DownloadTask
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -188,7 +189,9 @@ class DownloadService : Service() {
         val currentStatus = downloadManager.tasks.value.firstOrNull { it.id == taskId }?.status
         val stale = when (status) {
             DownloadStatus.PAUSED, DownloadStatus.COMPLETED, DownloadStatus.FAILED -> currentStatus != status
-            else -> currentStatus != DownloadStatus.DOWNLOADING && currentStatus != DownloadStatus.PENDING
+            DownloadStatus.DOWNLOADING -> currentStatus != DownloadStatus.DOWNLOADING
+            DownloadStatus.PENDING -> currentStatus != DownloadStatus.PENDING
+            null -> currentStatus != DownloadStatus.DOWNLOADING && currentStatus != DownloadStatus.PENDING
         }
         when {
             action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
@@ -196,11 +199,11 @@ class DownloadService : Service() {
             status == DownloadStatus.PAUSED -> handlePaused(taskId, title ?: "", progress, startId)
             status == DownloadStatus.COMPLETED -> handleTerminal(
                 taskId,
-                buildCompletedNotification(title ?: "", intent?.getStringExtra(EXTRA_FILE_PATH) ?: "", taskId),
+                buildCompletedNotification(title ?: "", intent.getStringExtra(EXTRA_FILE_PATH) ?: "", taskId),
                 startId
             )
             status == DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(title ?: ""), startId)
-            else -> handleProgress(taskId, title ?: "", progress, status, startId)
+            else -> handleProgress(taskId, title ?: "", startId)
         }
         // 锁状态统一在此按「是否仍有真实传输」收敛，任何分支提前返回漏放都会被兜住
         syncTransferLocks()
@@ -265,11 +268,7 @@ class DownloadService : Service() {
             handleRemove(taskId, startId)
             return
         }
-        val progress = if (task.totalBytes > 0) {
-            (task.downloadedBytes * 100 / task.totalBytes).toInt().coerceIn(0, 100)
-        } else {
-            0
-        }
+        val progress = progressOf(task)
         when (task.status) {
             DownloadStatus.COMPLETED -> handleTerminal(
                 taskId,
@@ -279,24 +278,34 @@ class DownloadService : Service() {
             DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(task.title), startId)
             DownloadStatus.PAUSED -> handlePaused(taskId, task.title, progress, startId)
             DownloadStatus.DOWNLOADING, DownloadStatus.PENDING ->
-                handleProgress(taskId, task.title, progress, task.status, startId)
+                handleProgress(taskId, task.title, startId)
         }
     }
 
-    private fun handleProgress(taskId: Int, title: String, progress: Int, status: DownloadStatus?, startId: Int) {
+    private fun progressOf(task: DownloadTask): Int =
+        if (task.totalBytes > 0) {
+            (task.downloadedBytes * 100 / task.totalBytes).toInt().coerceIn(0, 100)
+        } else {
+            0
+        }
+
+    private fun handleProgress(taskId: Int, title: String, startId: Int) {
         if (taskId < 0) {
             stopSelfResult(startId)
             return
         }
-        val currentStatus = downloadManager.tasks.value.firstOrNull { it.id == taskId }?.status
-        if (currentStatus != DownloadStatus.DOWNLOADING && currentStatus != DownloadStatus.PENDING) {
+        val task = downloadManager.tasks.value.firstOrNull { it.id == taskId }
+        if (task == null || (task.status != DownloadStatus.DOWNLOADING && task.status != DownloadStatus.PENDING)) {
             handleCurrentTask(taskId, startId)
             return
         }
-        activeTasks[taskId] = ActiveTask(title, progress, status)
+        val effectiveTitle = task.title.ifBlank { title }
+        val effectiveProgress = progressOf(task)
+        val effectiveStatus = task.status
+        activeTasks[taskId] = ActiveTask(effectiveTitle, effectiveProgress, effectiveStatus)
         // 锁不在事件里直接续期：PENDING（等待闸门）同样会走这里，但它不该持锁。
         // 由 onStartCommand 末尾的 syncTransferLocks() 按「是否存在 DOWNLOADING」统一决定。
-        val notification = buildProgressNotification(title, progress, status)
+        val notification = buildProgressNotification(effectiveTitle, effectiveProgress, effectiveStatus)
         // 只有「当前没有前台任务」或「前台任务已不在活动集合里」时才需要占据前台；
         // 其余情况（包括本任务就是前台任务）一律只更新通知，不必重复 startForeground。
         val needForeground = foregroundTaskId < 0 || !activeTasks.containsKey(foregroundTaskId)
