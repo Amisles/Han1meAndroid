@@ -293,8 +293,15 @@ internal fun HanimeNavGraph(
                 onVideoLongClick = onVideoLongClick
             )
         }
-        composable("download") {
+        composable(
+            route = "download?highlight={highlight}",
+            arguments = listOf(navArgument("highlight") {
+                type = NavType.IntType
+                defaultValue = -1
+            })
+        ) { backStackEntry ->
             DownloadScreen(
+                highlightTaskId = backStackEntry.arguments?.getInt("highlight") ?: -1,
                 onPlayLocalVideo = { filePath ->
                     navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
                 }

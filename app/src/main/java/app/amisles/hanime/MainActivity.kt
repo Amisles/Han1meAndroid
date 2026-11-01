@@ -112,6 +112,10 @@ class MainActivity : ComponentActivity() {
         /** 由 DownloadService 的完成通知携带成品文件路径，直达本地播放页。 */
         const val ACTION_PLAY_LOCAL = "app.amisles.hanime.action.PLAY_LOCAL"
         const val EXTRA_OPEN_FILE_PATH = "extra_open_file_path"
+
+        /** 由 DownloadService 的失败通知拉起，直达下载页并定位到出错任务。 */
+        const val ACTION_OPEN_DOWNLOADS = "app.amisles.hanime.action.OPEN_DOWNLOADS"
+        const val EXTRA_HIGHLIGHT_TASK_ID = "extra_highlight_task_id"
     }
 
     /** 更新仓储：HanimeApp 需要它在启动时发起静默检查。 */
@@ -276,6 +280,12 @@ fun HanimeApp(
                 intent.getStringExtra(MainActivity.EXTRA_OPEN_FILE_PATH)?.takeIf { it.isNotBlank() }?.let { path ->
                     navController.navigate("localPlayer?filePath=${Uri.encode(path)}")
                 }
+            }
+            MainActivity.ACTION_OPEN_DOWNLOADS -> {
+                handledIntentTag = tag
+                pendingShareIntent = null
+                val taskId = intent.getIntExtra(MainActivity.EXTRA_HIGHLIGHT_TASK_ID, -1)
+                navController.navigate(if (taskId >= 0) "download?highlight=$taskId" else "download")
             }
         }
     }

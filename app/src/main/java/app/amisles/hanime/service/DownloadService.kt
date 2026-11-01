@@ -227,7 +227,11 @@ class DownloadService : Service() {
                 buildCompletedNotification(title ?: "", intent.getStringExtra(EXTRA_FILE_PATH) ?: "", taskId),
                 startId
             )
-            status == DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(title ?: ""), startId)
+            status == DownloadStatus.FAILED -> handleTerminal(
+                taskId,
+                buildFailedNotification(title ?: "", taskId),
+                startId
+            )
             else -> handleProgress(taskId, title ?: "", startId)
         }
         // 锁状态统一在此按「是否仍有真实传输」收敛，任何分支提前返回漏放都会被兜住
@@ -300,7 +304,11 @@ class DownloadService : Service() {
                 buildCompletedNotification(task.title, task.filePath, taskId),
                 startId
             )
-            DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(task.title), startId)
+            DownloadStatus.FAILED -> handleTerminal(
+                taskId,
+                buildFailedNotification(task.title, taskId),
+                startId
+            )
             DownloadStatus.PAUSED -> handlePaused(taskId, task.title, progress, startId)
             DownloadStatus.DOWNLOADING, DownloadStatus.PENDING ->
                 handleProgress(taskId, task.title, startId)
@@ -523,7 +531,7 @@ class DownloadService : Service() {
             .build()
     }
 
-    private fun buildFailedNotification(title: String): Notification {
+    private fun buildFailedNotification(title: String, taskId: Int = -1): Notification {
         val displayTitle = title.ifEmpty { getString(R.string.download_notification_failed) }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
@@ -531,7 +539,7 @@ class DownloadService : Service() {
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setOngoing(false)
             .setAutoCancel(true)
-            .setContentIntent(buildContentIntent())
+            .setContentIntent(buildOpenDownloadsIntent(taskId))
             .addAction(
                 NotificationCompat.Action.Builder(
                     android.R.drawable.stat_notify_error,
@@ -540,6 +548,20 @@ class DownloadService : Service() {
                 ).build()
             )
             .build()
+    }
+
+    private fun buildOpenDownloadsIntent(taskId: Int): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            action = MainActivity.ACTION_OPEN_DOWNLOADS
+            if (taskId >= 0) putExtra(MainActivity.EXTRA_HIGHLIGHT_TASK_ID, taskId)
+        }
+        return PendingIntent.getActivity(
+            this,
+            (MainActivity.ACTION_OPEN_DOWNLOADS.hashCode() + taskId).let { if (it == 0) 1 else it },
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     private fun actionIntent(action: String, taskId: Int): PendingIntent {
