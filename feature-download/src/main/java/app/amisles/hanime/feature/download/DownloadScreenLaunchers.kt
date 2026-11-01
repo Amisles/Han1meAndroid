@@ -78,9 +78,16 @@ internal fun rememberDownloadScreenLaunchers(viewModel: DownloadViewModel): Down
 
     val mediaPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        mediaMissing = !granted
-        mediaDenied = !granted
+    ) { _ ->
+        val fullAccess = ContextCompat.checkSelfPermission(context, mediaPermission) ==
+            PackageManager.PERMISSION_GRANTED
+        val partialAccess = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            ) == PackageManager.PERMISSION_GRANTED
+        mediaMissing = !fullAccess
+        mediaDenied = !fullAccess && !partialAccess
         viewModel.rescanDownloads()
     }
 
