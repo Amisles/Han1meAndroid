@@ -12,22 +12,26 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 
 @Stable
 internal class CustomizeDraft(
-    private val appliedConfig: UiConfig,
-    private val appliedSections: HomeSectionConfig,
-    private val appliedRelatedLayout: RelatedLayoutMode?
+    appliedConfig: UiConfig,
+    appliedSections: HomeSectionConfig,
+    appliedRelatedLayout: RelatedLayoutMode?
 ) {
     private var configState by mutableStateOf(appliedConfig)
     private var sectionsState by mutableStateOf(appliedSections)
     private var relatedLayoutState by mutableStateOf(appliedRelatedLayout)
+
+    private var baselineConfig by mutableStateOf(appliedConfig)
+    private var baselineSections by mutableStateOf(appliedSections)
+    private var baselineRelatedLayout by mutableStateOf(appliedRelatedLayout)
 
     val config: UiConfig get() = configState
     val sections: HomeSectionConfig get() = sectionsState
     val relatedLayout: RelatedLayoutMode? get() = relatedLayoutState
 
     val dirty: Boolean
-        get() = configState != appliedConfig ||
-            sectionsState != appliedSections ||
-            relatedLayoutState != appliedRelatedLayout
+        get() = configState != baselineConfig ||
+            sectionsState != baselineSections ||
+            relatedLayoutState != baselineRelatedLayout
 
     fun updateConfig(transform: (UiConfig) -> UiConfig) {
         configState = transform(configState).sanitized()
@@ -44,12 +48,20 @@ internal class CustomizeDraft(
     fun replace(config: UiConfig, sections: HomeSectionConfig) {
         configState = config
         sectionsState = sections
+        baselineConfig = config
+        baselineSections = sections
+    }
+
+    fun commit() {
+        baselineConfig = configState
+        baselineSections = sectionsState
+        baselineRelatedLayout = relatedLayoutState
     }
 
     fun revert() {
-        configState = appliedConfig
-        sectionsState = appliedSections
-        relatedLayoutState = appliedRelatedLayout
+        configState = baselineConfig
+        sectionsState = baselineSections
+        relatedLayoutState = baselineRelatedLayout
     }
 }
 

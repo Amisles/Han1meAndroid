@@ -103,6 +103,7 @@ fun CustomizeScreen(
             val target = draft.relatedLayout
             if (target == null) appPrefs.clearRelatedLayoutMode() else appPrefs.setRelatedLayoutMode(target)
         }
+        draft.commit()
         Toast.makeText(context, context.getString(R.string.customize_apply_done), Toast.LENGTH_SHORT).show()
     }
     val revertDraft: () -> Unit = { draft.revert() }
