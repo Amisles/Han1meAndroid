@@ -619,11 +619,11 @@ class DownloadManager @Inject constructor(
      * 启动一个任务。
      *
      * 统一负责 activeSlots 的占位与释放：只有通过 [tryAcquireSoftSlot] 的调用才会进入 Job 作用域，
-     * 也只有那里才会 -1，保证占位与释放成对；登记本身用 putIfAbsent 保证幂等。
+     * 占位由 Job 完成回调统一归还；登记本身用 putIfAbsent 保证幂等。
      * 结束后调度下一个 PENDING 任务。
      *
      * @param expectedStatus 调用方在锁外推导续传点之前看到的任务状态。开跑前会复核一次：状态对不上
-     *   说明期间被暂停/取消，放弃本次调度（占用的槽位由 Job 的 finally 归还）。null 表示不复核。
+     *   说明期间被暂停/取消，放弃本次调度（占用的槽位由完成回调归还）。null 表示不复核。
      * @param scheduledPauseEpoch 调度前的暂停序号，见 [pauseEpoch]。负数表示不校验。
      */
     private fun startDownloadWithConcurrencyInternal(
@@ -673,7 +673,7 @@ class DownloadManager @Inject constructor(
             }
             return
         }
-        // 占不到槽位则退回 PENDING，由 finally 的链式调度重新推导续传起点后拾起
+        // 占不到槽位则退回 PENDING，由完成回调的链式调度重新推导续传起点后拾起
         if (!tryAcquireSoftSlot()) {
             if (task.status != DownloadStatus.PENDING) {
                 updateTask(task.id) { it.copy(status = DownloadStatus.PENDING) }
@@ -682,11 +682,22 @@ class DownloadManager @Inject constructor(
             return
         }
         taskCancelFlags.remove(task.id)
+        val slotReleased = AtomicBoolean(false)
+        fun releaseSlot() {
+            if (!scopeJob.isActive) return
+            if (!slotReleased.compareAndSet(false, true)) return
+            val remaining = activeSlots.decrementAndGet()
+            if (remaining < 0) {
+                AppLogger.logError("DownloadManager", "activeSlots 计数异常并已纠正: " + remaining)
+                activeSlots.set(0)
+            }
+            startNextPendingTask()
+        }
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 // 唯一的状态认定点：从锁外推导续传点到这里隔着磁盘 IO，用户可能已经暂停。
                 // 这里的复核与 updateTask(PAUSED) 共用 tasksLock，因此「暂停」与「开跑」严格有序：
-                //   - 暂停先落库 → 复核不通过，本 Job 直接退出（槽位在 finally 归还）；
+                //   - 暂停先落库 → 复核不通过，本 Job 直接退出（槽位在完成回调归还）；
                 //   - 暂停后到   → 此时 Job 已登记，pauseDownload 会 cancel 它，PAUSED 再覆盖状态。
                 // 只靠锁外那次复核不够：对一个本来就 PAUSED 的任务「再次暂停」不改变 status，
                 // 必须靠暂停序号识别。
@@ -770,33 +781,24 @@ class DownloadManager @Inject constructor(
                     taskCalls.remove(task.id)
                     taskCancelFlags.remove(task.id)
                 }
-                // 进入此作用域必然已在上面通过 tryAcquireSoftSlot 占位，故此处释放是配对的。
-                val remaining = activeSlots.decrementAndGet()
-                if (remaining < 0) {
-                    // 防御：计数理论上不应为负。一旦出现即说明存在占位/释放缺口，
-                    // 记日志并纠正为 0，避免并发上限永久失效导致连接与内存失控。
-                    AppLogger.logError("DownloadManager", "activeSlots 计数异常并已纠正: " + remaining)
-                    activeSlots.set(0)
-                }
-                startNextPendingTask()
             }
         }
+        job.invokeOnCompletion { releaseSlot() }
 
         // 占位与登记必须原子：并发重入一旦让两个 Job 落到同一 taskId，先登记的那个被覆盖，
-        // 它的 finally 里的 -1 就不再对应任何真实占位，activeSlots 会被减成负数。
+        // 它的槽位释放就不再对应任何真实占位，activeSlots 会被减成负数。
         // putIfAbsent(LAZY 且未启动的 Job) 是原子的：只有成功登记的一方才有权 start()。
         val existing = downloadJobs.putIfAbsent(task.id, job)
         if (existing != null) {
-            // 已有 Job 占有该任务：归还刚拿到的槽位，本次调度作废
-            activeSlots.decrementAndGet()
+            job.cancel()
+            releaseSlot()
             AppLogger.log("DownloadManager", "任务 " + task.id + " 已在下载中，忽略重复调度")
             return
         }
-        // 登记与 start 之间可能被取消：LAZY Job 一旦被取消，协程体不会执行，finally 也就不会归还
-        // 槽位，这里必须补还，否则并发上限会永久少一格。
         if (isTaskCancelled(task.id)) {
             downloadJobs.remove(task.id, job)
-            if (activeSlots.decrementAndGet() < 0) activeSlots.set(0)
+            job.cancel()
+            releaseSlot()
             AppLogger.log("DownloadManager", "任务在登记后被取消，已归还并发槽位: " + task.id)
             return
         }
