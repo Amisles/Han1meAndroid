@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -1357,11 +1356,8 @@ class DownloadManager @Inject constructor(
         // 文件删除必须等 Job 真正结束：Job.cancel() 是协作式的，写循环里检查到取消后仍有
         // 正在进行的 write。若此时就删文件，写入会落到已 unlink 的 inode 上，随后新建的
         // 同名任务会指向另一个 inode，表现为「新任务下载到旧数据」并泄漏磁盘空间。
-        // 原实现用 runBlocking { join } 在调用线程上等最多 5s：调用点虽在 IO 线程，但
-        // DownloadViewModel 用 Mutex 串行化全部下载操作，一次取消会连带卡住同一时刻的
-        // 暂停 / 恢复 / 批量重试。改为在内部作用域里等待，调用方立即返回。
         scope.launch {
-            withTimeoutOrNull(CANCEL_JOIN_TIMEOUT_MS) { job?.join() }
+            job?.join()
             if (job == null) taskCancelFlags.remove(taskId)
             // 等待期间用户可能对同一部视频重新发起下载并复用了这个路径：
             // 此时文件归新任务所有，绝不能删（新任务可能正靠它续传）。
