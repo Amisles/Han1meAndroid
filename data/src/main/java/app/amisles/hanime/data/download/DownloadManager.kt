@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Dispatcher
 import okhttp3.ConnectionPool
@@ -403,7 +404,10 @@ class DownloadManager @Inject constructor(
         thumbnailUrl: String,
         videoId: String
     ): Int {
-        if (url.isBlank() || !url.startsWith("https://")) {
+        val downloadUrl = url.toHttpUrlOrNull()
+            ?.takeIf { it.scheme == "https" }
+            ?.toString()
+        if (downloadUrl == null) {
             // 脱敏：直链带时效签名，落盘后等同于泄露访问凭据
             AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"${url.redactUrlForLog()}\" (title=$title, videoId=$videoId)")
             return RESULT_INVALID_URL
@@ -412,7 +416,7 @@ class DownloadManager @Inject constructor(
         val uniqueSuffix = if (videoId.isNotBlank()) {
             videoId.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         } else {
-            url.hashCode().toString(36)
+            downloadUrl.hashCode().toString(36)
         }
         val baseName = "${title}_$quality".replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val fileName = "${clampFileNameBase(baseName, uniqueSuffix)}_$uniqueSuffix.mp4"
@@ -453,7 +457,7 @@ class DownloadManager @Inject constructor(
                 id = taskId,
                 title = title,
                 quality = quality,
-                url = url,
+                url = downloadUrl,
                 filePath = filePath,
                 status = DownloadStatus.PENDING,
                 thumbnailUrl = thumbnailUrl,
@@ -767,7 +771,7 @@ class DownloadManager @Inject constructor(
                 AppLogger.log("DownloadManager", "下载完成: ${task.title}")
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(task.id)) {
                     AppLogger.log("DownloadManager", "下载被取消（IO 中断），保留暂停状态: ${task.title}")
                     return@launch
