@@ -373,6 +373,16 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
         }
         val baseUrl = Preferences.baseUrl
         val loginUrl = baseUrl.trimEnd('/') + "/login"
+        val sessionHost = Preferences.loginCookieDomain
+        val baseHost = runCatching { URL(baseUrl).host.orEmpty().lowercase() }.getOrDefault("")
+        if (sessionHost.isBlank() || baseHost != sessionHost) {
+            return DiagnosticResult(
+                type = DiagnosticType.LOGIN_STATUS,
+                status = DiagnosticStatus.SKIPPED,
+                title = "登录状态",
+                detail = "登录会话来源与当前站点不一致，已跳过检测（避免会话凭据发往其它站点）"
+            )
+        }
         // 使用不跟随重定向的 client，以便判断是否被重定向
         val client = sharedClient
         val start = System.currentTimeMillis()
