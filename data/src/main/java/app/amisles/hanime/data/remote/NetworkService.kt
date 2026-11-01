@@ -255,28 +255,28 @@ class NetworkService @Inject constructor(
         AppLogger.log("NetworkService", "Using base URL: $baseUrl")
         val queryParts = mutableListOf<String>()
         if (query.isNotEmpty()) {
-            queryParts += "query=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
+            queryParts += "query=" + URLEncoder.encode(query, StandardCharsets.UTF_8.name())
         }
         if (genre != null && genre.isNotEmpty()) {
-            queryParts += "genre=" + URLEncoder.encode(genre, StandardCharsets.UTF_8)
+            queryParts += "genre=" + URLEncoder.encode(genre, StandardCharsets.UTF_8.name())
         }
         if (sort != null && sort.isNotEmpty()) {
-            queryParts += "sort=" + URLEncoder.encode(sort, StandardCharsets.UTF_8)
+            queryParts += "sort=" + URLEncoder.encode(sort, StandardCharsets.UTF_8.name())
         }
         for (tag in tags) {
             // tags%5B%5D= 即 tags[]= 的 URL 编码形式，与官网搜索链接保持一致
-            queryParts += "tags%5B%5D=" + URLEncoder.encode(tag, StandardCharsets.UTF_8)
+            queryParts += "tags%5B%5D=" + URLEncoder.encode(tag, StandardCharsets.UTF_8.name())
         }
         if (broad) {
             queryParts += "broad=on"
         }
         if (date.isNotEmpty()) {
             // 官网「发布日期」筛选，快捷值如 date=過去 24 小時；空串 = 全部
-            queryParts += "date=" + URLEncoder.encode(date, StandardCharsets.UTF_8)
+            queryParts += "date=" + URLEncoder.encode(date, StandardCharsets.UTF_8.name())
         }
         if (duration.isNotEmpty()) {
             // 官网「时长」筛选，取值如 duration=30 分鐘 +；空串 = 全部
-            queryParts += "duration=" + URLEncoder.encode(duration, StandardCharsets.UTF_8)
+            queryParts += "duration=" + URLEncoder.encode(duration, StandardCharsets.UTF_8.name())
         }
         if (page > 1) {
             queryParts += "page=$page"
