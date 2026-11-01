@@ -801,6 +801,9 @@
     <string name="watch_later_remove">从稍后观看移除</string>
     <string name="watch_later_added">已加入稍后观看</string>
     <string name="watch_later_removed">已从稍后观看移除</string>
+        <string name="weekly_report_title">每周观看回顾</string>
+    <string name="weekly_report_body">上周共观看 %1$s，看完了 %2$d 部视频</string>
+    <string name="weekly_report_top_author">最常看：%1$s</string>
 
     <!-- History (extra) -->
     <string name="history_title">观看历史</string>

@@ -126,7 +126,8 @@ internal fun HanimeNavGraph(
                     } },
                 onProfileClick = { onOpenProfile() },
                 onComicClick = { navController.navigate("comics") },
-                onVideoLongClick = onVideoLongClick
+                onVideoLongClick = onVideoLongClick,
+                onOpenWatchStats = { navController.navigate("watchStats") }
             )
         }
         composable("comics") {

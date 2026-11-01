@@ -498,6 +498,9 @@
     <string name="watch_later_remove">後で見るから削除</string>
     <string name="watch_later_added">後で見るに追加しました</string>
     <string name="watch_later_removed">後で見るから削除しました</string>
+        <string name="weekly_report_title">週間まとめ</string>
+    <string name="weekly_report_body">先週は %1$s 視聴し、%2$d 本を視聴完了しました</string>
+    <string name="weekly_report_top_author">よく見た作者：%1$s</string>
         <string name="subscriptions_hide_watched">視聴済みを隠す</string>
     <string name="subscriptions_all_watched">新しい動画はありません</string>
     <string name="profile_download_manager">ダウンロード管理</string>

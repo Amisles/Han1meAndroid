@@ -74,6 +74,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_SUBSCRIPTION_SEEN_IDS = "subscription_seen_video_ids"
     private const val SP_WATCH_STATS_ENABLED = "watch_stats_enabled"
     private const val SP_SUBSCRIPTIONS_HIDE_WATCHED = "subscriptions_hide_watched"
+    private const val SP_WEEKLY_REPORT_DISMISSED = "weekly_report_dismissed_week"
     private const val SP_SEARCH_LAYOUT_MODE = "search_layout_mode"
     private const val SP_PAGE_LAYOUT_PREFIX = "page_layout_"
 private const val SP_RELATED_LAYOUT_MODE = "related_layout_mode"
@@ -167,6 +168,9 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
 
     private val _subscriptionsHideWatchedFlow = MutableStateFlow(false)
     override val subscriptionsHideWatchedFlow: StateFlow<Boolean> = _subscriptionsHideWatchedFlow.asStateFlow()
+
+    private val _weeklyReportDismissedWeek = MutableStateFlow("")
+    val weeklyReportDismissedWeek: StateFlow<String> = _weeklyReportDismissedWeek.asStateFlow()
 
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
     override val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
@@ -273,6 +277,7 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
         _subscriptionReminderFlow.value = readBoolean(SP_SUBSCRIPTION_REMINDER, false)
         _watchStatsEnabledFlow.value = readBoolean(SP_WATCH_STATS_ENABLED, true)
         _subscriptionsHideWatchedFlow.value = readBoolean(SP_SUBSCRIPTIONS_HIDE_WATCHED, false)
+        _weeklyReportDismissedWeek.value = readString(SP_WEEKLY_REPORT_DISMISSED, "").orEmpty()
         // 清洗历史存储的 baseUrl（可能含 /enter 等路径或为 http），回写以保证后续拼接正确；
         // 清洗失败时回退默认地址
         val rawBaseUrl = readString(SP_BASE_URL, DEFAULT_BASE_URL)?.ifBlank { DEFAULT_BASE_URL } ?: DEFAULT_BASE_URL
@@ -743,6 +748,13 @@ private const val SP_COMIC_READ_MODE = "comic_read_mode"
     override fun setSubscriptionsHideWatched(enabled: Boolean) {
         sp.edit { putBoolean(SP_SUBSCRIPTIONS_HIDE_WATCHED, enabled) }
         _subscriptionsHideWatchedFlow.value = enabled
+    }
+
+    fun weeklyReportDismissedWeek(): String = _weeklyReportDismissedWeek.value
+
+    fun setWeeklyReportDismissedWeek(weekKey: String) {
+        sp.edit { putString(SP_WEEKLY_REPORT_DISMISSED, weekKey) }
+        _weeklyReportDismissedWeek.value = weekKey
     }
 
     override val subscriptionSeenVideoIds: Set<String>

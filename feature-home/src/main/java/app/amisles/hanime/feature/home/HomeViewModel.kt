@@ -8,6 +8,8 @@ import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
+import app.amisles.hanime.domain.model.WatchStats
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.ui.R
@@ -33,6 +35,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val repository: ContentRepository,
     private val libraryRepository: LibraryRepository,
+    private val statsRepository: app.amisles.hanime.domain.repository.StatsRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -66,6 +69,40 @@ class HomeViewModel @Inject constructor(
     val watchLater: StateFlow<List<WatchLaterVideo>> = libraryRepository
         .getWatchLaterFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _weeklyReport = MutableStateFlow<WatchStats?>(null)
+    val weeklyReport: StateFlow<WatchStats?> = _weeklyReport.asStateFlow()
+
+    private val _weeklyReportVisible = MutableStateFlow(false)
+    val weeklyReportVisible: StateFlow<Boolean> = _weeklyReportVisible.asStateFlow()
+
+    fun dismissWeeklyReport() {
+        _weeklyReportVisible.value = false
+        viewModelScope.launch(Dispatchers.IO) {
+            Preferences.setWeeklyReportDismissedWeek(weekKeyOf())
+        }
+    }
+
+    private fun weekKeyOf(): String {
+        val cal = java.util.Calendar.getInstance()
+        return "${cal.get(java.util.Calendar.YEAR)}-W${cal.get(java.util.Calendar.WEEK_OF_YEAR)}"
+    }
+
+    init {
+        checkWeeklyReport()
+    }
+
+    private fun checkWeeklyReport() {
+        val cal = java.util.Calendar.getInstance()
+        if (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) return
+        if (Preferences.weeklyReportDismissedWeek() == weekKeyOf()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val stats = runCatching { statsRepository.loadWatchStats() }.getOrNull() ?: return@launch
+            if (!stats.hasData) return@launch
+            _weeklyReport.value = stats
+            _weeklyReportVisible.value = true
+        }
+    }
 
     /** 点击稍后观看条目 = 开始观看，从队列移除。 */
     fun consumeWatchLater(video: WatchLaterVideo) {

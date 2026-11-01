@@ -61,6 +61,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
+import app.amisles.hanime.domain.model.WatchStats
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
@@ -183,12 +184,15 @@ fun HomeScreen(
     onViewMore: (HomeSection) -> Unit = {},
     onProfileClick: (() -> Unit)? = null,
     onComicClick: (() -> Unit)? = null,
-    onVideoLongClick: (HanimeVideo) -> Unit = {}
+    onVideoLongClick: (HanimeVideo) -> Unit = {},
+    onOpenWatchStats: () -> Unit = {}
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val continueWatching by viewModel.continueWatching.collectAsStateWithLifecycle()
     val watchLater by viewModel.watchLater.collectAsStateWithLifecycle()
+    val weeklyReport by viewModel.weeklyReport.collectAsStateWithLifecycle()
+    val weeklyReportVisible by viewModel.weeklyReportVisible.collectAsStateWithLifecycle()
     val banner by viewModel.banner.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -205,6 +209,8 @@ fun HomeScreen(
         sections = sections,
         continueWatching = continueWatching,
         watchLater = watchLater,
+        weeklyReport = weeklyReport,
+        weeklyReportVisible = weeklyReportVisible,
         banner = banner,
         isLoading = isLoading,
         isRefreshing = isRefreshing,
@@ -224,7 +230,9 @@ fun HomeScreen(
         onMarkContinueWatched = { id -> viewModel.markContinueItemWatched(id) },
         onRemoveContinueItem = { id -> viewModel.removeContinueItem(id) },
         onConsumeWatchLater = { item -> viewModel.consumeWatchLater(item) },
-        onRemoveWatchLater = { id -> viewModel.removeWatchLater(id) }
+        onRemoveWatchLater = { id -> viewModel.removeWatchLater(id) },
+        onDismissWeeklyReport = { viewModel.dismissWeeklyReport() },
+        onOpenWatchStats = onOpenWatchStats
     )
 }
 
@@ -233,6 +241,8 @@ fun HomeScreenContent(
     sections: List<HomeSection>,
     continueWatching: List<WatchHistory> = emptyList(),
     watchLater: List<WatchLaterVideo> = emptyList(),
+    weeklyReport: WatchStats? = null,
+    weeklyReportVisible: Boolean = false,
     banner: HanimeBanner?,
     isLoading: Boolean,
     isRefreshing: Boolean = false,
@@ -252,7 +262,9 @@ fun HomeScreenContent(
     onMarkContinueWatched: (String) -> Unit = {},
     onRemoveContinueItem: (String) -> Unit = {},
     onConsumeWatchLater: (WatchLaterVideo) -> Unit = {},
-    onRemoveWatchLater: (String) -> Unit = {}
+    onRemoveWatchLater: (String) -> Unit = {},
+    onDismissWeeklyReport: () -> Unit = {},
+    onOpenWatchStats: () -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -388,6 +400,17 @@ fun HomeScreenContent(
                             modifier = Modifier.padding(start = 12.dp)
                         )
                     }
+                }
+            }
+
+            if (weeklyReportVisible && weeklyReport != null) {
+                item(key = "home-weekly-report", contentType = HomeItemType.BANNER) {
+                    WeeklyReportCard(
+                        stats = weeklyReport,
+                        onDismiss = onDismissWeeklyReport,
+                        onOpenStats = onOpenWatchStats,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
             }
 
