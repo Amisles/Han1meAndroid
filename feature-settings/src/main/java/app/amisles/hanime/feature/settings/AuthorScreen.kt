@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,7 +65,8 @@ fun AuthorScreen(
     onVideoClick: (String) -> Unit = {},
     onViewAllVideos: (String) -> Unit = {},
     onViewAllPlaylists: (String) -> Unit = {},
-    onPlaylistClick: (String) -> Unit = {}
+    onPlaylistClick: (String) -> Unit = {},
+    onBatchDownload: (String) -> Unit = {}
 ) {
     val viewModel: AuthorViewModel = hiltViewModel()
     val authorData by viewModel.authorData.collectAsStateWithLifecycle()
@@ -97,6 +99,24 @@ fun AuthorScreen(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back),
                     tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            val authorId = loadedAuthorData?.authorId.orEmpty()
+            IconButton(
+                onClick = { onBatchDownload(authorId) },
+                enabled = authorId.isNotBlank(),
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Download,
+                    contentDescription = stringResource(R.string.profile_batch_download),
+                    tint = if (authorId.isNotBlank()) {
+                        MaterialTheme.colorScheme.onBackground
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     modifier = Modifier.size(24.dp)
                 )
             }

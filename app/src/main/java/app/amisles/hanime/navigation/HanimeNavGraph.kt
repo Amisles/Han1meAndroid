@@ -406,8 +406,16 @@ internal fun HanimeNavGraph(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        composable("batchDownload") {
+        composable(
+            route = "batchDownload?authorId={authorId}",
+            arguments = listOf(navArgument("authorId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
             BatchDownloadScreen(
+                initialAuthorId = backStackEntry.arguments?.getString("authorId").orEmpty(),
                 onBackClick = { navController.popBackStack() }
             )
         }
@@ -438,6 +446,9 @@ internal fun HanimeNavGraph(
                     navController.navigate("playlistListPage?url=${Uri.encode(url)}") },
                 onPlaylistClick = { url ->
                     navController.navigate("playlistDetail?url=${Uri.encode(url)}")
+                },
+                onBatchDownload = { authorId ->
+                    navController.navigate("batchDownload?authorId=${Uri.encode(authorId)}")
                 }
             )
         }

@@ -72,12 +72,20 @@ import coil3.compose.AsyncImage
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BatchDownloadScreen(
+    initialAuthorId: String = "",
     onBackClick: () -> Unit
 ) {
     val viewModel: BatchDownloadViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(initialAuthorId) {
+        if (initialAuthorId.isNotBlank()) {
+            viewModel.updateAuthorIdInput(initialAuthorId)
+            viewModel.searchAuthor()
+        }
+    }
 
     // 一次性提示事件：用 Unit 作为 key，避免随状态变化重启收集；每条事件恰好消费一次
     LaunchedEffect(Unit) {
