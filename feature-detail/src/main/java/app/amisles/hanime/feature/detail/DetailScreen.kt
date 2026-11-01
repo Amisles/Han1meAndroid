@@ -115,6 +115,7 @@ fun DetailScreen(
     val downloadQualities by viewModel.downloadQualities.collectAsStateWithLifecycle()
     val isLoadingQualities by viewModel.isLoadingQualities.collectAsStateWithLifecycle()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
+    val isWatchLater by viewModel.isWatchLater.collectAsStateWithLifecycle()
     val isSubscribed by viewModel.isSubscribed.collectAsStateWithLifecycle()
     val isSubscribing by viewModel.isSubscribing.collectAsStateWithLifecycle()
     val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
@@ -388,6 +389,7 @@ fun DetailScreen(
         showDescription = showDescription,
         isFavorite = isFavorite,
         isSubscribed = isSubscribed,
+        isWatchLater = isWatchLater,
         isSubscribing = isSubscribing,
         comments = comments,
         isLoadingComments = isLoadingComments,
@@ -416,6 +418,7 @@ fun DetailScreen(
             viewModel.loadDownloadQualities()
         },
         onToggleFavorite = { viewModel.toggleFavorite() },
+        onToggleWatchLater = { viewModel.toggleWatchLater() },
         onShareClick = { shareVideo(context, videoDetail?.title.orEmpty(), videoUrl.orEmpty()) },
         onToggleSubscribe = { viewModel.toggleSubscribe() },
         onTagClick = onTagClick,

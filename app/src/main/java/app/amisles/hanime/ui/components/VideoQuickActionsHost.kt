@@ -27,9 +27,13 @@ fun VideoQuickActionsHost(
 ) {
     val context = LocalContext.current
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
+    val watchLaterIds by viewModel.watchLaterIds.collectAsStateWithLifecycle()
 
     LaunchedEffect(sheetVideo) {
         sheetVideo?.let { viewModel.ensureFavoritesLoaded(listOf(extractId(it))) }
+    }
+    LaunchedEffect(sheetVideo) {
+        sheetVideo?.let { viewModel.ensureWatchLaterLoaded(listOf(extractId(it))) }
     }
     val target by viewModel.target.collectAsStateWithLifecycle()
 
@@ -66,7 +70,9 @@ fun VideoQuickActionsHost(
             onDownload = { onDismiss(); viewModel.openDownloadSheet(video) },
             onShare = { shareVideo(context, video.title, video.videoUrl) },
             onSearchRelated = { onSearchRelated(video.author.ifBlank { video.title }) },
-            onDismiss = onDismiss
+            onDismiss = onDismiss,
+            onWatchLater = { viewModel.toggleWatchLater(video) },
+            isWatchLater = watchLaterIds.contains(extractId(video))
         )
     }
 

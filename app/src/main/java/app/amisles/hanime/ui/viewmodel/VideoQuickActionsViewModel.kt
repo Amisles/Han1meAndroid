@@ -7,6 +7,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
@@ -53,6 +54,9 @@ class VideoQuickActionsViewModel @Inject constructor(
     private val _favoriteIds = MutableStateFlow<Set<String>>(emptySet())
     val favoriteIds: StateFlow<Set<String>> = _favoriteIds.asStateFlow()
 
+    private val _watchLaterIds = MutableStateFlow<Set<String>>(emptySet())
+    val watchLaterIds: StateFlow<Set<String>> = _watchLaterIds.asStateFlow()
+
     private val _target = MutableStateFlow<QuickActionTarget?>(null)
     val target: StateFlow<QuickActionTarget?> = _target.asStateFlow()
 
@@ -78,6 +82,60 @@ class VideoQuickActionsViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _favoriteIds.value = emptySet()
+            }
+        }
+    }
+
+    fun ensureWatchLaterLoaded(ids: List<String>) {
+        val missing = ids.filter { it.isNotEmpty() && !_watchLaterIds.value.contains(it) }
+        if (missing.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val ids0 = withContext(Dispatchers.IO) { library.getWatchLaterIds() }
+                _watchLaterIds.value = ids0.toSet()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _watchLaterIds.value = emptySet()
+            }
+        }
+    }
+
+    fun toggleWatchLater(video: HanimeVideo) {
+        val videoId = extractVideoId(video.videoUrl)
+        if (videoId.isEmpty()) return
+        val willAdd = !_watchLaterIds.value.contains(videoId)
+        viewModelScope.launch {
+            try {
+                val ok = withContext(Dispatchers.IO) {
+                    if (willAdd) {
+                        library.addWatchLater(
+                            WatchLaterVideo(
+                                id = videoId,
+                                title = video.title,
+                                thumbnailUrl = video.thumbnailUrl,
+                                videoUrl = video.videoUrl,
+                                author = video.author,
+                                duration = video.duration,
+                                addedAt = System.currentTimeMillis()
+                            )
+                        )
+                    } else {
+                        library.removeWatchLater(videoId)
+                    }
+                }
+                _watchLaterIds.value = if (willAdd && ok) {
+                    _watchLaterIds.value + videoId
+                } else {
+                    _watchLaterIds.value - videoId
+                }
+                _events.trySend(
+                    if (willAdd) R.string.watch_later_added else R.string.watch_later_removed
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _events.trySend(R.string.local_save_failed)
             }
         }
     }

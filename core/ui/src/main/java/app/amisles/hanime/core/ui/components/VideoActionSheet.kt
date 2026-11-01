@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +48,9 @@ fun VideoActionSheet(
     onDownload: (() -> Unit)?,
     onShare: () -> Unit,
     onSearchRelated: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onWatchLater: (() -> Unit)? = null,
+    isWatchLater: Boolean = false
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -82,6 +85,15 @@ fun VideoActionSheet(
                     icon = Icons.Filled.Download,
                     label = stringResource(R.string.detail_download),
                     onClick = { onDismiss(); onDownload() }
+                )
+            }
+            if (onWatchLater != null) {
+                VideoActionRow(
+                    icon = Icons.Outlined.WatchLater,
+                    label = stringResource(
+                        if (isWatchLater) R.string.watch_later_remove else R.string.watch_later_add
+                    ),
+                    onClick = { onDismiss(); onWatchLater() }
                 )
             }
             VideoActionRow(

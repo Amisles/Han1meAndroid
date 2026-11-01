@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,10 +41,12 @@ internal fun DetailIntroSection(
     isFavorite: Boolean,
     isSubscribed: Boolean,
     isSubscribing: Boolean,
+    isWatchLater: Boolean = false,
     onToggleDescription: () -> Unit,
     onToggleSubscribe: () -> Unit,
     onDownloadClick: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onToggleWatchLater: () -> Unit = {},
     onShareClick: () -> Unit,
     onTagClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit,
@@ -188,6 +191,14 @@ internal fun DetailIntroSection(
                 onClick = onToggleFavorite,
                 modifier = Modifier.weight(1f),
                 tint = favoriteTint
+            )
+            val watchLaterTint = if (isWatchLater) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+            DetailActionButton(
+                icon = Icons.Outlined.WatchLater,
+                text = stringResource(if (isWatchLater) R.string.watch_later_remove else R.string.watch_later_add),
+                onClick = onToggleWatchLater,
+                modifier = Modifier.weight(1f),
+                tint = watchLaterTint
             )
             DetailActionButton(
                 icon = Icons.Default.Share,

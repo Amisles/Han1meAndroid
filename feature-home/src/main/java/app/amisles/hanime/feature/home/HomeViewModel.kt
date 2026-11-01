@@ -7,6 +7,7 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.model.WatchHistory
+import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.ui.R
@@ -59,6 +60,23 @@ class HomeViewModel @Inject constructor(
     fun removeContinueItem(videoId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             libraryRepository.removeWatchHistory(videoId)
+        }
+    }
+
+    val watchLater: StateFlow<List<WatchLaterVideo>> = libraryRepository
+        .getWatchLaterFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** 点击稍后观看条目 = 开始观看，从队列移除。 */
+    fun consumeWatchLater(video: WatchLaterVideo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            libraryRepository.removeWatchLater(video.id)
+        }
+    }
+
+    fun removeWatchLater(videoId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            libraryRepository.removeWatchLater(videoId)
         }
     }
 

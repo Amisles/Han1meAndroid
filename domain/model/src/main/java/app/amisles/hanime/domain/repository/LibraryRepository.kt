@@ -3,6 +3,7 @@ package app.amisles.hanime.domain.repository
 import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.WatchHistory
+import app.amisles.hanime.domain.model.WatchLaterVideo
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -70,4 +71,10 @@ interface LibraryRepository {
     suspend fun addSearchHistory(query: String): Boolean
     suspend fun removeSearchHistory(query: String): Boolean
     suspend fun clearSearchHistory(): Boolean
+
+    // ── 稍后观看 ────────────────────────────────────────────────────────────
+    fun getWatchLaterFlow(): Flow<List<WatchLaterVideo>>
+    suspend fun getWatchLaterIds(): List<String>
+    suspend fun addWatchLater(video: WatchLaterVideo): Boolean
+    suspend fun removeWatchLater(videoId: String): Boolean
 }

@@ -60,6 +60,7 @@ import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.WatchHistory
+import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
@@ -187,6 +188,7 @@ fun HomeScreen(
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val continueWatching by viewModel.continueWatching.collectAsStateWithLifecycle()
+    val watchLater by viewModel.watchLater.collectAsStateWithLifecycle()
     val banner by viewModel.banner.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -202,6 +204,7 @@ fun HomeScreen(
     HomeScreenContent(
         sections = sections,
         continueWatching = continueWatching,
+        watchLater = watchLater,
         banner = banner,
         isLoading = isLoading,
         isRefreshing = isRefreshing,
@@ -219,7 +222,9 @@ fun HomeScreen(
         onComicClick = onComicClick,
         onVideoLongClick = onVideoLongClick,
         onMarkContinueWatched = { id -> viewModel.markContinueItemWatched(id) },
-        onRemoveContinueItem = { id -> viewModel.removeContinueItem(id) }
+        onRemoveContinueItem = { id -> viewModel.removeContinueItem(id) },
+        onConsumeWatchLater = { item -> viewModel.consumeWatchLater(item) },
+        onRemoveWatchLater = { id -> viewModel.removeWatchLater(id) }
     )
 }
 
@@ -227,6 +232,7 @@ fun HomeScreen(
 fun HomeScreenContent(
     sections: List<HomeSection>,
     continueWatching: List<WatchHistory> = emptyList(),
+    watchLater: List<WatchLaterVideo> = emptyList(),
     banner: HanimeBanner?,
     isLoading: Boolean,
     isRefreshing: Boolean = false,
@@ -244,7 +250,9 @@ fun HomeScreenContent(
     onComicClick: (() -> Unit)? = null,
     onVideoLongClick: (HanimeVideo) -> Unit = {},
     onMarkContinueWatched: (String) -> Unit = {},
-    onRemoveContinueItem: (String) -> Unit = {}
+    onRemoveContinueItem: (String) -> Unit = {},
+    onConsumeWatchLater: (WatchLaterVideo) -> Unit = {},
+    onRemoveWatchLater: (String) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -401,6 +409,20 @@ fun HomeScreenContent(
                         onItemClick = { history -> onVideoClick(history.videoUrl) },
                         onMarkWatched = { history -> onMarkContinueWatched(history.id) },
                         onRemove = { history -> onRemoveContinueItem(history.id) },
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+            }
+
+            if (watchLater.isNotEmpty()) {
+                item(key = "home-watch-later", contentType = HomeItemType.BANNER) {
+                    WatchLaterSection(
+                        items = watchLater,
+                        onItemClick = { item ->
+                            onConsumeWatchLater(item)
+                            onVideoClick(item.videoUrl)
+                        },
+                        onRemove = { item -> onRemoveWatchLater(item.id) },
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }

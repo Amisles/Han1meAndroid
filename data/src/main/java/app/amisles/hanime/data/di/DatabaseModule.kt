@@ -9,6 +9,7 @@ import app.amisles.hanime.data.local.database.FavoriteDatabase
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
+import app.amisles.hanime.data.local.database.WatchLaterDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,7 +36,8 @@ object DatabaseModule {
                 FavoriteDatabase.MIGRATION_4_5,
                 FavoriteDatabase.MIGRATION_5_6,
                 FavoriteDatabase.MIGRATION_6_7,
-            FavoriteDatabase.MIGRATION_7_8
+            FavoriteDatabase.MIGRATION_7_8,
+                FavoriteDatabase.MIGRATION_8_9
             )
             // 不再使用 fallbackToDestructiveMigration
             .build()
@@ -59,4 +61,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideComicProgressDao(db: FavoriteDatabase): ComicProgressDao = db.comicProgressDao()
+
+    @Provides
+    fun provideWatchLaterDao(db: FavoriteDatabase): WatchLaterDao = db.watchLaterDao()
 }

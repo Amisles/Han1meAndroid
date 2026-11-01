@@ -10,10 +10,11 @@ import app.amisles.hanime.data.local.entity.FavoriteGroupEntity
 import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
 import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.entity.WatchHistoryEntity
+import app.amisles.hanime.data.local.entity.WatchLaterEntity
 
 @Database(
-    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class, FavoriteGroupEntity::class, ComicProgressEntity::class],
-    version = 8,
+    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class, FavoriteGroupEntity::class, ComicProgressEntity::class, WatchLaterEntity::class],
+    version = 9,
     exportSchema = true
 )
 abstract class FavoriteDatabase : RoomDatabase() {
@@ -23,6 +24,7 @@ abstract class FavoriteDatabase : RoomDatabase() {
     abstract fun downloadDao(): DownloadDao
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun comicProgressDao(): ComicProgressDao
+    abstract fun watchLaterDao(): WatchLaterDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -123,6 +125,22 @@ abstract class FavoriteDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "ALTER TABLE watch_history ADD COLUMN playback_duration INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS watch_later (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        videoUrl TEXT NOT NULL,
+                        author TEXT NOT NULL,
+                        duration TEXT NOT NULL,
+                        addedAt INTEGER NOT NULL
+                    )""".trimIndent()
                 )
             }
         }

@@ -15,6 +15,7 @@ import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.WatchHistory
+import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.domain.result.AppResult
@@ -82,6 +83,9 @@ class DetailViewModel @Inject constructor(
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
 
+    private val _isWatchLater = MutableStateFlow(false)
+    val isWatchLater: StateFlow<Boolean> = _isWatchLater.asStateFlow()
+
     // 订阅作者相关状态
     private val _isSubscribed = MutableStateFlow(false)
     val isSubscribed: StateFlow<Boolean> = _isSubscribed.asStateFlow()
@@ -137,6 +141,7 @@ class DetailViewModel @Inject constructor(
         // 清空下载画质，避免弹窗短暂展示上一部视频的画质列表
         _downloadQualities.value = emptyList()
         _isLoadingQualities.value = false
+        _isWatchLater.value = false
 
         // 取消上一次未完成的详情请求（快速重进页面时去重）
         detailLoadJob?.cancel()
@@ -196,6 +201,10 @@ class DetailViewModel @Inject constructor(
                                 library.isFavorite(currentVideoId)
                             }
                             _isFavorite.value = isFav
+
+                            _isWatchLater.value =
+                                withContext(Dispatchers.IO) { library.getWatchLaterIds() }
+                                    .contains(currentVideoId)
 
                             // 已解析出订阅状态（"1" 表示已订阅），还原高亮
                             _isSubscribed.value = detail.subscribeStatus == "1"
@@ -289,6 +298,39 @@ class DetailViewModel @Inject constructor(
             )
             AppLogger.d("DetailViewModel", "Start download result=$result, quality=${quality.quality}")
             _downloadStartResults.trySend(result)
+        }
+    }
+
+    fun toggleWatchLater() {
+        val videoId = currentVideoId
+        if (videoId.isEmpty()) return
+        val detail = _videoDetail.value
+        viewModelScope.launch {
+            try {
+                val willAdd = !_isWatchLater.value
+                val ok = withContext(Dispatchers.IO) {
+                    if (willAdd) {
+                        library.addWatchLater(
+                            WatchLaterVideo(
+                                id = videoId,
+                                title = detail?.title.orEmpty(),
+                                thumbnailUrl = detail?.posterUrl.orEmpty(),
+                                videoUrl = currentVideoUrl,
+                                author = detail?.author.orEmpty(),
+                                duration = "",
+                                addedAt = System.currentTimeMillis()
+                            )
+                        )
+                    } else {
+                        library.removeWatchLater(videoId)
+                    }
+                }
+                if (ok) _isWatchLater.value = willAdd
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("DetailViewModel", "Error toggling watch later: ${e.message}", e)
+            }
         }
     }
 

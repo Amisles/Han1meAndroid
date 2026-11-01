@@ -8,6 +8,10 @@ import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.database.WatchHistoryDao
+import app.amisles.hanime.data.local.database.WatchLaterDao
+import app.amisles.hanime.data.local.entity.toDomain as toWatchLaterDomain
+import app.amisles.hanime.data.local.entity.toEntity as toWatchLaterEntity
+import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
@@ -25,7 +29,8 @@ class LibraryRepositoryImpl @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val favoriteGroupDao: FavoriteGroupDao,
     private val watchHistoryDao: WatchHistoryDao,
-    private val searchHistoryDao: SearchHistoryDao
+    private val searchHistoryDao: SearchHistoryDao,
+    private val watchLaterDao: WatchLaterDao
 ) : LibraryRepository {
 
     override fun getFavoriteIdsFlow(): Flow<List<String>> = favoriteDao.getFavoriteIds()
@@ -318,6 +323,39 @@ class LibraryRepositoryImpl @Inject constructor(
             true
         } catch (e: SQLException) {
             AppLogger.logError("LibraryRepositoryImpl", "Error clearing search history: ${e.message}", e)
+            false
+        }
+    }
+
+    // ── 稍后观看 ────────────────────────────────────────────────────────────
+
+    override fun getWatchLaterFlow(): Flow<List<WatchLaterVideo>> =
+        watchLaterDao.getAllFlow().map { list -> list.map { it.toWatchLaterDomain() } }
+
+    override suspend fun getWatchLaterIds(): List<String> =
+        try {
+            watchLaterDao.getAllOnce().map { it.id }
+        } catch (e: SQLException) {
+            AppLogger.logError("LibraryRepositoryImpl", "Error getting watch later ids: ${e.message}", e)
+            emptyList()
+        }
+
+    override suspend fun addWatchLater(video: WatchLaterVideo): Boolean {
+        return try {
+            watchLaterDao.add(video.toWatchLaterEntity())
+            true
+        } catch (e: SQLException) {
+            AppLogger.logError("LibraryRepositoryImpl", "Error adding watch later: ${e.message}", e)
+            false
+        }
+    }
+
+    override suspend fun removeWatchLater(videoId: String): Boolean {
+        return try {
+            watchLaterDao.remove(videoId)
+            true
+        } catch (e: SQLException) {
+            AppLogger.logError("LibraryRepositoryImpl", "Error removing watch later: ${e.message}", e)
             false
         }
     }
