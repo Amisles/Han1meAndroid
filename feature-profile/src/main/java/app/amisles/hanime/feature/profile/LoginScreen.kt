@@ -5,6 +5,7 @@ import android.net.Uri
 import android.webkit.CookieManager
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -368,6 +369,7 @@ private fun EmailPasswordTab(
 private fun WebViewLoginTab(vm: LoginViewModel) {
     val context = LocalContext.current
     var loading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf(false) }
     val configured = remember { mutableStateOf(false) }
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     // 进入本 Tab 时已存在的 Cookie：用于区分「本次真的登录成功」与「本来就已登录」
@@ -430,6 +432,17 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                             )
                         }
 
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?
+                        ) {
+                            if (request?.isForMainFrame == true) {
+                                loading = false
+                                loadError = true
+                            }
+                        }
+
                         override fun onReceivedSslError(
                             view: WebView?,
                             handler: SslErrorHandler?,
@@ -477,6 +490,29 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
+                }
+            }
+        } else if (loadError) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.common_load_failed),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = {
+                        loadError = false
+                        loading = true
+                        webViewRef.value?.reload()
+                    }) {
+                        Text(stringResource(R.string.common_retry))
+                    }
                 }
             }
         }
