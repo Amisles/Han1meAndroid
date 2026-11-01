@@ -69,6 +69,11 @@ class DownloadService : Service() {
         /** 取消/删除任务：撤销通知并从活动集合移除。需与 DownloadManager 侧同名常量手工保持一致。 */
         const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
 
+        const val ACTION_PAUSE_ALL = "app.amisles.hanime.service.action.PAUSE_ALL"
+        const val ACTION_RESUME_TASK = "app.amisles.hanime.service.action.RESUME_TASK"
+        const val ACTION_CANCEL_TASK = "app.amisles.hanime.service.action.CANCEL_TASK"
+        const val ACTION_RETRY_FAILED = "app.amisles.hanime.service.action.RETRY_FAILED"
+
         const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
     }
 
@@ -195,6 +200,26 @@ class DownloadService : Service() {
         }
         when {
             action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
+            action == ACTION_PAUSE_ALL -> {
+                downloadManager.pauseAll()
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+            action == ACTION_RESUME_TASK -> {
+                downloadManager.resumeDownload(taskId)
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+            action == ACTION_CANCEL_TASK -> {
+                downloadManager.cancelDownload(taskId)
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+            action == ACTION_RETRY_FAILED -> {
+                downloadManager.retryAllFailed()
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
             stale -> handleCurrentTask(taskId, startId)
             status == DownloadStatus.PAUSED -> handlePaused(taskId, title ?: "", progress, startId)
             status == DownloadStatus.COMPLETED -> handleTerminal(
@@ -365,7 +390,7 @@ class DownloadService : Service() {
         }
         val wasForeground = foregroundTaskId == taskId
         activeTasks.remove(taskId)
-        val notification = buildPausedNotification(title, progress)
+        val notification = buildPausedNotification(title, progress, taskId)
         if (activeTasks.isEmpty()) {
             if (foregroundTaskId >= 0) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -448,11 +473,18 @@ class DownloadService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(buildContentIntent())
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.ic_media_pause,
+                    getString(R.string.notification_action_pause_all),
+                    actionIntent(ACTION_PAUSE_ALL, -1)
+                ).build()
+            )
             .build()
     }
 
     /** 暂停态通知用常规通知（可划掉、点击自动消失）；若沿用 setOngoing(true)，用户将无法自行清除。 */
-    private fun buildPausedNotification(title: String, progress: Int): Notification {
+    private fun buildPausedNotification(title: String, progress: Int, taskId: Int): Notification {
         val displayTitle = title.ifEmpty { getString(R.string.download_notification_downloading) }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
@@ -462,6 +494,20 @@ class DownloadService : Service() {
             .setOngoing(false)
             .setAutoCancel(true)
             .setContentIntent(buildContentIntent())
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.ic_media_play,
+                    getString(R.string.notification_action_resume),
+                    actionIntent(ACTION_RESUME_TASK, taskId)
+                ).build()
+            )
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    getString(R.string.notification_action_cancel),
+                    actionIntent(ACTION_CANCEL_TASK, taskId)
+                ).build()
+            )
             .build()
     }
 
@@ -486,7 +532,27 @@ class DownloadService : Service() {
             .setOngoing(false)
             .setAutoCancel(true)
             .setContentIntent(buildContentIntent())
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.stat_notify_error,
+                    getString(R.string.download_retry_all),
+                    actionIntent(ACTION_RETRY_FAILED, -1)
+                ).build()
+            )
             .build()
+    }
+
+    private fun actionIntent(action: String, taskId: Int): PendingIntent {
+        val intent = Intent(this, DownloadService::class.java).apply {
+            this.action = action
+            if (taskId >= 0) putExtra(EXTRA_TASK_ID, taskId)
+        }
+        return PendingIntent.getService(
+            this,
+            action.hashCode() + taskId * 31,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     /** 构建点击通知后的 PendingIntent：完成/失败通知携带成品文件路径，直达本地播放页。 */

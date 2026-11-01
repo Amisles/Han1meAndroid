@@ -462,6 +462,9 @@
     <string name="download_notification_failed">下载失败</string>
     <string name="download_notification_progress">下载中 %1$d%%</string>
     <string name="download_notification_paused">已暂停 %1$d%%</string>
+    <string name="notification_action_pause_all">暂停全部</string>
+    <string name="notification_action_resume">继续</string>
+    <string name="notification_action_cancel">取消下载</string>
     <string name="download_title">下载管理</string>
     <string name="download_pause">暂停</string>
     <string name="download_resume">继续</string>
