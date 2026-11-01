@@ -93,8 +93,9 @@ internal fun SpeedMenuPopup(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         ui.playbackSpeeds.forEach { speed ->
+            val label = speed.toString().removeSuffix(".0")
             Text(
-                text = "${speed}x",
+                text = "${label}x",
                 color = if (speed == ui.effectiveSpeed) HanimePrimary else Color.White,
                 fontSize = 11.sp,
                 modifier = Modifier

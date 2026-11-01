@@ -177,6 +177,20 @@ class DownloadService : Service() {
         val status = statusStr?.let { runCatching { DownloadStatus.valueOf(it) }.getOrNull() }
         val action = intent?.action
 
+        when {
+            action == ACTION_PAUSE_ALL -> {
+                downloadManager.pauseAll()
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+            action == ACTION_RETRY_FAILED -> {
+                downloadManager.retryAllFailed()
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+            else -> {}
+        }
+
         // 无条件尝试进入前台：若用「是否已在前台」缓存短路，服务被 stopForeground / stopSelf 后
         // 标志若未复位，后续 startForegroundService 的 5 秒履约就永远不满足，Android 12+ 会抛
         // ForegroundServiceDidNotStartInTimeException。系统对重复 startForeground 是幂等的，
@@ -200,11 +214,6 @@ class DownloadService : Service() {
         }
         when {
             action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
-            action == ACTION_PAUSE_ALL -> {
-                downloadManager.pauseAll()
-                stopSelfResult(startId)
-                return START_NOT_STICKY
-            }
             action == ACTION_RESUME_TASK -> {
                 downloadManager.resumeDownload(taskId)
                 stopSelfResult(startId)
@@ -212,11 +221,6 @@ class DownloadService : Service() {
             }
             action == ACTION_CANCEL_TASK -> {
                 downloadManager.cancelDownload(taskId)
-                stopSelfResult(startId)
-                return START_NOT_STICKY
-            }
-            action == ACTION_RETRY_FAILED -> {
-                downloadManager.retryAllFailed()
                 stopSelfResult(startId)
                 return START_NOT_STICKY
             }
