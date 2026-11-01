@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.data.preferences.Preferences
 import android.widget.Toast
 
 /**
@@ -57,11 +58,24 @@ class ShareReceiverActivity : ComponentActivity() {
     companion object {
         private const val DEEP_LINK_SCHEME = "hanime"
 
+        private val OFFICIAL_HOSTS = listOf("hanime1.me", "hanimeone.me")
+
         /** 从任意文本中找出首个 /watch?v= 链接（容忍被聊天工具截断或附加了多余文案）。 */
         fun extractWatchUrl(text: String): String? {
             val match = WATCH_URL_REGEX.find(text) ?: return null
-            return "https://" + match.groupValues[1] + match.groupValues[2] + match.groupValues[3]
+            val host = match.groupValues[1]
+            if (!isAllowedHost(host)) return null
+            return "https://" + host + match.groupValues[2] + match.groupValues[3]
         }
+
+        private fun isAllowedHost(host: String): Boolean {
+            val lower = host.lowercase()
+            if (OFFICIAL_HOSTS.any { lower == it || lower.endsWith("." + it) }) return true
+            return lower == currentBaseHost()
+        }
+
+        private fun currentBaseHost(): String =
+            runCatching { Uri.parse(Preferences.baseUrl).host?.lowercase() }.getOrNull().orEmpty()
 
         private val WATCH_URL_REGEX = Regex(
             pattern = """https?://([A-Za-z0-9.-]+?)(/watch\?v=\d+)([^\s<>'"\\]*)""",
