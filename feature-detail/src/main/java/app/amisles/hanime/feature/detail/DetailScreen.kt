@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -40,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -544,6 +548,11 @@ fun DetailScreen(
                                     .background(Color.Black)
                             )
                         } else {
+                            val fullscreenScale by animateFloatAsState(
+                                targetValue = if (isPlayerFullscreen) 1f else 0.97f,
+                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                label = "fullscreen_scale"
+                            )
                             DetailVideoPlayer(
                                 exoPlayer = player,
                                 detail = detail,
@@ -552,7 +561,11 @@ fun DetailScreen(
                                 onFullscreenToggle = { full -> isPlayerFullscreen = full },
                                 onPlaybackEnded = { handlePlaybackEnded() },
                                 autoPlayNext = autoPlayNext,
-                                modifier = if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier
+                                modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
+                                    .graphicsLayer {
+                                        scaleX = fullscreenScale
+                                        scaleY = fullscreenScale
+                                    }
                             )
                         }
                     }

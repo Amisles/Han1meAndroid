@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavType
@@ -508,6 +509,13 @@ internal fun HanimeNavGraph(
         }
         composable(
             route = "detail?videoUrl={videoUrl}",
+            enterTransition = {
+                fadeIn(animationSpec = tween(NAV_TRANSITION_DURATION_MS)) +
+                    scaleIn(
+                        animationSpec = tween(NAV_TRANSITION_DURATION_MS),
+                        initialScale = 0.94f
+                    )
+            },
             arguments = listOf(navArgument("videoUrl") {
                 type = NavType.StringType
                 nullable = true
