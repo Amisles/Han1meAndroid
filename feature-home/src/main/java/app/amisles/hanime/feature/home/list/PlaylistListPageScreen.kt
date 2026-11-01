@@ -139,6 +139,7 @@ private fun PlaylistListItem(
             viewCount = playlist.videoCount,
             crop = true,
             targetWidth = ROW_THUMB_WIDTH,
+            contentDescription = playlist.title,
             modifier = Modifier.width(ROW_THUMB_WIDTH).aspectRatio(16f / 9f).clip(RoundedCornerShape(6.dp))
         )
         Column(

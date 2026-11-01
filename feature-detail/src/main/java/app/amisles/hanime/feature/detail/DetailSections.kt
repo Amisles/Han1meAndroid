@@ -399,7 +399,8 @@ private fun DetailRelatedGridCard(
                 crop = true,
                 targetWidth = maxWidth,
                 aspectRatioOverride = ratio,
-                videoId = video.id
+                videoId = video.id,
+                contentDescription = video.title
             )
         }
         Text(

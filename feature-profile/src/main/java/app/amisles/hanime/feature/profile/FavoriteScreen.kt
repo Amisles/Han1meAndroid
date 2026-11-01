@@ -550,6 +550,7 @@ private fun FavoriteVideoItem(
                 crop = true,
                 targetWidth = ROW_THUMB_WIDTH,
                 videoId = video.id,
+                contentDescription = video.title,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(6.dp))

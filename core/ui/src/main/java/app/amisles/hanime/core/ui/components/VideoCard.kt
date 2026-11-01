@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -51,12 +53,18 @@ fun VideoCard(
     val coverRatio = videoCoverAspectRatio(video)
     val geometry = cardGeometry(cfg)
 
+    val cardDescription = buildString {
+        append(video.title)
+        if (video.author.isNotEmpty()) append("，").append(video.author)
+        if (video.duration.isNotEmpty()) append("，").append(video.duration)
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .cardSurface(geometry.style, geometry.shape)
             .clip(geometry.shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .semantics(mergeDescendants = true) { contentDescription = cardDescription }
             .padding(geometry.inset)
     ) {
         Box(
@@ -159,12 +167,18 @@ fun VideoListItem(
     val titleLineHeight = cfg.listTitleFontSize.value.times(4f / 3f).sp
     val titleBlockHeight = with(LocalDensity.current) { (titleLineHeight * card.titleLines).toDp() }
 
+    val rowDescription = buildString {
+        append(video.title)
+        if (video.author.isNotEmpty()) append("，").append(video.author)
+        if (video.duration.isNotEmpty()) append("，").append(video.duration)
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
             .cardSurface(cardStyle, cardShape)
             .clip(cardShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .semantics(mergeDescendants = true) { contentDescription = rowDescription }
             .padding(cfg.listItemPadding),
         horizontalArrangement = Arrangement.spacedBy(cfg.listItemSpacing),
         verticalAlignment = Alignment.CenterVertically

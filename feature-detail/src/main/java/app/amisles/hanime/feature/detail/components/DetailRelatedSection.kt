@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -56,7 +58,10 @@ internal fun DetailRelatedVideoCard(
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
             .surfaceEdge(RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
-            .combinedClickable(onClick = { onVideoClick(video.videoUrl) }, onLongClick = onLongClick),
+            .combinedClickable(onClick = { onVideoClick(video.videoUrl) }, onLongClick = onLongClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = video.title + if (video.author.isNotEmpty()) "，" + video.author else ""
+            },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -68,6 +73,7 @@ internal fun DetailRelatedVideoCard(
             crop = true,
             targetWidth = thumbWidth,
             videoId = video.id,
+            contentDescription = video.title,
             modifier = Modifier
                 .width(thumbWidth)
                 .aspectRatio(thumbRatio)

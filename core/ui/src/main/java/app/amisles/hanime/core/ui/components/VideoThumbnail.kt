@@ -55,7 +55,8 @@ fun VideoThumbnail(
     targetWidth: Dp? = null,
     // 竖版封面（如里番）与配置里的横版比例不同，需按实际比例算解码高度
     aspectRatioOverride: Float? = null,
-    videoId: String = ""
+    videoId: String = "",
+    contentDescription: String? = null
 ) {
     val cfg = LocalUiConfig.current
     val quality = cfg.thumbnailQuality
@@ -100,6 +101,7 @@ fun VideoThumbnail(
         contentScale = if (crop) ContentScale.Crop else ContentScale.FillWidth,
         cfg = cfg,
         videoId = videoId,
+        contentDescription = contentDescription,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -137,6 +139,7 @@ private fun ThumbnailBox(
     contentScale: ContentScale,
     cfg: UiConfig,
     videoId: String,
+    contentDescription: String?,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -151,7 +154,7 @@ private fun ThumbnailBox(
             )
             AsyncImage(
                 model = model,
-                contentDescription = null,
+                contentDescription = contentDescription,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer { alpha = imageAlpha },

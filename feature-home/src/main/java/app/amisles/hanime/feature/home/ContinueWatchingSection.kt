@@ -100,7 +100,8 @@ internal fun ContinueWatchingSection(
                                 viewCount = "",
                                 crop = true,
                                 targetWidth = CONTINUE_CARD_WIDTH,
-                                videoId = history.id
+                                videoId = history.id,
+                                contentDescription = history.title
                             )
                             if (history.playbackDuration > 0L) {
                                 LinearProgressIndicator(

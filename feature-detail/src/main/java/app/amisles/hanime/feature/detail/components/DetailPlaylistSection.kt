@@ -127,7 +127,8 @@ internal fun DetailPlaylistVideos(
                         viewCount = video.viewCount,
                         crop = true,
                         targetWidth = CELL_WIDTH,
-                        videoId = video.id
+                        videoId = video.id,
+                        contentDescription = video.title
                     )
                 }
                 val titleBlockHeight = with(LocalDensity.current) {

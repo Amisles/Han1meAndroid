@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -46,6 +48,11 @@ fun VideoGridCard(
     val coverRatio = videoCoverAspectRatio(video)
     val geometry = cardGeometry(cfg)
 
+    val cardDescription = buildString {
+        append(video.title)
+        if (video.author.isNotEmpty()) append("，").append(video.author)
+        if (video.duration.isNotEmpty()) append("，").append(video.duration)
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -53,6 +60,7 @@ fun VideoGridCard(
             // 先 clip 再 clickable，让点按涟漪跟随圆角而不是方角
             .clip(geometry.shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .semantics(mergeDescendants = true) { contentDescription = cardDescription }
             .padding(geometry.inset)
     ) {
         Box(
