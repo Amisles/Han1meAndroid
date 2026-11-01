@@ -14,6 +14,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
@@ -70,6 +71,7 @@ class BatchDownloadViewModel @Inject constructor(
 
     // 搜索世代：每次 searchAuthor 递增，进行中的 loadMore 据此识别自己是否已被新一轮搜索取代
     private var searchGeneration = 0
+    private var searchJob: Job? = null
 
     @Volatile
     private var batchInitInProgress = false
@@ -185,11 +187,12 @@ class BatchDownloadViewModel @Inject constructor(
         }
 
         // 新一轮搜索：递增世代，让进行中的 loadMore 结果失效；同时清掉它的加载态
-        searchGeneration++
+        val generation = ++searchGeneration
+        searchJob?.cancel()
 
-        viewModelScope.launch {
-            _state.update {
-                it.copy(
+        searchJob = viewModelScope.launch {
+            _state.update { current ->
+                if (searchGeneration != generation) current else current.copy(
                     isSearching = true,
                     isLoadMore = false,
                     error = null,
@@ -207,6 +210,7 @@ class BatchDownloadViewModel @Inject constructor(
                     content.getUserVideoList(authorId, page = 1)
                 }
 
+                if (searchGeneration != generation) return@launch
                 if (result == null) {
                     _state.update { it.copy(
                         isSearching = false,
@@ -243,21 +247,24 @@ class BatchDownloadViewModel @Inject constructor(
                     )
                 }
 
-                _state.update { it.copy(
-                    isSearching = false,
-                    authorName = result.authorName,
-                    authorId = result.authorId,
-                    videos = batchVideos,
-                    currentPage = result.currentPage,
-                    totalPages = result.totalPages,
-                    hasNextPage = result.hasNextPage,
-                    selectedCount = 0
-                )}
+                _state.update { current ->
+                    if (searchGeneration != generation) current else current.copy(
+                        isSearching = false,
+                        authorName = result.authorName,
+                        authorId = result.authorId,
+                        videos = batchVideos,
+                        currentPage = result.currentPage,
+                        totalPages = result.totalPages,
+                        hasNextPage = result.hasNextPage,
+                        selectedCount = 0
+                    )
+                }
 
             } catch (e: CancellationException) {
                 // 协程取消必须原样抛出，否则会被当作普通失败并把页面卡在错误态
                 throw e
             } catch (e: Exception) {
+                if (searchGeneration != generation) return@launch
                 // 捕获宽泛异常：站点改版 / 解析等运行期异常若逃逸出 viewModelScope 会直接崩溃
                 AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
                 _state.update { it.copy(
