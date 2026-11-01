@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.detail.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Process
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -99,6 +100,9 @@ class PlaybackService : MediaSessionService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
+            if (!isTrustedController(controller)) {
+                return MediaSession.ConnectionResult.reject()
+            }
             // 让控制器知道本会话支持这两个自定义命令，否则系统侧不会下发
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
@@ -138,6 +142,11 @@ class PlaybackService : MediaSessionService() {
      * 通知点击目标。feature 模块不能引用 app 模块的 MainActivity，
      * 因此用包级启动 Intent（等价于点桌面图标）。
      */
+    private fun isTrustedController(controller: MediaSession.ControllerInfo): Boolean =
+        controller.uid == Process.myUid() ||
+            controller.uid == Process.SYSTEM_UID ||
+            controller.packageName in TRUSTED_CONTROLLER_PACKAGES
+
     private fun buildSessionActivity(): PendingIntent? {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return null
         return PendingIntent.getActivity(
@@ -166,6 +175,12 @@ class PlaybackService : MediaSessionService() {
     private companion object {
         const val CHANNEL_ID = "playback_channel"
         const val NOTIFICATION_ID = 2001
+        val TRUSTED_CONTROLLER_PACKAGES = setOf(
+            "android",
+            "com.android.systemui",
+            "com.android.bluetooth",
+            "com.google.android.bluetooth"
+        )
 
         const val ACTION_SEEK_BACK = "app.amisles.hanime.playback.SEEK_BACK"
         const val ACTION_SEEK_FORWARD = "app.amisles.hanime.playback.SEEK_FORWARD"
