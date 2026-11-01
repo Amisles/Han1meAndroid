@@ -76,6 +76,7 @@ fun SearchScreen(
     val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
+    val challengeHost by viewModel.challengeHost.collectAsStateWithLifecycle()
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
     val sortValue by viewModel.sort.collectAsStateWithLifecycle()
     val genreValue by viewModel.genre.collectAsStateWithLifecycle()
@@ -340,11 +341,13 @@ fun SearchScreen(
             }
         } else if (error != null && videos.isEmpty()) {
             KaomojiErrorView(
-                message = error!!,
+                message = error,
                 onRetry = { viewModel.executeSearch() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp)
+                    .height(400.dp),
+                actionLabel = challengeHost?.let { stringResource(R.string.error_action_verify) },
+                onAction = challengeHost?.let { host -> { CloudflareChallenge.request(host) } }
             )
         } else if (videos.isEmpty() && query.isEmpty() && sortValue == null && genreValue == null && tagsValue.isEmpty() && dateValue.isEmpty() && durationValue.isEmpty()) {
             // null = 历史仍在读库，此时什么都不渲染：否则会先弹空态提示、再切成历史列表

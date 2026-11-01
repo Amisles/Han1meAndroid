@@ -795,6 +795,7 @@
     
     <!-- Error -->
     <string name="error_load_failed">加载失败，请检查网络后重试</string>
+        <string name="error_action_verify">去完成人机验证</string>
 
     <!-- History (extra) -->
     <string name="history_title">观看历史</string>

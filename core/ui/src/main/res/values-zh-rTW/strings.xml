@@ -764,6 +764,7 @@
     <string name="playlist_video_count">%1$d 個影片</string>
     <string name="playlist_videos">影片列表</string>
     <string name="error_load_failed">載入失敗，請檢查網路後重試</string>
+        <string name="error_action_verify">去完成人機驗證</string>
 
     <!-- History (extra) -->
     <string name="history_title">觀看歷史</string>

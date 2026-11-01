@@ -191,6 +191,7 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val challengeHost by viewModel.challengeHost.collectAsStateWithLifecycle()
     val siteUrl by LocalAppPreferences.current.baseUrlFlow.collectAsStateWithLifecycle()
     // 人机校验通过后自动重拉：否则用户要手动下拉一次才知道已经能用了
     val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
@@ -205,6 +206,7 @@ fun HomeScreen(
         isLoading = isLoading,
         isRefreshing = isRefreshing,
         error = error,
+        challengeHost = challengeHost,
         siteUrl = siteUrl,
         onRefresh = { viewModel.loadHomeData() },
         onVideoClick = onVideoClick,
@@ -229,6 +231,7 @@ fun HomeScreenContent(
     isLoading: Boolean,
     isRefreshing: Boolean = false,
     error: String? = null,
+    challengeHost: String? = null,
     siteUrl: String? = null,
     onRefresh: () -> Unit = {},
     onVideoClick: (String) -> Unit = {},
@@ -342,7 +345,9 @@ fun HomeScreenContent(
                 KaomojiErrorView(
                     message = error,
                     onRetry = onRefresh,
-                    modifier = Modifier.fillParentMaxSize()
+                    modifier = Modifier.fillParentMaxSize(),
+                    actionLabel = challengeHost?.let { stringResource(R.string.error_action_verify) },
+                    onAction = challengeHost?.let { host -> { CloudflareChallenge.request(host) } }
                 )
             }
         } else {

@@ -1,5 +1,6 @@
 package app.amisles.hanime.core.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +25,9 @@ import app.amisles.hanime.core.ui.R
 fun KaomojiErrorView(
     message: String? = null,
     onRetry: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
     val displayMessage = message ?: stringResource(R.string.error_load_failed)
     Column(
@@ -59,6 +62,18 @@ fun KaomojiErrorView(
                     fontWeight = FontWeight.Medium
                 )
             }
+        }
+        if (actionLabel != null && onAction != null) {
+            Text(
+                text = actionLabel,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .padding(top = 14.dp)
+                    .clickable { onAction() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
         }
     }
 }

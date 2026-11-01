@@ -764,6 +764,7 @@
     <string name="playlist_video_count">%1$d videos</string>
     <string name="playlist_videos">Video List</string>
     <string name="error_load_failed">Load failed, please check your network and retry</string>
+        <string name="error_action_verify">Verify now</string>
 
     <!-- History (extra) -->
     <string name="history_title">Watch History</string>

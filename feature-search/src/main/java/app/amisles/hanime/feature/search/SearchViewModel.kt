@@ -10,6 +10,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.data.remote.CloudflareChallengeException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -85,6 +86,10 @@ class SearchViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    /** 非 null 表示搜索失败由 Cloudflare 人机校验拦截，界面据此提供一键验证入口。 */
+    private val _challengeHost = MutableStateFlow<String?>(null)
+    val challengeHost: StateFlow<String?> = _challengeHost.asStateFlow()
 
     private val _loadMoreError = MutableStateFlow(false)
     val loadMoreError: StateFlow<Boolean> = _loadMoreError.asStateFlow()
@@ -267,6 +272,7 @@ class SearchViewModel @Inject constructor(
         _isLoading.value = true
         _error.value = null
         _loadMoreError.value = false
+        _challengeHost.value = null
         currentPageNum = 1
         _currentPage.value = 1
         _hasMore.value = true
@@ -305,8 +311,12 @@ class SearchViewModel @Inject constructor(
                         }
                     }
                     is AppResult.Error -> {
+                        val cause = result.exception
+                        if (cause is CloudflareChallengeException) {
+                            _challengeHost.value = cause.host
+                        }
                         _videos.value = emptyList()
-                        _error.value = ErrorMapper.message(context, result.exception, result.message)
+                        _error.value = ErrorMapper.message(context, cause, result.message)
                     }
                     is AppResult.Loading -> {}
                 }
@@ -316,6 +326,7 @@ class SearchViewModel @Inject constructor(
             } catch (e: Exception) {
                 // 解析/URL 构建等运行期异常若逃逸出 viewModelScope 会直接崩溃，且会跳过加载态复位
                 AppLogger.e("SearchViewModel", "搜索失败: ${e.message}", e)
+                if (e is CloudflareChallengeException) _challengeHost.value = e.host
                 _videos.value = emptyList()
                 _error.value = ErrorMapper.message(context, e, context.getString(R.string.common_load_failed))
             } finally {

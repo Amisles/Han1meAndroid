@@ -492,6 +492,7 @@
     <string name="subscriptions_not_logged_in">購読を表示するにはログインが必要です</string>
     <string name="subscriptions_empty">購読動画はまだありません</string>
     <string name="subscriptions_load_failed">購読の読み込みに失敗しました</string>
+    <string name="error_action_verify">認証を完了する</string>
         <string name="subscriptions_hide_watched">視聴済みを隠す</string>
     <string name="subscriptions_all_watched">新しい動画はありません</string>
     <string name="profile_download_manager">ダウンロード管理</string>

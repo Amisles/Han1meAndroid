@@ -11,6 +11,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
+import app.amisles.hanime.data.remote.CloudflareChallengeException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -83,6 +84,10 @@ class HomeViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    /** 非 null 表示本次失败由 Cloudflare 人机校验拦截，错误视图据此提供一键验证入口。 */
+    private val _challengeHost = MutableStateFlow<String?>(null)
+    val challengeHost: StateFlow<String?> = _challengeHost.asStateFlow()
+
     private var loadJob: Job? = null
 
     // 首页数据在 VM 创建时即加载（不放到 UI 的 LaunchedEffect）：首页是启动页，越早请求首屏越快
@@ -109,6 +114,7 @@ class HomeViewModel @Inject constructor(
             _banner.value = null
         }
         _error.value = null
+        _challengeHost.value = null
 
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
@@ -135,6 +141,7 @@ class HomeViewModel @Inject constructor(
             repository.getHomeDataStream()
                 .catch { e ->
                     streamFailed = true
+                    if (e is CloudflareChallengeException) _challengeHost.value = e.host
                     _error.value = ErrorMapper.message(
                         context,
                         e,
@@ -169,11 +176,17 @@ class HomeViewModel @Inject constructor(
                                 }
                             }
                         }
-                        is HomeDataEvent.Error -> _error.value = ErrorMapper.message(
-                            context,
-                            event.exception,
-                            event.message
-                        )
+                        is HomeDataEvent.Error -> {
+                            val cause = event.exception
+                            if (cause is CloudflareChallengeException) {
+                                _challengeHost.value = cause.host
+                            }
+                            _error.value = ErrorMapper.message(
+                                context,
+                                cause,
+                                event.message
+                            )
+                        }
                     }
                 }
             flushJob?.cancel()
