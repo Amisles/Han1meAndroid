@@ -24,7 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import okhttp3.Dispatcher
 import okhttp3.ConnectionPool
@@ -178,6 +180,7 @@ class DownloadManager @Inject constructor(
     private val pendingPersist = ConcurrentHashMap<Int, DownloadTask>()
     private val pendingDelete: MutableSet<Int> = ConcurrentHashMap.newKeySet()
     private val persistLock = Any()
+    private val persistWriteMutex = Mutex()
     private val persistSignal = Channel<Unit>(Channel.CONFLATED)
     /** 默认下载目录：公共 Download/Hanime（见 [resolveDefaultDownloadDir]），卸载应用不会被清掉。 */
     private val defaultDownloadDir: File by lazy {
@@ -218,20 +221,22 @@ class DownloadManager @Inject constructor(
 
         scope.launch {
             for (signal in persistSignal) {
-                runCatching {
-                    val (deletedIds, batch) = synchronized(persistLock) {
-                        val deletes = pendingDelete.toList()
-                        pendingDelete.clear()
-                        val writes = pendingPersist.values.toList()
-                        pendingPersist.clear()
-                        deletes to writes
+                persistWriteMutex.withLock {
+                    runCatching {
+                        val (deletedIds, batch) = synchronized(persistLock) {
+                            val deletes = pendingDelete.toList()
+                            pendingDelete.clear()
+                            val writes = pendingPersist.values.toList()
+                            pendingPersist.clear()
+                            deletes to writes
+                        }
+                        deletedIds.forEach { id -> downloadDao.deleteDownload(id) }
+                        if (batch.isNotEmpty()) {
+                            downloadDao.upsertAll(batch.map { it.toEntity() })
+                        }
+                    }.onFailure { e ->
+                        AppLogger.logError("DownloadManager", "Failed to persist batch: " + e.message, e)
                     }
-                    deletedIds.forEach { id -> downloadDao.deleteDownload(id) }
-                    if (batch.isNotEmpty()) {
-                        downloadDao.upsertAll(batch.map { it.toEntity() })
-                    }
-                }.onFailure { e ->
-                    AppLogger.logError("DownloadManager", "Failed to persist batch: " + e.message, e)
                 }
             }
         }
@@ -846,6 +851,65 @@ class DownloadManager @Inject constructor(
             activeSlots = activeSlots.get(),
             concurrencyLimit = concurrencyLimit
         )
+
+    override suspend fun suspendForBackupImport() = withContext(Dispatchers.IO) {
+        val jobs = tasksLock.withLock { downloadJobs.values.toList() }
+        pauseAll()
+        val remaining = tasksLock.withLock { downloadJobs.values.toList() }
+        (jobs + remaining).distinct().forEach { it.join() }
+        persistWriteMutex.withLock {
+            synchronized(persistLock) {
+                pendingPersist.clear()
+                pendingDelete.clear()
+            }
+        }
+    }
+
+    override suspend fun reloadTasksFromDatabase() = withContext(Dispatchers.IO) {
+        val restored = downloadDao.getAllDownloadsOnce().map { entity ->
+            val status = when (entity.status) {
+                DownloadStatus.DOWNLOADING.name, DownloadStatus.PENDING.name -> DownloadStatus.PAUSED
+                else -> runCatching { DownloadStatus.valueOf(entity.status) }
+                    .getOrDefault(DownloadStatus.FAILED)
+            }
+            var task = DownloadTask(
+                id = entity.id,
+                title = entity.title,
+                quality = entity.quality,
+                url = entity.url,
+                totalBytes = entity.totalBytes,
+                downloadedBytes = entity.downloadedBytes,
+                status = status,
+                filePath = entity.filePath,
+                thumbnailUrl = entity.thumbnailUrl,
+                videoId = entity.videoId,
+                errorMessage = entity.errorMessage
+            )
+            if (task.status == DownloadStatus.COMPLETED) {
+                val file = File(task.filePath)
+                if (!file.exists() || file.length() <= 0) {
+                    task = task.copy(
+                        status = DownloadStatus.FAILED,
+                        errorMessage = "本地文件已被删除或移动"
+                    )
+                }
+            }
+            task
+        }
+        val maxId = downloadDao.getMaxId() ?: 0
+        tasksLock.withLock {
+            taskMap.clear()
+            restored.forEach { taskMap[it.id] = it }
+            taskIdCounter.set(maxId)
+            autoPausedByNetwork.clear()
+            pauseEpoch.clear()
+            lastNotifiedPercent.clear()
+            lastPersistTime.clear()
+            emitTasks()
+        }
+        restored.forEach { persistTask(it) }
+        AppLogger.log("DownloadManager", "已从数据库重建下载任务: " + restored.size + ", taskIdCounter=" + maxId)
+    }
 
     override fun adoptDownloadIdCeiling(maxId: Int) {
         if (maxId <= 0) return

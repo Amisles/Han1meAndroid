@@ -109,29 +109,34 @@ class BackupManager @Inject constructor(
             throw BackupError.ChecksumMismatch
         }
         val contents = parseContents(files, manifest)
+        downloads.suspendForBackupImport()
         val autoBackupName = writeAutoBackup(policy)
 
-        db.withTransaction {
-            if (policy == BackupConflictPolicy.OVERWRITE) {
-                favoriteDao.clearAll()
-                favoriteGroupDao.clearAll()
-                watchHistoryDao.clearWatchHistory()
-                downloadDao.clearAll()
-                searchHistoryDao.clearAllSearch()
-            }
+        try {
+            db.withTransaction {
+                if (policy == BackupConflictPolicy.OVERWRITE) {
+                    favoriteDao.clearAll()
+                    favoriteGroupDao.clearAll()
+                    watchHistoryDao.clearWatchHistory()
+                    downloadDao.clearAll()
+                    searchHistoryDao.clearAllSearch()
+                }
 
-            val existingGroups = favoriteGroupDao.getAllGroupsOnce().mapTo(mutableSetOf()) { it.id }
-            contents.groups.filter { it.id !in existingGroups }.forEach {
-                favoriteGroupDao.upsertGroup(it.toEntity())
+                val existingGroups = favoriteGroupDao.getAllGroupsOnce().mapTo(mutableSetOf()) { it.id }
+                contents.groups.filter { it.id !in existingGroups }.forEach {
+                    favoriteGroupDao.upsertGroup(it.toEntity())
+                }
+                contents.favorites.forEach { favoriteDao.addFavorite(it.toEntity()) }
+                contents.history.forEach { watchHistoryDao.addWatchHistory(it.toEntity()) }
+                if (contents.downloads.isNotEmpty()) {
+                    downloadDao.upsertAll(contents.downloads.map { it.toEntity() })
+                }
+                contents.searchHistory.forEach { entry ->
+                    searchHistoryDao.addSearch(SearchHistoryEntity(query = entry.first, searchedAt = entry.second))
+                }
             }
-            contents.favorites.forEach { favoriteDao.addFavorite(it.toEntity()) }
-            contents.history.forEach { watchHistoryDao.addWatchHistory(it.toEntity()) }
-            if (contents.downloads.isNotEmpty()) {
-                downloadDao.upsertAll(contents.downloads.map { it.toEntity() })
-            }
-            contents.searchHistory.forEach { entry ->
-                searchHistoryDao.addSearch(SearchHistoryEntity(query = entry.first, searchedAt = entry.second))
-            }
+        } finally {
+            downloads.reloadTasksFromDatabase()
         }
 
         val settingsApplied = contents.settings?.let { applySettings(it); true } ?: false

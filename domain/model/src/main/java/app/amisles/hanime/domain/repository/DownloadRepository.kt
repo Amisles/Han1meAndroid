@@ -91,6 +91,10 @@ interface DownloadRepository {
     /** 重新扫描下载目录，把尚未登记的历史成品文件补进任务列表；返回新认领的数量。 */
     suspend fun rescanExistingDownloads(): Int
 
+    suspend fun suspendForBackupImport()
+
+    suspend fun reloadTasksFromDatabase()
+
     /** 外部数据源（备份导入等）直接写入了下载表后，把自增 id 计数器抬到已知区间之上。 */
     fun adoptDownloadIdCeiling(maxId: Int)
 
