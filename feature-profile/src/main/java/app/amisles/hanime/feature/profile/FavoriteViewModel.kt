@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
@@ -37,6 +39,8 @@ class FavoriteViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val mutationMutex = Mutex()
+
     /** 一次性提示（字符串资源 id）：本地库写入失败时由界面弹 toast。 */
     private val _messages = Channel<Int>(Channel.BUFFERED)
     val messages: Flow<Int> = _messages.receiveAsFlow()
@@ -47,20 +51,27 @@ class FavoriteViewModel @Inject constructor(
     }
 
     fun loadFavorites() {
-        _isLoading.value = true
         viewModelScope.launch {
-            try {
-                val favorites = withContext(Dispatchers.IO) { repository.getAllFavorites() }
-                _favorites.value = favorites
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("FavoriteViewModel", "Error loading favorites: " + e.message, e)
-                _favorites.value = emptyList()
-            } finally {
-                _isLoading.value = false
-            }
+            mutationMutex.withLock { loadFavoritesLocked() }
         }
+    }
+
+    private suspend fun loadFavoritesLocked() {
+        _isLoading.value = true
+        try {
+            _favorites.value = withContext(Dispatchers.IO) { repository.getAllFavorites() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.e("FavoriteViewModel", "Error loading favorites: " + e.message, e)
+            _favorites.value = emptyList()
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    private suspend fun refreshFavoritesLocked() {
+        _favorites.value = withContext(Dispatchers.IO) { repository.getAllFavorites() }
     }
 
     /** 新建分组；[name] 为空或重名时直接忽略，避免产生无法区分的条目。 */
@@ -69,15 +80,17 @@ class FavoriteViewModel @Inject constructor(
         if (trimmed.isEmpty()) return
         if (groups.value.any { it.name.equals(trimmed, ignoreCase = true) }) return
         viewModelScope.launch(Dispatchers.IO) {
-            reportWriteResult(
-                repository.upsertFavoriteGroup(
-                    FavoriteGroup(
-                        id = UUID.randomUUID().toString(),
-                        name = trimmed,
-                        createdAt = System.currentTimeMillis()
+            mutationMutex.withLock {
+                reportWriteResult(
+                    repository.upsertFavoriteGroup(
+                        FavoriteGroup(
+                            id = UUID.randomUUID().toString(),
+                            name = trimmed,
+                            createdAt = System.currentTimeMillis()
+                        )
                     )
                 )
-            )
+            }
         }
     }
 
@@ -86,53 +99,61 @@ class FavoriteViewModel @Inject constructor(
         if (trimmed.isEmpty()) return
         val target = groups.value.firstOrNull { it.id == groupId } ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            reportWriteResult(repository.upsertFavoriteGroup(target.copy(name = trimmed)))
+            mutationMutex.withLock {
+                reportWriteResult(repository.upsertFavoriteGroup(target.copy(name = trimmed)))
+            }
         }
     }
 
     fun deleteGroup(groupId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = repository.deleteFavoriteGroup(groupId)
-            val favorites = repository.getAllFavorites()
-            withContext(Dispatchers.Main) { _favorites.value = favorites }
-            reportWriteResult(ok)
+            mutationMutex.withLock {
+                val ok = repository.deleteFavoriteGroup(groupId)
+                refreshFavoritesLocked()
+                reportWriteResult(ok)
+            }
         }
     }
 
     fun moveToGroup(videoId: String, groupId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = repository.moveFavoriteToGroup(videoId, groupId)
-            val favorites = repository.getAllFavorites()
-            withContext(Dispatchers.Main) { _favorites.value = favorites }
-            reportWriteResult(ok)
+            mutationMutex.withLock {
+                val ok = repository.moveFavoriteToGroup(videoId, groupId)
+                refreshFavoritesLocked()
+                reportWriteResult(ok)
+            }
         }
     }
 
     fun moveFavoritesToGroup(videoIds: List<String>, groupId: String) {
         if (videoIds.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = repository.moveFavoritesToGroup(videoIds, groupId)
-            val favorites = repository.getAllFavorites()
-            withContext(Dispatchers.Main) { _favorites.value = favorites }
-            reportWriteResult(ok)
+            mutationMutex.withLock {
+                val ok = repository.moveFavoritesToGroup(videoIds, groupId)
+                refreshFavoritesLocked()
+                reportWriteResult(ok)
+            }
         }
     }
 
     fun setTags(videoId: String, tags: List<String>) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = repository.setFavoriteTags(videoId, tags)
-            val favorites = repository.getAllFavorites()
-            withContext(Dispatchers.Main) { _favorites.value = favorites }
-            reportWriteResult(ok)
+            mutationMutex.withLock {
+                val ok = repository.setFavoriteTags(videoId, tags)
+                refreshFavoritesLocked()
+                reportWriteResult(ok)
+            }
         }
     }
 
     fun removeFavorite(videoId: String) {
         viewModelScope.launch {
             try {
-                val ok = withContext(Dispatchers.IO) { repository.removeFavorite(videoId) }
-                loadFavorites()
-                reportWriteResult(ok)
+                mutationMutex.withLock {
+                    val ok = withContext(Dispatchers.IO) { repository.removeFavorite(videoId) }
+                    loadFavoritesLocked()
+                    reportWriteResult(ok)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -145,9 +166,11 @@ class FavoriteViewModel @Inject constructor(
         if (videoIds.isEmpty()) return
         viewModelScope.launch {
             try {
-                val ok = withContext(Dispatchers.IO) { repository.removeFavorites(videoIds) }
-                loadFavorites()
-                reportWriteResult(ok)
+                mutationMutex.withLock {
+                    val ok = withContext(Dispatchers.IO) { repository.removeFavorites(videoIds) }
+                    loadFavoritesLocked()
+                    reportWriteResult(ok)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
