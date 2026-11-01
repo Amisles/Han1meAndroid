@@ -1,9 +1,11 @@
 package app.amisles.hanime
 
 import android.app.Application
+import android.app.LocaleManager
 import android.content.Context
 import android.content.res.AssetManager
 import android.content.res.Resources
+import android.os.Build
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
@@ -140,6 +142,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
         super.onCreate()
         Preferences.init(this)
         UiConfigStore.init(this)
+        syncSystemAppLocale()
         applyLanguage(persistedLanguage())
         AppLogger.init(this)
         // 崩溃记录依赖 AppLogger 已就绪（会同步追加一条错误日志），故紧随其后
@@ -154,6 +157,26 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
      * 放在 Application 而非设置页：用户可能在系统设置里清掉后台任务，
      * 每次启动重建一次才能保证「开着就真的在跑」。
      */
+    private fun syncSystemAppLocale() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        runCatching {
+            val locales = getSystemService(LocaleManager::class.java).applicationLocales
+            if (locales.isEmpty) return
+            val tag = locales[0].toLanguageTag()
+            val mapped = when {
+                tag.startsWith("zh-TW") || tag.startsWith("zh-Hant") -> Preferences.LANGUAGE_ZH_TW
+                tag.startsWith("zh") -> Preferences.LANGUAGE_ZH_CN
+                tag.startsWith("en") -> Preferences.LANGUAGE_EN
+                tag.startsWith("ja") -> Preferences.LANGUAGE_JA
+                else -> return
+            }
+            if (mapped != Preferences.appLanguage) {
+                Preferences.setAppLanguage(mapped)
+            }
+            LocaleHelper.rememberLanguage(mapped)
+        }
+    }
+
     private fun syncSubscriptionReminder() {
         runCatching {
             if (Preferences.subscriptionReminder) {

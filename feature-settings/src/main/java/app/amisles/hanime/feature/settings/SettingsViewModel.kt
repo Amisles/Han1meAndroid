@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.settings
 
 import android.app.Application
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.data.remote.CloudflareChallenge
@@ -156,6 +157,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setAppLanguage(code: String) {
         settings.setAppLanguage(code)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            runCatching {
+                val locale = when (code) {
+                    SettingsRepository.LANGUAGE_ZH_TW -> java.util.Locale.forLanguageTag("zh-TW")
+                    SettingsRepository.LANGUAGE_EN -> java.util.Locale.ENGLISH
+                    SettingsRepository.LANGUAGE_JA -> java.util.Locale.JAPANESE
+                    else -> java.util.Locale.forLanguageTag("zh-CN")
+                }
+                app.getSystemService(android.app.LocaleManager::class.java)
+                    .applicationLocales = android.os.LocaleList(locale)
+            }
+        }
         viewModelScope.launch { _events.emit(SettingsUiEvent.RecreateActivity) }
     }
 
