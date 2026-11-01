@@ -35,7 +35,6 @@ import okhttp3.Call
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -221,22 +220,10 @@ class DownloadManager @Inject constructor(
 
         scope.launch {
             for (signal in persistSignal) {
-                persistWriteMutex.withLock {
-                    runCatching {
-                        val (deletedIds, batch) = synchronized(persistLock) {
-                            val deletes = pendingDelete.toList()
-                            pendingDelete.clear()
-                            val writes = pendingPersist.values.toList()
-                            pendingPersist.clear()
-                            deletes to writes
-                        }
-                        deletedIds.forEach { id -> downloadDao.deleteDownload(id) }
-                        if (batch.isNotEmpty()) {
-                            downloadDao.upsertAll(batch.map { it.toEntity() })
-                        }
-                    }.onFailure { e ->
-                        AppLogger.logError("DownloadManager", "Failed to persist batch: " + e.message, e)
-                    }
+                runCatching {
+                    flushPersistence()
+                }.onFailure { e ->
+                    AppLogger.logError("DownloadManager", "Failed to persist batch: " + e.message, e)
                 }
             }
         }
@@ -862,11 +849,20 @@ class DownloadManager @Inject constructor(
         pauseAll()
         val remaining = tasksLock.withLock { downloadJobs.values.toList() }
         (jobs + remaining).distinct().forEach { it.join() }
-        persistWriteMutex.withLock {
-            synchronized(persistLock) {
-                pendingPersist.clear()
-                pendingDelete.clear()
-            }
+        flushPersistence()
+    }
+
+    private suspend fun flushPersistence() = persistWriteMutex.withLock {
+        val (deletedIds, batch) = synchronized(persistLock) {
+            val deletes = pendingDelete.toList()
+            pendingDelete.clear()
+            val writes = pendingPersist.values.toList()
+            pendingPersist.clear()
+            deletes to writes
+        }
+        deletedIds.forEach { id -> downloadDao.deleteDownload(id) }
+        if (batch.isNotEmpty()) {
+            downloadDao.upsertAll(batch.map { it.toEntity() })
         }
     }
 
