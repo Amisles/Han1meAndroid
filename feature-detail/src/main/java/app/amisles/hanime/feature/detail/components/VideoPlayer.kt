@@ -232,7 +232,7 @@ fun VideoPlayer(
     // 设备当前物理朝向（由下方 OrientationEventListener 维护，null = 尚未确定），仅用于全屏锁横屏一侧
     var deviceTilt by remember { mutableStateOf<DeviceTilt?>(null) }
 
-    val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
+    val playbackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
     val sortedSources = remember(videoSources) {
         videoSources.sortedByDescending { it.size }
     }
