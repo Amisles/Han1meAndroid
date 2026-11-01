@@ -185,19 +185,21 @@ class DownloadService : Service() {
             return START_NOT_STICKY
         }
 
+        val currentStatus = downloadManager.tasks.value.firstOrNull { it.id == taskId }?.status
+        val stale = when (status) {
+            DownloadStatus.PAUSED, DownloadStatus.COMPLETED, DownloadStatus.FAILED -> currentStatus != status
+            else -> currentStatus != DownloadStatus.DOWNLOADING && currentStatus != DownloadStatus.PENDING
+        }
         when {
-            // 取消/删除任务 —— 该 Intent 不带 EXTRA_STATUS，必须置于状态分支之前，否则会被当作进度更新
             action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
-            // 暂停不计入活动下载，否则前台服务与通知永不释放
+            stale -> handleCurrentTask(taskId, startId)
             status == DownloadStatus.PAUSED -> handlePaused(taskId, title ?: "", progress, startId)
-            // 完成 / 失败：发普通通知，且仅当所有任务结束才退出前台
             status == DownloadStatus.COMPLETED -> handleTerminal(
                 taskId,
                 buildCompletedNotification(title ?: "", intent?.getStringExtra(EXTRA_FILE_PATH) ?: "", taskId),
                 startId
             )
             status == DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(title ?: ""), startId)
-            // 默认（含 DOWNLOADING / 无状态）：按进度通知处理
             else -> handleProgress(taskId, title ?: "", progress, status, startId)
         }
         // 锁状态统一在此按「是否仍有真实传输」收敛，任何分支提前返回漏放都会被兜住
@@ -257,10 +259,38 @@ class DownloadService : Service() {
         super.onDestroy()
     }
 
-    /** 处理进度更新（含启动）。每个任务有独立通知 id，互不覆盖。 */
+    private fun handleCurrentTask(taskId: Int, startId: Int) {
+        val task = downloadManager.tasks.value.firstOrNull { it.id == taskId }
+        if (task == null) {
+            handleRemove(taskId, startId)
+            return
+        }
+        val progress = if (task.totalBytes > 0) {
+            (task.downloadedBytes * 100 / task.totalBytes).toInt().coerceIn(0, 100)
+        } else {
+            0
+        }
+        when (task.status) {
+            DownloadStatus.COMPLETED -> handleTerminal(
+                taskId,
+                buildCompletedNotification(task.title, task.filePath, taskId),
+                startId
+            )
+            DownloadStatus.FAILED -> handleTerminal(taskId, buildFailedNotification(task.title), startId)
+            DownloadStatus.PAUSED -> handlePaused(taskId, task.title, progress, startId)
+            DownloadStatus.DOWNLOADING, DownloadStatus.PENDING ->
+                handleProgress(taskId, task.title, progress, task.status, startId)
+        }
+    }
+
     private fun handleProgress(taskId: Int, title: String, progress: Int, status: DownloadStatus?, startId: Int) {
         if (taskId < 0) {
             stopSelfResult(startId)
+            return
+        }
+        val currentStatus = downloadManager.tasks.value.firstOrNull { it.id == taskId }?.status
+        if (currentStatus != DownloadStatus.DOWNLOADING && currentStatus != DownloadStatus.PENDING) {
+            handleCurrentTask(taskId, startId)
             return
         }
         activeTasks[taskId] = ActiveTask(title, progress, status)
