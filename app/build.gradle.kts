@@ -37,8 +37,8 @@ android {
         applicationId = "app.amisles.hanime"
         minSdk = 30
         targetSdk = 37
-        versionCode = 17
-        versionName = "1.7.2"
+        versionCode = 18
+        versionName = "1.7.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
