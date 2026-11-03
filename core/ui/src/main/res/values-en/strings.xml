@@ -766,7 +766,7 @@
     <string name="error_load_failed">Load failed, please check your network and retry</string>
         <string name="error_action_verify">Verify now</string>
         <string name="watch_later_title">Watch later</string>
-    <string name="watch_later_add">Add to watch later</string>
+    <string name="watch_later_add">Watch later</string>
     <string name="watch_later_remove">Remove from watch later</string>
     <string name="watch_later_added">Added to watch later</string>
     <string name="watch_later_removed">Removed from watch later</string>
