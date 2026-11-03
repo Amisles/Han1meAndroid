@@ -126,6 +126,8 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    // 图片网络层直接在 ImageHttpClient 里构建 OkHttpClient，需要显式依赖
+    implementation(libs.okhttp)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

@@ -21,6 +21,7 @@ import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -133,6 +134,11 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
                 MemoryCache.Builder()
                     .maxSizePercent(context, IMAGE_MEMORY_CACHE_PERCENT)
                     .build()
+            }
+            // 显式挂载带浏览器 UA / 防盗链 Referer 的网络层：CDN 按 UA 判定浏览器，
+            // Coil 默认的 okhttp/x.y.z 会被直接 403，缩略图整体空白。见 ImageHttpClient。
+            .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = { ImageHttpClient.client }))
             }
             // 不设置 crossfade：该版本 ImageLoader.Builder 未暴露此方法，Coil 3 默认不对
             // AsyncImage 施加全局淡入，与 v1.6.0「移除图片淡入」的效果一致。
