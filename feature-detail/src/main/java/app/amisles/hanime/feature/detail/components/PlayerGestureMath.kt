@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.detail.components
 
+import kotlin.math.roundToInt
+
 /**
  * 单指手势的拖动模式。
  *
@@ -83,10 +85,44 @@ internal class PlayerGestureMath(private val slopPx: Float) {
         return -(y - lastY) / playerHeight
     }
 
+    /**
+     * 长按加速期间，纵向滑动换算的目标倍速。
+     *
+     * 以按下点 [downY] 为基准做绝对换算，而不是逐帧累加：滑上去再滑回原处会精确回到起始倍率，
+     * 不会因为手抖一点点累积漂移。向上为增、向下为减，纵向滑过整个播放器高度即覆盖
+     * [MIN_BOOST_SPEED]–[MAX_BOOST_SPEED] 的完整跨度，并量化到 0.1x —— 否则提示条上会出现
+     * 2.3141592 这类读数。
+     *
+     * @param baseSpeed 长按触发时的倍率（即设置项「长按加速倍速」）
+     * @param downY 手势按下点 y
+     * @param currentY 当前触点 y
+     * @param playerHeight 播放器高度；<= 0 时无法换算，按 [baseSpeed] 的合法值返回
+     */
+    fun boostSpeed(baseSpeed: Float, downY: Float, currentY: Float, playerHeight: Float): Float {
+        if (playerHeight <= 0f) return quantizeSpeed(baseSpeed)
+        val ratio = (downY - currentY) / playerHeight
+        return quantizeSpeed(baseSpeed + ratio * BOOST_SPEED_SPAN)
+    }
+
     companion object {
         /** 触摸抖动阈值（dp）：与系统 touch slop 量级一致，调用方按屏幕密度换算成像素。 */
         const val SLOP_DP = 8f
+
+        /** 长按加速可调倍速的下限：滑到最低相当于回到常速，长按不会把视频变慢。 */
+        const val MIN_BOOST_SPEED = 1f
+
+        /** 长按加速可调倍速的上限：与倍速菜单的最高档一致。 */
+        const val MAX_BOOST_SPEED = 3f
+
+        /** 纵向滑过整屏高度对应的倍速跨度。 */
+        private const val BOOST_SPEED_SPAN = MAX_BOOST_SPEED - MIN_BOOST_SPEED
     }
 }
 
 private fun absF(v: Float): Float = if (v < 0f) -v else v
+
+/** 把倍速钳进可调区间并量化到 0.1x，保证提示条读数干净。 */
+private fun quantizeSpeed(speed: Float): Float {
+    val clamped = speed.coerceIn(PlayerGestureMath.MIN_BOOST_SPEED, PlayerGestureMath.MAX_BOOST_SPEED)
+    return (clamped * 10f).roundToInt() / 10f
+}

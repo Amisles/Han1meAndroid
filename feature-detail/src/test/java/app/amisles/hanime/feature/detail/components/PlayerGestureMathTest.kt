@@ -199,4 +199,92 @@ class PlayerGestureMathTest {
     fun `invalid height yields zero delta`() {
         assertEquals(0f, math.verticalDelta(lastY = 100f, y = 200f, playerHeight = 0f), 0.0001f)
     }
+
+    // ── 长按加速调速 ────────────────────────────────────────────────────────
+
+    @Test
+    fun `dragging up raises boost speed`() {
+        // 高度 1000px、起手 2x，上滑 200px（= 整屏 20%）→ 2 + 0.2 * (3 - 1) = 2.4
+        assertEquals(
+            2.4f,
+            math.boostSpeed(baseSpeed = 2f, downY = 500f, currentY = 300f, playerHeight = 1000f),
+            0.0001f
+        )
+    }
+
+    @Test
+    fun `dragging down lowers boost speed`() {
+        assertEquals(
+            1.6f,
+            math.boostSpeed(baseSpeed = 2f, downY = 300f, currentY = 500f, playerHeight = 1000f),
+            0.0001f
+        )
+    }
+
+    @Test
+    fun `boost speed clamps at the configured bounds`() {
+        // 上滑整屏远超上限，钳到 3x；下滑整屏低于下限，钳到 1x
+        assertEquals(
+            PlayerGestureMath.MAX_BOOST_SPEED,
+            math.boostSpeed(baseSpeed = 2f, downY = 1000f, currentY = 0f, playerHeight = 1000f),
+            0.0001f
+        )
+        assertEquals(
+            PlayerGestureMath.MIN_BOOST_SPEED,
+            math.boostSpeed(baseSpeed = 2f, downY = 0f, currentY = 1000f, playerHeight = 1000f),
+            0.0001f
+        )
+    }
+
+    @Test
+    fun `boost speed stays inside bounds for out-of-range preference`() {
+        // 偏好被写坏（0.5x / 5x）且高度未知时也不能把倍率放到区间外
+        assertEquals(
+            PlayerGestureMath.MIN_BOOST_SPEED,
+            math.boostSpeed(baseSpeed = 0.5f, downY = 500f, currentY = 500f, playerHeight = 0f),
+            0.0001f
+        )
+        assertEquals(
+            PlayerGestureMath.MAX_BOOST_SPEED,
+            math.boostSpeed(baseSpeed = 5f, downY = 500f, currentY = 500f, playerHeight = 0f),
+            0.0001f
+        )
+    }
+
+    @Test
+    fun `boost speed keeps base speed when height unknown`() {
+        assertEquals(
+            2f,
+            math.boostSpeed(baseSpeed = 2f, downY = 100f, currentY = 400f, playerHeight = 0f),
+            0.0001f
+        )
+    }
+
+    @Test
+    fun `boost speed is quantized to one decimal`() {
+        // 上滑 30px = 2.06x，量化后应是 2.1x，而不是 2.06 这种读数
+        assertEquals(
+            2.1f,
+            math.boostSpeed(baseSpeed = 2f, downY = 500f, currentY = 470f, playerHeight = 1000f),
+            0.0001f
+        )
+        // 上滑 3px = 2.006x，量化回 2x：微小抖动不会在提示条上来回跳
+        assertEquals(
+            2f,
+            math.boostSpeed(baseSpeed = 2f, downY = 500f, currentY = 497f, playerHeight = 1000f),
+            0.0001f
+        )
+    }
+
+    @Test
+    fun `boost speed returns to base when finger moves back`() {
+        // 以按下点为基准做绝对换算：滑上去再滑回原处必须精确回到起手倍率，不累积漂移
+        val up = math.boostSpeed(baseSpeed = 2f, downY = 500f, currentY = 350f, playerHeight = 1000f)
+        assertEquals(2.3f, up, 0.0001f)
+        assertEquals(
+            2f,
+            math.boostSpeed(baseSpeed = 2f, downY = 500f, currentY = 500f, playerHeight = 1000f),
+            0.0001f
+        )
+    }
 }

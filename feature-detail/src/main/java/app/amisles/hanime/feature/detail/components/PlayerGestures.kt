@@ -16,6 +16,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 
+/** 长按触发加速的时长：短于它只会当作点击或滑动，避免误触把倍速改掉。 */
+private const val LONG_PRESS_BOOST_DELAY_MS = 1000L
+
 internal fun Modifier.playerGestures(
     onControlsVisibleChange: (Boolean) -> Unit,
     isControlsVisible: () -> Boolean,
@@ -44,6 +47,7 @@ internal fun Modifier.playerGestures(
     seekForward: () -> Unit,
     setBrightness: (Float) -> Unit,
     setLongPressBoost: (Boolean) -> Unit,
+    setLongPressBoostSpeed: (Float) -> Unit,
     doubleTapSeekEnabled: () -> Boolean
 ): Modifier = this
     .pointerInput(Unit) {
@@ -64,9 +68,9 @@ internal fun Modifier.playerGestures(
                 var downY = 0f
                 var moved = false
                 var initialized = false
-                // 长按 2x 加速：是否已触发、被覆盖前的原始倍速
+                // 长按加速是否已触发：一旦触发，本段手势的滑动只调倍率，直到手指抬起
                 var longPressFired = false
-                // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发 2x
+                // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发加速
                 var longPressJob: Job? = null
                 while (true) {
                     val event = awaitPointerEvent()
@@ -75,7 +79,8 @@ internal fun Modifier.playerGestures(
                     if (pointerCount == 0) {
                         // 所有手指抬起：结束本次手势
                         if (longPressFired) {
-                            // 长按加速结束：恢复原始倍速，不触发点击切换/快进退
+                            // 长按加速结束：只有全部手指抬起才恢复常驻倍速 —— 加速期间滑动只调倍率，
+                            // 不会因为「手滑了一点」提前退出，也不触发点击切换 / 快进退
                             longPressJob?.cancel()
                             setLongPressBoost(false)
                             longPressFired = false
@@ -157,6 +162,9 @@ internal fun Modifier.playerGestures(
                             lastY = y
                             initialized = true
                             longPressFired = false
+                            // 兜底复位：上一段手势若被系统接管（返回手势、权限弹窗）而没收到抬起事件，
+                            // 加速会一直挂着。正常按下时该调用是空操作。
+                            setLongPressBoost(false)
                             // 每段手势开始必须清零：gestureMath 跨手势复用，
                             // 残留的累计位移会让本次方向判定沿用上一次手势的结果
                             gestureMath.reset()
@@ -165,18 +173,18 @@ internal fun Modifier.playerGestures(
                             isControlTapState.value = false
                             // 手势开始即重置自动隐藏倒计时
                             controlsActivityRef.value = controlsActivityRef.value + 1
-                            // 启动长按加速定时器：单指静止按住满 1s 才触发加速，松手/移动/缩放即取消
+                            // 启动长按加速定时器：单指静止按住满 1s 才触发加速，松手/移动/缩放即取消。
+                            // 触发后进入「加速拖动」态：后续滑动只调倍率，不再切到进度 / 亮度 / 音量，
+                            // 直到手指抬起 —— 见下方 dragMode 为 null 的分支。
                             longPressJob = gestureScope.launch {
-                                delay(1000L)
+                                delay(LONG_PRESS_BOOST_DELAY_MS)
                                 if (!menuOpen() && !longPressFired && !moved && !isZoom && dragMode == null) {
                                     longPressFired = true
                                     setLongPressBoost(true)
                                     showSpeedMenuState.value = false
                                     showQualityMenuState.value = false
-                                    gestureHintState.value = context.getString(
-                                        R.string.player_long_press_boost,
-                                        trimSpeedText(longPressBoostSpeed())
-                                    )
+                                    // 不写 gestureHint：它 800ms 后会自动清除，而加速要持续到松手，
+                                    // 倍率改由播放器依据 isLongPressBoost 常驻显示（见 VideoPlayer 的提示层）
                                 }
                             }
                             if (!menuOpen()) {
@@ -191,19 +199,33 @@ internal fun Modifier.playerGestures(
                             continue
                         }
                         if (dragMode == null) {
-                            val mode = gestureMath.onMove(
-                                x = x, y = y, lastX = lastX, lastY = lastY,
-                                downX = downX, playerWidth = playerWidth()
-                            )
-                            if (mode != null) {
-                                moved = true
-                                longPressJob?.cancel()
-                                startX = x
-                                showSpeedMenuState.value = false
-                                showQualityMenuState.value = false
-                                seekStartPos = exoPlayer.currentPosition
-                                seekPreviewState.value = seekStartPos
-                                dragMode = mode
+                            if (longPressFired) {
+                                // 长按加速中：上下滑动直接换算目标倍率。必须在这里拦下 ——
+                                // 交给方向判定会把轻微滑动判成亮度 / 音量，加速随之被切走，
+                                // 与「松手才退出加速」的预期相反（见 issue #10）。
+                                setLongPressBoostSpeed(
+                                    gestureMath.boostSpeed(
+                                        baseSpeed = longPressBoostSpeed(),
+                                        downY = downY,
+                                        currentY = y,
+                                        playerHeight = playerHeight()
+                                    )
+                                )
+                            } else {
+                                val mode = gestureMath.onMove(
+                                    x = x, y = y, lastX = lastX, lastY = lastY,
+                                    downX = downX, playerWidth = playerWidth()
+                                )
+                                if (mode != null) {
+                                    moved = true
+                                    longPressJob?.cancel()
+                                    startX = x
+                                    showSpeedMenuState.value = false
+                                    showQualityMenuState.value = false
+                                    seekStartPos = exoPlayer.currentPosition
+                                    seekPreviewState.value = seekStartPos
+                                    dragMode = mode
+                                }
                             }
                         } else {
                             when (dragMode) {

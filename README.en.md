@@ -51,7 +51,7 @@
 
 - **Home and discovery**: multi-section home feed, pull-to-refresh, error retry
 - **Search and filters**: keyword / category / sort, freely combinable, plus tag, date and duration filters; search history kept locally (up to 20 entries)
-- **Streaming**: multi-quality HLS playback, full screen, speed control, picture-in-picture, background playback, double-tap seek, pinch to zoom
+- **Streaming**: multi-quality HLS playback, full screen, speed control, long-press boost (swipe up or down while holding to adjust the rate, release to restore), picture-in-picture, background playback, double-tap seek, pinch to zoom
 - **Offline downloads**: background downloads via a foreground service, resumable chunked multi-connection engine, concurrency control, batch selection and multi-task downloads
 - **Favorites and history**: stored locally with Room, automatic de-duplication
 - **Account**: login with encrypted cookie storage (EncryptedSharedPreferences), profile editing (nickname, email)

@@ -153,6 +153,10 @@ fun VideoPlayer(
     var isReady by remember { mutableStateOf(false) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var isLongPressBoost by remember { mutableStateOf(false) }
+    // 长按加速的当前倍率：按住后上下滑动可在 1x–3x 之间连续调整，松手恢复用户选择的常驻倍速
+    var boostSpeed by remember { mutableFloatStateOf(longPressBoostSpeed) }
+    // 「上下滑动调速」上手提示：只在加速刚开始的几秒内出现，长时间按住不常驻遮挡画面
+    var showBoostSlideHint by remember { mutableStateOf(false) }
     val controlsActivityRef = remember { mutableLongStateOf(0L) }
     val volumeState = remember { mutableFloatStateOf(1f) }
     var volume by volumeState
@@ -263,6 +267,9 @@ fun VideoPlayer(
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
     val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu)
+    // 长按加速倍率同样要给手势闭包一个实时快照：播放器实例跨集复用，
+    // 直接读参数会把首次组合时的倍率一直用下去
+    val longPressBoostSpeedRef = rememberUpdatedState(longPressBoostSpeed)
     // 续播标记跟随播放器实例（一次实例 = 一部视频），不能以 initialSourceUrl 为键：
     // 画质切换会经「偏好回写 → 父级重组 → initialSourceUrl 变化」把标记复位，
     // 之后任意一次缓冲恢复（BUFFERING→READY）都会把位置跳回续播点，吞掉用户当前进度
@@ -547,25 +554,46 @@ fun VideoPlayer(
         onPlaybackSpeedChanged(speed)
     }
 
-    // 长按 2x 加速：只临时修改播放器与「生效倍速」，不改写用户选择的 playbackSpeed。
+    // 长按加速：只临时修改播放器与「生效倍速」，不改写用户选择的 playbackSpeed。
     // 原实现把 playbackSpeed 直接置 2f，加速期间若打开倍速菜单再选中任一档，
     // UI 高亮与恢复值都会错乱（松手恢复到被覆盖后的值）；这里让两者彻底分离。
+    // 加速的起手倍率取偏好里的「长按加速倍速」，之后可被上下滑动改写，松手一律回到 playbackSpeed。
     fun setLongPressBoost(active: Boolean) {
         if (active) {
             if (!isLongPressBoost) {
                 isLongPressBoost = true
-                exoPlayer.setPlaybackSpeed(longPressBoostSpeed)
+                boostSpeed = longPressBoostSpeedRef.value
+                runCatching { exoPlayer.setPlaybackSpeed(boostSpeed) }
             }
         } else {
             if (isLongPressBoost) {
                 isLongPressBoost = false
-                exoPlayer.setPlaybackSpeed(playbackSpeed)
+                // 退出组合时播放器可能已经释放，恢复失败不应打断收尾流程
+                runCatching { exoPlayer.setPlaybackSpeed(playbackSpeed) }
             }
         }
     }
 
-    /** 界面上展示的倍速：加速期间显示长按加速倍率，其余显示用户选择的档位。 */
-    val effectiveSpeed: Float = if (isLongPressBoost) longPressBoostSpeed else playbackSpeed
+    /**
+     * 长按加速期间上下滑动调整倍率。
+     *
+     * 只在加速中生效：手势若在松手后才补发一次位移，不能把常驻倍速改掉。
+     * 与 [setLongPressBoost] 一样不回写偏好 —— 加速是临时状态，用户松手就该回到自己选的档位。
+     */
+    fun updateLongPressBoostSpeed(speed: Float) {
+        if (!isLongPressBoost) return
+        val target = speed.coerceIn(
+            PlayerGestureMath.MIN_BOOST_SPEED,
+            PlayerGestureMath.MAX_BOOST_SPEED
+        )
+        // 倍率已量化到 0.1x，同一档位下每帧事件都会重复下发同一个值，跳过可省掉无谓的播放器调用
+        if (abs(target - boostSpeed) < 0.05f) return
+        boostSpeed = target
+        runCatching { exoPlayer.setPlaybackSpeed(target) }
+    }
+
+    /** 界面上展示的倍速：加速期间显示当前加速倍率（随滑动变化），其余显示用户选择的档位。 */
+    val effectiveSpeed: Float = if (isLongPressBoost) boostSpeed else playbackSpeed
 
     fun toggleFullscreen() {
         onFullscreenToggle(!isFullscreen)
@@ -617,6 +645,16 @@ fun VideoPlayer(
         }
     }
 
+    // 长按加速的上手提示：每次加速开头亮 2.5s，之后只保留实时倍率
+    LaunchedEffect(isLongPressBoost) {
+        showBoostSlideHint = false
+        if (isLongPressBoost) {
+            showBoostSlideHint = true
+            delay(2500L)
+            showBoostSlideHint = false
+        }
+    }
+
     // ── 播放器容器与统一手势 ─────────────────────────────────────────────────
     Box(
         modifier = modifier
@@ -665,6 +703,7 @@ fun VideoPlayer(
                 seekForward = { seekForward() },
                 setBrightness = { setBrightness(it) },
                 setLongPressBoost = { setLongPressBoost(it) },
+                setLongPressBoostSpeed = { updateLongPressBoostSpeed(it) },
                 doubleTapSeekEnabled = { doubleTapSeekEnabled }
             )
     ) {
@@ -703,20 +742,38 @@ fun VideoPlayer(
             }
         }
 
-        // 手势提示覆盖层
-        if (gestureHint != null && !isInPip) {
+        // 手势提示覆盖层：长按加速期间常驻显示实时倍率（上下滑动即时变化，松手才消失）；
+        // 其余手势提示沿用 800ms 自动清除
+        val boostText = if (isLongPressBoost) {
+            stringResource(R.string.player_long_press_boost, trimSpeedText(boostSpeed))
+        } else {
+            null
+        }
+        val hintText = boostText ?: gestureHint
+        if (hintText != null && !isInPip) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text(
-                    text = gestureHint ?: "",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    textAlign = TextAlign.Center
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = hintText,
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    if (boostText != null && showBoostSlideHint) {
+                        Text(
+                            text = stringResource(R.string.player_boost_slide_hint),
+                            color = Color.White.copy(alpha = 0.75f),
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
             }
         }
 
