@@ -63,6 +63,8 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_DOUBLE_TAP_SEEK = "double_tap_seek"
     private const val SP_AUTO_QUALITY = "auto_quality"
     private const val SP_AUTO_ROTATE_FULLSCREEN = "auto_rotate_fullscreen"
+    private const val SP_PLAYLIST_CSRF_TOKEN = "playlist_csrf_token"
+    private const val SP_PLAYLIST_MIGRATION_DONE = "playlist_migration_done"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_DOWNLOAD_RATE_LIMIT = "download_rate_limit_mbps"
     private const val SP_DOWNLOAD_WIFI_ONLY = "download_wifi_only"
@@ -979,6 +981,18 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         }
         return ""
     }
+
+    var playlistCsrfToken: String
+        get() = readString(SP_PLAYLIST_CSRF_TOKEN, "").orEmpty()
+        set(value) {
+            sp.edit { putString(SP_PLAYLIST_CSRF_TOKEN, value) }
+        }
+
+    var playlistMigrationDone: Boolean
+        get() = readBoolean(SP_PLAYLIST_MIGRATION_DONE, false)
+        set(value) {
+            sp.edit { putBoolean(SP_PLAYLIST_MIGRATION_DONE, value) }
+        }
 
     override fun extractDisplayEmail(): String = extractDisplayEmail(loginCookie.raw, savedUserId)
 

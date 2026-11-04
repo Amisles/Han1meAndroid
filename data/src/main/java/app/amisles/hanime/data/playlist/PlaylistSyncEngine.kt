@@ -13,15 +13,18 @@ fun interface PlaylistClock {
 class PlaylistSyncEngine @Inject constructor(
     private val store: PlaylistLocalStore,
     private val remote: PlaylistRemote,
-    private val clock: PlaylistClock
+    private val clock: PlaylistClock,
+    private val tokens: PlaylistTokenStore
 ) {
 
-    private var csrfToken: String = ""
+    private var csrfToken: String = tokens.read()
 
     val hasToken: Boolean get() = csrfToken.isNotBlank()
 
     fun rememberToken(token: String) {
-        if (token.isNotBlank()) csrfToken = token
+        if (token.isBlank() || token == csrfToken) return
+        csrfToken = token
+        tokens.write(token)
     }
 
     suspend fun cacheOptions(userId: String, options: VideoSaveOptions) {

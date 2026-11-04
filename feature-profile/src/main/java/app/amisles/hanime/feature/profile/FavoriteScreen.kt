@@ -101,6 +101,9 @@ fun FavoriteScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
+    val migrationNeeded by viewModel.migrationNeeded.collectAsStateWithLifecycle()
+    val migrationPlaylists by viewModel.migrationPlaylists.collectAsStateWithLifecycle()
+    val migrationTarget by viewModel.migrationTarget.collectAsStateWithLifecycle()
     val appPrefs = LocalAppPreferences.current
     val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
@@ -163,6 +166,7 @@ fun FavoriteScreen(
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
         viewModel.refreshCloudSync()
+        viewModel.checkMigration()
     }
 
     LaunchedEffect(isSelectionMode) {
@@ -509,6 +513,17 @@ fun FavoriteScreen(
         )
     }
 
+    if (migrationNeeded && favorites.isNotEmpty()) {
+        FavoriteMigrationDialog(
+            count = favorites.size,
+            playlists = migrationPlaylists,
+            selectedTarget = migrationTarget,
+            onSelect = viewModel::selectMigrationTarget,
+            onConfirm = viewModel::migrateFavorites,
+            onDismiss = viewModel::skipMigration
+        )
+    }
+
     if (showDeleteConfirm) {
         ConfirmDeleteDialog(
             title = stringResource(R.string.favorite_delete_title),
@@ -525,6 +540,69 @@ fun FavoriteScreen(
             }
         )
     }
+}
+
+@Composable
+private fun FavoriteMigrationDialog(
+    count: Int,
+    playlists: List<app.amisles.hanime.domain.model.CloudPlaylist>,
+    selectedTarget: String?,
+    onSelect: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.favorite_migrate_title)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.favorite_migrate_message, count),
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (playlists.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.favorite_migrate_no_list),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    playlists.forEach { playlist ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(playlist.remoteId) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = playlist.title,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (playlist.remoteId == selectedTarget) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = playlists.isNotEmpty() && selectedTarget != null,
+                onClick = onConfirm
+            ) {
+                Text(stringResource(R.string.favorite_migrate_upload))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.favorite_migrate_skip))
+            }
+        }
+    )
 }
 
 @Composable

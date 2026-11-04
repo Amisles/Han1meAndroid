@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.playlist
 
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.PlaylistTargets
 import app.amisles.hanime.domain.model.VideoSaveOptions
@@ -55,5 +56,31 @@ class PlaylistSyncRepositoryImpl @Inject constructor(
 
     override suspend fun pendingCount(): Int = engine.pendingCount(activeUserId())
 
-    private fun activeUserId(): String = if (session.isLoggedIn) session.savedUserId else ""
+    override suspend fun shouldOfferMigration(): Boolean =
+        session.isLoggedIn && !Preferences.playlistMigrationDone
+
+    override suspend fun markMigrationHandled() {
+        Preferences.playlistMigrationDone = true
+    }
+
+    override suspend fun migrateFavorites(videoIds: List<String>, target: String): Int {
+        val userId = activeUserId()
+        if (userId.isBlank() || target.isBlank() || videoIds.isEmpty()) return 0
+        videoIds.forEach { engine.setSaved(userId, it, target, true) }
+        Preferences.playlistMigrationDone = true
+        engine.flush(userId)
+        return videoIds.size
+    }
+
+    private var lastUserId: String = ""
+
+    private suspend fun activeUserId(): String {
+        val current = if (session.isLoggedIn) session.savedUserId else ""
+        if (current == lastUserId) return current
+        val previous = lastUserId
+        lastUserId = current
+        if (previous.isNotBlank()) runCatching { store.clear(previous) }
+        if (current.isNotBlank()) runCatching { engine.flush(current) }
+        return current
+    }
 }

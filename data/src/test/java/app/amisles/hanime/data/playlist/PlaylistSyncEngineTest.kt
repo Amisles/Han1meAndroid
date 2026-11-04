@@ -16,8 +16,9 @@ class PlaylistSyncEngineTest {
 
     private val store = FakeStore()
     private val remote = FakeRemote()
+    private val tokens = FakeTokenStore()
     private var now = 1_000L
-    private val engine = PlaylistSyncEngine(store, remote, PlaylistClock { now })
+    private val engine = PlaylistSyncEngine(store, remote, PlaylistClock { now }, tokens)
 
     private val options = VideoSaveOptions(
         videoId = "409004",
@@ -139,6 +140,16 @@ class PlaylistSyncEngineTest {
     }
 
     @Test
+    fun `csrf token is persisted and restored by a fresh engine`() {
+        engine.rememberToken("persisted_token")
+
+        val restored = PlaylistSyncEngine(store, remote, PlaylistClock { now }, tokens)
+
+        assertTrue(restored.hasToken)
+        assertEquals("persisted_token", tokens.token)
+    }
+
+    @Test
     fun `retry delay grows and is capped`() {
         assertEquals(1_000L, PlaylistSyncEngine.retryDelayMillis(1))
         assertEquals(2_000L, PlaylistSyncEngine.retryDelayMillis(2))
@@ -221,6 +232,16 @@ class PlaylistSyncEngineTest {
             playlists.keys.removeAll { it.first == userId }
             memberships.keys.removeAll { it.first == userId }
             outbox.removeAll { it.userId == userId }
+        }
+    }
+
+    private class FakeTokenStore : PlaylistTokenStore {
+        var token: String = ""
+
+        override fun read(): String = token
+
+        override fun write(token: String) {
+            this.token = token
         }
     }
 

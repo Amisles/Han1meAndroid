@@ -1101,4 +1101,10 @@
     <string name="playlist_sheet_create_failed">Could not create the playlist, try again later</string>
     <string name="playlist_sheet_sync_failed">Sync failed, try again later</string>
     <string name="playlist_sheet_pending_count">%1$d pending</string>
+    <string name="favorite_migrate_title">Sync local favorites</string>
+    <string name="favorite_migrate_message">You have %1$d local favorites. They can be uploaded to a site playlist (playlists are public), or you can skip this for now.</string>
+    <string name="favorite_migrate_upload">Upload to playlist</string>
+    <string name="favorite_migrate_skip">Not now</string>
+    <string name="favorite_migrate_no_list">No playlist available yet — create one on any video page first</string>
+    <string name="favorite_migrate_queued">Added to the sync queue</string>
 </resources>

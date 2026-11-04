@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.repository.LibraryRepository
@@ -45,6 +46,50 @@ class FavoriteViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { playlistSync.flush() }
             refreshCloudSync()
+        }
+    }
+
+    private val _migrationNeeded = MutableStateFlow(false)
+    val migrationNeeded: StateFlow<Boolean> = _migrationNeeded.asStateFlow()
+
+    private val _migrationPlaylists = MutableStateFlow<List<CloudPlaylist>>(emptyList())
+    val migrationPlaylists: StateFlow<List<CloudPlaylist>> = _migrationPlaylists.asStateFlow()
+
+    private val _migrationTarget = MutableStateFlow<String?>(null)
+    val migrationTarget: StateFlow<String?> = _migrationTarget.asStateFlow()
+
+    fun checkMigration() {
+        viewModelScope.launch {
+            val offer = runCatching { playlistSync.shouldOfferMigration() }.getOrDefault(false)
+            if (!offer) {
+                _migrationNeeded.value = false
+                return@launch
+            }
+            _migrationPlaylists.value = runCatching { playlistSync.cachedPlaylists() }.getOrDefault(emptyList())
+            _migrationTarget.value = _migrationPlaylists.value.firstOrNull()?.remoteId
+            _migrationNeeded.value = true
+        }
+    }
+
+    fun selectMigrationTarget(target: String) {
+        _migrationTarget.value = target
+    }
+
+    fun migrateFavorites() {
+        val target = _migrationTarget.value ?: return
+        val ids = _favorites.value.map { it.id }
+        viewModelScope.launch {
+            val count = runCatching { playlistSync.migrateFavorites(ids, target) }.getOrDefault(0)
+            _migrationNeeded.value = false
+            refreshCloudSync()
+            if (count > 0) _messages.trySend(R.string.favorite_migrate_queued)
+        }
+    }
+
+    fun skipMigration() {
+        viewModelScope.launch {
+            runCatching { playlistSync.markMigrationHandled() }
+            _migrationNeeded.value = false
         }
     }
 

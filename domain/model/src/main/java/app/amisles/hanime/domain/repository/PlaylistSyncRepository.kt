@@ -20,4 +20,10 @@ interface PlaylistSyncRepository {
     suspend fun flush(): Int
 
     suspend fun pendingCount(): Int
+
+    suspend fun shouldOfferMigration(): Boolean
+
+    suspend fun markMigrationHandled()
+
+    suspend fun migrateFavorites(videoIds: List<String>, target: String): Int
 }

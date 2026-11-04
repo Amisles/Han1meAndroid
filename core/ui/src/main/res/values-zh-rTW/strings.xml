@@ -1101,4 +1101,10 @@
     <string name="playlist_sheet_create_failed">新增清單失敗，請稍後重試</string>
     <string name="playlist_sheet_sync_failed">同步失敗，請稍後重試</string>
     <string name="playlist_sheet_pending_count">待同步 %1$d 筆</string>
+    <string name="favorite_migrate_title">同步本機收藏</string>
+    <string name="favorite_migrate_message">本機有 %1$d 筆收藏，可以上傳到站點清單（清單公開可見），也可以先不上傳。</string>
+    <string name="favorite_migrate_upload">上傳到清單</string>
+    <string name="favorite_migrate_skip">暫不上傳</string>
+    <string name="favorite_migrate_no_list">尚無可用的清單，請先在任意影片頁新增一個</string>
+    <string name="favorite_migrate_queued">已加入同步佇列</string>
 </resources>
