@@ -11,6 +11,7 @@ import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.app.work.SubscriptionReminderWorker
+import app.amisles.hanime.data.icon.LauncherIconRepository
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.subscription.SubscriptionReminderScheduler
 import androidx.hilt.work.HiltWorkerFactory
@@ -154,6 +155,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
         // 崩溃记录依赖 AppLogger 已就绪（会同步追加一条错误日志），故紧随其后
         CrashLogger.init(this)
         ExoPlayerFactory.prewarmCache(this)
+        LauncherIconRepository.ensureDefaultEntryEnabled(this)
         syncSubscriptionReminder()
     }
 

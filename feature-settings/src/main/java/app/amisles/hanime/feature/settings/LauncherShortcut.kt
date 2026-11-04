@@ -21,11 +21,16 @@ internal object LauncherShortcut {
         if (!ShortcutManagerCompat.isRequestPinShortcutSupported(context)) return false
         val bitmap = loadSquareBitmap(context, uri)
             ?: error("decode image failed")
-        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val pm = context.packageManager
+        val launch = pm.getLaunchIntentForPackage(context.packageName)
             ?: error("launch intent missing")
+        val label = launchLabel(context, launch.component)
+        launch.component?.let { alias ->
+            val target = runCatching { pm.getActivityInfo(alias, 0).targetActivity }.getOrNull()
+            if (target != null) launch.component = ComponentName(context.packageName, target)
+        }
         launch.action = Intent.ACTION_MAIN
         launch.addCategory(Intent.CATEGORY_LAUNCHER)
-        val label = launchLabel(context, launch.component)
         val shortcut = ShortcutInfoCompat.Builder(context, SHORTCUT_ID)
             .setShortLabel(label)
             .setLongLabel(label)

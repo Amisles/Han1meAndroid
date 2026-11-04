@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.settings
 
+import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -149,6 +151,7 @@ fun LauncherIconScreen(
                                 if (applied) R.string.launcher_icon_applied else R.string.launcher_icon_apply_failed,
                                 Toast.LENGTH_SHORT
                             ).show()
+                            if (applied) restartThroughEnabledEntry(context)
                         }
                     )
                 }
@@ -174,6 +177,13 @@ fun LauncherIconScreen(
             Spacer(modifier = Modifier.navigationBarsPadding())
         }
     }
+}
+
+// 被禁用的入口若是当前任务的来源，系统会连任务一起结束；这里主动从新入口重开
+private fun restartThroughEnabledEntry(context: Context) {
+    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    runCatching { context.startActivity(launch) }
 }
 
 @Composable
