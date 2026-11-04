@@ -5,9 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.PlaylistSaveSheet
 import app.amisles.hanime.core.ui.components.VideoActionSheet
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.feature.detail.PlaylistSaveViewModel
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.feature.detail.util.shareVideo
@@ -28,6 +32,15 @@ fun VideoQuickActionsHost(
     val context = LocalContext.current
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
     val watchLaterIds by viewModel.watchLaterIds.collectAsStateWithLifecycle()
+    val isLogin by LocalAppPreferences.current.loginStateFlow.collectAsStateWithLifecycle()
+    val playlistVm: PlaylistSaveViewModel = hiltViewModel()
+    val playlistState by playlistVm.state.collectAsStateWithLifecycle()
+    val cloudWatchLater by playlistVm.watchLater.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sheetVideo, isLogin) {
+        val video = sheetVideo ?: return@LaunchedEffect
+        if (isLogin) playlistVm.bind(extractId(video))
+    }
 
     LaunchedEffect(sheetVideo) {
         sheetVideo?.let { viewModel.ensureFavoritesLoaded(listOf(extractId(it))) }
@@ -65,16 +78,32 @@ fun VideoQuickActionsHost(
     sheetVideo?.let { video ->
         VideoActionSheet(
             video = video,
-            isFavorite = favoriteIds.contains(extractId(video)),
-            onFavorite = { viewModel.toggleFavorite(video) },
+            isFavorite = if (isLogin) playlistState.items.any { it.selected } else favoriteIds.contains(extractId(video)),
+            onFavorite = {
+                if (isLogin) {
+                    onDismiss()
+                    playlistVm.open()
+                } else {
+                    viewModel.toggleFavorite(video)
+                }
+            },
             onDownload = { onDismiss(); viewModel.openDownloadSheet(video) },
             onShare = { shareVideo(context, video.title, video.videoUrl) },
             onSearchRelated = { onSearchRelated(video.author.ifBlank { video.title }) },
             onDismiss = onDismiss,
-            onWatchLater = { viewModel.toggleWatchLater(video) },
-            isWatchLater = watchLaterIds.contains(extractId(video))
+            onWatchLater = {
+                if (isLogin) playlistVm.toggleWatchLater() else viewModel.toggleWatchLater(video)
+            },
+            isWatchLater = if (isLogin) cloudWatchLater else watchLaterIds.contains(extractId(video))
         )
     }
+
+    PlaylistSaveSheet(
+        state = playlistState,
+        onToggle = playlistVm::toggle,
+        onCreate = playlistVm::create,
+        onDismiss = playlistVm::dismiss
+    )
 
     target?.let { t ->
         DetailDownloadDialog(

@@ -1122,4 +1122,15 @@
     <string name="update_download_storage">无法写入安装包，请检查存储空间</string>
     <string name="update_install_failed">无法启动安装程序，请在浏览器中手动下载</string>
     <string name="comment_like_failed">点赞失败，请稍后重试</string>
+    <string name="playlist_sheet_title">存储到清单</string>
+    <string name="playlist_sheet_public">清单公开，其他用户也能看到</string>
+    <string name="playlist_sheet_empty">还没有播放清单，先新建一个吧</string>
+    <string name="playlist_sheet_new">新建清单</string>
+    <string name="playlist_sheet_name_hint">清单名称</string>
+    <string name="playlist_sheet_desc_hint">说明（选填）</string>
+    <string name="playlist_sheet_create">新建并收藏</string>
+    <string name="playlist_sheet_creating">正在新建…</string>
+    <string name="playlist_sheet_create_failed">新建清单失败，请稍后重试</string>
+    <string name="playlist_sheet_sync_failed">同步失败，请稍后重试</string>
+    <string name="playlist_sheet_pending_count">待同步 %1$d 条</string>
 </resources>

@@ -56,6 +56,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.components.PlaylistSaveSheet
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -116,6 +117,10 @@ fun DetailScreen(
     val isLoadingQualities by viewModel.isLoadingQualities.collectAsStateWithLifecycle()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
     val isWatchLater by viewModel.isWatchLater.collectAsStateWithLifecycle()
+    val playlistVm: PlaylistSaveViewModel = hiltViewModel()
+    val playlistState by playlistVm.state.collectAsStateWithLifecycle()
+    val cloudSavedTargets by playlistVm.savedTargets.collectAsStateWithLifecycle()
+    val cloudWatchLater by playlistVm.watchLater.collectAsStateWithLifecycle()
     val isSubscribed by viewModel.isSubscribed.collectAsStateWithLifecycle()
     val isSubscribing by viewModel.isSubscribing.collectAsStateWithLifecycle()
     val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
@@ -150,6 +155,12 @@ fun DetailScreen(
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
     val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
+    val favoriteActive = if (isLogin) cloudSavedTargets.isNotEmpty() else isFavorite
+    val watchLaterActive = if (isLogin) cloudWatchLater else isWatchLater
+
+    LaunchedEffect(videoDetail?.saveOptions) {
+        videoDetail?.saveOptions?.takeIf { it.videoId.isNotBlank() }?.let { playlistVm.onWatchPageLoaded(it) }
+    }
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -387,9 +398,9 @@ fun DetailScreen(
     val restState = DetailRestState(
         selectedTab = selectedTab,
         showDescription = showDescription,
-        isFavorite = isFavorite,
+        isFavorite = favoriteActive,
         isSubscribed = isSubscribed,
-        isWatchLater = isWatchLater,
+        isWatchLater = watchLaterActive,
         isSubscribing = isSubscribing,
         comments = comments,
         isLoadingComments = isLoadingComments,
@@ -417,8 +428,22 @@ fun DetailScreen(
             showDownloadDialog = true
             viewModel.loadDownloadQualities()
         },
-        onToggleFavorite = { viewModel.toggleFavorite() },
-        onToggleWatchLater = { viewModel.toggleWatchLater() },
+        onToggleFavorite = {
+            if (isLogin) {
+                viewModel.videoId.takeIf { it.isNotBlank() }?.let { playlistVm.bind(it) }
+                playlistVm.open()
+            } else {
+                viewModel.toggleFavorite()
+            }
+        },
+        onToggleWatchLater = {
+            if (isLogin) {
+                viewModel.videoId.takeIf { it.isNotBlank() }?.let { playlistVm.bind(it) }
+                playlistVm.toggleWatchLater()
+            } else {
+                viewModel.toggleWatchLater()
+            }
+        },
         onShareClick = { shareVideo(context, videoDetail?.title.orEmpty(), videoUrl.orEmpty()) },
         onToggleSubscribe = { viewModel.toggleSubscribe() },
         onTagClick = onTagClick,
@@ -579,6 +604,13 @@ fun DetailScreen(
             }
         }
     }
+
+    PlaylistSaveSheet(
+        state = playlistState,
+        onToggle = playlistVm::toggle,
+        onCreate = playlistVm::create,
+        onDismiss = playlistVm::dismiss
+    )
 
     // 避免在点击回调里同步等待磁盘操作而阻塞主线程。
     LaunchedEffect(Unit) {

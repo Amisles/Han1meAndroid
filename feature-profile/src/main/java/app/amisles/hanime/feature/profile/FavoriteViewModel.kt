@@ -7,6 +7,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.repository.PlaylistSyncRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -27,8 +28,25 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FavoriteViewModel @Inject constructor(
-    private val repository: LibraryRepository
+    private val repository: LibraryRepository,
+    private val playlistSync: PlaylistSyncRepository
 ) : ViewModel() {
+
+    private val _pendingSync = MutableStateFlow(0)
+    val pendingSync: StateFlow<Int> = _pendingSync.asStateFlow()
+
+    fun refreshCloudSync() {
+        viewModelScope.launch {
+            _pendingSync.value = runCatching { playlistSync.pendingCount() }.getOrDefault(0)
+        }
+    }
+
+    fun retryCloudSync() {
+        viewModelScope.launch {
+            runCatching { playlistSync.flush() }
+            refreshCloudSync()
+        }
+    }
 
     private val _favorites = MutableStateFlow<List<FavoriteVideo>>(emptyList())
     val favorites: StateFlow<List<FavoriteVideo>> = _favorites.asStateFlow()

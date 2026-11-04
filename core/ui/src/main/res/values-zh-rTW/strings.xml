@@ -1090,4 +1090,15 @@
     <string name="update_download_storage">無法寫入安裝包，請檢查儲存空間</string>
     <string name="update_install_failed">無法啟動安裝程式，請在瀏覽器中手動下載</string>
     <string name="comment_like_failed">按讚失敗，請稍後重試</string>
+    <string name="playlist_sheet_title">儲存到清單</string>
+    <string name="playlist_sheet_public">清單公開，其他使用者也能看到</string>
+    <string name="playlist_sheet_empty">尚無播放清單，先新建一個吧</string>
+    <string name="playlist_sheet_new">新增清單</string>
+    <string name="playlist_sheet_name_hint">清單名稱</string>
+    <string name="playlist_sheet_desc_hint">說明（選填）</string>
+    <string name="playlist_sheet_create">新增並收藏</string>
+    <string name="playlist_sheet_creating">正在新增…</string>
+    <string name="playlist_sheet_create_failed">新增清單失敗，請稍後重試</string>
+    <string name="playlist_sheet_sync_failed">同步失敗，請稍後重試</string>
+    <string name="playlist_sheet_pending_count">待同步 %1$d 筆</string>
 </resources>

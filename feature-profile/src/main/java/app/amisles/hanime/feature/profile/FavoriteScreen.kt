@@ -100,6 +100,7 @@ fun FavoriteScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
     val appPrefs = LocalAppPreferences.current
     val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
@@ -161,6 +162,7 @@ fun FavoriteScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
+        viewModel.refreshCloudSync()
     }
 
     LaunchedEffect(isSelectionMode) {
@@ -175,6 +177,30 @@ fun FavoriteScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
+        if (pendingSync > 0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.playlist_sheet_pending_count, pendingSync),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = stringResource(R.string.common_retry),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { viewModel.retryCloudSync() }
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
         SelectionTopBar(
             title = if (isSelectionMode) {
                 stringResource(R.string.history_selected_count, selectedIds.size)

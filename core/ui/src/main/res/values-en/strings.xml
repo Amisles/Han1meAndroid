@@ -1090,4 +1090,15 @@
     <string name="update_download_storage">Could not write the package. Check available storage.</string>
     <string name="update_install_failed">Could not start the installer. Please download it in the browser.</string>
     <string name="comment_like_failed">Could not like the comment. Please try again.</string>
+    <string name="playlist_sheet_title">Store to playlist</string>
+    <string name="playlist_sheet_public">Playlists are public — everyone can see them</string>
+    <string name="playlist_sheet_empty">No playlists yet — create one first</string>
+    <string name="playlist_sheet_new">New playlist</string>
+    <string name="playlist_sheet_name_hint">Playlist name</string>
+    <string name="playlist_sheet_desc_hint">Description (optional)</string>
+    <string name="playlist_sheet_create">Create and save</string>
+    <string name="playlist_sheet_creating">Creating…</string>
+    <string name="playlist_sheet_create_failed">Could not create the playlist, try again later</string>
+    <string name="playlist_sheet_sync_failed">Sync failed, try again later</string>
+    <string name="playlist_sheet_pending_count">%1$d pending</string>
 </resources>

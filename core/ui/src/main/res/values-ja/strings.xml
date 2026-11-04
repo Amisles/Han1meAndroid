@@ -1090,4 +1090,15 @@
     <string name="update_download_storage">パッケージを書き込めません。空き容量を確認してください。</string>
     <string name="update_install_failed">インストーラーを起動できませんでした。ブラウザから手動でダウンロードしてください。</string>
     <string name="comment_like_failed">いいねに失敗しました。しばらくしてから再試行してください。</string>
+    <string name="playlist_sheet_title">リストに保存</string>
+    <string name="playlist_sheet_public">リストは公開され、他のユーザーも見られます</string>
+    <string name="playlist_sheet_empty">リストがまだありません。まず作成してください</string>
+    <string name="playlist_sheet_new">新しいリスト</string>
+    <string name="playlist_sheet_name_hint">リスト名</string>
+    <string name="playlist_sheet_desc_hint">説明（任意）</string>
+    <string name="playlist_sheet_create">作成して保存</string>
+    <string name="playlist_sheet_creating">作成中…</string>
+    <string name="playlist_sheet_create_failed">リストを作成できませんでした。後でもう一度お試しください</string>
+    <string name="playlist_sheet_sync_failed">同期に失敗しました。後でもう一度お試しください</string>
+    <string name="playlist_sheet_pending_count">未同期 %1$d 件</string>
 </resources>
