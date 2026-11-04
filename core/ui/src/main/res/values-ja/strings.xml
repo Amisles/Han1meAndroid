@@ -890,7 +890,7 @@
     <string name="settings_auto_quality">画質の自動調整</string>
     <string name="settings_auto_quality_summary">再生が止まると自動で下げ、安定後に戻す。オフにすると手動選択した画質は上書きされない</string>
     <string name="settings_auto_rotate_fullscreen">回転で全画面</string>
-    <string name="settings_auto_rotate_fullscreen_summary">画面を回転すると自動で全画面に入る／出る。オフにすると回転しても向きは変わらず、全画面ボタンで切り替える</string>
+    <string name="settings_auto_rotate_fullscreen_summary">回転で全画面を自動切替。オフ時は全画面ボタンを使用</string>
     <string name="playback_notification_channel">再生コントロール</string>
     <string name="playback_seek_back">15 秒戻る</string>
     <string name="playback_seek_forward">15 秒進む</string>
@@ -1053,7 +1053,7 @@
     <string name="privacy_player_hidden">プライバシーモードが有効です（映像は非表示）</string>
     <string name="privacy_player_tap_continue">タップして再開</string>
     <string name="settings_privacy_mode">プライバシーモード</string>
-    <string name="settings_privacy_mode_summary">サムネイルを隠し、画面オフ時は再生を止めてプレイヤーを覆います。クイック設定から切替できます</string>
+    <string name="settings_privacy_mode_summary">サムネイルを隠し、画面オフ時は停止して覆う。クイック設定からも切替可</string>
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_removed">お気に入りを解除しました</string>
     <string name="card_search_related">関連動画を検索</string>

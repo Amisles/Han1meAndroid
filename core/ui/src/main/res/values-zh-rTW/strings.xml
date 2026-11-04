@@ -890,7 +890,7 @@
     <string name="settings_auto_quality">自動調整畫質</string>
     <string name="settings_auto_quality_summary">卡頓時自動降檔、穩定後回升；關閉後手動選擇的畫質不會被覆蓋</string>
     <string name="settings_auto_rotate_fullscreen">旋轉自動全螢幕</string>
-    <string name="settings_auto_rotate_fullscreen_summary">旋轉螢幕時自動進入 / 退出全螢幕；關閉後旋轉不再改變畫面方向，請用播放器的全螢幕按鈕</string>
+    <string name="settings_auto_rotate_fullscreen_summary">旋轉螢幕時自動進出全螢幕；關閉後請用播放器的全螢幕按鈕</string>
     <string name="playback_notification_channel">播放控制</string>
     <string name="playback_seek_back">後退 15 秒</string>
     <string name="playback_seek_forward">前進 15 秒</string>
@@ -1053,7 +1053,7 @@
     <string name="privacy_player_hidden">隱私模式已開啟，畫面已隱藏</string>
     <string name="privacy_player_tap_continue">輕觸畫面繼續</string>
     <string name="settings_privacy_mode">隱私模式</string>
-    <string name="settings_privacy_mode_summary">遮罩封面；息屏時自動暫停播放並遮住播放器，可從快速設定磚一鍵切換</string>
+    <string name="settings_privacy_mode_summary">遮罩封面；息屏時暫停播放並遮住畫面，也可用快速設定磚</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜尋相關影片</string>

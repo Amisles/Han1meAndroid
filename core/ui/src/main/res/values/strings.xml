@@ -921,7 +921,7 @@
     <string name="settings_auto_quality">自动调整画质</string>
     <string name="settings_auto_quality_summary">卡顿时自动降档、稳定后回升；关闭后手动选择的画质不会被覆盖</string>
     <string name="settings_auto_rotate_fullscreen">旋转自动全屏</string>
-    <string name="settings_auto_rotate_fullscreen_summary">旋转屏幕时自动进入 / 退出全屏；关闭后旋转不再改变画面方向，请用播放器的全屏按钮</string>
+    <string name="settings_auto_rotate_fullscreen_summary">旋转屏幕时自动进出全屏；关闭后请用播放器的全屏按钮</string>
     <string name="playback_notification_channel">播放控制</string>
     <string name="playback_seek_back">后退 15 秒</string>
     <string name="playback_seek_forward">前进 15 秒</string>
@@ -1085,7 +1085,7 @@
     <string name="privacy_player_hidden">隐私模式已开启，画面已隐藏</string>
     <string name="privacy_player_tap_continue">轻触画面继续</string>
     <string name="settings_privacy_mode">隐私模式</string>
-    <string name="settings_privacy_mode_summary">遮罩封面；息屏时自动暂停播放并遮住播放器，可从快捷设置磁贴一键切换</string>
+    <string name="settings_privacy_mode_summary">遮罩封面；息屏时暂停播放并遮住画面，也可用快捷设置磁贴</string>
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_removed">已取消收藏</string>
     <string name="card_search_related">搜索相关视频</string>
