@@ -39,7 +39,9 @@ data class VideoDetail(
     // 当前登录用户的数字 ID；缺表单时回退 currentUserId
     val subscribeUserId: String = "",
     // 订阅状态，"" = 未订阅，"1" = 已订阅（与官网 subscribe-status 一致）
-    val subscribeStatus: String = ""
+    val subscribeStatus: String = "",
+    // 详情页「存储」弹窗：可选的清单与当前勾选态（未登录时为空）
+    val saveOptions: VideoSaveOptions = VideoSaveOptions()
 )
 
 /** 订阅/取消订阅接口（官网 /subscribe）的返回结果：新订阅状态 + 新的 CSRF Token。 */

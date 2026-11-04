@@ -687,6 +687,81 @@ class NetworkService @Inject constructor(
             }
         }
     }
+
+    suspend fun saveToPlaylist(
+        videoId: String,
+        target: String,
+        saved: Boolean,
+        csrfToken: String
+    ): String {
+        AppLogger.log("NetworkService", "saveToPlaylist target=" + target + " saved=" + saved)
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val form = FormBody.Builder()
+                .add("input_id", target)
+                .add("user_id", "")
+                .add("video_id", videoId)
+                .add("is_checked", saved.toString())
+                .build()
+            val req = Request.Builder()
+                .url(baseUrl + "/save")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", baseUrl + "/")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+            client.newCall(req).execute().use { response ->
+                val code = response.code
+                AppLogger.log("NetworkService", "saveToPlaylist response code: " + code)
+                val body = response.body.string()
+                if (!response.isSuccessful) throw IOException("保存到清单失败 (HTTP " + code + ")")
+                if (body.isEmpty()) throw IOException("保存到清单返回空响应")
+                body
+            }
+        }
+    }
+
+    suspend fun createPlaylist(
+        videoId: String,
+        title: String,
+        description: String,
+        csrfToken: String
+    ): String {
+        return withContext(Dispatchers.IO) {
+            val baseUrl = getCurrentBaseUrl()
+            val form = FormBody.Builder()
+                .add("_token", csrfToken)
+                .add("create-playlist-video-id", videoId)
+                .add("playlist-title", title)
+                .add("playlist-description", description)
+                .build()
+            val req = Request.Builder()
+                .url(baseUrl + "/createPlaylist")
+                .post(form)
+                .header("User-Agent", uaString)
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("Referer", baseUrl + "/")
+                .header("Origin", baseUrl)
+                .header("X-CSRF-TOKEN", csrfToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .build()
+            client.newCall(req).execute().use { response ->
+                val code = response.code
+                AppLogger.log("NetworkService", "createPlaylist response code: " + code)
+                val body = response.body.string()
+                if (!response.isSuccessful) throw IOException("创建清单失败 (HTTP " + code + ")")
+                if (body.isEmpty()) throw IOException("创建清单返回空响应")
+                body
+            }
+        }
+    }
 }
 
 data class FetchResult(val html: String, val baseUrl: String)

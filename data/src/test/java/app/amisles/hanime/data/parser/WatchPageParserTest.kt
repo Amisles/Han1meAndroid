@@ -62,6 +62,39 @@ class WatchPageParserTest {
     }
 
     @Test
+    fun `parse collects save options from the storage modal`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <meta name="csrf-token" content="meta_token"/>
+                <form id="video-save-form">
+                    <input type="hidden" name="_token" value="form_token"/>
+                    <input name="playlist-video-id" type="hidden" value="409004"/>
+                    <label>
+                        <span>稍后观看</span>
+                        <input id="save" class="playlist-checkbox" type="checkbox" checked/>
+                        <img src="https://cdn.example.com/private.png"/>
+                    </label>
+                    <label>
+                        <span>test</span>
+                        <input id="1055606" class="playlist-checkbox" type="checkbox"/>
+                        <img src="https://cdn.example.com/public.png"/>
+                    </label>
+                </form>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("409004", detail.saveOptions.videoId)
+        assertEquals("form_token", detail.saveOptions.csrfToken)
+        assertEquals(listOf("save", "1055606"), detail.saveOptions.options.map { it.target })
+        assertEquals(setOf("save"), detail.saveOptions.savedTargets)
+        assertEquals(listOf("1055606"), detail.saveOptions.favoriteOptions.map { it.target })
+    }
+
+    @Test
     fun `parse with bracketed title strips bracket prefix`() {
         val html = """
             <html><body>

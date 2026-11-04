@@ -17,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class WatchPageParser @Inject constructor(
     private val videoListParser: VideoListParser,
-    private val playlistParser: PlaylistParser
+    private val playlistParser: PlaylistParser,
+    private val saveOptionsParser: SaveOptionsParser = SaveOptionsParser()
 ) {
 
     private companion object {
@@ -182,7 +183,8 @@ class WatchPageParser @Inject constructor(
             currentUserId = currentUserId,
             subscribeArtistId = subscribeArtistId,
             subscribeUserId = subscribeUserId,
-            subscribeStatus = subscribeStatus
+            subscribeStatus = subscribeStatus,
+            saveOptions = saveOptionsParser.parse(doc, csrfToken)
         )
     }
 
