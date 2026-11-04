@@ -87,6 +87,11 @@ interface SettingsRepository {
     val autoQualityFlow: StateFlow<Boolean>
     fun setAutoQuality(enabled: Boolean)
 
+    /** 旋转屏幕时自动进入 / 退出全屏播放。关闭后旋转不再改变方向，只能点播放器的全屏按钮。 */
+    val autoRotateFullscreen: Boolean
+    val autoRotateFullscreenFlow: StateFlow<Boolean>
+    fun setAutoRotateFullscreen(enabled: Boolean)
+
     // ── 下载 ────────────────────────────────────────────────────────────────
     val maxDownloadConcurrent: Int
     val maxDownloadConcurrentFlow: StateFlow<Int>

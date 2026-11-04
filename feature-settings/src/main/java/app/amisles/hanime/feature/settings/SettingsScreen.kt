@@ -50,6 +50,7 @@ import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -540,7 +541,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 播放：长按倍速 / 双击快进 / 自动画质
+            // 播放：长按倍速 / 双击快进 / 自动画质 / 旋转自动全屏
             SettingsGroupCard {
                 SettingsDropdownRow(
                     icon = Icons.Outlined.Speed,
@@ -567,6 +568,14 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_auto_quality_summary),
                     checked = uiState.autoQuality,
                     onCheckedChange = { enabled -> viewModel.setAutoQuality(enabled) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.ScreenRotation,
+                    title = stringResource(R.string.settings_auto_rotate_fullscreen),
+                    subtitle = stringResource(R.string.settings_auto_rotate_fullscreen_summary),
+                    checked = uiState.autoRotateFullscreen,
+                    onCheckedChange = { enabled -> viewModel.setAutoRotateFullscreen(enabled) }
                 )
             }
 

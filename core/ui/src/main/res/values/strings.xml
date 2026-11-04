@@ -920,6 +920,8 @@
     <string name="settings_double_tap_seek_summary">双击播放器左 / 右两侧分别后退、前进 15 秒</string>
     <string name="settings_auto_quality">自动调整画质</string>
     <string name="settings_auto_quality_summary">卡顿时自动降档、稳定后回升；关闭后手动选择的画质不会被覆盖</string>
+    <string name="settings_auto_rotate_fullscreen">旋转自动全屏</string>
+    <string name="settings_auto_rotate_fullscreen_summary">旋转屏幕时自动进入 / 退出全屏；关闭后旋转不再改变画面方向，请用播放器的全屏按钮</string>
     <string name="playback_notification_channel">播放控制</string>
     <string name="playback_seek_back">后退 15 秒</string>
     <string name="playback_seek_forward">前进 15 秒</string>

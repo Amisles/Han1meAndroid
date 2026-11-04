@@ -62,6 +62,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_LONG_PRESS_SPEED = "long_press_boost_speed"
     private const val SP_DOUBLE_TAP_SEEK = "double_tap_seek"
     private const val SP_AUTO_QUALITY = "auto_quality"
+    private const val SP_AUTO_ROTATE_FULLSCREEN = "auto_rotate_fullscreen"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
     private const val SP_DOWNLOAD_RATE_LIMIT = "download_rate_limit_mbps"
     private const val SP_DOWNLOAD_WIFI_ONLY = "download_wifi_only"
@@ -211,6 +212,10 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     private val _autoQualityFlow = MutableStateFlow(true)
     override val autoQualityFlow: StateFlow<Boolean> = _autoQualityFlow.asStateFlow()
 
+    // 旋转自动全屏：默认开启（与旧行为一致）；关闭后旋转屏幕不再自动进出全屏
+    private val _autoRotateFullscreenFlow = MutableStateFlow(true)
+    override val autoRotateFullscreenFlow: StateFlow<Boolean> = _autoRotateFullscreenFlow.asStateFlow()
+
 
     // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
     private val _downloadStoragePathFlow = MutableStateFlow("")
@@ -302,6 +307,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
             .coerceIn(MIN_LONG_PRESS_SPEED, MAX_LONG_PRESS_SPEED)
         _doubleTapSeekFlow.value = readBoolean(SP_DOUBLE_TAP_SEEK, true)
         _autoQualityFlow.value = readBoolean(SP_AUTO_QUALITY, true)
+        _autoRotateFullscreenFlow.value = readBoolean(SP_AUTO_ROTATE_FULLSCREEN, true)
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
@@ -553,6 +559,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override val longPressBoostSpeed: Float get() = _longPressBoostSpeedFlow.value
     override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
     override val autoQuality: Boolean get() = _autoQualityFlow.value
+    override val autoRotateFullscreen: Boolean get() = _autoRotateFullscreenFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
     override val pageLayoutModes: PageLayoutModes get() = _pageLayoutModesFlow.value
@@ -794,6 +801,11 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override fun setAutoQuality(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_QUALITY, enabled) }
         _autoQualityFlow.value = enabled
+    }
+
+    override fun setAutoRotateFullscreen(enabled: Boolean) {
+        sp.edit { putBoolean(SP_AUTO_ROTATE_FULLSCREEN, enabled) }
+        _autoRotateFullscreenFlow.value = enabled
     }
 
     /** 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。 */

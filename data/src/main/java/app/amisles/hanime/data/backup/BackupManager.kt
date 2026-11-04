@@ -239,6 +239,7 @@ class BackupManager @Inject constructor(
         longPressBoostSpeed = settings.longPressBoostSpeed,
         doubleTapSeek = settings.doubleTapSeek,
         autoQuality = settings.autoQuality,
+        autoRotateFullscreen = settings.autoRotateFullscreen,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         downloadRateLimit = settings.downloadRateLimit,
         subscriptionReminder = settings.subscriptionReminder,
@@ -260,6 +261,7 @@ class BackupManager @Inject constructor(
         s.longPressBoostSpeed?.let { settings.setLongPressBoostSpeed(it) }
         s.doubleTapSeek?.let { settings.setDoubleTapSeek(it) }
         s.autoQuality?.let { settings.setAutoQuality(it) }
+        s.autoRotateFullscreen?.let { settings.setAutoRotateFullscreen(it) }
         s.maxDownloadConcurrent?.let { settings.setMaxDownloadConcurrent(it) }
         s.downloadRateLimit?.let { settings.setDownloadRateLimit(it) }
         s.subscriptionReminder?.let { settings.setSubscriptionReminder(it) }
@@ -407,6 +409,7 @@ class BackupManager @Inject constructor(
         s.longPressBoostSpeed?.let { put("longPressBoostSpeed", it.toDouble()) }
         s.doubleTapSeek?.let { put("doubleTapSeek", it) }
         s.autoQuality?.let { put("autoQuality", it) }
+        s.autoRotateFullscreen?.let { put("autoRotateFullscreen", it) }
         s.maxDownloadConcurrent?.let { put("maxDownloadConcurrent", it) }
         s.downloadRateLimit?.let { put("downloadRateLimit", it) }
         s.subscriptionReminder?.let { put("subscriptionReminder", it) }
@@ -426,6 +429,7 @@ class BackupManager @Inject constructor(
         longPressBoostSpeed = o.doubleOrNull("longPressBoostSpeed")?.toFloat(),
         doubleTapSeek = o.booleanOrNull("doubleTapSeek"),
         autoQuality = o.booleanOrNull("autoQuality"),
+        autoRotateFullscreen = o.booleanOrNull("autoRotateFullscreen"),
         maxDownloadConcurrent = o.intOrNull("maxDownloadConcurrent"),
         downloadRateLimit = o.intOrNull("downloadRateLimit"),
         subscriptionReminder = o.booleanOrNull("subscriptionReminder"),

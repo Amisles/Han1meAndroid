@@ -42,6 +42,7 @@ data class SettingsUiState(
     val longPressBoostSpeed: Float = 2f,
     val doubleTapSeek: Boolean = true,
     val autoQuality: Boolean = true,
+    val autoRotateFullscreen: Boolean = true,
     val watchStatsEnabled: Boolean = true
 ) {
     val isDefaultBaseUrl: Boolean get() = baseUrl == SettingsRepository.DEFAULT_BASE_URL
@@ -104,6 +105,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(doubleTapSeek = enabled)
     }.combine(settings.autoQualityFlow) { state, enabled ->
         state.copy(autoQuality = enabled)
+    }.combine(settings.autoRotateFullscreenFlow) { state, enabled ->
+        state.copy(autoRotateFullscreen = enabled)
     }.combine(settings.downloadWifiOnlyFlow) { state, enabled ->
         state.copy(downloadWifiOnly = enabled)
     }.combine(settings.downloadChargingOnlyFlow) { state, enabled ->
@@ -138,7 +141,8 @@ class SettingsViewModel @Inject constructor(
         downloadStoragePath = settings.downloadStoragePathFlow.value,
         longPressBoostSpeed = settings.longPressBoostSpeed,
         doubleTapSeek = settings.doubleTapSeek,
-        autoQuality = settings.autoQuality
+        autoQuality = settings.autoQuality,
+        autoRotateFullscreen = settings.autoRotateFullscreen
     )
 
     /**
@@ -222,6 +226,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoQuality(enabled: Boolean) {
         settings.setAutoQuality(enabled)
+    }
+
+    fun setAutoRotateFullscreen(enabled: Boolean) {
+        settings.setAutoRotateFullscreen(enabled)
     }
 
     /** 设置站点基址；返回 true = 已生效，false = 输入非法（非 https 域名）且原设置不变。 */

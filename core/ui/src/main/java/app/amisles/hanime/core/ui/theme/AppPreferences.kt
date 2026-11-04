@@ -40,6 +40,7 @@ interface AppPreferences {
     val longPressBoostSpeedFlow: StateFlow<Float>
     val doubleTapSeekFlow: StateFlow<Boolean>
     val autoQualityFlow: StateFlow<Boolean>
+    val autoRotateFullscreenFlow: StateFlow<Boolean>
     val baseUrlFlow: StateFlow<String>
     val privacyModeFlow: StateFlow<Boolean>
     val subscriptionsHideWatchedFlow: StateFlow<Boolean>

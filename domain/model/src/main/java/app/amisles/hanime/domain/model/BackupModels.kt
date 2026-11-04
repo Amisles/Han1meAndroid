@@ -34,6 +34,7 @@ data class BackupSettings(
     val longPressBoostSpeed: Float? = null,
     val doubleTapSeek: Boolean? = null,
     val autoQuality: Boolean? = null,
+    val autoRotateFullscreen: Boolean? = null,
     val maxDownloadConcurrent: Int? = null,
     val downloadRateLimit: Int? = null,
     val subscriptionReminder: Boolean? = null,

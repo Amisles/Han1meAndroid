@@ -67,8 +67,9 @@ internal fun PlayerOrientationWatcher(
         }
     }
 
-    // 监听器始终注册（不随 autoFullscreenEnabled 走）：平板虽不自动全屏，但手动点全屏时同样
-    // 需要 deviceTilt 才能锁到正确一侧，是否触发自动全屏由上面的 ref 内部判断。
+    // 监听器始终注册（不随 autoFullscreenEnabled 走）：平板分栏或用户在设置里关掉「旋转自动全屏」
+    // 时不自动进出全屏，但手动点全屏同样需要 deviceTilt 才能锁到正确一侧，
+    // 是否触发自动全屏由上面的 ref 内部判断。
     DisposableEffect(activity) {
         val act = activity ?: return@DisposableEffect onDispose {}
         // 上一次已生效的方向（null = 尚未登记），仅在真正翻转时上报

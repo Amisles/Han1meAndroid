@@ -28,7 +28,8 @@ import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
  * 画质 / 倍速 / 连播等偏好统一落盘到 Preferences。
  *
  * [autoFullscreenEnabled] 默认 true（手机单列）：转横屏自动全屏、转回竖屏自动退出；
- * 平板分栏由调用方传 false 关闭，避免常态横持误触发。
+ * 平板分栏由调用方传 false 关闭，避免常态横持误触发。用户可在设置里关掉「旋转自动全屏」，
+ * 总开关在 VideoPlayer 内与这里取与。
  */
 @Composable
 internal fun DetailVideoPlayer(

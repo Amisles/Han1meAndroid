@@ -73,11 +73,13 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.theme.HanimePrimary
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import coil3.compose.AsyncImage
@@ -120,7 +122,8 @@ fun VideoPlayer(
     onLoopPlaybackChanged: (Boolean) -> Unit = {},
     // 隐私模式遮罩上的「退出」入口；由调用方写回偏好
     onDisablePrivacyMode: () -> Unit = {},
-    // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏
+    // 平板分栏左半屏已是放大播放器、横持属常态握持，由调用方传 false 关闭自动全屏；
+    // 用户也可在设置里关掉「旋转自动全屏」，两者同时成立才生效
     autoFullscreenEnabled: Boolean = true,
     // 长按临时加速倍率（1.5–3.0），只在按住期间生效
     longPressBoostSpeed: Float = 2f,
@@ -162,6 +165,10 @@ fun VideoPlayer(
     var volume by volumeState
     val isMutedState = remember { mutableStateOf(false) }
     var isMuted by isMutedState
+
+    // 旋转自动全屏：设置项是总开关，调用方仍可按布局单独关闭
+    val appPrefs = LocalAppPreferences.current
+    val autoRotateFullscreen by appPrefs.autoRotateFullscreenFlow.collectAsStateWithLifecycle()
 
     val privacyMode = LocalPrivacyMode.current
     // 隐私模式只遮罩缩略图，播放器照常可用；遮罩只在息屏后出现，亮屏时保持到用户主动点开
@@ -624,9 +631,16 @@ fun VideoPlayer(
     PlayerFullscreenEffect(isFullscreen, activity, deviceTilt, initialOrientation, initialBarsBehavior)
 
     // ── 横屏自动全屏 ─────────────────────────────────────────────────────────
-    // 设备由竖转横时自动进入全屏，由横转竖时自动退出（平板分栏由调用方关闭该行为）。
+    // 设备由竖转横时自动进入全屏，由横转竖时自动退出；平板分栏、或用户在设置里关掉
+    // 「旋转自动全屏」时不做自动切换（播放器的全屏按钮仍可用）。
     // 用 ref 持有最新状态与回调，避免 Effect 闭包捕获到陈旧的 isFullscreen / 回调。
-    PlayerOrientationWatcher(activity, autoFullscreenEnabled, isInPip, isFullscreen, onFullscreenToggle) { deviceTilt = it }
+    PlayerOrientationWatcher(
+        activity = activity,
+        autoFullscreenEnabled = autoFullscreenEnabled && autoRotateFullscreen,
+        isInPip = isInPip,
+        isFullscreen = isFullscreen,
+        onFullscreenToggle = onFullscreenToggle
+    ) { deviceTilt = it }
 
     // ── 画中画 ───────────────────────────────────────────────────────────────
     // 全屏播放中按 Home/概览键自动进入画中画（API 26+）；退出 PiP 时复位 isInPip。

@@ -889,6 +889,8 @@
     <string name="settings_double_tap_seek_summary">プレーヤーの左半分をダブルタップで 15 秒戻る、右半分で 15 秒進む</string>
     <string name="settings_auto_quality">画質の自動調整</string>
     <string name="settings_auto_quality_summary">再生が止まると自動で下げ、安定後に戻す。オフにすると手動選択した画質は上書きされない</string>
+    <string name="settings_auto_rotate_fullscreen">回転で全画面</string>
+    <string name="settings_auto_rotate_fullscreen_summary">画面を回転すると自動で全画面に入る／出る。オフにすると回転しても向きは変わらず、全画面ボタンで切り替える</string>
     <string name="playback_notification_channel">再生コントロール</string>
     <string name="playback_seek_back">15 秒戻る</string>
     <string name="playback_seek_forward">15 秒進む</string>

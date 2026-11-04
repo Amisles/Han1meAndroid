@@ -25,6 +25,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val longPressBoostSpeedFlow = Preferences.longPressBoostSpeedFlow
     override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
     override val autoQualityFlow = Preferences.autoQualityFlow
+    override val autoRotateFullscreenFlow = Preferences.autoRotateFullscreenFlow
     override val baseUrlFlow = Preferences.baseUrlFlow
     override val privacyModeFlow = Preferences.privacyModeFlow
     override val subscriptionsHideWatchedFlow = Preferences.subscriptionsHideWatchedFlow

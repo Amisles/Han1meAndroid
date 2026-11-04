@@ -889,6 +889,8 @@
     <string name="settings_double_tap_seek_summary">Double-tap the left or right half of the player to skip back or forward 15 seconds</string>
     <string name="settings_auto_quality">Adaptive quality</string>
     <string name="settings_auto_quality_summary">Downgrade on stutter and recover when stable; when off, a manually selected quality is never overridden</string>
+    <string name="settings_auto_rotate_fullscreen">Fullscreen on rotate</string>
+    <string name="settings_auto_rotate_fullscreen_summary">Enter or exit fullscreen when you rotate the screen; when off, rotation keeps the current orientation — use the fullscreen button instead</string>
     <string name="playback_notification_channel">Playback controls</string>
     <string name="playback_seek_back">Back 15 seconds</string>
     <string name="playback_seek_forward">Forward 15 seconds</string>
