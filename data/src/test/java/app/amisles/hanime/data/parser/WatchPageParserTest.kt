@@ -59,6 +59,28 @@ class WatchPageParserTest {
         assertEquals(720, detail.videoSources[1].size)
         assertEquals(480, detail.videoSources[2].size)
         assertEquals("1080p", detail.videoSources[0].resolution)
+        assertEquals("video/mp4", detail.videoSources[0].mimeType)
+        assertEquals("video/mp4", detail.videoSources[0].normalizedMimeType)
+    }
+
+    @Test
+    fun `parse normalizes hls source mime types`() {
+        val html = """
+            <html><body>
+                <video id="player">
+                    <source src="https://cdn.example.com/a/index.m3u8?secure=1" size="720" type="application/x-mpegURL"/>
+                    <source src="https://cdn.example.com/b/index" size="480" type="application/vnd.apple.mpegurl"/>
+                    <source src="https://cdn.example.com/c/index" size="360" type="application/octet-stream"/>
+                </video>
+                <h3 id="shareBtn-title">Title</h3>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("application/x-mpegURL", detail.videoSources[0].normalizedMimeType)
+        assertEquals("application/x-mpegURL", detail.videoSources[1].normalizedMimeType)
+        assertEquals("", detail.videoSources[2].normalizedMimeType)
     }
 
     @Test

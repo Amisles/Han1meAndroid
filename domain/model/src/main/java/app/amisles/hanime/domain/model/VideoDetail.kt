@@ -3,8 +3,18 @@ package app.amisles.hanime.domain.model
 data class VideoSource(
     val url: String,
     val resolution: String,
-    val size: Int
-)
+    val size: Int,
+    val mimeType: String = ""
+) {
+    val normalizedMimeType: String
+        get() = when {
+            mimeType.isBlank() -> ""
+            mimeType.equals("application/x-mpegurl", ignoreCase = true) -> "application/x-mpegURL"
+            mimeType.equals("application/vnd.apple.mpegurl", ignoreCase = true) -> "application/x-mpegURL"
+            mimeType.startsWith("video/mp4", ignoreCase = true) -> "video/mp4"
+            else -> ""
+        }
+}
 
 data class PlaylistInfo(
     val title: String,

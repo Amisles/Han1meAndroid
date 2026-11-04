@@ -257,9 +257,13 @@ fun DetailScreen(
             // 这里只做赋值，不再 await 数据库：起播不必等待历史记录查询完成。
             initialSeekMs = savedSeekMs
             // 元数据供媒体通知 / 锁屏展示；VideoPlayer 换源与重试会复用同一套元数据
+            val preferredMime = detail.videoSources
+                .firstOrNull { it.url == preferredUrl }?.normalizedMimeType.orEmpty()
+            val mediaItemBuilder = MediaItem.Builder()
+                .setUri(preferredUrl)
+            if (preferredMime.isNotEmpty()) mediaItemBuilder.setMimeType(preferredMime)
             player.setMediaItem(
-                MediaItem.Builder()
-                    .setUri(preferredUrl)
+                mediaItemBuilder
                     .setMediaMetadata(
                         MediaMetadata.Builder()
                             .setTitle(detail.title)
@@ -510,6 +514,7 @@ fun DetailScreen(
                             autoPlayNext = autoPlayNext,
                             // 平板常态横持，自动全屏会误触发，此处仅保留按钮手动进入全屏
                             autoFullscreenEnabled = false,
+                            onSourceError = { viewModel.refreshVideoSources() },
                             modifier = Modifier
                         )
                     }
@@ -589,6 +594,7 @@ fun DetailScreen(
                                 onFullscreenToggle = { full -> isPlayerFullscreen = full },
                                 onPlaybackEnded = { handlePlaybackEnded() },
                                 autoPlayNext = autoPlayNext,
+                                onSourceError = { viewModel.refreshVideoSources() },
                                 modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
                                     .graphicsLayer {
                                         scaleX = fullscreenScale

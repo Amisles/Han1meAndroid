@@ -133,7 +133,9 @@ fun VideoPlayer(
     autoQualityEnabled: Boolean = true,
     // 媒体通知 / 锁屏 / 蓝牙控件展示的标题与作者；为空时通知只显示应用名
     mediaTitle: String = "",
-    mediaArtist: String = ""
+    mediaArtist: String = "",
+    // 源数据无法解析（响应不是视频）时通知外部重新拉取视频页，换取带新签名的直链
+    onSourceError: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -267,6 +269,9 @@ fun VideoPlayer(
     var playbackError by remember { mutableStateOf<PlaybackException?>(null) }
     // 链接类错误自动降档重试只做一次，避免多档全部失效时反复切换
     var autoErrorRetryUsed by remember { mutableStateOf(false) }
+    // 源无法解析时只向外部请求一次刷新，避免刷新无果时循环
+    var sourceRefreshRequested by remember { mutableStateOf(false) }
+    val onSourceErrorRef = rememberUpdatedState(onSourceError)
     // 用 ref 持有最新值，避免 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
     val sourcesRef = rememberUpdatedState(sortedSources)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
@@ -293,7 +298,10 @@ fun VideoPlayer(
             .setArtist(mediaArtist)
             .apply { if (posterUrl.isNotBlank()) setArtworkUri(Uri.parse(posterUrl)) }
             .build()
-        return MediaItem.Builder().setUri(url).setMediaMetadata(metadata).build()
+        val mimeType = sortedSources.firstOrNull { it.url == url }?.normalizedMimeType.orEmpty()
+        val builder = MediaItem.Builder().setUri(url).setMediaMetadata(metadata)
+        if (mimeType.isNotEmpty()) builder.setMimeType(mimeType)
+        return builder.build()
     }
 
     fun switchQuality(source: VideoSource, userInitiated: Boolean = false) {
@@ -368,6 +376,7 @@ fun VideoPlayer(
                     Player.STATE_READY -> {
                         isReady = true
                         isSwitchingQuality = false
+                        sourceRefreshRequested = false
                         rebufferCount = 0
                         playbackError = null
                         // 续播：首帧就绪且有有效续播点（>5s 且未接近结尾）时跳转到上次位置
@@ -417,6 +426,10 @@ fun VideoPlayer(
                 super.onPlayerError(error)
                 isBuffering = false
                 isSwitchingQuality = false
+                if (isSourceUnreadable(error) && !sourceRefreshRequested) {
+                    sourceRefreshRequested = true
+                    onSourceErrorRef.value()
+                }
                 val sources = sourcesRef.value
                 val index = sources.indexOfFirst { it.url == currentSourceUrl }
                 val linkBroken = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
@@ -953,7 +966,12 @@ fun VideoPlayer(
     }
 }
 
+private fun isSourceUnreadable(error: PlaybackException): Boolean =
+    error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
+        error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+
 private fun playbackErrorTextRes(error: PlaybackException): Int = when (error.errorCode) {
+    PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> R.string.player_error_source
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> R.string.player_error_network
     PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,

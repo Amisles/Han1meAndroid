@@ -445,6 +445,25 @@ class DetailViewModel @Inject constructor(
     suspend fun getSavedPlaybackPosition(videoId: String): Long =
         withContext(Dispatchers.IO) { library.getWatchHistory(videoId)?.playbackPosition ?: 0L }
 
+    private var refreshingSources = false
+
+    fun refreshVideoSources() {
+        if (currentVideoUrl.isBlank() || refreshingSources) return
+        refreshingSources = true
+        viewModelScope.launch {
+            try {
+                val fresh = content.getVideoDetail(currentVideoUrl).getOrNull() ?: return@launch
+                val current = _videoDetail.value ?: return@launch
+                _videoDetail.value = current.copy(
+                    videoSources = fresh.videoSources,
+                    defaultSourceUrl = fresh.defaultSourceUrl
+                )
+            } finally {
+                refreshingSources = false
+            }
+        }
+    }
+
     /**
      * 订阅 / 取消订阅作者。调用官网 /subscribe 接口，凭 subscribe-status 区分。
      * 采用乐观更新：先本地切换，接口成功用服务端返回的新状态 / CSRF Token 修正，失败回滚。

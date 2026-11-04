@@ -41,6 +41,7 @@ internal fun DetailVideoPlayer(
     onPlaybackEnded: () -> Unit,
     autoPlayNext: Boolean,
     autoFullscreenEnabled: Boolean = true,
+    onSourceError: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val appPrefs = LocalAppPreferences.current
@@ -73,6 +74,7 @@ internal fun DetailVideoPlayer(
         autoQualityEnabled = autoQuality,
         mediaTitle = detail.title,
         mediaArtist = detail.author,
+        onSourceError = onSourceError,
         modifier = modifier
     )
 }

@@ -51,7 +51,14 @@ internal class LoggingHttpDataSource(
         )
 
         return try {
-            upstream.open(dataSpec)
+            val length = upstream.open(dataSpec)
+            Log.i(
+                TAG,
+                "[播放器响应] 请求 #" + sequence + " status=" + upstream.responseCode +
+                    " contentType=" + (upstream.responseHeaders["Content-Type"]?.firstOrNull() ?: "-") +
+                    " length=" + length
+            )
+            length
         } catch (e: IOException) {
             // 失败时再打一次完整上下文：403 / 超时这类问题，恰恰需要对照当时发出的头
             Log.i(

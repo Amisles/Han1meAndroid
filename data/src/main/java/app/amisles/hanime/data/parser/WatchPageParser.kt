@@ -82,9 +82,9 @@ class WatchPageParser @Inject constructor(
         for (source in sourceTags) {
             val src = source.attr("abs:src").ifEmpty { source.attr("src") }
             val size = source.attr("size").toIntOrNull() ?: 0
-            val type = source.attr("type")
+            val type = source.attr("type").trim()
             if (src.isNotEmpty()) {
-                sources.add(VideoSource(url = src, resolution = "${size}p", size = size))
+                sources.add(VideoSource(url = src, resolution = "${size}p", size = size, mimeType = type))
             }
         }
         sources.sortByDescending { it.size }
