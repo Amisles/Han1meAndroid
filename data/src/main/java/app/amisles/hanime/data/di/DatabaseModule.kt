@@ -2,11 +2,14 @@ package app.amisles.hanime.data.di
 
 import android.content.Context
 import androidx.room.Room
+import app.amisles.hanime.data.local.database.CloudPlaylistDao
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.data.local.database.FavoriteDao
 import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.database.FavoriteDatabase
 import app.amisles.hanime.data.local.database.FavoriteGroupDao
+import app.amisles.hanime.data.local.database.PlaylistMembershipDao
+import app.amisles.hanime.data.local.database.PlaylistOutboxDao
 import app.amisles.hanime.data.local.database.SearchHistoryDao
 import app.amisles.hanime.data.local.database.WatchHistoryDao
 import app.amisles.hanime.data.local.database.WatchLaterDao
@@ -37,11 +40,22 @@ object DatabaseModule {
                 FavoriteDatabase.MIGRATION_5_6,
                 FavoriteDatabase.MIGRATION_6_7,
             FavoriteDatabase.MIGRATION_7_8,
-                FavoriteDatabase.MIGRATION_8_9
+                FavoriteDatabase.MIGRATION_8_9,
+                FavoriteDatabase.MIGRATION_9_10
             )
             // 不再使用 fallbackToDestructiveMigration
             .build()
     }
+
+    @Provides
+    fun provideCloudPlaylistDao(db: FavoriteDatabase): CloudPlaylistDao = db.cloudPlaylistDao()
+
+    @Provides
+    fun providePlaylistMembershipDao(db: FavoriteDatabase): PlaylistMembershipDao =
+        db.playlistMembershipDao()
+
+    @Provides
+    fun providePlaylistOutboxDao(db: FavoriteDatabase): PlaylistOutboxDao = db.playlistOutboxDao()
 
     @Provides
     fun provideFavoriteDao(db: FavoriteDatabase): FavoriteDao = db.favoriteDao()

@@ -4,17 +4,31 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.amisles.hanime.data.local.entity.CloudPlaylistEntity
 import app.amisles.hanime.data.local.entity.ComicProgressEntity
 import app.amisles.hanime.data.local.entity.DownloadEntity
 import app.amisles.hanime.data.local.entity.FavoriteGroupEntity
 import app.amisles.hanime.data.local.entity.FavoriteVideoEntity
+import app.amisles.hanime.data.local.entity.PlaylistMembershipEntity
+import app.amisles.hanime.data.local.entity.PlaylistOutboxEntity
 import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.entity.WatchHistoryEntity
 import app.amisles.hanime.data.local.entity.WatchLaterEntity
 
 @Database(
-    entities = [FavoriteVideoEntity::class, WatchHistoryEntity::class, DownloadEntity::class, SearchHistoryEntity::class, FavoriteGroupEntity::class, ComicProgressEntity::class, WatchLaterEntity::class],
-    version = 9,
+    entities = [
+        FavoriteVideoEntity::class,
+        WatchHistoryEntity::class,
+        DownloadEntity::class,
+        SearchHistoryEntity::class,
+        FavoriteGroupEntity::class,
+        ComicProgressEntity::class,
+        WatchLaterEntity::class,
+        CloudPlaylistEntity::class,
+        PlaylistMembershipEntity::class,
+        PlaylistOutboxEntity::class
+    ],
+    version = 10,
     exportSchema = true
 )
 abstract class FavoriteDatabase : RoomDatabase() {
@@ -25,6 +39,9 @@ abstract class FavoriteDatabase : RoomDatabase() {
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun comicProgressDao(): ComicProgressDao
     abstract fun watchLaterDao(): WatchLaterDao
+    abstract fun cloudPlaylistDao(): CloudPlaylistDao
+    abstract fun playlistMembershipDao(): PlaylistMembershipDao
+    abstract fun playlistOutboxDao(): PlaylistOutboxDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -141,6 +158,47 @@ abstract class FavoriteDatabase : RoomDatabase() {
                         duration TEXT NOT NULL,
                         addedAt INTEGER NOT NULL
                     )""".trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS cloud_playlist (
+                        remoteId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        PRIMARY KEY(remoteId)
+                    )""".trimIndent()
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS playlist_membership (
+                        userId TEXT NOT NULL,
+                        videoId TEXT NOT NULL,
+                        target TEXT NOT NULL,
+                        saved INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        dirty INTEGER NOT NULL,
+                        PRIMARY KEY(userId, videoId, target)
+                    )""".trimIndent()
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS playlist_outbox (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        userId TEXT NOT NULL,
+                        videoId TEXT NOT NULL,
+                        target TEXT NOT NULL,
+                        desired INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        attempts INTEGER NOT NULL,
+                        nextAttemptAt INTEGER NOT NULL
+                    )""".trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_playlist_outbox_userId_videoId_target " +
+                        "ON playlist_outbox(userId, videoId, target)"
                 )
             }
         }
