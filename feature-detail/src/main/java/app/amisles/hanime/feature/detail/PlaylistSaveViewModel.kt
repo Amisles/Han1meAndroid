@@ -74,7 +74,12 @@ class PlaylistSaveViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            sync.setSaved(videoId, target, next)
+            runCatching { sync.setSaved(videoId, target, next) }
+                .onFailure {
+                    _state.update { state ->
+                        state.copy(error = context.getString(R.string.playlist_sheet_sync_failed))
+                    }
+                }
             runCatching { sync.flush() }
             refresh()
         }

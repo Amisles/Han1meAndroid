@@ -1,6 +1,7 @@
 package app.amisles.hanime.core.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +52,7 @@ fun PlaylistSaveSheet(
     state: PlaylistSaveUiState,
     onToggle: (String) -> Unit,
     onCreate: (String, String) -> Unit,
+    onRetry: () -> Unit,
     onDismiss: () -> Unit
 ) {
     if (!state.visible) return
@@ -87,7 +89,7 @@ fun PlaylistSaveSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 24.dp),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
@@ -133,7 +135,7 @@ fun PlaylistSaveSheet(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = { formOpen = false; title = ""; description = "" }) {
@@ -166,12 +168,20 @@ fun PlaylistSaveSheet(
             }
 
             if (state.pendingCount > 0) {
-                Text(
-                    text = stringResource(R.string.playlist_sheet_pending_count, state.pendingCount),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.playlist_sheet_pending_count, state.pendingCount),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.common_retry), fontSize = 12.sp)
+                    }
+                }
             }
             state.error?.let { message ->
                 Text(

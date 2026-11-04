@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -54,6 +55,7 @@ import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import android.widget.Toast
+import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.components.VideoGridCard
@@ -73,6 +75,7 @@ import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.components.SelectionTopBar
 import app.amisles.hanime.core.ui.R
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 
 private val ROW_THUMB_WIDTH = 140.dp
 
@@ -556,13 +559,13 @@ fun FavoriteScreen(
 @Composable
 private fun FavoriteMigrationDialog(
     count: Int,
-    playlists: List<app.amisles.hanime.domain.model.CloudPlaylist>,
+    playlists: List<CloudPlaylist>,
     selectedTarget: String?,
     onSelect: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    androidx.compose.material3.AlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.favorite_migrate_title)) },
         text = {
@@ -601,7 +604,7 @@ private fun FavoriteMigrationDialog(
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(
+            TextButton(
                 enabled = playlists.isNotEmpty() && selectedTarget != null,
                 onClick = onConfirm
             ) {
@@ -609,7 +612,7 @@ private fun FavoriteMigrationDialog(
             }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.favorite_migrate_skip))
             }
         }

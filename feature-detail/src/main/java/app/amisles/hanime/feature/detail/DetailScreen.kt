@@ -609,6 +609,7 @@ fun DetailScreen(
         state = playlistState,
         onToggle = playlistVm::toggle,
         onCreate = playlistVm::create,
+        onRetry = playlistVm::retrySync,
         onDismiss = playlistVm::dismiss
     )
 
