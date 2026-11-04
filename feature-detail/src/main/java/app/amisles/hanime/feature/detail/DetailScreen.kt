@@ -190,14 +190,10 @@ fun DetailScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var showLoginUnsupportedDialog by remember { mutableStateOf(false) }
 
-    // 推荐区布局：用户显式选择优先，未选择时按推荐卡片形态取默认（竖版网格 / 横版列表）
+    // 推荐区布局：竖版卡片（里番 / 泡面番）恒为网格，其余类型用户显式选择优先、未选择时列表
     val savedRelatedLayout by appPrefs.relatedLayoutModeFlow.collectAsStateWithLifecycle()
     val hasPortraitRelated = videoDetail?.relatedVideos?.any { it.isPortraitCover } == true
-    val relatedGrid = (savedRelatedLayout ?: if (hasPortraitRelated) {
-        RelatedLayoutMode.GRID
-    } else {
-        RelatedLayoutMode.LIST
-    }) == RelatedLayoutMode.GRID
+    val relatedGrid = RelatedLayoutMode.usesGrid(savedRelatedLayout, hasPortraitRelated)
 
     // 评论登录入口拦截：不支持登录时弹窗提示，否则跳转登录页
     val tryNavigateToLogin: () -> Unit = {

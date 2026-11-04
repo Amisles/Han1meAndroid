@@ -684,7 +684,7 @@
     <string name="customize_group_card">Card and image</string>
     <string name="customize_group_related">Detail recommendations</string>
     <string name="customize_related_layout">Recommendation layout</string>
-    <string name="customize_related_layout_hint">Portrait covers default to grid, landscape to list</string>
+    <string name="customize_related_layout_hint">Portrait covers (里番 / 泡面番) always use a grid; other genres follow this choice</string>
     <string name="customize_layout_list">List</string>
     <string name="customize_layout_grid">Grid</string>
     <string name="customize_group_grid">Grid</string>

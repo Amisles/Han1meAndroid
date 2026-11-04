@@ -694,7 +694,7 @@
     <string name="customize_group_card">カードと画像</string>
     <string name="customize_group_related">詳細ページのおすすめ</string>
     <string name="customize_related_layout">おすすめのレイアウト</string>
-    <string name="customize_related_layout_hint">縦長カバーはグリッド、横長はリストが既定</string>
+    <string name="customize_related_layout_hint">縦長カバー（裏番 / 泡面番）は常にグリッド、それ以外はこの設定に従います</string>
     <string name="customize_layout_list">リスト</string>
     <string name="customize_layout_grid">グリッド</string>
     <string name="customize_group_grid">グリッド</string>
