@@ -1107,4 +1107,5 @@
     <string name="favorite_migrate_skip">暫不上傳</string>
     <string name="favorite_migrate_no_list">尚無可用的清單，請先在任意影片頁新增一個</string>
     <string name="favorite_migrate_queued">已加入同步佇列</string>
+    <string name="favorite_cloud_local_hint">登入後收藏儲存在站點清單，本頁顯示本機收藏</string>
 </resources>

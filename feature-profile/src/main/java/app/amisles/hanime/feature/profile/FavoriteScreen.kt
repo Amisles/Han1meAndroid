@@ -101,6 +101,7 @@ fun FavoriteScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
+    val isLogin by LocalAppPreferences.current.loginStateFlow.collectAsStateWithLifecycle()
     val migrationNeeded by viewModel.migrationNeeded.collectAsStateWithLifecycle()
     val migrationPlaylists by viewModel.migrationPlaylists.collectAsStateWithLifecycle()
     val migrationTarget by viewModel.migrationTarget.collectAsStateWithLifecycle()
@@ -181,6 +182,16 @@ fun FavoriteScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
+        if (isLogin && favorites.isNotEmpty() && pendingSync == 0) {
+            Text(
+                text = stringResource(R.string.favorite_cloud_local_hint),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+        }
         if (pendingSync > 0) {
             Row(
                 modifier = Modifier

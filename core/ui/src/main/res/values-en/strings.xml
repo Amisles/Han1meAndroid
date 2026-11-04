@@ -1107,4 +1107,5 @@
     <string name="favorite_migrate_skip">Not now</string>
     <string name="favorite_migrate_no_list">No playlist available yet — create one on any video page first</string>
     <string name="favorite_migrate_queued">Added to the sync queue</string>
+    <string name="favorite_cloud_local_hint">Favorites are stored in site playlists when signed in; this page lists local ones</string>
 </resources>

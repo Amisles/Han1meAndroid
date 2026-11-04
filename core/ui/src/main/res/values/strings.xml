@@ -1139,4 +1139,5 @@
     <string name="favorite_migrate_skip">暂不上传</string>
     <string name="favorite_migrate_no_list">还没有可用的清单，请先在任意视频页新建一个</string>
     <string name="favorite_migrate_queued">已加入同步队列</string>
+    <string name="favorite_cloud_local_hint">登录后收藏保存在站点清单，本页显示本机收藏</string>
 </resources>

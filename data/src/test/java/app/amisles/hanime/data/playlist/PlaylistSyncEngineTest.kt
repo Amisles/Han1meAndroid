@@ -82,6 +82,31 @@ class PlaylistSyncEngineTest {
     }
 
     @Test
+    fun `cacheOptions clears membership that disappeared from the site snapshot`() = kotlinx.coroutines.runBlocking {
+        engine.cacheOptions("u1", options)
+
+        val withoutTest = options.copy(options = options.options.filterNot { it.target == "1055606" })
+        engine.cacheOptions("u1", withoutTest)
+
+        val membership = store.memberships("u1", "409004").first { it.target == "1055606" }
+        assertFalse(membership.saved)
+        assertFalse(membership.dirty)
+    }
+
+    @Test
+    fun `cacheOptions keeps pending removal even when the snapshot still lists it`() = kotlinx.coroutines.runBlocking {
+        engine.cacheOptions("u1", options)
+        engine.setSaved("u1", "409004", "1055606", false)
+
+        engine.cacheOptions("u1", options)
+
+        val membership = store.memberships("u1", "409004").first { it.target == "1055606" }
+        assertFalse(membership.saved)
+        assertTrue(membership.dirty)
+        assertEquals(1, engine.pendingCount("u1"))
+    }
+
+    @Test
     fun `syncFromWatchPage flushes pending intents after refreshing the snapshot`() = kotlinx.coroutines.runBlocking {
         engine.cacheOptions("u1", options)
         engine.setSaved("u1", "409004", "1055606", false)

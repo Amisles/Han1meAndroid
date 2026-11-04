@@ -1107,4 +1107,5 @@
     <string name="favorite_migrate_skip">今はしない</string>
     <string name="favorite_migrate_no_list">利用できるリストがありません。先に動画ページで作成してください</string>
     <string name="favorite_migrate_queued">同期キューに追加しました</string>
+    <string name="favorite_cloud_local_hint">ログイン中はサイトのリストに保存されます。このページはローカルのお気に入りです</string>
 </resources>

@@ -36,6 +36,19 @@ class PlaylistSyncEngine @Inject constructor(
             updatedAt = clock.now()
         )
         val known = store.memberships(userId, options.videoId).associateBy { it.target }
+        val present = options.options.map { it.target }.toSet()
+        known.values
+            .filter { it.saved && !it.dirty && it.target !in present }
+            .forEach {
+                store.putMembership(
+                    userId = userId,
+                    videoId = options.videoId,
+                    target = it.target,
+                    saved = false,
+                    dirty = false,
+                    updatedAt = clock.now()
+                )
+            }
         options.options.forEach { option ->
             if (known[option.target]?.dirty == true) return@forEach
             store.putMembership(
