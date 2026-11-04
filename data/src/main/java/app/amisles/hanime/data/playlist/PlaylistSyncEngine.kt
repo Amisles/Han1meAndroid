@@ -46,6 +46,11 @@ class PlaylistSyncEngine @Inject constructor(
         }
     }
 
+    suspend fun syncFromWatchPage(userId: String, options: VideoSaveOptions) {
+        cacheOptions(userId, options)
+        if (userId.isNotBlank()) flush(userId)
+    }
+
     suspend fun setSaved(userId: String, videoId: String, target: String, saved: Boolean) {
         if (userId.isBlank() || videoId.isBlank() || target.isBlank()) return
         val now = clock.now()

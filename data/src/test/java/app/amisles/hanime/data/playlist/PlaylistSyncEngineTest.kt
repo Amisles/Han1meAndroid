@@ -81,6 +81,19 @@ class PlaylistSyncEngineTest {
     }
 
     @Test
+    fun `syncFromWatchPage flushes pending intents after refreshing the snapshot`() = kotlinx.coroutines.runBlocking {
+        engine.cacheOptions("u1", options)
+        engine.setSaved("u1", "409004", "1055606", false)
+
+        engine.syncFromWatchPage("u1", options)
+
+        assertEquals(0, engine.pendingCount("u1"))
+        assertEquals(listOf("1055606"), remote.calls.map { it.second })
+        assertFalse(remote.calls.single().third)
+        assertFalse(store.memberships("u1", "409004").first { it.target == "1055606" }.saved)
+    }
+
+    @Test
     fun `flush does nothing without a token`() = kotlinx.coroutines.runBlocking {
         engine.setSaved("u1", "409004", "1055606", true)
 

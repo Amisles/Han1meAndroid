@@ -16,7 +16,7 @@ class PlaylistSyncRepositoryImpl @Inject constructor(
 ) : PlaylistSyncRepository {
 
     override suspend fun cacheFromWatchPage(options: VideoSaveOptions) {
-        engine.cacheOptions(activeUserId(), options)
+        engine.syncFromWatchPage(activeUserId(), options)
     }
 
     override suspend fun savedTargets(videoId: String): Set<String> {
