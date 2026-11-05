@@ -1,9 +1,12 @@
 package app.amisles.hanime.feature.detail.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -108,5 +111,29 @@ internal fun DetailBackButton(
             tint = tint,
             modifier = Modifier.size(24.dp)
         )
+    }
+}
+
+/** 播放器左上角的返回与回到首页：返回在左，首页在右，两者保持明显间距避免误触。 */
+@Composable
+internal fun PlayerNavButtons(
+    onBackClick: () -> Unit,
+    onHomeClick: () -> Unit,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        DetailBackButton(onBackClick = onBackClick, tint = tint)
+        IconButton(onClick = { onHomeClick() }) {
+            Icon(
+                imageVector = Icons.Default.Home,
+                contentDescription = stringResource(R.string.nav_home),
+                tint = tint,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }

@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,10 +65,10 @@ import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.repository.DownloadRepository
-import app.amisles.hanime.feature.detail.components.DetailBackButton
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
 import app.amisles.hanime.feature.detail.components.DetailVideoPlayer
+import app.amisles.hanime.feature.detail.components.PlayerNavButtons
 import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
 import app.amisles.hanime.feature.detail.components.VideoUnavailableHint
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -87,6 +86,7 @@ import app.amisles.hanime.feature.detail.comment.CommentViewModel
 fun DetailScreen(
     videoUrl: String? = null,
     onBackClick: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
     onVideoClick: (String) -> Unit = {},
     // 自动连播的下一集：与手动点卡不同，它不该在返回栈里留下上一集
     onAutoPlayNext: (String) -> Unit = onVideoClick,
@@ -514,13 +514,13 @@ fun DetailScreen(
                             modifier = Modifier
                         )
                     }
-                    // 返回按钮覆盖在播放器左上角
-                    DetailBackButton(
+                    // 返回与回到首页按钮覆盖在播放器左上角
+                    PlayerNavButtons(
                         onBackClick = onBackClick,
+                        onHomeClick = onNavigateHome,
                         tint = Color.White,
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .size(48.dp)
                             .padding(start = 4.dp, top = 4.dp)
                     )
                 }
@@ -558,45 +558,58 @@ fun DetailScreen(
                 } else {
 
                     item(key = "video_player") {
-                        val detail = videoDetail
-                        val player = exoPlayer
-                        if (detail == null || detail.defaultSourceUrl.isEmpty()) {
-                            VideoUnavailableHint(
-                                hasError = error != null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(225.dp)
-                                    .background(Color.Black)
-                            )
-                        } else if (player == null) {
-                            // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(225.dp)
-                                    .background(Color.Black)
-                            )
-                        } else {
-                            val fullscreenScale by animateFloatAsState(
-                                targetValue = if (isPlayerFullscreen) 1f else 0.97f,
-                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                                label = "fullscreen_scale"
-                            )
-                            DetailVideoPlayer(
-                                exoPlayer = player,
-                                detail = detail,
-                                initialPositionMs = initialSeekMs,
-                                isFullscreen = isPlayerFullscreen,
-                                onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                                onPlaybackEnded = { handlePlaybackEnded() },
-                                autoPlayNext = autoPlayNext,
-                                onSourceError = { viewModel.refreshVideoSources() },
-                                modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
-                                    .graphicsLayer {
-                                        scaleX = fullscreenScale
-                                        scaleY = fullscreenScale
-                                    }
-                            )
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            val detail = videoDetail
+                            val player = exoPlayer
+                            if (detail == null || detail.defaultSourceUrl.isEmpty()) {
+                                VideoUnavailableHint(
+                                    hasError = error != null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(225.dp)
+                                        .background(Color.Black)
+                                )
+                            } else if (player == null) {
+                                // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(225.dp)
+                                        .background(Color.Black)
+                                )
+                            } else {
+                                val fullscreenScale by animateFloatAsState(
+                                    targetValue = if (isPlayerFullscreen) 1f else 0.97f,
+                                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                    label = "fullscreen_scale"
+                                )
+                                DetailVideoPlayer(
+                                    exoPlayer = player,
+                                    detail = detail,
+                                    initialPositionMs = initialSeekMs,
+                                    isFullscreen = isPlayerFullscreen,
+                                    onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                                    onPlaybackEnded = { handlePlaybackEnded() },
+                                    autoPlayNext = autoPlayNext,
+                                    onSourceError = { viewModel.refreshVideoSources() },
+                                    modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
+                                        .graphicsLayer {
+                                            scaleX = fullscreenScale
+                                            scaleY = fullscreenScale
+                                        }
+                                )
+                            }
+                            // 返回与回到首页覆盖在播放器左上角；全屏时隐藏，此时返回需先退全屏
+                            if (!isPlayerFullscreen) {
+                                PlayerNavButtons(
+                                    onBackClick = onBackClick,
+                                    onHomeClick = onNavigateHome,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(start = 4.dp, top = 4.dp)
+                                )
+                            }
                         }
                     }
 

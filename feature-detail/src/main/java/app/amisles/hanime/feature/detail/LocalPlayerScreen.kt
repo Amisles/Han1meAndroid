@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +28,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.feature.detail.components.DetailBackButton
+import app.amisles.hanime.feature.detail.components.PlayerNavButtons
 import app.amisles.hanime.feature.detail.components.VideoPlayer
 import java.io.File
 import kotlinx.coroutines.currentCoroutineContext
@@ -50,7 +49,8 @@ import kotlinx.coroutines.isActive
 @Composable
 fun LocalPlayerScreen(
     filePath: String?,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNavigateHome: () -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
     val context = LocalContext.current
@@ -142,18 +142,18 @@ fun LocalPlayerScreen(
             }
         }
 
-        // 返回按钮叠在左上角（写在播放器之后，绘制在其上层），用叠加而非顶栏以免把播放器挤离中心。
+        // 返回与回到首页叠在左上角（写在播放器之后，绘制在其上层），用叠加而非顶栏以免把播放器挤离中心。
         // 全屏时隐藏：此时直接返回会把 Activity 留在横屏锁定态（VideoPlayer 只在 isFullscreen 翻回
         // false 时才恢复方向，而 popBackStack 会让本页来不及恢复），故全屏请先点播放器自带的「退出全屏」。
         if (!isPlayerFullscreen) {
-            DetailBackButton(
+            PlayerNavButtons(
                 onBackClick = onBackClick,
+                onHomeClick = onNavigateHome,
                 tint = Color.White,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
                     .padding(start = 4.dp, top = 4.dp)
-                    .size(48.dp)
             )
         }
     }

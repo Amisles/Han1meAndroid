@@ -558,6 +558,7 @@ internal fun HanimeNavGraph(
             DetailScreen(
                 videoUrl = videoUrl,
                 onBackClick = { navController.popBackStack() },
+                onNavigateHome = { navController.navigateToRoot("home") },
                 onVideoClick = { newVideoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(newVideoUrl)}") },
                 onVideoLongClick = onVideoLongClick,
@@ -590,7 +591,8 @@ internal fun HanimeNavGraph(
         ) { backStackEntry ->
             LocalPlayerScreen(
                 filePath = backStackEntry.arguments?.getString("filePath"),
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onNavigateHome = { navController.navigateToRoot("home") }
             )
         }
     }
