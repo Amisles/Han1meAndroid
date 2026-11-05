@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
 import app.amisles.hanime.data.parser.SubscriptionsParser
+import app.amisles.hanime.data.parser.WatchLaterPageParser
 import app.amisles.hanime.data.preferences.Preferences
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +43,8 @@ class NetworkService @Inject constructor(
     private val authorPageParser: AuthorPageParser,
     private val playlistParser: PlaylistParser,
     private val subscriptionsParser: SubscriptionsParser,
-    private val accountProfileParser: AccountProfileParser
+    private val accountProfileParser: AccountProfileParser,
+    private val watchLaterPageParser: WatchLaterPageParser
 ) {
     // 入口拦截器：非官方域名根路径请求重写为 /enter
     private val entryInterceptor = EntryInterceptor()
@@ -407,6 +409,19 @@ class NetworkService @Inject constructor(
                 // 不可吞掉异常并返回 emptyList()，否则调用方的错误处理成为死代码，
                 // 网络失败会表现为「空白列表」而无错误提示。此处记录后原样抛出。
                 AppLogger.logError("NetworkService", "Failed to fetch video list page: ${e.message}", e)
+                throw e
+            }
+        }
+    }
+
+    suspend fun fetchWatchLaterPage(url: String): List<HanimeVideo> {
+        AppLogger.log("NetworkService", "fetchWatchLaterPage called, url: ${url.redactUrlForLog()}")
+        return withContext(Dispatchers.IO) {
+            try {
+                val html = executeRequest(buildRequest(url))
+                watchLaterPageParser.parse(html, url)
+            } catch (e: IOException) {
+                AppLogger.logError("NetworkService", "Failed to fetch watch later page: ${e.message}", e)
                 throw e
             }
         }

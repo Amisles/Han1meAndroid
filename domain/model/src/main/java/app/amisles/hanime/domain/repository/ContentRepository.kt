@@ -86,6 +86,9 @@ interface ContentRepository {
     /** 拉取单个播放列表详情。 */
     suspend fun getPlaylistDetail(url: String): PlaylistDetail?
 
+    /** 拉取站点「稍后观看」列表页。 */
+    suspend fun getWatchLaterPage(url: String): List<HanimeVideo>
+
     /** 拉取已订阅作者的视频流（query 为空表示全部）。 */
     suspend fun getSubscriptionsPage(query: String = ""): SubscriptionsContent
 

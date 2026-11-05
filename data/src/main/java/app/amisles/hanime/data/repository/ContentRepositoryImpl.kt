@@ -171,6 +171,10 @@ class ContentRepositoryImpl @Inject constructor(
         networkService.fetchPlaylistDetailPage(url)
 
 
+    override suspend fun getWatchLaterPage(url: String): List<HanimeVideo> =
+        networkService.fetchWatchLaterPage(url)
+
+
     override suspend fun getSubscriptionsPage(query: String): SubscriptionsContent =
         networkService.fetchSubscriptionsPage(query)
 
