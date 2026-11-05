@@ -52,7 +52,7 @@ class NetworkService @Inject constructor(
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
-        .followSslRedirects(true)
+        .followSslRedirects(false)
         .retryOnConnectionFailure(true)
         .cookieJar(HCookieJar)
         .addInterceptor(entryInterceptor)

@@ -18,6 +18,7 @@ fun CookieString.toLoginCookieList(domain: String): List<Cookie> {
         .name("user_lang")
         .value(DEFAULT_USER_LANG)
         .path("/")
+        .secure()
         .build()
 
     if (raw.isBlank()) return list
@@ -33,6 +34,7 @@ fun CookieString.toLoginCookieList(domain: String): List<Cookie> {
                 .name(name)
                 .value(value)
                 .path("/")
+                .secure()
                 .build()
         }
     }

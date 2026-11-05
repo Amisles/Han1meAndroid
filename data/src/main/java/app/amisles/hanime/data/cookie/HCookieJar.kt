@@ -40,6 +40,7 @@ object HCookieJar : CookieJar {
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         requestGeneration.set(generation)
         val host = url.host
+        val secure = url.isHttps
         val out = mutableListOf<Cookie>()
 
         // 从内存存储读取并清理过期 Cookie。
@@ -53,10 +54,10 @@ object HCookieJar : CookieJar {
                 val iterator = storedCookies.iterator()
                 while (iterator.hasNext()) {
                     val cookie = iterator.next()
-                    if (cookie.expiresAt > now) {
-                        out.add(cookie)
-                    } else {
+                    if (cookie.expiresAt <= now) {
                         iterator.remove()
+                    } else if (secure || !cookie.secure) {
+                        out.add(cookie)
                     }
                 }
             }
@@ -70,13 +71,13 @@ object HCookieJar : CookieJar {
         if (sessionHost.isBlank()) {
             // 未知来源：宁可不注入，也不能把凭据发往不确定的主机
             AppLogger.d("HCookieJar", "登录 Cookie 缺少来源域名，已跳过注入以避免跨域泄漏")
-        } else if (host.equals(sessionHost, ignoreCase = true)) {
+        } else if (secure && host.equals(sessionHost, ignoreCase = true)) {
             out += Preferences.loginCookie.toLoginCookieList(host)
         }
 
         // 人机校验 Cookie 与登录态无关：未登录用户也可能需要它，因此按自己的域名单独判定
         val challengeHost = Preferences.cloudFlareCookieDomain
-        if (challengeHost.isNotBlank() && host.equals(challengeHost, ignoreCase = true)) {
+        if (secure && challengeHost.isNotBlank() && host.equals(challengeHost, ignoreCase = true)) {
             val challengeCookies = Preferences.cloudFlareCookie.toLoginCookieList(host)
             // 登录 Cookie 里可能残留同一时刻的旧 cf_clearance，两条同名 Cookie 一起下发时
             // 服务端通常只认第一条（旧值），刚校验到的新值就永远不起作用
