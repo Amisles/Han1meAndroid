@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.profile
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -29,6 +32,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,7 +58,6 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
-import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistSummary
@@ -74,8 +77,8 @@ private fun Modifier.sectionSwipe(
         onHorizontalDrag = { _, dragAmount -> dragAccum += dragAmount },
         onDragEnd = {
             when {
-                dragAccum > thresholdPx -> onSelect(true)
-                dragAccum < -thresholdPx -> onSelect(false)
+                dragAccum < -thresholdPx -> onSelect(true)
+                dragAccum > thresholdPx -> onSelect(false)
             }
             dragAccum = 0f
         }
@@ -115,40 +118,44 @@ fun CloudFavoritesScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        ScreenHeader(
-            title = stringResource(
-                if (showWatchLater) R.string.watch_later_title else R.string.profile_favorites
-            ),
-            onBackClick = onBackClick,
-            actions = {
-                TextButton(onClick = { viewModel.selectSection(!showWatchLater) }) {
-                    Text(
-                        text = stringResource(
-                            if (showWatchLater) R.string.profile_favorites else R.string.watch_later_title
-                        ),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                if (!showWatchLater) {
-                    TextButton(onClick = onLocalFavoritesClick) {
-                        Text(
-                            text = stringResource(R.string.cloud_favorite_local),
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                IconButton(onClick = { viewModel.refresh() }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Refresh,
-                        contentDescription = stringResource(R.string.common_refresh),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.common_back),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(24.dp)
+                )
             }
-        )
+            FavoritesTabBar(
+                showWatchLater = showWatchLater,
+                onSelect = { viewModel.selectSection(it) },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+            )
+            TextButton(onClick = onLocalFavoritesClick) {
+                Text(
+                    text = stringResource(R.string.cloud_favorite_local),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            IconButton(onClick = { viewModel.refresh() }) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = stringResource(R.string.common_refresh),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         if (!loggedIn) {
             CenterHint(
@@ -166,7 +173,7 @@ fun CloudFavoritesScreen(
             AnimatedContent(
                 targetState = showWatchLater,
                 transitionSpec = {
-                    val direction = if (targetState) -1 else 1
+                    val direction = if (targetState) 1 else -1
                     val durationMillis = 280
                     (slideInHorizontally(animationSpec = tween(durationMillis)) { fullWidth ->
                         direction * fullWidth
@@ -205,6 +212,83 @@ fun CloudFavoritesScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FavoritesTabBar(
+    showWatchLater: Boolean,
+    onSelect: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selectedTab = if (showWatchLater) 1 else 0
+    val primary = MaterialTheme.colorScheme.primary
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val half = maxWidth / 2
+        val indicatorCenter = if (selectedTab == 0) half / 2 else half + half / 2
+        val indicatorX by animateDpAsState(
+            targetValue = indicatorCenter - 10.dp,
+            animationSpec = tween(durationMillis = 250),
+            label = "favorites_tab_indicator"
+        )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                FavoritesTabButton(
+                    text = stringResource(R.string.profile_favorites),
+                    isSelected = selectedTab == 0,
+                    onClick = { onSelect(false) },
+                    modifier = Modifier.weight(1f)
+                )
+                FavoritesTabButton(
+                    text = stringResource(R.string.watch_later_title),
+                    isSelected = selectedTab == 1,
+                    onClick = { onSelect(true) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(3.dp)
+                        .offset(x = indicatorX)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(primary)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoritesTabButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            }
+        )
     }
 }
 
