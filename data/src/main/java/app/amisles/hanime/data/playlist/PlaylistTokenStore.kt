@@ -15,6 +15,7 @@ class PreferencesPlaylistTokenStore @Inject constructor() : PlaylistTokenStore {
     override fun read(): String = Preferences.playlistCsrfToken
 
     override fun write(token: String) {
+        if (!Preferences.isLoggedIn) return
         Preferences.playlistCsrfToken = token
     }
 }
