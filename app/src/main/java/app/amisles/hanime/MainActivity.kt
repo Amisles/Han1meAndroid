@@ -1,6 +1,7 @@
 package app.amisles.hanime
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
@@ -39,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -57,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -274,8 +277,10 @@ fun HanimeApp(
     // （切语言 / uiMode 变化）后同一 intent 不会被再次消费。
     var handledIntentTag by rememberSaveable { mutableStateOf("") }
     var pendingShareIntent by remember { mutableStateOf(activity?.intent) }
-    LaunchedEffect(activity) {
-        activity?.addOnNewIntentListener { intent -> pendingShareIntent = intent }
+    DisposableEffect(activity) {
+        val listener = Consumer<Intent> { intent -> pendingShareIntent = intent }
+        activity?.addOnNewIntentListener(listener)
+        onDispose { activity?.removeOnNewIntentListener(listener) }
     }
     LaunchedEffect(pendingShareIntent) {
         val intent = pendingShareIntent ?: return@LaunchedEffect
