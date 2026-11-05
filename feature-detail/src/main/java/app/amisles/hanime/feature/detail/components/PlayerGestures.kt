@@ -70,7 +70,7 @@ internal fun Modifier.playerGestures(
                 var initialized = false
                 // 长按加速是否已触发：一旦触发，本段手势的滑动只调倍率，直到手指抬起
                 var longPressFired = false
-                // 长按加速定时器：按下启动 1s 延时协程，松手/移动/缩放即取消，避免点击误触发加速
+                // 长按加速定时器：按下启动 1s 延时协程，松手/缩放/成段拖动即取消，避免点击误触发加速
                 var longPressJob: Job? = null
                 while (true) {
                     val event = awaitPointerEvent()
@@ -173,12 +173,12 @@ internal fun Modifier.playerGestures(
                             isControlTapState.value = false
                             // 手势开始即重置自动隐藏倒计时
                             controlsActivityRef.value = controlsActivityRef.value + 1
-                            // 启动长按加速定时器：单指静止按住满 1s 才触发加速，松手/移动/缩放即取消。
+                            // 启动长按加速定时器：单指按住满 1s 触发加速，松手 / 缩放 / 成段拖动即取消。
                             // 触发后进入「加速拖动」态：后续滑动只调倍率，不再切到进度 / 亮度 / 音量，
                             // 直到手指抬起 —— 见下方 dragMode 为 null 的分支。
                             longPressJob = gestureScope.launch {
                                 delay(LONG_PRESS_BOOST_DELAY_MS)
-                                if (!menuOpen() && !longPressFired && !moved && !isZoom && dragMode == null) {
+                                if (!menuOpen() && !longPressFired && !isZoom && dragMode == null) {
                                     longPressFired = true
                                     setLongPressBoost(true)
                                     showSpeedMenuState.value = false
@@ -218,13 +218,20 @@ internal fun Modifier.playerGestures(
                                 )
                                 if (mode != null) {
                                     moved = true
-                                    longPressJob?.cancel()
-                                    startX = x
-                                    showSpeedMenuState.value = false
-                                    showQualityMenuState.value = false
-                                    seekStartPos = exoPlayer.currentPosition
-                                    seekPreviewState.value = seekStartPos
-                                    dragMode = mode
+                                    // 长按加速定时器未到期时，轻微横移不判成拖动进度：留给定时器裁决，
+                                    // 避免长按时手指稍稍左右漂移就把加速误切成进度调整
+                                    val boostPendingDrift = mode == DragMode.SEEK &&
+                                        longPressJob?.isActive == true &&
+                                        gestureMath.isSlightSeekDrift(currentX = x, downX = downX)
+                                    if (!boostPendingDrift) {
+                                        longPressJob?.cancel()
+                                        startX = x
+                                        showSpeedMenuState.value = false
+                                        showQualityMenuState.value = false
+                                        seekStartPos = exoPlayer.currentPosition
+                                        seekPreviewState.value = seekStartPos
+                                        dragMode = mode
+                                    }
                                 }
                             }
                         } else {

@@ -86,6 +86,15 @@ internal class PlayerGestureMath(private val slopPx: Float) {
     }
 
     /**
+     * 长按加速定时器未到期时，判断横移是否仍属轻微漂移。
+     *
+     * 以按下点为基准量净位移：漂移幅度在触摸阈值的数倍内时不把这段横移判成拖动进度，
+     * 留给加速定时器裁决 —— 长按时手指稍稍左右晃动不应把加速误切成 seek。
+     */
+    fun isSlightSeekDrift(currentX: Float, downX: Float): Boolean =
+        absF(currentX - downX) <= slopPx * SLIGHT_SEEK_DRIFT_FACTOR
+
+    /**
      * 长按加速期间，纵向滑动换算的目标倍速。
      *
      * 以按下点 [downY] 为基准做绝对换算，而不是逐帧累加：滑上去再滑回原处会精确回到起始倍率，
@@ -107,6 +116,9 @@ internal class PlayerGestureMath(private val slopPx: Float) {
     companion object {
         /** 触摸抖动阈值（dp）：与系统 touch slop 量级一致，调用方按屏幕密度换算成像素。 */
         const val SLOP_DP = 8f
+
+        /** 轻微横移漂移的判定幅度：触摸阈值的倍数，净位移不超过它时不判成拖动进度。 */
+        private const val SLIGHT_SEEK_DRIFT_FACTOR = 3f
 
         /** 长按加速可调倍速的下限：滑到最低相当于回到常速，长按不会把视频变慢。 */
         const val MIN_BOOST_SPEED = 1f

@@ -287,4 +287,25 @@ class PlayerGestureMathTest {
             0.0001f
         )
     }
+
+    // ── 长按期间的轻微横移 ──────────────────────────────────────────────────
+
+    @Test
+    fun `slight horizontal drift while boost pending stays within threshold`() {
+        // 净位移 20px = 阈值 8px 的 2.5 倍：长按时手指稍稍左右晃动属轻微漂移
+        assertEquals(true, math.isSlightSeekDrift(currentX = 120f, downX = 100f))
+        assertEquals(true, math.isSlightSeekDrift(currentX = 80f, downX = 100f))
+    }
+
+    @Test
+    fun `deliberate horizontal drag while boost pending exceeds threshold`() {
+        // 净位移 30px 超过 8px 的 3 倍：判定为有意拖动，交给进度
+        assertEquals(false, math.isSlightSeekDrift(currentX = 130f, downX = 100f))
+    }
+
+    @Test
+    fun `left-right wiggle measures net displacement from down point`() {
+        // 以按下点为基准量净位移：先左后右回到原处，漂移互相抵消
+        assertEquals(true, math.isSlightSeekDrift(currentX = 100f, downX = 100f))
+    }
 }
