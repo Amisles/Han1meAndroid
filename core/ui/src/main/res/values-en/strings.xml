@@ -1108,4 +1108,10 @@
     <string name="favorite_migrate_no_list">No playlist available yet — create one on any video page first</string>
     <string name="favorite_migrate_queued">Added to the sync queue</string>
     <string name="favorite_cloud_local_hint">Favorites are stored in site playlists when signed in; this page lists local ones</string>
+    <string name="common_refresh">Refresh</string>
+    <string name="cloud_favorite_local">Local favorites</string>
+    <string name="cloud_favorite_empty">No playlists yet</string>
+    <string name="cloud_favorite_empty_hint">Tap Favorites on a video page to create or join a playlist</string>
+    <string name="cloud_favorite_login_required">Sign in to see your playlists</string>
+    <string name="cloud_playlist_created_by">by %1$s</string>
 </resources>

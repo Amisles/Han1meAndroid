@@ -126,7 +126,9 @@ fun ProfileScreen(
 
     val menuItems = buildList {
         add(ProfileMenuItem(Icons.Default.History, stringResource(R.string.profile_watch_history)) { onNavigate("history") })
-        add(ProfileMenuItem(Icons.Default.Favorite, stringResource(R.string.profile_favorites)) { onNavigate("favorite") })
+        add(ProfileMenuItem(Icons.Default.Favorite, stringResource(R.string.profile_favorites)) {
+            onNavigate(if (isLogin) "cloudFavorite" else "favorite")
+        })
         if (isLogin) {
             add(ProfileMenuItem(Icons.Default.Subscriptions, stringResource(R.string.subscriptions)) { onNavigate("subscriptions") })
             add(ProfileMenuItem(Icons.Default.AccountCircle, stringResource(R.string.profile_account)) { onNavigate("accountEdit") })

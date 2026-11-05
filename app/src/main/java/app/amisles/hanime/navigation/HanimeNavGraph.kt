@@ -23,10 +23,12 @@ import app.amisles.hanime.feature.download.BatchDownloadScreen
 import app.amisles.hanime.feature.download.DownloadScreen
 import app.amisles.hanime.feature.home.HomeScreen
 import app.amisles.hanime.feature.profile.AccountProfileScreen
+import app.amisles.hanime.feature.profile.CloudFavoritesScreen
 import app.amisles.hanime.feature.profile.FavoriteScreen
 import app.amisles.hanime.feature.profile.HistoryScreen
 import app.amisles.hanime.feature.profile.LoginScreen
 import app.amisles.hanime.feature.profile.SubscriptionsScreen
+import app.amisles.hanime.feature.profile.UserPlaylistDetailScreen
 import app.amisles.hanime.feature.profile.WatchStatsScreen
 import app.amisles.hanime.feature.search.SearchScreen
 import app.amisles.hanime.feature.settings.AboutScreen
@@ -339,6 +341,32 @@ internal fun HanimeNavGraph(
         }
         composable("favorite") {
             FavoriteScreen(
+                onBackClick = { navController.popBackStack() },
+                onVideoClick = { videoUrl ->
+                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                }
+            )
+        }
+        composable("cloudFavorite") {
+            CloudFavoritesScreen(
+                onBackClick = { navController.popBackStack() },
+                onPlaylistClick = { url ->
+                    navController.navigate("userPlaylist?url=${Uri.encode(url)}")
+                },
+                onLocalFavoritesClick = { navController.navigate("favorite") },
+                onLoginClick = { navController.navigate("login") }
+            )
+        }
+        composable(
+            route = "userPlaylist?url={url}",
+            arguments = listOf(navArgument("url") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            UserPlaylistDetailScreen(
+                url = backStackEntry.arguments?.getString("url").orEmpty(),
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")

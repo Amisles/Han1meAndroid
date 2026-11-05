@@ -1140,4 +1140,10 @@
     <string name="favorite_migrate_no_list">还没有可用的清单，请先在任意视频页新建一个</string>
     <string name="favorite_migrate_queued">已加入同步队列</string>
     <string name="favorite_cloud_local_hint">登录后收藏保存在站点清单，本页显示本机收藏</string>
+    <string name="common_refresh">刷新</string>
+    <string name="cloud_favorite_local">本机收藏</string>
+    <string name="cloud_favorite_empty">还没有播放清单</string>
+    <string name="cloud_favorite_empty_hint">在视频详情页点「收藏」即可新建或加入清单</string>
+    <string name="cloud_favorite_login_required">登录后可查看你的播放清单</string>
+    <string name="cloud_playlist_created_by">由 %1$s 建立</string>
 </resources>

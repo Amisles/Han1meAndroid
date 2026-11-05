@@ -1108,4 +1108,10 @@
     <string name="favorite_migrate_no_list">利用できるリストがありません。先に動画ページで作成してください</string>
     <string name="favorite_migrate_queued">同期キューに追加しました</string>
     <string name="favorite_cloud_local_hint">ログイン中はサイトのリストに保存されます。このページはローカルのお気に入りです</string>
+    <string name="common_refresh">更新</string>
+    <string name="cloud_favorite_local">ローカルのお気に入り</string>
+    <string name="cloud_favorite_empty">リストがまだありません</string>
+    <string name="cloud_favorite_empty_hint">動画ページでお気に入りに追加するとリストを作成できます</string>
+    <string name="cloud_favorite_login_required">ログインすると自分のリストを表示できます</string>
+    <string name="cloud_playlist_created_by">%1$s が作成</string>
 </resources>
