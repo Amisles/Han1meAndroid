@@ -728,6 +728,7 @@ fun VideoPlayer(
                 showMoreMenuState = showMoreMenuState,
                 seekBackward = { seekBackward() },
                 seekForward = { seekForward() },
+                togglePlayPause = { togglePlayPause() },
                 setBrightness = { setBrightness(it) },
                 setLongPressBoost = { setLongPressBoost(it) },
                 setLongPressBoostSpeed = { updateLongPressBoostSpeed(it) },

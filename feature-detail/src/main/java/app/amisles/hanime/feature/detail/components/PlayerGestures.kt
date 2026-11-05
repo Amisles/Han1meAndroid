@@ -45,6 +45,7 @@ internal fun Modifier.playerGestures(
     showMoreMenuState: MutableState<Boolean>,
     seekBackward: () -> Unit,
     seekForward: () -> Unit,
+    togglePlayPause: () -> Unit,
     setBrightness: (Float) -> Unit,
     setLongPressBoost: (Boolean) -> Unit,
     setLongPressBoostSpeed: (Float) -> Unit,
@@ -96,14 +97,28 @@ internal fun Modifier.playerGestures(
                             val now = System.currentTimeMillis()
                             if (now - lastTapTimeState.value < 300L) {
                                 lastTapTimeState.value = 0L
-                                // 关闭双击快进时：既不跳转也不切换控制栏，否则连点会让显隐抖动
-                                if (doubleTapSeekEnabled() && !isInPip()) {
-                                    val rewind = downX < playerWidth() / 2f
-                                    if (rewind) seekBackward() else seekForward()
-                                    gestureHintState.value = if (rewind)
-                                        context.getString(R.string.player_rewind_15s)
-                                    else
-                                        context.getString(R.string.player_forward_15s)
+                                if (isControlTapState.value) {
+                                    // 第二击落在控件上：控件已自行处理，手势不再叠加分区动作
+                                    isControlTapState.value = false
+                                } else if (!isInPip()) {
+                                    // 双击分区：播放器三等分，左快退 / 右快进 / 中间播放暂停
+                                    val width = playerWidth()
+                                    when {
+                                        downX < width / 3f -> {
+                                            // 关闭双击快进时：既不跳转也不切换控制栏，否则连点会让显隐抖动
+                                            if (doubleTapSeekEnabled()) {
+                                                seekBackward()
+                                                gestureHintState.value = context.getString(R.string.player_rewind_15s)
+                                            }
+                                        }
+                                        downX > width * 2f / 3f -> {
+                                            if (doubleTapSeekEnabled()) {
+                                                seekForward()
+                                                gestureHintState.value = context.getString(R.string.player_forward_15s)
+                                            }
+                                        }
+                                        else -> togglePlayPause()
+                                    }
                                 }
                             } else {
                                 lastTapTimeState.value = now
