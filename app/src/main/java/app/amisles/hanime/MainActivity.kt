@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -233,7 +234,7 @@ fun HanimeApp(
     val uiCfg = UiConfigStore.config.collectAsStateWithLifecycle().value
     val useRail = uiCfg.resolvedNavStyle(sizeInfo.isTablet) == NavigationStyle.RAIL
 
-    val activity = LocalContext.current as? ComponentActivity
+    val activity = LocalActivity.current as? ComponentActivity
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }

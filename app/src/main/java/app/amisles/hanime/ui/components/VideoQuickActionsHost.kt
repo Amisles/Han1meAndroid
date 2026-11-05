@@ -4,7 +4,9 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
@@ -30,6 +32,7 @@ fun VideoQuickActionsHost(
     viewModel: VideoQuickActionsViewModel
 ) {
     val context = LocalContext.current
+    val resources by rememberUpdatedState(LocalResources.current)
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
     val watchLaterIds by viewModel.watchLaterIds.collectAsStateWithLifecycle()
     val isLogin by LocalAppPreferences.current.loginStateFlow.collectAsStateWithLifecycle()
@@ -53,7 +56,7 @@ fun VideoQuickActionsHost(
     LaunchedEffect(Unit) {
         viewModel.events.collect { message ->
             val text = when (message) {
-                is Int -> context.getString(message)
+                is Int -> resources.getString(message)
                 is String -> message
                 else -> ""
             }
@@ -71,7 +74,7 @@ fun VideoQuickActionsHost(
                 QuickDownloadEvent.InvalidUrl -> R.string.detail_download_invalid_url
                 QuickDownloadEvent.Failed -> R.string.common_load_failed
             }
-            Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, resources.getString(res), Toast.LENGTH_SHORT).show()
         }
     }
 
