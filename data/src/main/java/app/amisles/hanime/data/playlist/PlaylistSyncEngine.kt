@@ -17,13 +17,10 @@ class PlaylistSyncEngine @Inject constructor(
     private val tokens: PlaylistTokenStore
 ) {
 
-    private var csrfToken: String = tokens.read()
-
-    val hasToken: Boolean get() = csrfToken.isNotBlank()
+    val hasToken: Boolean get() = tokens.read().isNotBlank()
 
     fun rememberToken(token: String) {
-        if (token.isBlank() || token == csrfToken) return
-        csrfToken = token
+        if (token.isBlank() || token == tokens.read()) return
         tokens.write(token)
     }
 
@@ -100,7 +97,7 @@ class PlaylistSyncEngine @Inject constructor(
         if (userId.isBlank()) return 0
         var sent = 0
         while (true) {
-            val token = csrfToken.takeIf { it.isNotBlank() } ?: return sent
+            val token = tokens.read().takeIf { it.isNotBlank() } ?: return sent
             val due = store.dueEntries(userId, clock.now(), limit)
             if (due.isEmpty()) return sent
             var progressed = false
@@ -126,7 +123,7 @@ class PlaylistSyncEngine @Inject constructor(
         if (userId.isBlank()) 0 else store.pendingCount(userId)
 
     private fun requiredToken(): String =
-        csrfToken.takeIf { it.isNotBlank() } ?: throw IllegalStateException("缺少 CSRF Token")
+        tokens.read().takeIf { it.isNotBlank() } ?: throw IllegalStateException("缺少 CSRF Token")
 
     companion object {
         private const val DEFAULT_BATCH = 16

@@ -954,6 +954,9 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
             editor.remove(SP_LOGIN_COOKIE_DOMAIN)
             editor.remove(SP_SAVED_USER_ID)
             editor.remove(SP_SAVED_USER_NAME)
+            editor.remove(SP_PLAYLIST_CSRF_TOKEN)
+            editor.remove(SP_PLAYLIST_MIGRATION_DONE)
+            editor.remove(SP_SUBSCRIPTION_SEEN_IDS)
             editor.commit()
         }
         _loginStateFlow.value = false
