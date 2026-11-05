@@ -1145,5 +1145,8 @@
     <string name="cloud_favorite_empty">还没有播放清单</string>
     <string name="cloud_favorite_empty_hint">在视频详情页点「收藏」即可新建或加入清单</string>
     <string name="cloud_favorite_login_required">登录后可查看你的播放清单</string>
+    <string name="cloud_watch_later_empty">稍后观看里还没有视频</string>
+    <string name="cloud_watch_later_empty_hint">在视频列表或详情页点「稍后观看」即可加入</string>
+    <string name="cloud_watch_later_login_required">登录后可查看稍后观看</string>
     <string name="cloud_playlist_created_by">由 %1$s 建立</string>
 </resources>

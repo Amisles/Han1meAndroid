@@ -1113,5 +1113,8 @@
     <string name="cloud_favorite_empty">No playlists yet</string>
     <string name="cloud_favorite_empty_hint">Tap Favorites on a video page to create or join a playlist</string>
     <string name="cloud_favorite_login_required">Sign in to see your playlists</string>
+    <string name="cloud_watch_later_empty">Nothing in Watch later yet</string>
+    <string name="cloud_watch_later_empty_hint">Tap Watch later on any video to add it here</string>
+    <string name="cloud_watch_later_login_required">Sign in to see Watch later</string>
     <string name="cloud_playlist_created_by">by %1$s</string>
 </resources>

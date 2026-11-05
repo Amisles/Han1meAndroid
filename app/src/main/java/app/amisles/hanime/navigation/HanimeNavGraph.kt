@@ -354,7 +354,10 @@ internal fun HanimeNavGraph(
                     navController.navigate("userPlaylist?url=${Uri.encode(url)}")
                 },
                 onLocalFavoritesClick = { navController.navigate("favorite") },
-                onLoginClick = { navController.navigate("login") }
+                onLoginClick = { navController.navigate("login") },
+                onVideoClick = { videoUrl ->
+                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                }
             )
         }
         composable(

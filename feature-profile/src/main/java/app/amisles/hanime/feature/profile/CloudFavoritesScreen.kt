@@ -1,9 +1,18 @@
 package app.amisles.hanime.feature.profile
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -15,7 +24,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
@@ -30,6 +41,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,7 +56,31 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.theme.surfaceEdge
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistSummary
+
+/** 收藏 / 稍后观看左右滑动切页的触发阈值 */
+private val SectionSwipeThreshold = 60.dp
+
+private fun Modifier.sectionSwipe(
+    showWatchLater: Boolean,
+    thresholdPx: Float,
+    onSelect: (Boolean) -> Unit
+): Modifier = this.pointerInput(showWatchLater) {
+    var dragAccum = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { dragAccum = 0f },
+        onDragCancel = { dragAccum = 0f },
+        onHorizontalDrag = { _, dragAmount -> dragAccum += dragAmount },
+        onDragEnd = {
+            when {
+                dragAccum > thresholdPx -> onSelect(true)
+                dragAccum < -thresholdPx -> onSelect(false)
+            }
+            dragAccum = 0f
+        }
+    )
+}
 
 @Composable
 fun CloudFavoritesScreen(
@@ -51,16 +88,26 @@ fun CloudFavoritesScreen(
     onPlaylistClick: (String) -> Unit = {},
     onLocalFavoritesClick: () -> Unit = {},
     onLoginClick: () -> Unit = {},
+    onVideoClick: (String) -> Unit = {},
     viewModel: CloudFavoritesViewModel = hiltViewModel()
 ) {
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val loggedIn by viewModel.loggedIn.collectAsStateWithLifecycle()
+    val showWatchLater by viewModel.showWatchLater.collectAsStateWithLifecycle()
+    val watchLater by viewModel.watchLater.collectAsStateWithLifecycle()
+    val watchLaterLoading by viewModel.watchLaterLoading.collectAsStateWithLifecycle()
+    val watchLaterError by viewModel.watchLaterError.collectAsStateWithLifecycle()
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refresh()
     }
+
+    val density = LocalDensity.current
+    val thresholdPx = with(density) { SectionSwipeThreshold.toPx() }
+    val collectionsListState = rememberLazyListState()
+    val watchLaterListState = rememberLazyListState()
 
     Column(
         modifier = Modifier
@@ -69,15 +116,28 @@ fun CloudFavoritesScreen(
             .statusBarsPadding()
     ) {
         ScreenHeader(
-            title = stringResource(R.string.profile_favorites),
+            title = stringResource(
+                if (showWatchLater) R.string.watch_later_title else R.string.profile_favorites
+            ),
             onBackClick = onBackClick,
             actions = {
-                TextButton(onClick = onLocalFavoritesClick) {
+                TextButton(onClick = { viewModel.selectSection(!showWatchLater) }) {
                     Text(
-                        text = stringResource(R.string.cloud_favorite_local),
+                        text = stringResource(
+                            if (showWatchLater) R.string.profile_favorites else R.string.watch_later_title
+                        ),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+                if (!showWatchLater) {
+                    TextButton(onClick = onLocalFavoritesClick) {
+                        Text(
+                            text = stringResource(R.string.cloud_favorite_local),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 IconButton(onClick = { viewModel.refresh() }) {
                     Icon(
@@ -90,40 +150,141 @@ fun CloudFavoritesScreen(
             }
         )
 
-        when {
-            !loggedIn -> CenterHint(
-                text = stringResource(R.string.cloud_favorite_login_required),
+        if (!loggedIn) {
+            CenterHint(
+                text = stringResource(
+                    if (showWatchLater) {
+                        R.string.cloud_watch_later_login_required
+                    } else {
+                        R.string.cloud_favorite_login_required
+                    }
+                ),
                 action = stringResource(R.string.login_button),
                 onAction = onLoginClick
             )
-
-            isLoading && playlists.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
-            }
-
-            error != null -> CenterHint(
-                text = error.orEmpty(),
-                action = stringResource(R.string.common_retry),
-                onAction = { viewModel.refresh() }
-            )
-
-            playlists.isEmpty() -> CenterHint(
-                text = stringResource(R.string.cloud_favorite_empty),
-                hint = stringResource(R.string.cloud_favorite_empty_hint)
-            )
-
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)
-            ) {
-                items(playlists, key = { it.playlistUrl }) { playlist ->
-                    PlaylistRow(playlist = playlist, onClick = { onPlaylistClick(playlist.playlistUrl) })
+        } else {
+            AnimatedContent(
+                targetState = showWatchLater,
+                transitionSpec = {
+                    val direction = if (targetState) -1 else 1
+                    val durationMillis = 280
+                    (slideInHorizontally(animationSpec = tween(durationMillis)) { fullWidth ->
+                        direction * fullWidth
+                    } + fadeIn(animationSpec = tween(durationMillis))) togetherWith
+                        (slideOutHorizontally(animationSpec = tween(durationMillis)) { fullWidth ->
+                            -direction * fullWidth
+                        } + fadeOut(animationSpec = tween(durationMillis)))
+                },
+                label = "cloud_favorites_section",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .sectionSwipe(
+                        showWatchLater = showWatchLater,
+                        thresholdPx = thresholdPx,
+                        onSelect = { viewModel.selectSection(it) }
+                    )
+            ) { watchLaterSelected ->
+                if (watchLaterSelected) {
+                    WatchLaterContent(
+                        videos = watchLater,
+                        isLoading = watchLaterLoading,
+                        error = watchLaterError,
+                        listState = watchLaterListState,
+                        onRetry = { viewModel.refreshWatchLater() },
+                        onVideoClick = onVideoClick
+                    )
+                } else {
+                    PlaylistsContent(
+                        playlists = playlists,
+                        isLoading = isLoading,
+                        error = error,
+                        listState = collectionsListState,
+                        onRetry = { viewModel.refreshPlaylists() },
+                        onPlaylistClick = onPlaylistClick
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PlaylistsContent(
+    playlists: List<PlaylistSummary>,
+    isLoading: Boolean,
+    error: String?,
+    listState: LazyListState,
+    onRetry: () -> Unit,
+    onPlaylistClick: (String) -> Unit
+) {
+    when {
+        isLoading && playlists.isEmpty() -> LoadingBox()
+
+        error != null -> CenterHint(
+            text = error,
+            action = stringResource(R.string.common_retry),
+            onAction = onRetry
+        )
+
+        playlists.isEmpty() -> CenterHint(
+            text = stringResource(R.string.cloud_favorite_empty),
+            hint = stringResource(R.string.cloud_favorite_empty_hint)
+        )
+
+        else -> LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(playlists, key = { it.playlistUrl }) { playlist ->
+                PlaylistRow(playlist = playlist, onClick = { onPlaylistClick(playlist.playlistUrl) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun WatchLaterContent(
+    videos: List<HanimeVideo>,
+    isLoading: Boolean,
+    error: String?,
+    listState: LazyListState,
+    onRetry: () -> Unit,
+    onVideoClick: (String) -> Unit
+) {
+    when {
+        isLoading && videos.isEmpty() -> LoadingBox()
+
+        error != null -> CenterHint(
+            text = error,
+            action = stringResource(R.string.common_retry),
+            onAction = onRetry
+        )
+
+        videos.isEmpty() -> CenterHint(
+            text = stringResource(R.string.cloud_watch_later_empty),
+            hint = stringResource(R.string.cloud_watch_later_empty_hint)
+        )
+
+        else -> LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(videos, key = { it.id }) { video ->
+                CloudVideoRow(video = video, onClick = { onVideoClick(video.videoUrl) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingBox() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
     }
 }
 
