@@ -130,7 +130,7 @@ class DownloadManager @Inject constructor(
     private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
     private val activeSlots = AtomicInteger(0)
-    private val serviceBridge = DownloadServiceBridge(context) { hasActiveDownload() }
+    private val serviceBridge = DownloadServiceBridge(context)
     // 各任务最近一次已转发的整数百分比，用于抑制「百分比未变」的重复跨进程通知
     private val lastNotifiedPercent = ConcurrentHashMap<Int, Int>()
 
@@ -1688,17 +1688,6 @@ class DownloadManager @Inject constructor(
             taskMap.values.find { it.videoId == videoId }
         }
         return task?.status
-    }
-
-    /**
-     * 将下载进度转发给 DownloadService。
-     * 下载中使用 startForegroundService 以确保服务在前台运行；
-     * 完成/失败时服务应已在前台运行，使用 startService 更新最终通知并停止服务。
-     */
-
-    /** 是否还有处于 DOWNLOADING / PENDING 的任务（决定前台服务是否应保持活动）。 */
-    private fun hasActiveDownload(): Boolean = taskMap.values.any {
-        it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
     }
 
     /**
