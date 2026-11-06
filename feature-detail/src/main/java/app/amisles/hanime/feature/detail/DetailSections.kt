@@ -154,7 +154,17 @@ internal fun LazyListScope.detailRestItems(
     }
 
     item {
-        Spacer(modifier = Modifier.height(80.dp))
+        val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .detailTabSwipe(
+                    currentTab = state.selectedTab,
+                    thresholdPx = thresholdPx,
+                    onSelectTab = actions.onTabSelected
+                )
+        )
     }
 }
 
