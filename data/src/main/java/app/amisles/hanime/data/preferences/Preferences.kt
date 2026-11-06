@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CoroutineScope
@@ -178,6 +179,18 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
 
     private val _baseUrlFlow = MutableStateFlow(DEFAULT_BASE_URL)
     override val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
+
+    override val activeLoginStateFlow: StateFlow<Boolean> = combine(
+        _loginStateFlow,
+        _baseUrlFlow
+    ) { loggedIn, baseUrl -> loggedIn && isLoginSupportedHost(baseUrl) }
+        .stateIn(
+            preferencesScope,
+            SharingStarted.Eagerly,
+            _loginStateFlow.value && isLoginSupportedHost(_baseUrlFlow.value)
+        )
+
+    override val isActiveLogin: Boolean get() = activeLoginStateFlow.value
 
     private val _appLanguageFlow = MutableStateFlow(LANGUAGE_ZH_CN)
     override val appLanguageFlow: StateFlow<String> = _appLanguageFlow.asStateFlow()

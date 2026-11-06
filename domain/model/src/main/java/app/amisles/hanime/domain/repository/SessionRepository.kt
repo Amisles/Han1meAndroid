@@ -14,6 +14,13 @@ interface SessionRepository {
     val isLoggedIn: Boolean
     val loginStateFlow: StateFlow<Boolean>
 
+    /**
+     * 当前站点可用的登录态：已有会话且当前站点支持登录。
+     * 会话属于签发它的官方站点，切到不支持登录的镜像站时派生为 false，切回自动恢复。
+     */
+    val isActiveLogin: Boolean
+    val activeLoginStateFlow: StateFlow<Boolean>
+
     /** 登录 Cookie 原文。 */
     val loginCookie: SessionCookie
     val loginCookieFlow: StateFlow<SessionCookie>

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface AppPreferences {
     val loginStateFlow: StateFlow<Boolean>
     val loginSupportedFlow: StateFlow<Boolean>
+    val activeLoginStateFlow: StateFlow<Boolean>
     val playbackSpeedFlow: StateFlow<Float>
     val preferredQualityFlow: StateFlow<String>
     val autoPlayNextFlow: StateFlow<Boolean>

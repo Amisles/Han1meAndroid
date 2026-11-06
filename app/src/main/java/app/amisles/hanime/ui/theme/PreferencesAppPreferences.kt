@@ -13,6 +13,7 @@ import app.amisles.hanime.domain.remote.VideoAntiHotlink
 object PreferencesAppPreferences : AppPreferences {
     override val loginStateFlow = Preferences.loginStateFlow
     override val loginSupportedFlow = Preferences.loginSupportedFlow
+    override val activeLoginStateFlow = Preferences.activeLoginStateFlow
     override val playbackSpeedFlow = Preferences.playbackSpeedFlow
     override val preferredQualityFlow = Preferences.preferredQualityFlow
     override val autoPlayNextFlow = Preferences.autoPlayNextFlow
