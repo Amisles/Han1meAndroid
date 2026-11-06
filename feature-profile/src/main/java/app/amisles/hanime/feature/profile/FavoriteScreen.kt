@@ -104,7 +104,7 @@ fun FavoriteScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
-    val isLogin by LocalAppPreferences.current.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by LocalAppPreferences.current.activeLoginStateFlow.collectAsStateWithLifecycle()
     val migrationNeeded by viewModel.migrationNeeded.collectAsStateWithLifecycle()
     val migrationPlaylists by viewModel.migrationPlaylists.collectAsStateWithLifecycle()
     val migrationTarget by viewModel.migrationTarget.collectAsStateWithLifecycle()

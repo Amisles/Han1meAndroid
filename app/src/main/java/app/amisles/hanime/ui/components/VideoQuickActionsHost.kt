@@ -35,7 +35,7 @@ fun VideoQuickActionsHost(
     val resources by rememberUpdatedState(LocalResources.current)
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
     val watchLaterIds by viewModel.watchLaterIds.collectAsStateWithLifecycle()
-    val isLogin by LocalAppPreferences.current.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by LocalAppPreferences.current.activeLoginStateFlow.collectAsStateWithLifecycle()
     val playlistVm: PlaylistSaveViewModel = hiltViewModel()
     val playlistState by playlistVm.state.collectAsStateWithLifecycle()
     val cloudWatchLater by playlistVm.watchLater.collectAsStateWithLifecycle()

@@ -153,7 +153,7 @@ fun DetailScreen(
         }
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
-    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val favoriteActive = if (isLogin) cloudSavedTargets.isNotEmpty() else isFavorite
     val watchLaterActive = if (isLogin) cloudWatchLater else isWatchLater

@@ -58,7 +58,7 @@ fun AccountProfileScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
-    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {

@@ -83,7 +83,7 @@ fun SubscriptionsScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val selectedQuery by viewModel.selectedQuery.collectAsStateWithLifecycle()
-    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
     val pageLayouts by appPrefs.pageLayoutModesFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
     val isGridMode = PageLayoutResolver.isGrid(

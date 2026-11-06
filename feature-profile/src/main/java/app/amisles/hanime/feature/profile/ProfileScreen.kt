@@ -98,7 +98,8 @@ fun ProfileScreen(
     val appPrefs = LocalAppPreferences.current
     val context = LocalContext.current
     val profileViewModel: ProfileViewModel = hiltViewModel()
-    val isLogin by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
+    val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
+    val isSessionStored by appPrefs.loginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val displayLetter by profileViewModel.displayLetter.collectAsStateWithLifecycle()
     val displayName by profileViewModel.displayName.collectAsStateWithLifecycle()
@@ -140,7 +141,7 @@ fun ProfileScreen(
         add(ProfileMenuItem(Icons.Default.SystemUpdate, stringResource(R.string.profile_check_update)) { onNavigate("update") })
         add(ProfileMenuItem(Icons.Default.Settings, stringResource(R.string.profile_settings)) { onNavigate("settings") })
         add(ProfileMenuItem(Icons.Default.Info, stringResource(R.string.profile_about)) { onNavigate("about") })
-        if (isLogin) {
+        if (isSessionStored) {
             add(ProfileMenuItem(Icons.AutoMirrored.Filled.Logout, stringResource(R.string.profile_logout)) {
                 profileViewModel.logout()
                 Toast.makeText(context, context.getString(R.string.profile_logout_success), Toast.LENGTH_SHORT).show()
