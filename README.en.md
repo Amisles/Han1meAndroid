@@ -21,7 +21,7 @@
 
 ## Download
 
-**Latest: v1.7.3** · Android 11 (API 30) or newer · targets Android 17 (API 37)
+**Latest: v1.7.4** · Android 11 (API 30) or newer · targets Android 17 (API 37)
 
 | Item | Detail |
 | --- | --- |
