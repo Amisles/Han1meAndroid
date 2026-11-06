@@ -767,7 +767,7 @@
         <string name="error_action_verify">Verify now</string>
         <string name="watch_later_title">Watch later</string>
     <string name="watch_later_add">Watch later</string>
-    <string name="watch_later_remove">Remove from watch later</string>
+    <string name="watch_later_remove">Remove</string>
     <string name="watch_later_added">Added to watch later</string>
     <string name="watch_later_removed">Removed from watch later</string>
         <string name="weekly_report_title">Weekly recap</string>
@@ -1091,7 +1091,7 @@
     <string name="update_install_failed">Could not start the installer. Please download it in the browser.</string>
     <string name="comment_like_failed">Could not like the comment. Please try again.</string>
     <string name="playlist_sheet_title">Store to playlist</string>
-    <string name="playlist_sheet_public">Playlists are public — everyone can see them</string>
+    <string name="playlist_sheet_public">Public playlist</string>
     <string name="playlist_sheet_empty">No playlists yet — create one first</string>
     <string name="playlist_sheet_new">New playlist</string>
     <string name="playlist_sheet_name_hint">Playlist name</string>

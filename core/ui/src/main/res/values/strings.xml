@@ -798,7 +798,7 @@
         <string name="error_action_verify">去完成人机验证</string>
         <string name="watch_later_title">稍后观看</string>
     <string name="watch_later_add">稍后观看</string>
-    <string name="watch_later_remove">从稍后观看移除</string>
+    <string name="watch_later_remove">移除</string>
     <string name="watch_later_added">已加入稍后观看</string>
     <string name="watch_later_removed">已从稍后观看移除</string>
         <string name="weekly_report_title">每周观看回顾</string>
@@ -1123,7 +1123,7 @@
     <string name="update_install_failed">无法启动安装程序，请在浏览器中手动下载</string>
     <string name="comment_like_failed">点赞失败，请稍后重试</string>
     <string name="playlist_sheet_title">存储到清单</string>
-    <string name="playlist_sheet_public">清单公开，其他用户也能看到</string>
+    <string name="playlist_sheet_public">公开清单</string>
     <string name="playlist_sheet_empty">还没有播放清单，先新建一个吧</string>
     <string name="playlist_sheet_new">新建清单</string>
     <string name="playlist_sheet_name_hint">清单名称</string>

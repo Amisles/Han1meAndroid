@@ -767,7 +767,7 @@
         <string name="error_action_verify">去完成人機驗證</string>
         <string name="watch_later_title">稍後觀看</string>
     <string name="watch_later_add">稍後觀看</string>
-    <string name="watch_later_remove">從稍後觀看移除</string>
+    <string name="watch_later_remove">移除</string>
     <string name="watch_later_added">已加入稍後觀看</string>
     <string name="watch_later_removed">已從稍後觀看移除</string>
         <string name="weekly_report_title">每週觀找回顧</string>
@@ -1091,7 +1091,7 @@
     <string name="update_install_failed">無法啟動安裝程式，請在瀏覽器中手動下載</string>
     <string name="comment_like_failed">按讚失敗，請稍後重試</string>
     <string name="playlist_sheet_title">儲存到清單</string>
-    <string name="playlist_sheet_public">清單公開，其他使用者也能看到</string>
+    <string name="playlist_sheet_public">公開清單</string>
     <string name="playlist_sheet_empty">尚無播放清單，先新建一個吧</string>
     <string name="playlist_sheet_new">新增清單</string>
     <string name="playlist_sheet_name_hint">清單名稱</string>
