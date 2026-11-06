@@ -135,7 +135,11 @@ fun VideoPlayer(
     mediaTitle: String = "",
     mediaArtist: String = "",
     // 源数据无法解析（响应不是视频）时通知外部重新拉取视频页，换取带新签名的直链
-    onSourceError: () -> Unit = {}
+    onSourceError: () -> Unit = {},
+    // 播放器左上角返回 / 回到首页入口；与其它控件同显隐，全屏时由调用方关闭
+    onBackClick: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
+    showNavButtons: Boolean = true
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -869,6 +873,17 @@ fun VideoPlayer(
 
         // ── 控件 UI（可见时）──────────────────────────────────────────────────
         if (isControlsVisible && !isInPip) {
+            if (showNavButtons) {
+                PlayerNavButtons(
+                    onBackClick = onBackClick,
+                    onHomeClick = onNavigateHome,
+                    tint = Color.White,
+                    onControlTap = { markControlTap() },
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 4.dp, top = 4.dp)
+                )
+            }
             PlayerControls(
                 exoPlayer = exoPlayer,
                 isFullscreen = isFullscreen,

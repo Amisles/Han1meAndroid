@@ -45,6 +45,9 @@ internal fun DetailVideoPlayer(
     autoPlayNext: Boolean,
     autoFullscreenEnabled: Boolean = true,
     onSourceError: () -> Unit = {},
+    onBackClick: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
+    showNavButtons: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val appPrefs = LocalAppPreferences.current
@@ -78,6 +81,9 @@ internal fun DetailVideoPlayer(
         mediaTitle = detail.title,
         mediaArtist = detail.author,
         onSourceError = onSourceError,
+        onBackClick = onBackClick,
+        onNavigateHome = onNavigateHome,
+        showNavButtons = showNavButtons,
         modifier = modifier
     )
 }
@@ -114,20 +120,30 @@ internal fun DetailBackButton(
     }
 }
 
-/** 播放器左上角的返回与回到首页：返回在左，首页在右，两者保持明显间距避免误触。 */
+/** 播放器左上角的返回与回到首页：返回在左，首页在右，紧凑排列但保留间距避免误触。 */
 @Composable
 internal fun PlayerNavButtons(
     onBackClick: () -> Unit,
     onHomeClick: () -> Unit,
     tint: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onControlTap: () -> Unit = {}
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(24.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        DetailBackButton(onBackClick = onBackClick, tint = tint)
-        IconButton(onClick = { onHomeClick() }) {
+        DetailBackButton(
+            onBackClick = {
+                onControlTap()
+                onBackClick()
+            },
+            tint = tint
+        )
+        IconButton(onClick = {
+            onControlTap()
+            onHomeClick()
+        }) {
             Icon(
                 imageVector = Icons.Default.Home,
                 contentDescription = stringResource(R.string.nav_home),

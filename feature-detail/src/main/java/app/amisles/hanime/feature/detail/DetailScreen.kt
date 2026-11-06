@@ -68,7 +68,6 @@ import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
 import app.amisles.hanime.feature.detail.components.DetailVideoPlayer
-import app.amisles.hanime.feature.detail.components.PlayerNavButtons
 import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
 import app.amisles.hanime.feature.detail.components.VideoUnavailableHint
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -511,18 +510,11 @@ fun DetailScreen(
                             // 平板常态横持，自动全屏会误触发，此处仅保留按钮手动进入全屏
                             autoFullscreenEnabled = false,
                             onSourceError = { viewModel.refreshVideoSources() },
+                            onBackClick = onBackClick,
+                            onNavigateHome = onNavigateHome,
                             modifier = Modifier
                         )
                     }
-                    // 返回与回到首页按钮覆盖在播放器左上角
-                    PlayerNavButtons(
-                        onBackClick = onBackClick,
-                        onHomeClick = onNavigateHome,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(start = 4.dp, top = 4.dp)
-                    )
                 }
 
                 // 右侧：其余组件（可滚动）
@@ -592,22 +584,14 @@ fun DetailScreen(
                                     onPlaybackEnded = { handlePlaybackEnded() },
                                     autoPlayNext = autoPlayNext,
                                     onSourceError = { viewModel.refreshVideoSources() },
+                                    onBackClick = onBackClick,
+                                    onNavigateHome = onNavigateHome,
+                                    showNavButtons = !isPlayerFullscreen,
                                     modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
                                         .graphicsLayer {
                                             scaleX = fullscreenScale
                                             scaleY = fullscreenScale
                                         }
-                                )
-                            }
-                            // 返回与回到首页覆盖在播放器左上角；全屏时隐藏，此时返回需先退全屏
-                            if (!isPlayerFullscreen) {
-                                PlayerNavButtons(
-                                    onBackClick = onBackClick,
-                                    onHomeClick = onNavigateHome,
-                                    tint = Color.White,
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .padding(start = 4.dp, top = 4.dp)
                                 )
                             }
                         }
