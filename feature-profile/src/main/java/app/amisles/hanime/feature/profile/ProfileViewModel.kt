@@ -43,7 +43,7 @@ class ProfileViewModel @Inject constructor(
 
     /** 登录用户的昵称；未登录或尚未取到时为空串，由界面回退到通用文案。 */
     val displayName: StateFlow<String> = combine(
-        session.loginStateFlow,
+        session.activeLoginStateFlow,
         session.savedUserNameFlow
     ) { loggedIn, name ->
         if (loggedIn) name else ""
@@ -77,7 +77,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun refreshAccountName() {
-        if (!session.isLoggedIn || session.savedUserName.isNotBlank() || accountNameRequested) return
+        if (!session.isActiveLogin || session.savedUserName.isNotBlank() || accountNameRequested) return
         accountNameRequested = true
         viewModelScope.launch {
             try {

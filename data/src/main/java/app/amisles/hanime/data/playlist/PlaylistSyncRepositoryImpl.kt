@@ -17,7 +17,12 @@ class PlaylistSyncRepositoryImpl @Inject constructor(
 ) : PlaylistSyncRepository {
 
     override suspend fun cacheFromWatchPage(options: VideoSaveOptions) {
-        engine.syncFromWatchPage(activeUserId(), options)
+        val userId = activeUserId()
+        if (session.isActiveLogin) {
+            engine.syncFromWatchPage(userId, options)
+        } else {
+            engine.cacheOptions(userId, options)
+        }
     }
 
     override suspend fun savedTargets(videoId: String): Set<String> {
@@ -52,18 +57,20 @@ class PlaylistSyncRepositoryImpl @Inject constructor(
         return engine.createAndSave(userId, videoId, title, description)
     }
 
-    override suspend fun flush(): Int = engine.flush(activeUserId())
+    override suspend fun flush(): Int =
+        if (session.isActiveLogin) engine.flush(activeUserId()) else 0
 
     override suspend fun pendingCount(): Int = engine.pendingCount(activeUserId())
 
     override suspend fun shouldOfferMigration(): Boolean =
-        session.isLoggedIn && !Preferences.playlistMigrationDone
+        session.isActiveLogin && !Preferences.playlistMigrationDone
 
     override suspend fun markMigrationHandled() {
         Preferences.playlistMigrationDone = true
     }
 
     override suspend fun migrateFavorites(videoIds: List<String>, target: String): Int {
+        if (!session.isActiveLogin) return 0
         val userId = activeUserId()
         if (userId.isBlank() || target.isBlank() || videoIds.isEmpty()) return 0
         videoIds.forEach { engine.setSaved(userId, it, target, true) }

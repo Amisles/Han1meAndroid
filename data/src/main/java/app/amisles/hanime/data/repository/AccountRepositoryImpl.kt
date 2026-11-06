@@ -225,7 +225,7 @@ class AccountRepositoryImpl @Inject constructor(
     private suspend fun ensureUserId(): String {
         val cached = Preferences.savedUserId
         if (cached.isNotBlank()) return cached
-        if (!Preferences.isLoggedIn) return ""
+        if (!Preferences.isActiveLogin) return ""
         val html = runCatching { networkService.fetchHomePageWithBaseUrl().html }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }

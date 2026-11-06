@@ -27,7 +27,7 @@ class CloudFavoritesViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    val loggedIn: StateFlow<Boolean> = session.loginStateFlow
+    val loggedIn: StateFlow<Boolean> = session.activeLoginStateFlow
 
     private val _showWatchLater = MutableStateFlow(false)
     val showWatchLater: StateFlow<Boolean> = _showWatchLater.asStateFlow()
@@ -62,7 +62,7 @@ class CloudFavoritesViewModel @Inject constructor(
 
     fun refreshPlaylists() {
         val userId = session.savedUserId
-        if (!session.isLoggedIn || userId.isBlank()) {
+        if (!session.isActiveLogin || userId.isBlank()) {
             clearPlaylists()
             return
         }
@@ -88,7 +88,7 @@ class CloudFavoritesViewModel @Inject constructor(
 
     fun refreshWatchLater() {
         val userId = session.savedUserId
-        if (!session.isLoggedIn || userId.isBlank()) {
+        if (!session.isActiveLogin || userId.isBlank()) {
             clearWatchLater()
             return
         }

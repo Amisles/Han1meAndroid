@@ -54,7 +54,7 @@ class PlaylistSaveViewModel @Inject constructor(
     }
 
     fun open() {
-        if (!session.isLoggedIn) return
+        if (!session.isActiveLogin) return
         _state.update { it.copy(visible = true, loading = it.items.isEmpty(), error = null) }
         refresh()
     }
@@ -64,7 +64,7 @@ class PlaylistSaveViewModel @Inject constructor(
     }
 
     fun toggle(target: String) {
-        if (!session.isLoggedIn || videoId.isBlank()) return
+        if (!session.isActiveLogin || videoId.isBlank()) return
         val item = _state.value.items.firstOrNull { it.target == target } ?: return
         val next = !item.selected
         _state.update { state ->
@@ -86,7 +86,7 @@ class PlaylistSaveViewModel @Inject constructor(
     }
 
     fun toggleWatchLater() {
-        if (!session.isLoggedIn || videoId.isBlank()) return
+        if (!session.isActiveLogin || videoId.isBlank()) return
         _watchLater.value = !_watchLater.value
         viewModelScope.launch {
             sync.setWatchLater(videoId, _watchLater.value)
@@ -121,7 +121,7 @@ class PlaylistSaveViewModel @Inject constructor(
     }
 
     private fun refresh() {
-        if (videoId.isBlank() || !session.isLoggedIn) {
+        if (videoId.isBlank() || !session.isActiveLogin) {
             _state.update { it.copy(loading = false, items = emptyList(), pendingCount = 0) }
             _savedTargets.value = emptySet()
             _watchLater.value = false
