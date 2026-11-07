@@ -134,9 +134,6 @@ class WatchPageParser @Inject constructor(
 
         val author = doc.selectFirst("a#video-artist-name")?.text()?.trim() ?: ""
 
-        val authorLink = doc.selectFirst("a[href*=\"/user/\"]")
-        val authorPageUrl = authorLink?.attr("abs:href") ?: ""
-
         val avatarContainer = doc.selectFirst("div[style*=\"position: relative; display: inline-block;\"]")
         val authorAvatarUrl = avatarContainer?.selectFirst("img[style*=\"position: absolute\"]")?.attr("abs:src")
             ?: avatarContainer?.selectFirst("img#video-user-avatar")?.attr("abs:src")
@@ -148,6 +145,8 @@ class WatchPageParser @Inject constructor(
 
         // 当前登录用户数字 ID（点赞/评论接口需要）
         val currentUserId = parseCurrentUserId(doc, html)
+
+        val authorPageUrl = parseAuthorPageUrl(doc, currentUserId)
 
         val (subscribeArtistId, subscribeUserId, subscribeStatus) =
             parseSubscribeForm(doc, authorPageUrl, currentUserId)
@@ -186,6 +185,50 @@ class WatchPageParser @Inject constructor(
             subscribeStatus = subscribeStatus,
             saveOptions = saveOptionsParser.parse(doc, csrfToken)
         )
+    }
+
+    private fun parseAuthorPageUrl(doc: Document, currentUserId: String): String {
+        doc.selectFirst("a:has(img#video-user-avatar)")?.let { link ->
+            linkHref(link).takeIf { it.isNotEmpty() && isAuthorPageLink(it) }?.let { return it }
+        }
+
+        doc.selectFirst(".video-details-wrapper")?.let { scope ->
+            scope.select("a[href*=\"/user/\"]").firstNotNullOfOrNull { link ->
+                linkHref(link).takeIf { it.isNotEmpty() && isAuthorPageLink(it) }
+            }?.let { return it }
+        }
+
+        return doc.select("a[href*=\"/user/\"]").firstNotNullOfOrNull { link ->
+            linkHref(link).takeIf {
+                it.isNotEmpty() &&
+                    isAuthorPageLink(it) &&
+                    !isHeaderAccountLink(link) &&
+                    !isOwnProfileLink(it, currentUserId)
+            }
+        }.orEmpty()
+    }
+
+    private fun linkHref(link: Element): String =
+        link.attr("abs:href").ifEmpty { link.attr("href") }.trim()
+
+    private fun isAuthorPageLink(href: String): Boolean {
+        val idMatch = USER_ID_REGEX.find(href) ?: return false
+        val tail = href.substring(idMatch.range.last + 1)
+            .substringBefore('?')
+            .substringBefore('#')
+            .trimEnd('/')
+        return tail != "/edit" && tail != "/saves" && tail != "/report"
+    }
+
+    private fun isHeaderAccountLink(link: Element): Boolean =
+        link.hasClass("user-modal-link") ||
+            link.id() == "user-modal-trigger" ||
+            link.parents().any { it.id() == "user-modal" }
+
+    private fun isOwnProfileLink(href: String, currentUserId: String): Boolean {
+        if (currentUserId.isEmpty()) return false
+        val id = USER_ID_REGEX.find(href)?.groupValues?.getOrNull(1) ?: return false
+        return id == currentUserId
     }
 
     private fun parsePlaylist(doc: Document, baseUrl: String): PlaylistInfo? {

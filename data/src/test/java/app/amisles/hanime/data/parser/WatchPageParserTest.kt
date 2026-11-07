@@ -411,6 +411,125 @@ class WatchPageParserTest {
     }
 
     @Test
+    fun `parse picks author avatar link instead of header account links`() {
+        val html = """
+            <html><body>
+                <div id="user-modal">
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466">个人中心</a>
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466/saves">稍后观看</a>
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466/edit">账户资料</a>
+                </div>
+                <a id="user-modal-trigger" href="https://hanime1.me/user/1988466"><img src="https://cdn.example.com/me.jpg"/></a>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <div class="video-details-wrapper">
+                    <div style="display: inline-block;">
+                        <a href="https://hanime1.me/user/1376681" style="position: relative; text-decoration: none;">
+                            <div style="position: relative; display: inline-block;">
+                                <img id="video-user-avatar" src="https://cdn.example.com/default.jpg"/>
+                                <img style="position: absolute; top: 0; left: 0;" src="https://cdn.example.com/author.jpg"/>
+                            </div>
+                        </a>
+                        <div style="display: inline-block; vertical-align: middle; margin-left: 8px">
+                            <a id="video-artist-name" href="https://hanime1.me/search?query=MofuMerchant">MofuMerchant</a>
+                        </div>
+                    </div>
+                </div>
+                <input name="comment-user-id" type="hidden" value="1988466"/>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("https://hanime1.me/user/1376681", detail.authorPageUrl)
+        assertEquals("1376681", detail.subscribeArtistId)
+        assertEquals("https://cdn.example.com/author.jpg", detail.authorAvatarUrl)
+    }
+
+    @Test
+    fun `parse falls back to detail author link when avatar link is not a user page`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <div class="video-details-wrapper">
+                    <a href="#"><img id="video-user-avatar" src="https://cdn.example.com/author.jpg"/></a>
+                    <a href="https://hanime1.me/user/1376681">Author</a>
+                </div>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("https://hanime1.me/user/1376681", detail.authorPageUrl)
+    }
+
+    @Test
+    fun `parse picks detail author link when avatar link is missing`() {
+        val html = """
+            <html><body>
+                <div id="user-modal">
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466">个人中心</a>
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466/edit">账户资料</a>
+                </div>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <div class="video-details-wrapper">
+                    <a id="video-artist-name" href="https://hanime1.me/search?query=Author">Author</a>
+                    <a href="https://hanime1.me/user/1376681/uploaded">更多作品</a>
+                </div>
+                <input name="comment-user-id" type="hidden" value="1988466"/>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("https://hanime1.me/user/1376681/uploaded", detail.authorPageUrl)
+    }
+
+    @Test
+    fun `parse skips header account links when detail wrapper is missing`() {
+        val html = """
+            <html><body>
+                <div id="user-modal">
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466">个人中心</a>
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466/edit">账户资料</a>
+                </div>
+                <a id="user-modal-trigger" href="https://hanime1.me/user/1988466"><img src="https://cdn.example.com/me.jpg"/></a>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <a id="video-artist-name" href="https://hanime1.me/search?query=Author">Author</a>
+                <a href="https://hanime1.me/user/1376681">Author</a>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("https://hanime1.me/user/1376681", detail.authorPageUrl)
+    }
+
+    @Test
+    fun `parse keeps author page url when logged in user is the author`() {
+        val html = """
+            <html><body>
+                <div id="user-modal">
+                    <a class="user-modal-link" href="https://hanime1.me/user/1988466">个人中心</a>
+                </div>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <div class="video-details-wrapper">
+                    <a id="video-artist-name" href="https://hanime1.me/search?query=Author">Author</a>
+                    <a href="https://hanime1.me/user/1988466">Author</a>
+                </div>
+            </body></html>
+        """.trimIndent()
+
+        val detail = parser.parse(html, baseUrl)!!
+
+        assertEquals("https://hanime1.me/user/1988466", detail.authorPageUrl)
+    }
+
+    @Test
     fun `parse with multiple date-like strings picks first`() {
         val html = """
             <html><body>
