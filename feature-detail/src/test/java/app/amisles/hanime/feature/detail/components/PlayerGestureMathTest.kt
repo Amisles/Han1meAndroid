@@ -48,7 +48,7 @@ class PlayerGestureMathTest {
         )
     }
 
-    // ── 左右半屏 ────────────────────────────────────────────────────────────
+    // ── 左右半屏判定与累计位移清零 ──────────────────────────────────────────
 
     @Test
     fun `vertical drag on left half adjusts brightness`() {

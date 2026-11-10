@@ -711,7 +711,7 @@ private fun downloadResultMessage(result: Int): Int = when (result) {
 
 
 /**
- * 安全释放播放器：先移除监听再 release，任何异常只记录不外抛。
+ * 安全释放播放器：先清除视频 Surface 再 release，任何异常只记录不外抛。
  *
  * 不带上报错直接 release 时，Media3 在某些状态下（如 prepare 过程中被释放）会从回调链上抛出；
  * 这里的清理动作发生在页面销毁的 onDispose 中，异常逃逸只会炸掉组合器，且让后续播放器也得不到释放。

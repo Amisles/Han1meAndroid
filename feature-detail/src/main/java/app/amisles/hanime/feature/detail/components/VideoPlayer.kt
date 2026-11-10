@@ -667,7 +667,8 @@ fun VideoPlayer(
     PlayerPipEffect(activity, isFullscreen, isPlaying, buildPipParams = { buildPipParams() }) { isInPip = it }
 
     // ── 手势提示自动清除 ─────────────────────────────────────────────────────
-    // 所有手势提示统一在 800ms 后自动清除（双击快进/快退、缩放、亮度、音量）
+    // 普通手势提示统一在 800ms 后自动清除（双击快进/快退、缩放、亮度、音量）；
+    // 长按加速倍率提示常驻显示，松手才消失，不受此计时影响
     LaunchedEffect(gestureHint) {
         if (gestureHint != null) {
             delay(800)

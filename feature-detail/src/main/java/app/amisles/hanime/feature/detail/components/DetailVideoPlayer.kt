@@ -51,7 +51,7 @@ internal fun DetailVideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val appPrefs = LocalAppPreferences.current
-    // 循环播放完全由播放器自身完成，外层无需感知，故就地读取
+    // 本层就地读取这组播放器偏好并传给 VideoPlayer，不逐项由调用方上抛
     val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
     val longPressSpeed by appPrefs.longPressBoostSpeedFlow.collectAsStateWithLifecycle()
     val doubleTapSeek by appPrefs.doubleTapSeekFlow.collectAsStateWithLifecycle()

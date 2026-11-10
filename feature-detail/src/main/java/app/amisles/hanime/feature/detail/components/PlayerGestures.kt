@@ -217,7 +217,7 @@ internal fun Modifier.playerGestures(
                             if (longPressFired) {
                                 // 长按加速中：上下滑动直接换算目标倍率。必须在这里拦下 ——
                                 // 交给方向判定会把轻微滑动判成亮度 / 音量，加速随之被切走，
-                                // 与「松手才退出加速」的预期相反（见 issue #10）。
+                                // 与「松手才退出加速」的预期相反。
                                 setLongPressBoostSpeed(
                                     gestureMath.boostSpeed(
                                         baseSpeed = longPressBoostSpeed(),

@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 锁定 P0-1 的语义契约：视频域 → 评论域的视频切换通道必须是「带当前值 + 幂等」的。
+ * 锁定语义契约：视频域 → 评论域的视频切换通道必须是「带当前值 + 幂等」的。
  *
  * 原实现用 `MutableSharedFlow(extraBufferCapacity = 1)`（replay = 0）发送，UI 侧的
  * LaunchedEffect 是首次启动收集，等它挂起到 ACTIVE 时 loadVideoDetail() 早已同步发完，

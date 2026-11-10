@@ -75,7 +75,7 @@ class CommentViewModel @Inject constructor(
     private val _postCommentError = MutableStateFlow<String?>(null)
     val postCommentError: StateFlow<String?> = _postCommentError.asStateFlow()
 
-    // 最近发表的评论（用于追加到列表头部）
+    // 最近发表的评论；目前只写入与暴露，未被订阅，列表头部追加由 _comments 直接完成
     private val _lastPostedComment = MutableStateFlow<Comment?>(null)
     val lastPostedComment: StateFlow<Comment?> = _lastPostedComment.asStateFlow()
 

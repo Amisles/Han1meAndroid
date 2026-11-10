@@ -31,11 +31,11 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.model.VideoSource
 
-/** 播放器倍速 / 清晰度浮层的共用参数：浮层只读状态、只调回调，不持有任何自身状态。 */
+/** 倍速浮层的参数载体：浮层只读状态、只调回调，不持有自身状态；清晰度浮层另有 QualityMenuUi。 */
 internal data class PlayerMenuUi(
     /** 播放器容器在根坐标下的位置，用于把按钮根坐标换算成浮层局部坐标。 */
     val playerPos: Offset,
-    /** 当前倍速档位；与播放器实际倍速一致（长按加速期间为设置的长按加速倍率）。 */
+    /** 当前实际倍速；长按加速期间为随滑动变化的当前加速倍率。 */
     val effectiveSpeed: Float,
     val playbackSpeeds: List<Float>,
     val onSpeedSelected: (Float) -> Unit,

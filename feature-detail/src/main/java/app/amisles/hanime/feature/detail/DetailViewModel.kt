@@ -39,7 +39,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    // 刻意注入三个窄接口而非一个"全能仓储"：本 ViewModel 同时用到内容、本地库与账号能力，
+    // 刻意注入五个窄接口而非一个"全能仓储"：本 ViewModel 同时用到内容、本地库、账号、会话与下载能力，
     // 通过参数类型即可看出它依赖哪些领域，也便于测试时只 fake 相关部分。
     private val content: ContentRepository,
     private val library: LibraryRepository,
@@ -52,7 +52,7 @@ class DetailViewModel @Inject constructor(
     private val _videoDetail = MutableStateFlow<VideoDetail?>(null)
     val videoDetail: StateFlow<VideoDetail?> = _videoDetail.asStateFlow()
 
-    // 进入播放器时用于续播的已保存进度（毫秒）
+    // 已保存的播放进度（毫秒）；目前只写入与暴露，未被订阅，续播进度由 DetailScreen 直接查库取得
     private val _savedPosition = MutableStateFlow(0L)
     val savedPosition: StateFlow<Long> = _savedPosition.asStateFlow()
 
@@ -132,7 +132,8 @@ class DetailViewModel @Inject constructor(
         currentVideoUrl = videoUrl
         _videoSwitched.value = currentVideoId
 
-        // 切换视频时重置评论域（评论/回复/点赞/展开态）与订阅态，使新视频可被重新加载。
+        // 切换视频时清空本 VM 的画质、加载态与稍后观看态，使新视频可被重新加载。
+        // 订阅态不在这里复位，由 MainInfo 事件按新视频的 subscribeStatus 重新推导。
         // 评论域的 16 项复位由 CommentViewModel.selectVideo 收拢，本类不再逐个赋值 ——
         // 原先要写 20+ 行，漏一个就会出现「新视频显示旧评论」。
         // 评论域复位由 UI 层订阅 [videoSwitched] 后调用 CommentViewModel.selectVideo() 完成；
@@ -532,13 +533,12 @@ class DetailViewModel @Inject constructor(
                     _subscribeError.value = SubscribeError.FAILED
                 }
             } finally {
-                // 切到其他视频时该标记已由 loadVideoDetail 复位，不得覆盖新一轮订阅的进行中状态
+                // 只在仍是本次请求的视频时复位进行中标记，避免覆盖切视频后新一轮订阅的状态
                 if (isSameVideoAsRequest(requestVideoId)) _isSubscribing.value = false
             }
         }
     }
 
-    /** 清除订阅操作的错误状态。 */
     /**
      * 评论数变化回写：评论发表成功后由 CommentViewModel 回调，
      * 保持 VideoDetail.commentCount 与列表头部的新评论一致。
@@ -549,6 +549,7 @@ class DetailViewModel @Inject constructor(
         _videoDetail.value = _videoDetail.value?.copy(commentCount = newCount)
     }
 
+    /** 清除订阅操作的错误状态。 */
     fun clearSubscribeError() {
         _subscribeError.value = null
     }

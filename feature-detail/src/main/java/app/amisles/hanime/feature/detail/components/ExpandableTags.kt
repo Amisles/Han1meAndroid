@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 可展开的多行标签布局：标签流式排列，默认最多 [maxLines] 行；超出时在底部居中显示展开 / 收起按钮。
+ * 可展开的多行标签布局：标签流式排列，默认最多 [maxLines] 行；超出时把展开 / 收起按钮置于最后一行末尾，
+ * 放不下则单独成行。
  */
 @Composable
 internal fun ExpandableTags(

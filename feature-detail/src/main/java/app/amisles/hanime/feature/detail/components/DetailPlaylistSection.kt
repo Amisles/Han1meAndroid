@@ -97,7 +97,7 @@ internal fun DetailPlaylistHeader(
     }
 }
 
-/** 播放集合横向视频列表：按视频 id 稳定散列取占位配色。 */
+/** 播放集合横向视频列表：缩略图占位配色沿用 VideoThumbnail 的 surfaceVariant。 */
 @Composable
 internal fun DetailPlaylistVideos(
     playlist: PlaylistInfo,

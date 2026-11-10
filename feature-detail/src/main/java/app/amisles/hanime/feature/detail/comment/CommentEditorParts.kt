@@ -24,7 +24,7 @@ import app.amisles.hanime.core.ui.R
 
 /**
  * 评论与回复共用的输入行：多行输入框 + 发送按钮。输入内容由调用方持有，
- * 发送后的清空也由调用方在 [onSend] 里完成。
+ * 清空也由调用方负责，但只在「提交结束且无错误」时执行，避免发布失败时丢失已输入内容。
  */
 @Composable
 internal fun CommentEditorRow(

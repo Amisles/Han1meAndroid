@@ -103,7 +103,7 @@ class PlaybackService : MediaSessionService() {
             if (!isTrustedController(controller)) {
                 return MediaSession.ConnectionResult.reject()
             }
-            // 让控制器知道本会话支持这两个自定义命令，否则系统侧不会下发
+            // 向控制器声明快退 / 快进 / 停止三个自定义命令，否则系统侧不会下发
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(SESSION_COMMAND_SEEK_BACK)
@@ -138,15 +138,16 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /**
-     * 通知点击目标。feature 模块不能引用 app 模块的 MainActivity，
-     * 因此用包级启动 Intent（等价于点桌面图标）。
-     */
+    /** 校验媒体会话控制器来源，只接受本进程、系统与可信包名的连接。 */
     private fun isTrustedController(controller: MediaSession.ControllerInfo): Boolean =
         controller.uid == Process.myUid() ||
             controller.uid == Process.SYSTEM_UID ||
             controller.packageName in TRUSTED_CONTROLLER_PACKAGES
 
+    /**
+     * 通知点击目标。feature 模块不能引用 app 模块的 MainActivity，
+     * 因此用包级启动 Intent（等价于点桌面图标）。
+     */
     private fun buildSessionActivity(): PendingIntent? {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return null
         return PendingIntent.getActivity(
