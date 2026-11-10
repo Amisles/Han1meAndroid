@@ -562,10 +562,12 @@ internal fun HanimeNavGraph(
                     navController.navigate("detail?videoUrl=${Uri.encode(nextUrl)}") {
                         popUpTo("detail?videoUrl={videoUrl}") { inclusive = true }
                     } },
+                // 详情页里点标签 / 作者是「从当前视频跳出去看结果」：必须入栈，
+                // 用 navigateToSearch 会先回到栈根，返回时直接落到首页而不是原详情页
                 onTagClick = { tag ->
-                    navController.navigateToSearch(searchRoute(keyword = tag)) },
+                    navController.navigate(searchRoute(keyword = tag)) },
                 onAuthorClick = { author ->
-                    navController.navigateToSearch(searchRoute(keyword = author)) },
+                    navController.navigate(searchRoute(keyword = author)) },
                 onAuthorPageClick = { authorPageUrl ->
                     navController.navigate("author?authorPageUrl=${Uri.encode(authorPageUrl)}") },
                 onNavigateToLogin = {
