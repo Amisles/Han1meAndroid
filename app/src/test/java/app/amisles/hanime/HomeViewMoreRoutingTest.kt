@@ -15,8 +15,8 @@ import app.amisles.hanime.navigation.moreUrlGenreToken
  * 「查看更多」跳转目标的回归测试。
  *
  * 旧实现只用分区标题反查排序选项，标题对不上便退化成 keyword=<标题> 的关键词搜索，
- * 向站点发出的是一次按标题文本的搜索，结果与分区内容无关（H-02）；
- * 而解析器早已拿到的 moreUrl 从未被读取（H-05）。
+ * 向站点发出的是一次按标题文本的搜索，结果与分区内容无关；
+ * 而解析器早已拿到的 moreUrl 从未被读取。
  */
 class HomeViewMoreRoutingTest {
 

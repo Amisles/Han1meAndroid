@@ -159,12 +159,6 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
         syncSubscriptionReminder()
     }
 
-    /**
-     * 让 WorkManager 的调度状态与设置项保持一致。
-     *
-     * 放在 Application 而非设置页：用户可能在系统设置里清掉后台任务，
-     * 每次启动重建一次才能保证「开着就真的在跑」。
-     */
     private fun syncSystemAppLocale() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         runCatching {
@@ -185,6 +179,12 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
         }
     }
 
+    /**
+     * 让 WorkManager 的调度状态与设置项保持一致。
+     *
+     * 放在 Application 而非设置页：用户可能在系统设置里清掉后台任务，
+     * 每次启动重建一次才能保证「开着就真的在跑」。
+     */
     private fun syncSubscriptionReminder() {
         runCatching {
             if (Preferences.subscriptionReminder) {

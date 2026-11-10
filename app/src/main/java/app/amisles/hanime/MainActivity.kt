@@ -206,17 +206,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** 路由转场进场时长（毫秒）。首帧成本下移后，短促淡入即可掩盖残余开销。 */
-
-/** 退场时长略短于进场：让目标页更快接管画面，减少两页同时绘制的帧数。 */
-
 /** 首页右滑唤出抽屉：触发距离、触发速度与横向位移消抖阈值。 */
 private const val HOME_SWIPE_OPEN_DP = 96f
 private const val HOME_SWIPE_VELOCITY_DP_PER_S = 600f
 private const val HOME_SWIPE_SLOP_DP = 8f
-
-/** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
-
 
 @Composable
 fun HanimeApp(
@@ -226,7 +219,7 @@ fun HanimeApp(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     // 必须取「基础路由」而非 destination.route 原值：带参目的地的 destination.route 返回的是
-    // 完整路由模板（如 "search?keyword={keyword}&genre={genre}&sort={sort}"），而底部导航 /
+    // 完整路由模板（如 "search?keyword={keyword}&genre={genre}&sort={sort}&ts={ts}"），而底部导航 /
     // 导航栏传入的是短路由 "search"，两者永不相等，会让 Tab 的「已在当前页则不动」守卫失效。
     val currentRoute = navBackStackEntry?.destination?.route?.baseRoute() ?: "home"
 

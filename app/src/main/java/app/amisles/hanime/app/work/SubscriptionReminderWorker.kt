@@ -23,7 +23,7 @@ import kotlinx.coroutines.CancellationException
  * 订阅更新检测任务。
  *
  * 站点没有推送能力，只能定时抓订阅页比对。为降低被限流的风险：
- * 默认每日一次、带随机抖动、仅在用户开启后调度。
+ * 默认每日一次、带固定 30 分钟初始延迟、仅在用户开启后调度。
  */
 @HiltWorker
 class SubscriptionReminderWorker @AssistedInject constructor(

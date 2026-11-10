@@ -48,7 +48,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import app.amisles.hanime.domain.model.HanimeVideo
 
+/** 路由转场进场时长（毫秒）。首帧成本下移后，短促淡入即可掩盖残余开销。 */
 internal const val NAV_TRANSITION_DURATION_MS = 220
+/** 退场时长略短于进场：让目标页更快接管画面，减少两页同时绘制的帧数。 */
 internal const val NAV_TRANSITION_EXIT_DURATION_MS = 160
 
 @Composable
@@ -92,13 +94,6 @@ internal fun HanimeNavGraph(
             HomeScreen(
                 onVideoClick = { videoUrl ->
                     navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                // 保持 saveState / launchSingleTop / restoreState 不变：
-                // 它们是底部 Tab 状态保存机制的一部分，navigateToTab 依赖这套配对。
-                //
-                // 附带 ts 时间戳：条目可能被 launchSingleTop / restoreState 复用，
-                // 此时参数相同会被 ViewModel 的指纹判为「已注入」而跳过。
-                // 时间戳让每次「点大图」都是一次可区分的新意图，
-                // 而「从详情页返回」参数不变，仍会被正确跳过。
                 onSearchClick = { keyword ->
                     navController.navigateToSearch(searchRoute(keyword = keyword)) },
                 onGenreSearch = { genre ->

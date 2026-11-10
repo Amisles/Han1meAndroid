@@ -12,7 +12,7 @@ import android.widget.Toast
  * 外链入口：承接系统分享的文本链接与 hanime:// 深链，解析出视频页地址后交给 MainActivity。
  *
  * 只认 /watch?v= 形式的视频地址；作者、播放列表等页面仍从应用内浏览。解析失败时
- * 回退到普通启动（带解析出的文本，便于用户手动搜索），不打断进入应用的路径。
+ * 只提示「链接无法识别」并普通启动首页（不携带解析文本），不打断进入应用的路径。
  */
 class ShareReceiverActivity : ComponentActivity() {
 

@@ -33,12 +33,6 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class DownloadService : Service() {
 
-    /**
-     * 系统回收 dataSync 配额时（[onTimeout]）需要真正把任务停下来。
-     *
-     * 下载协程活在 DownloadManager 的进程级作用域里，与本服务无生命周期绑定：只清 [activeTasks]
-     * 只是让通知与前台状态失效，传输本身照跑不误。
-     */
     @Inject
     lateinit var downloadManager: DownloadManager
 
@@ -581,7 +575,7 @@ class DownloadService : Service() {
         )
     }
 
-    /** 构建点击通知后的 PendingIntent：完成/失败通知携带成品文件路径，直达本地播放页。 */
+    /** 完成通知的点击目标：有成品文件路径时直达本地播放页；失败通知不用本函数，另由 buildOpenDownloadsIntent 打开下载页并定位出错任务。 */
     private fun buildContentIntent(taskId: Int = -1, filePath: String? = null): PendingIntent {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP

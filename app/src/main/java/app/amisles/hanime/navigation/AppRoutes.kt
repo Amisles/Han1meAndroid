@@ -6,6 +6,7 @@ import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.feature.search.sortOptions
 
+/** 取路由的基础路径：只保留 '?' 之前的一段，使带参目的地能与底部导航 / 导航栏的短路由比较。 */
 internal fun String.baseRoute(): String = substringBefore('?')
 
 internal fun moreUrlSortToken(moreUrl: String): String? {
