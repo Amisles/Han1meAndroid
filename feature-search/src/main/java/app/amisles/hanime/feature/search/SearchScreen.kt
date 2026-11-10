@@ -164,9 +164,10 @@ fun SearchScreen(
     )
 
     // 滚动接近底部自动加载下一页；网格与列表各有一套滚动状态，跟随当前生效的那一套。
-    // key 只保留 isGridMode：videos / isLoadingMore / hasMore 每翻一页都会变，若作为 key
-    // 会连带重建整套 snapshotFlow 与收集协程（分页越多重建越频繁，且每次重建都会重新
-    // 触发一次「已在底部」的判定）。这三个值改为通过 rememberUpdatedState 读取最新值。
+    // key 只保留 isGridMode：videos / isLoading / isLoadingMore / hasMore 都会随搜索或翻页变化，
+    // 若作为 key 会连带重建整套 snapshotFlow 与收集协程（分页越多重建越频繁，且每次重建都会重新
+    // 触发一次「已在底部」的判定）。这四个值改为通过 rememberUpdatedState 读取最新值，
+    // 其中 isLoading 守卫也依赖该机制读到最新状态。
     val videosState = rememberUpdatedState(videos)
     val isLoadingState = rememberUpdatedState(isLoading)
     val isLoadingMoreState = rememberUpdatedState(isLoadingMore)

@@ -41,7 +41,7 @@ import java.util.Calendar
 import androidx.compose.runtime.key
 import androidx.compose.material.icons.filled.Check
 
-/** 官网 date 参数中代表「不限定」的原值，同时用作年 / 月下拉首项的哨兵值。 */
+/** 年 / 月下拉首项的本地哨兵值；合成 date 参数时会被排除，官网「不限定」的原值是空串。 */
 internal const val DATE_ALL = "全部"
 
 /** 发布日期快捷选项：[dataValue] 为官网原值（直接作为 date 参数），[labelRes] 仅用于展示。 */

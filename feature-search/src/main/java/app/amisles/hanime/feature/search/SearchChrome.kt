@@ -292,7 +292,7 @@ internal fun SortMenuPopup(
     }
 }
 
-/** 年 / 月下拉按钮（自绘，与筛选栏排序下拉同款视觉；官网年份较多，故限定最大高度并可滚动）。 */
+/** 年 / 月下拉：触发按钮自绘，下拉菜单使用 Material3 的 DropdownMenu / DropdownMenuItem；官网年份较多，故用 heightIn 限定最大高度并支持滚动。 */
 @Composable
 internal fun DateDropdown(
     value: String,

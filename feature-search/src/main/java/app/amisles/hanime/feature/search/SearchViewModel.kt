@@ -162,7 +162,7 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    /** 提交一次搜索（搜索按钮 / 输入法回车 / 历史记录 / 初值注入共用）；关键词未变则直接重搜，避免同一关键词连发两次请求。 */
+    /** 提交一次搜索（搜索按钮 / 输入法回车 / 历史记录点击共用）；关键词未变则直接重搜，否则经 setQuery 触发新搜索。初值注入不走本函数，由 applyInitialArgs 独立处理并按参数指纹去重。 */
     fun submitSearch(query: String) {
         if (_query.value == query) executeSearch() else setQuery(query)
     }
