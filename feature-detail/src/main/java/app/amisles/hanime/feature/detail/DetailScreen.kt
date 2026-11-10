@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -187,6 +188,10 @@ fun DetailScreen(
     var showDescription by remember { mutableStateOf(false) }
     // 0 = 简介（除评论外的全部信息），1 = 评论
     var selectedTab by remember { mutableStateOf(0) }
+    // 简介与评论必须各持一个列表状态：共用一个会让两页共用同一滚动位置，翻其中一页时另一页跟着位移
+    val introListState = rememberLazyListState()
+    val commentsListState = rememberLazyListState()
+    val activeListState = if (selectedTab == 0) introListState else commentsListState
     var showLoginUnsupportedDialog by remember { mutableStateOf(false) }
 
     // 推荐区布局：竖版卡片（里番 / 泡面番）恒为网格，其余类型用户显式选择优先、未选择时列表
@@ -519,6 +524,7 @@ fun DetailScreen(
 
                 // 右侧：其余组件（可滚动）
                 LazyColumn(
+                    state = activeListState,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -531,6 +537,7 @@ fun DetailScreen(
     } else {
         ResponsiveContent {
             LazyColumn(
+                state = activeListState,
                 modifier = Modifier
                     .fillMaxSize()
                     .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
