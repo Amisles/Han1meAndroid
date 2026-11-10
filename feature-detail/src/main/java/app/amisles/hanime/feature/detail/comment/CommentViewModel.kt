@@ -165,11 +165,15 @@ class CommentViewModel @Inject constructor(
 
     private var loadMoreCommentsJob: Job? = null
 
-    /** 加载评论列表；已加载过则不重复请求，除非 force=true。 */
+    /** 加载评论列表；已加载或加载中都不重复请求，[force] 只绕过前者。 */
     fun loadComments(force: Boolean = false) {
         if (currentVideoId.isEmpty()) return
         if (_commentsLoaded.value && !force) {
             AppLogger.d("CommentViewModel", "Comments already loaded, skip")
+            return
+        }
+        if (_isLoadingComments.value) {
+            AppLogger.d("CommentViewModel", "Comments already loading, skip")
             return
         }
         val requestVideoId = currentVideoId

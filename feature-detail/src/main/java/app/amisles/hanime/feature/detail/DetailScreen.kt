@@ -148,9 +148,15 @@ fun DetailScreen(
         viewModel.videoSwitched.collect { videoId ->
             if (videoId.isNotEmpty()) {
                 commentVm.selectVideo(videoId)
-                commentVm.loadComments()
             }
         }
+    }
+    // 进入详情页即预取第一页评论，不必等用户切到评论页；放在主信息到齐之后，避免与详情页请求并发
+    LaunchedEffect(videoDetail != null, viewModel.videoId) {
+        val videoId = viewModel.videoId
+        if (videoDetail == null || videoId.isEmpty()) return@LaunchedEffect
+        commentVm.selectVideo(videoId)
+        commentVm.loadComments()
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
     val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
