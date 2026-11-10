@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.data.cache.VideoDetailCache
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
@@ -67,7 +68,8 @@ sealed class SettingsUiEvent {
 class SettingsViewModel @Inject constructor(
     private val app: Application,
     private val settings: SettingsRepository,
-    private val session: SessionRepository
+    private val session: SessionRepository,
+    private val videoDetailCache: VideoDetailCache
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -270,6 +272,8 @@ class SettingsViewModel @Inject constructor(
     /** 清除应用缓存；删除在 IO 调度器上执行，完成后通过 [events] 发送成功/失败 Toast。 */
     fun clearAppCache() {
         viewModelScope.launch {
+            // 详情解析缓存驻留内存，与缓存目录是两套存储：不在这里一并丢弃，清缓存后进入详情页仍会命中旧解析结果
+            videoDetailCache.clear()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val cacheDir = app.cacheDir
