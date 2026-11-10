@@ -30,13 +30,6 @@ data class AppUpdate(
     val hasApk: Boolean get() = apkUrl.isNotBlank()
 }
 
-/**
- * 更新检查的结果。
- *
- * 用密封类而非「返回 null 表示已是最新」：检查失败（网络 / 限流 / 解析异常）与
- * 「确实没有新版本」是两种截然不同的状态，界面必须能区分 —— 前者应提示「检查失败」，
- * 后者应提示「已是最新版本」。合并成同一个 null 会让后者永远无法被正确表达。
- */
 /** 安装包下载失败的原因，界面据此给出可操作的提示。 */
 enum class ApkFailureReason {
     NO_APK,
@@ -56,6 +49,13 @@ sealed class ApkDownloadResult {
     ) : ApkDownloadResult()
 }
 
+/**
+ * 更新检查的结果。
+ *
+ * 用密封类而非「返回 null 表示已是最新」：检查失败（网络 / 限流 / 解析异常）与
+ * 「确实没有新版本」是两种截然不同的状态，界面必须能区分 —— 前者应提示「检查失败」，
+ * 后者应提示「已是最新版本」。合并成同一个 null 会让后者永远无法被正确表达。
+ */
 sealed class UpdateCheckResult {
     /** 已是最新版本；[currentVersion] 用于展示。 */
     data class UpToDate(val currentVersion: String) : UpdateCheckResult()
