@@ -50,7 +50,7 @@ object LocaleHelper {
         return updated
     }
 
-    /** 供 Settings UI 使用 */
+    /** 把语言常量映射为展示用的语言名称。 */
     fun getLanguageDisplayName(lang: String): String {
         return when (lang) {
             LANGUAGE_ZH_CN -> "简体中文"

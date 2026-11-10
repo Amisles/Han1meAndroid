@@ -24,7 +24,8 @@ fun String.maskSecret(keep: Int = 4): String {
 }
 
 /**
- * 日志脱敏：剥离 URL 的 query 与 fragment，只保留 `scheme://host/path`。
+ * 日志脱敏：截断 URL 的 query / fragment 中的敏感值，保留 `scheme://host/path` 并在原分隔符后
+ * 追加 `<redacted>` 标记；无 query / fragment 时原样返回。
  */
 fun String.redactUrlForLog(): String {
     val cut = indexOfFirst { it == '?' || it == '#' }

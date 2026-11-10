@@ -8,7 +8,7 @@ import org.junit.Test
  * 崩溃记录头部的解析。
  *
  * CrashLogger 依赖 Android 的 File 与 Build，无法在 JVM 单测里完整跑通；
- * 这里只覆盖「从已落盘文本里抽取预览与版本」这段纯字符串逻辑，其余靠真机验证。
+ * 这里只覆盖「从已落盘文本里抽取堆栈预览」这段纯字符串逻辑，其余靠真机验证。
  */
 class CrashLoggerParseTest {
 
