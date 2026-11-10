@@ -9,7 +9,7 @@
 #   RELEASE_KEY_PASSWORD      密钥口令
 #
 # 触发方式：
-#   1) push tag：git tag v1.6.0 && git push origin v1.6.0
+#   1) push tag：git tag vX.Y.Z && git push origin vX.Y.Z（X.Y.Z 取 app/build.gradle.kts 的 versionName）
 #   2) 手动：Actions → Release → Run workflow，填 tag，publish 决定是否创建 Release
 #
 # 版本一致性：tag 必须等于 app/build.gradle.kts 里的 "v" + versionName，否则直接失败。
