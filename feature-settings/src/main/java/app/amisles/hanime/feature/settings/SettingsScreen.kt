@@ -1,8 +1,6 @@
 package app.amisles.hanime.feature.settings
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.widget.Toast
@@ -48,7 +46,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HighQuality
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material3.AlertDialog
@@ -92,7 +89,6 @@ import app.amisles.hanime.core.ui.components.SettingsGroupCard
 import app.amisles.hanime.core.ui.components.SettingsGroupDivider
 import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.SettingsNavRow
-import app.amisles.hanime.core.common.extension.findActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -416,7 +412,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 处理一次性 UI 事件（Toast / recreate）
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -427,9 +422,6 @@ fun SettingsScreen(
                         context.getString(event.messageResId)
                     }
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
-                SettingsUiEvent.RecreateActivity -> {
-                    context.findActivity()?.recreate()
                 }
             }
         }

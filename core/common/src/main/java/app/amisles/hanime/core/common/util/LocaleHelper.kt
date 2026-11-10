@@ -29,11 +29,13 @@ object LocaleHelper {
 
     /** Application 与 Activity 的 attachBaseContext 中都必须调用。 */
     fun wrapContext(context: Context, lang: String): Context {
-        val safeLang = lang.ifBlank { LANGUAGE_ZH_CN }
-        val locale = langToLocale(safeLang)
+        Locale.setDefault(localeOf(lang))
+        return resourcesContext(context, lang)
+    }
 
-        Locale.setDefault(locale)
-
+    /** 只按语言生成资源 Context，不改进程默认 Locale：供组合层按当前语言取值。 */
+    fun resourcesContext(context: Context, lang: String): Context {
+        val locale = localeOf(lang)
         val config = Configuration(context.resources.configuration)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             config.setLocales(android.os.LocaleList(locale))
@@ -63,7 +65,7 @@ object LocaleHelper {
         }
     }
 
-    private fun langToLocale(lang: String): Locale {
+    fun localeOf(lang: String): Locale {
         return when (lang) {
             LANGUAGE_ZH_TW -> Locale.TAIWAN
             LANGUAGE_EN -> Locale.ENGLISH

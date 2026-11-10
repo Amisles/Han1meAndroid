@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.UiConfigImport
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.data.backup.BackupManager
 import app.amisles.hanime.domain.model.BackupConflictPolicy
@@ -33,7 +32,7 @@ data class PendingBackup(val manifest: BackupManifest, val bytes: ByteArray)
 
 sealed interface BackupMessage {
     data class Text(val resId: Int, val arg: String? = null) : BackupMessage
-    data class Imported(val languageChanged: Boolean = false) : BackupMessage
+    object Imported : BackupMessage
 }
 
 @HiltViewModel
@@ -136,16 +135,14 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    val languageBefore = settings.appLanguage
-                    val (contents, summary) = backup.importBackup(current.bytes, policy)
+                    val (contents, _) = backup.importBackup(current.bytes, policy)
                     contents.uiConfigText?.let { UiConfigStore.importFromText(it) }
-                    summary to (settings.appLanguage != languageBefore)
                 }
             }
             _isBusy.value = false
             if (result.isSuccess) _pending.value = null
             _message.value = result.fold(
-                onSuccess = { (_, languageChanged) -> BackupMessage.Imported(languageChanged) },
+                onSuccess = { BackupMessage.Imported },
                 onFailure = { e ->
                     AppLogger.logError("BackupViewModel", "导入失败: " + e.message, e)
                     BackupMessage.Text(messageFor(e))

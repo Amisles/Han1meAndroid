@@ -54,11 +54,9 @@ data class SettingsUiState(
     }
 }
 
-/** 一次性 UI 事件（Toast / 重建 Activity 等），避免在 Composable 中直接操作 Context。 */
+/** 一次性 UI 事件（Toast），避免在 Composable 中直接操作 Context。 */
 sealed class SettingsUiEvent {
     data class Toast(val messageResId: Int, val arg: Any? = null) : SettingsUiEvent()
-    /** 语言切换后需要 recreate Activity。 */
-    object RecreateActivity : SettingsUiEvent()
 }
 
 /**
@@ -163,19 +161,26 @@ class SettingsViewModel @Inject constructor(
 
     fun setAppLanguage(code: String) {
         settings.setAppLanguage(code)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            runCatching {
-                val locale = when (code) {
-                    SettingsRepository.LANGUAGE_ZH_TW -> java.util.Locale.forLanguageTag("zh-TW")
-                    SettingsRepository.LANGUAGE_EN -> java.util.Locale.ENGLISH
-                    SettingsRepository.LANGUAGE_JA -> java.util.Locale.JAPANESE
-                    else -> java.util.Locale.forLanguageTag("zh-CN")
-                }
-                app.getSystemService(android.app.LocaleManager::class.java)
-                    .applicationLocales = android.os.LocaleList(locale)
+        syncApplicationLocales(code)
+    }
+
+    // 同步系统「按应用语言」设置，供系统设置页展示与跨设备迁移；界面语言由组合层的 LocalContext 就地切换
+    private fun syncApplicationLocales(code: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        runCatching {
+            val manager = app.getSystemService(android.app.LocaleManager::class.java) ?: return
+            val target = android.os.LocaleList(localeOf(code))
+            if (manager.applicationLocales != target) {
+                manager.applicationLocales = target
             }
         }
-        viewModelScope.launch { _events.emit(SettingsUiEvent.RecreateActivity) }
+    }
+
+    private fun localeOf(code: String): java.util.Locale = when (code) {
+        SettingsRepository.LANGUAGE_ZH_TW -> java.util.Locale.forLanguageTag("zh-TW")
+        SettingsRepository.LANGUAGE_EN -> java.util.Locale.ENGLISH
+        SettingsRepository.LANGUAGE_JA -> java.util.Locale.JAPANESE
+        else -> java.util.Locale.forLanguageTag("zh-CN")
     }
 
     fun setThemeMode(mode: ThemeMode) {

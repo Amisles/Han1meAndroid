@@ -1,11 +1,14 @@
 package app.amisles.hanime
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.content.res.AssetManager
 import android.content.res.Configuration
-import android.graphics.drawable.ColorDrawable
+import android.content.res.Resources
 import android.net.Uri
 import android.os.Bundle
+import android.os.LocaleList
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -58,6 +61,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -66,7 +71,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.amisles.hanime.core.common.util.CrashLogger
@@ -78,8 +82,6 @@ import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.HanimeBackground
-import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.NavigationStyle
 import app.amisles.hanime.core.ui.theme.UiConfigStore
@@ -158,19 +160,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Activity 重建时窗口背景会先于内容绘制：沿用带图标的启动图，在应用主题与系统夜间模式
-        // 不一致时会闪出一帧黑底，重建时改用与应用主题一致的单色背景
-        if (savedInstanceState != null) {
-            val darkTheme = when (Preferences.themeModeFlow.value) {
-                ThemeMode.DARK -> true
-                ThemeMode.LIGHT -> false
-                ThemeMode.SYSTEM -> (resources.configuration.uiMode and
-                    Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            }
-            window.setBackgroundDrawable(
-                ColorDrawable((if (darkTheme) HanimeBackground else HanimeBackgroundLight).toArgb())
-            )
-        }
         super.onCreate(savedInstanceState)
 
         // 走 Application 的语言快照（onCreate 里已预热），不要直接读 Preferences.appLanguage：
@@ -190,7 +179,22 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
+            // 切换语言不再重建 Activity：按当前语言就地换掉组合层的 Resources 与 Configuration，
+            // 避免重建期间窗口表面尚未绘制而整屏变黑
+            val language by Preferences.appLanguageFlow.collectAsStateWithLifecycle()
+            val localizedContext = remember(language) {
+                LocalizedResourceContext(this, LocaleHelper.resourcesContext(this, language))
+            }
+            val platformConfiguration = LocalConfiguration.current
+            val localizedConfiguration = remember(platformConfiguration, language) {
+                Configuration(platformConfiguration).apply {
+                    setLocales(LocaleList(LocaleHelper.localeOf(language)))
+                }
+            }
+            LaunchedEffect(language) { app?.applyLanguage(language) }
             CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalConfiguration provides localizedConfiguration,
                 LocalAppPreferences provides PreferencesAppPreferences,
                 LocalPrivacyMode provides privacyMode
             ) {
@@ -622,3 +626,19 @@ private fun Modifier.swipeToOpenDrawer(
         }
     }
 }
+
+/**
+ * 只替换 Resources 的 Context 包装。
+ *
+ * 直接提供语言包装后的 Context 会丢掉 Activity 的窗口令牌，弹窗与 Popup 将无法挂到 Activity 窗口上；
+ * 这里保留 Activity 作为 base，仅把 Resources / Assets 换成对应语言的实例。
+ */
+private class LocalizedResourceContext(base: Context, localized: Context) : ContextWrapper(base) {
+    private val localizedResources = localized.resources
+    private val localizedAssets = localized.assets
+
+    override fun getResources(): Resources = localizedResources
+
+    override fun getAssets(): AssetManager = localizedAssets
+}
+
