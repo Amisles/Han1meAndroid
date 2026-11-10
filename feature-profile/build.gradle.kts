@@ -56,4 +56,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+
+    // 登录 WebView 的域名白名单/回调识别是纯逻辑，用 JVM 单测覆盖（见 WebLoginPolicyTest）
+    testImplementation(libs.junit)
 }

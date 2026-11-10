@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.repository
 
+import app.amisles.hanime.data.remote.EntryInterceptor
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.AccountIdentityParser
 import app.amisles.hanime.data.parser.AccountProfileParser
@@ -14,6 +15,7 @@ import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.result.WebLoginVerification
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.map
 import java.io.IOException
@@ -372,11 +374,57 @@ class AccountRepositoryImpl @Inject constructor(
     }
 
 
-    override suspend fun saveLoginCookie(cookieString: String, sourceDomain: String?): Boolean {
+    /**
+     * 用站点页面的「当前用户」标识确认这份会话是否真的登录成功。
+     *
+     * 判据与 [ensureUserId] 完全一致：登录后的页面头部会渲染本人的「编辑个人档案」入口，
+     * 解析不出这个入口说明站点仍把请求当成游客。走到这一步如果判定为游客，
+     * 后续所有需要身份的功能都会失败，因此宁可让用户重登，也不能把它存成登录态。
+     */
+    override suspend fun verifyWebLogin(cookie: String, sourceDomain: String?): WebLoginVerification {
+        val domain = sourceDomain?.trim()?.lowercase().orEmpty()
+        if (domain.isEmpty() || !isOfficialDomain(domain)) {
+            // 只有官方域名签发有效会话；其它站点的 Cookie 无从校验，按未登录处理
+            AppLogger.w("AccountRepositoryImpl", "会话校验跳过：来源域名不是官方站点")
+            return WebLoginVerification.NotLoggedIn
+        }
+        val safe = cookie.trim().removePrefix("Cookie:").trim()
+        if (safe.isBlank()) return WebLoginVerification.NotLoggedIn
+        return try {
+            val html = networkService.fetchHomePageWithCookie(safe, domain)
+            val userId = accountIdentityParser.parseCurrentUserId(html)
+            if (userId != null) {
+                AppLogger.log("AccountRepositoryImpl", "会话校验通过: userId=$userId")
+                WebLoginVerification.Verified(userId)
+            } else {
+                AppLogger.w("AccountRepositoryImpl", "会话校验未通过：首页未渲染当前用户，仍是游客会话")
+                WebLoginVerification.NotLoggedIn
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 断网、人机校验拦截等情况下无法判断真假：放行，交给后续请求自己暴露问题
+            AppLogger.w("AccountRepositoryImpl", "会话校验请求失败: ${e.message}")
+            WebLoginVerification.Inconclusive
+        }
+    }
+
+    private fun isOfficialDomain(host: String): Boolean =
+        EntryInterceptor.DEFAULT_OFFICIAL_DOMAINS.any { host == it || host.endsWith(".$it") }
+
+    override suspend fun saveLoginCookie(
+        cookieString: String,
+        sourceDomain: String?,
+        userId: String?
+    ): Boolean {
         val safe = cookieString.trim().removePrefix("Cookie:").trim()
         if (safe.isBlank()) return false
         // sourceDomain：WebView 登录时传入实际登录站点的 host；手填 Cookie 时为空（回落到当前 baseUrl）
-        Preferences.saveLogin(safe, sourceDomain = sourceDomain)
+        Preferences.saveLogin(
+            safe,
+            userId = userId?.takeIf { it.isNotBlank() },
+            sourceDomain = sourceDomain
+        )
         return true
     }
 

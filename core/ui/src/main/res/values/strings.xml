@@ -883,6 +883,13 @@
     <string name="login_saving">保存中...</string>
     <string name="login_save_and_login">保存并登录</string>
     <string name="login_cookie_invalid">保存失败，请检查 Cookie 格式</string>
+    <string name="login_webview_verifying">正在校验登录状态…</string>
+    <string name="login_webview_not_completed">登录未完成：当前仍是未登录会话，请重新登录</string>
+    <string name="login_webview_oauth_blocked">Google 拒绝在应用内置浏览器中完成授权。请改用「手动 Cookie」，或在浏览器中登录后改用账号密码方式</string>
+    <string name="login_webview_notice_dismiss">我知道了</string>
+    <string name="login_webview_reload_login">重新加载登录页</string>
+    <string name="login_webview_open_anyway">仍要打开</string>
+    <string name="login_webview_blocked_navigation">已阻止跳转到 %1$s（不在授权白名单内）：跳到外部浏览器会中断登录</string>
     <string name="account_error_not_logged_in">未登录，无法查看账户资料</string>
     <string name="account_error_name_empty">用户名称不能为空</string>
     <string name="diagnostics_error_title">诊断异常</string>

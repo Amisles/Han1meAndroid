@@ -852,6 +852,13 @@
     <string name="login_saving">Saving...</string>
     <string name="login_save_and_login">Save and sign in</string>
     <string name="login_cookie_invalid">Save failed, please check the Cookie format</string>
+    <string name="login_webview_verifying">Verifying sign-in status…</string>
+    <string name="login_webview_not_completed">Sign-in incomplete: the session is still a guest session. Please sign in again</string>
+    <string name="login_webview_oauth_blocked">Google refused to complete authorization in the in-app browser. Use "Manual Cookie" instead, or sign in with email and password</string>
+    <string name="login_webview_notice_dismiss">Got it</string>
+    <string name="login_webview_reload_login">Reload login page</string>
+    <string name="login_webview_open_anyway">Open anyway</string>
+    <string name="login_webview_blocked_navigation">Blocked navigation to %1$s (not in the auth allowlist): opening it in an external browser would break the sign-in</string>
     <string name="account_error_not_logged_in">Not signed in, cannot view account profile</string>
     <string name="account_error_name_empty">Name cannot be empty</string>
     <string name="diagnostics_error_title">Diagnostics error</string>

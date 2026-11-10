@@ -852,6 +852,13 @@
     <string name="login_saving">儲存中...</string>
     <string name="login_save_and_login">儲存並登入</string>
     <string name="login_cookie_invalid">儲存失敗，請檢查 Cookie 格式</string>
+    <string name="login_webview_verifying">正在驗證登入狀態…</string>
+    <string name="login_webview_not_completed">登入未完成：目前仍為未登入工作階段，請重新登入</string>
+    <string name="login_webview_oauth_blocked">Google 拒絕在應用程式內建瀏覽器完成授權。請改用「手動 Cookie」，或在瀏覽器登入後改用帳號密碼方式</string>
+    <string name="login_webview_notice_dismiss">我知道了</string>
+    <string name="login_webview_reload_login">重新載入登入頁</string>
+    <string name="login_webview_open_anyway">仍要開啟</string>
+    <string name="login_webview_blocked_navigation">已阻止跳轉到 %1$s（不在授權白名單內）：跳到外部瀏覽器會中斷登入</string>
     <string name="account_error_not_logged_in">尚未登入，無法檢視帳戶資料</string>
     <string name="account_error_name_empty">使用者名稱不能為空</string>
     <string name="diagnostics_error_title">診斷異常</string>

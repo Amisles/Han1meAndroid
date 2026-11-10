@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.result.WebLoginVerification
 
 /**
  * 账号与社区互动仓储：登录、账户资料、评论、回复、点赞、订阅。
@@ -18,12 +19,25 @@ interface AccountRepository {
     suspend fun login(email: String, password: String): AppResult<String>
 
     /**
+     * 校验一份刚拿到的会话 Cookie 是否真的登录成功。
+     *
+     * 站点对游客同样下发 laravel_session，因此不能用「Cookie 里有 session」判定成功，
+     * 必须带着这份 Cookie 向 [sourceDomain] 请求一次，能从页面里解析出当前用户才算登录。
+     */
+    suspend fun verifyWebLogin(cookie: String, sourceDomain: String?): WebLoginVerification
+
+    /**
      * 保存 WebView / 手填登录拿到的 Cookie。
      *
      * [sourceDomain] 为实际完成登录的站点 host：会话只会注入回该域名，
      * 避免用户之后把 baseUrl 改成镜像站时把主站会话一并发送过去。
+     * [userId] 为校验阶段已确认到的用户 ID，已知时直接落盘可省掉一次首页抓取。
      */
-    suspend fun saveLoginCookie(cookieString: String, sourceDomain: String? = null): Boolean
+    suspend fun saveLoginCookie(
+        cookieString: String,
+        sourceDomain: String? = null,
+        userId: String? = null
+    ): Boolean
 
     fun logout()
 

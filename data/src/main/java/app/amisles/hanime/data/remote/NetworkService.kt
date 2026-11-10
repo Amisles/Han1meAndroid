@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.remote
 
 import app.amisles.hanime.data.cookie.HCookieJar
+import app.amisles.hanime.data.cookie.filterPrintableAscii
 import android.content.Context
 import app.amisles.hanime.data.parser.AccountProfileParser
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import okhttp3.CookieJar
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -75,6 +77,19 @@ class NetworkService @Inject constructor(
         client.newBuilder()
             .followRedirects(false)
             .followSslRedirects(false)
+            .build()
+    }
+
+    /**
+     * 登录校验专用链路：沿用同一套超时/UA，但摘掉 [HCookieJar]。
+     *
+     * 校验发生在「会话还没写进偏好存储」的时刻，而 HCookieJar 只会注入偏好里已保存的
+     * 登录 Cookie（且按来源域名过滤）；带着它会让校验请求携带旧会话，测出来的结果与
+     * WebView 刚拿到的那份会话无关。
+     */
+    private val verificationClient by lazy {
+        client.newBuilder()
+            .cookieJar(CookieJar.NO_COOKIES)
             .build()
     }
 
@@ -241,6 +256,31 @@ class NetworkService @Inject constructor(
         val html = executeRequest(buildRequest(url))
         return FetchResult(html, baseUrl)
     }
+
+    /**
+     * 用指定 Cookie 抓一次首页，用于确认这份会话是否真的登录成功。
+     *
+     * 不经过缓存、不写 [HCookieJar]：这次请求只是一次性探针，它的 Set-Cookie 不该影响
+     * 任何已有会话，请求结束后也不留下痕迹。
+     */
+    suspend fun fetchHomePageWithCookie(cookie: String, domain: String): String =
+        withContext(Dispatchers.IO) {
+            val url = "https://$domain/"
+            val req = Request.Builder()
+                .url(url)
+                .header("User-Agent", uaString)
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Cookie", cookie.filterPrintableAscii())
+                .header("Referer", url)
+                .get()
+                .build()
+            verificationClient.newCall(req).execute().use { resp ->
+                AppLogger.log("NetworkService", "verify session host=$domain code=${resp.code}")
+                if (!resp.isSuccessful) throw IOException("verify failed with code ${resp.code}")
+                resp.body.string()
+            }
+        }
 
     suspend fun fetchSearchPageWithBaseUrl(
         query: String,

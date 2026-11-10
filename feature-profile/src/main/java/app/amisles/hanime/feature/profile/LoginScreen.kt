@@ -1,7 +1,9 @@
 package app.amisles.hanime.feature.profile
 
+import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.graphics.Bitmap
+import android.os.SystemClock
 import android.webkit.CookieManager
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
@@ -40,6 +42,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -73,55 +76,37 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedBanner
 import androidx.compose.material3.MaterialTheme
-
-private val LOGIN_URLS = listOf("https://hanime1.me/login", "https://hanimeone.me/login")
-
-/** 官方域名（含子域）：登录流程只允许发生在这两个域下。 */
-private val OFFICIAL_HOSTS = listOf("hanime1.me", "hanimeone.me")
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * 允许在登录 WebView 内加载的域名（含子域）。
- *
- * - 官方域名：登录流程只发生在这两个域下（见 [LOGIN_URLS]）；
- * - Cloudflare：人机校验（Turnstile / 挑战页）需在其域名下加载与跳转。
- *
- * 其余域名一律不在本 WebView 内加载：该 WebView 持有登录 Cookie 且开启了 JS 与第三方
- * Cookie，让任意站点在其中渲染会放大钓鱼与凭据泄露面。改用系统浏览器打开，不阻断用户操作。
+ * 登录 WebView 的落地页：只有官方域名能登录，镜像站的登录接口会返回「站点维护中」。
+ * 页内跳转、白名单判定等策略见 [WebLoginPolicy]（纯逻辑，有单测覆盖）。
  */
-private val WEBVIEW_ALLOWED_HOSTS =
-    OFFICIAL_HOSTS + listOf("cloudflare.com", "cloudflarechallenge.com")
+private val LOGIN_URL = WebLoginPolicy.LOGIN_URLS.first()
 
-/** 是否为官方域名（含子域）；用解析出的 host 精确比较，避免被查询参数等位置伪造命中。 */
-private fun isOfficialHost(url: String): Boolean {
-    val host = runCatching { Uri.parse(url).host }.getOrNull() ?: return false
-    return OFFICIAL_HOSTS.any { host == it || host.endsWith(".$it") }
-}
-
-/** 是否允许在登录 WebView 内加载该 URL。 */
-private fun isAllowedInWebView(url: String): Boolean {
-    val host = runCatching { Uri.parse(url).host?.lowercase() }.getOrNull() ?: return false
-    return WEBVIEW_ALLOWED_HOSTS.any { host == it || host.endsWith(".$it") }
-}
-
-private fun isLoginPage(url: String): Boolean =
-    isOfficialHost(url) && Uri.parse(url).path.orEmpty().contains("/login")
-
-private fun hasSessionCookie(cookie: String?): Boolean =
-    cookie != null &&
-        (cookie.contains("laravel_session", ignoreCase = true) ||
-            cookie.contains("session", ignoreCase = true))
+/** 两次会话校验的最小间隔：站内来回点几下不该反复打校验请求。 */
+private const val VERIFY_MIN_INTERVAL_MS = 6_000L
 
 /**
- * 判断一次站内导航是否代表「本次登录成功」，需同时满足：
- * 1. 官方域名，且不是登录页 / 登出页；
- * 2. 已经拿到会话 Cookie；
- * 3. 本次会话开始前并不持有同一个会话 Cookie（否则说明用户本来就登录着）。
+ * 登录页底部提示。
+ *
+ * [canReload] 用于「流程被打断」的场景（外跳被拦、Google 拒绝内置浏览器）：
+ * 此时 WebView 可能停在半路的页面，给一个直接重开登录页的出口，免得用户只能退出重进。
  */
-private fun isLoginCompleted(url: String, currentCookie: String?, cookieAtStart: String): Boolean {
-    if (!isOfficialHost(url)) return false
-    if (isLoginPage(url) || url.contains("/logout")) return false
-    if (!hasSessionCookie(currentCookie)) return false
-    return !(currentCookie == cookieAtStart && hasSessionCookie(cookieAtStart))
+private data class LoginNotice(
+    val message: String,
+    val canReload: Boolean = false,
+    /**
+     * 授权途中的非白名单跳转：白名单不可能穷举 Google 的每一次跳转，拦死会让用户卡死，
+     * 因此给一个「仍要打开」的出口。URL 由用户点选，未点选前不会加载。
+     */
+    val openAnywayUrl: String? = null
+)
+
+/** 一次外部跳转被拦下时的提示。带上目标 host，出问题时用户能直接说出是哪一跳。 */
+private fun blockedNavigationNotice(context: Context, url: String): String {
+    val target = WebLoginPolicy.hostOf(url) ?: url.redactUrlForLog()
+    return context.getString(R.string.login_webview_blocked_navigation, target)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -370,20 +355,65 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     val context = LocalContext.current
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf(false) }
+    var notice by remember { mutableStateOf<LoginNotice?>(null) }
     val configured = remember { mutableStateOf(false) }
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
-    // 进入本 Tab 时已存在的 Cookie：用于区分「本次真的登录成功」与「本来就已登录」
+    // 进入本 Tab 时已存在的 Cookie：用来判断当前会话是不是这一轮登录换出来的
     val cookieAtStart = remember {
-        CookieManager.getInstance().getCookie(LOGIN_URLS.first()).orEmpty()
+        CookieManager.getInstance().getCookie(LOGIN_URL).orEmpty()
     }
-    // 登录结果只上报一次，避免同一会话内重复触发 onLoginSuccess
-    val loginReported = remember { mutableStateOf(false) }
-    val reportLoginIfCompleted: (String, String?) -> Unit = { url, cookies ->
-        if (!loginReported.value && isLoginCompleted(url, cookies, cookieAtStart)) {
-            loginReported.value = true
-            // 带上完成登录的站点 host：会话与来源域名绑定，之后改 baseUrl 也不会跨域下发
-            val domain = runCatching { android.net.Uri.parse(url).host }.getOrNull()
-            cookies?.let { vm.saveWebViewCookie(it, domain) }
+    // 是否已经进入第三方授权（站内 /auth/* 或 Google 域名）。授权进行中一律不把导航抛给系统：
+    // 中途页面都绑定了本次会话，离开 WebView 只会换回一个错误页，登录也再回不来。
+    val oauthInProgress = remember { mutableStateOf(false) }
+    // 是否走过第三方登录回调（/auth/{provider}/callback）。只有这种情况下的校验失败才提示用户：
+    // 普通浏览同样会让站点轮换游客会话，把那些也算成「登录失败」只会变成噪音。
+    val oauthRoundTrip = remember { mutableStateOf(false) }
+    // 校验单飞 + 节流：上一次校验没回来之前不再发起第二次
+    val verifying = remember { mutableStateOf(false) }
+    val lastVerifyAt = remember { AtomicLong(0L) }
+    val uiState by vm.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is LoginViewModel.UiState.Verifying -> {
+                verifying.value = true
+                notice = null
+            }
+            is LoginViewModel.UiState.Error -> {
+                verifying.value = false
+                notice = if (oauthRoundTrip.value) LoginNotice(state.message, canReload = true) else null
+            }
+            else -> Unit
+        }
+    }
+
+    // 页面交还给官方域名、且会话确实换过时，才向站点确认一次身份。
+    // 刻意不做「Cookie 里有 session 就判定登录成功」：游客同样拿得到 laravel_session，
+    // 那样会在刚点下 Google 登录时误判成功并退出登录页，存下来的却是游客会话。
+    val verifySessionIfReady: (String) -> Unit = { url ->
+        val ready = !verifying.value &&
+                WebLoginPolicy.isOfficialHost(url) &&
+                !WebLoginPolicy.isLoginPage(url) &&
+                !WebLoginPolicy.isLogoutUrl(url) &&
+                // 登录入口与回调页都只是跳板，会话要到落地页才建立：
+                // 在这两处校验只会得到「仍是游客」的假失败
+                !WebLoginPolicy.isOAuthEntry(url)
+        if (ready) {
+            val cookies = CookieManager.getInstance().getCookie(url)
+            val sessionReplaced = oauthRoundTrip.value || cookies != cookieAtStart
+            val now = SystemClock.elapsedRealtime()
+            if (WebLoginPolicy.hasSessionCookie(cookies) &&
+                sessionReplaced &&
+                now - lastVerifyAt.get() >= VERIFY_MIN_INTERVAL_MS
+            ) {
+                lastVerifyAt.set(now)
+                verifying.value = true
+                AppLogger.d(
+                    "LoginScreen",
+                    "会话已变化，向站点校验登录状态: host=${WebLoginPolicy.hostOf(url)}"
+                )
+                vm.completeWebViewLogin(cookies.orEmpty(), WebLoginPolicy.hostOf(url))
+            }
         }
     }
 
@@ -395,6 +425,8 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                     settings.domStorageEnabled = true
                     val cookieManager = CookieManager.getInstance()
                     cookieManager.setAcceptCookie(true)
+                    // Google 登录是跨站授权：回调期间 Cookie 会在 hanime1.me 与 accounts.google.com
+                    // 之间来回，拒绝第三方 Cookie 会让授权结果带不回来
                     cookieManager.setAcceptThirdPartyCookies(this, true)
 
                     webViewClient = object : WebViewClient() {
@@ -403,10 +435,39 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                             request: WebResourceRequest
                         ): Boolean {
                             val url = request.url.toString()
-                            reportLoginIfCompleted(url, cookieManager.getCookie(url))
-                            if (isAllowedInWebView(url)) return false
-                            // 非白名单域名不在本 WebView 内加载：该 WebView 持有登录 Cookie，
-                            // 让任意站点在其中渲染会放大钓鱼与凭据泄露面。改用系统浏览器，不阻断用户。
+                            // 先判 scheme：intent://hanime1.me/... 这类地址的 host 仍是官方域名，
+                            // 若先过白名单就会放行，WebView 随后把它交给系统，照样把用户踢出 App
+                            val scheme = WebLoginPolicy.schemeOf(url)
+                            if (scheme != "http" && scheme != "https") {
+                                // intent:// / market:// / mailto: 这类跳转不能放行：WebView 会把它们直接
+                                // 交给系统（Google 授权收尾时就用 intent:// 指向 Chrome），用户被踢出 App，
+                                // 而会话只在本 WebView 里，回来时只剩一个绑定会话的报错页。
+                                AppLogger.w("LoginScreen", "拦截非 http(s) 跳转: ${url.redactUrlForLog()}")
+                                notice = if (WebLoginPolicy.isOAuthHost(url)) {
+                                    LoginNotice(ctx.getString(R.string.login_webview_oauth_blocked), canReload = true)
+                                } else {
+                                    LoginNotice(blockedNavigationNotice(ctx, url), canReload = true)
+                                }
+                                return true
+                            }
+
+                            // 官方域名与 Google 授权链路必须留在本 WebView 内：会话只会写回这里的
+                            // CookieManager，跳到系统浏览器即便用户登录成功，App 也拿不到那份 Cookie
+                            if (WebLoginPolicy.isAllowedInWebView(url)) return false
+
+                            // 授权进行中：中途的 Google 页面与本次会话绑定，外跳只会得到 400
+                            if (oauthInProgress.value) {
+                                AppLogger.w("LoginScreen", "授权进行中，拦截外跳: ${url.redactUrlForLog()}")
+                                notice = LoginNotice(
+                                    message = blockedNavigationNotice(ctx, url),
+                                    canReload = true,
+                                    openAnywayUrl = url
+                                )
+                                return true
+                            }
+
+                            // 其余域名不在本 WebView 内加载：它持有登录 Cookie 且开着 JS 与第三方
+                            // Cookie，让任意站点在其中渲染会放大钓鱼与凭据泄露面。改用系统浏览器，不阻断用户。
                             AppLogger.w(
                                 "LoginScreen",
                                 "拦截非白名单导航，改用系统浏览器: ${url.redactUrlForLog()}"
@@ -423,13 +484,38 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                             return true
                         }
 
+                        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                            val currentUrl = url ?: return
+                            if (WebLoginPolicy.isOAuthEntry(currentUrl) || WebLoginPolicy.isOAuthHost(currentUrl)) {
+                                oauthInProgress.value = true
+                            }
+                            if (WebLoginPolicy.isOAuthCallback(currentUrl)) oauthRoundTrip.value = true
+                            // Google 拒绝在内置浏览器里完成授权（disallowed_useragent）时会跳到这里，
+                            // 继续等下去不会有结果，直接告诉用户换登录方式
+                            if (WebLoginPolicy.isOAuthRejectedPage(currentUrl)) {
+                                notice = LoginNotice(
+                                    ctx.getString(R.string.login_webview_oauth_blocked),
+                                    canReload = true
+                                )
+                            }
+                        }
+
+                        /**
+                         * 服务端 302 不一定触发 onPageStarted，这里再记一次：
+                         * 「走过回调」是判断这一轮登录是否真的完成的最可靠信号。
+                         */
+                        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                            val currentUrl = url ?: return
+                            if (WebLoginPolicy.isOAuthHost(currentUrl)) oauthInProgress.value = true
+                            if (!oauthRoundTrip.value && WebLoginPolicy.isOAuthCallback(currentUrl)) {
+                                oauthRoundTrip.value = true
+                                AppLogger.d("LoginScreen", "检测到第三方登录回调，等待落地页后校验会话")
+                            }
+                        }
+
                         override fun onPageFinished(view: WebView?, url: String?) {
                             loading = false
-                            val currentUrl = url ?: return
-                            reportLoginIfCompleted(
-                                currentUrl,
-                                CookieManager.getInstance().getCookie(currentUrl)
-                            )
+                            verifySessionIfReady(url ?: return)
                         }
 
                         override fun onReceivedError(
@@ -465,10 +551,15 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         // 中间人可注入脚本并以登录页源读取表单内容。若线上确因 http 子资源
                         // 导致渲染异常，再评估放宽为 MIXED_CONTENT_COMPATIBILITY_MODE。
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.javaScriptCanOpenWindowsAutomatically = false
-                        // 与后台请求同一串 UA：cf_clearance 与 UA 绑定，不一致则校验结果不生效
+                        // Google 的账号选择 / 授权确认可能走 window.open：保持「在同一个 WebView 内打开」，
+                        // 并允许脚本发起新窗口，否则授权会停在空白页
+                        settings.setSupportMultipleWindows(false)
+                        settings.javaScriptCanOpenWindowsAutomatically = true
+                        // 与后台请求同一串 UA：cf_clearance 与 UA 绑定，不一致则校验结果不生效。
+                        // 这串 UA 也不带 WebView 的 "; wv" 标记 —— Google 只凭 UA 就能把内置浏览器
+                        // 认出来并以 disallowed_useragent 拒绝授权。
                         settings.userAgentString = BrowserUserAgent.VALUE
-                        loadUrl(LOGIN_URLS.first())
+                        loadUrl(LOGIN_URL)
                     }
                 }.also { webViewRef.value = it }
             },
@@ -512,6 +603,91 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                         webViewRef.value?.reload()
                     }) {
                         Text(stringResource(R.string.common_retry))
+                    }
+                }
+            }
+        }
+
+        // 校验本身是一次网络请求，页面上看不出任何变化，必须有明确进度，否则用户会以为点坏了
+        if (verifying.value) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.82f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.5.dp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        stringResource(R.string.login_webview_verifying),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        // 校验未通过 / 外跳被拦 / Google 拒绝内置浏览器：停留在登录页说明下一步，而不是默默退回抽屉
+        notice?.let { current ->
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(12.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = current.message,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 让用户能越过白名单：Google 的跳转链是黑盒，白名单漏一个就卡死整个登录
+                    if (current.openAnywayUrl != null) {
+                        TextButton(onClick = {
+                            val target = current.openAnywayUrl
+                            notice = null
+                            webViewRef.value?.loadUrl(target)
+                        }) {
+                            Text(
+                                text = stringResource(R.string.login_webview_open_anyway),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    if (current.canReload) {
+                        TextButton(onClick = {
+                            // 重开登录页时把「已进入授权」「走过回调」一起复位：
+                            // 否则新的一轮会被上一轮的标记影响，正常浏览也会被当成授权中途而拦下
+                            notice = null
+                            oauthInProgress.value = false
+                            oauthRoundTrip.value = false
+                            loadError = false
+                            loading = true
+                            webViewRef.value?.loadUrl(LOGIN_URL)
+                        }) {
+                            Text(
+                                text = stringResource(R.string.login_webview_reload_login),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    TextButton(onClick = { notice = null }) {
+                        Text(
+                            text = stringResource(R.string.login_webview_notice_dismiss),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }

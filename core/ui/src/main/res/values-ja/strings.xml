@@ -852,6 +852,13 @@
     <string name="login_saving">保存中...</string>
     <string name="login_save_and_login">保存してログイン</string>
     <string name="login_cookie_invalid">保存に失敗しました。Cookie の形式を確認してください</string>
+    <string name="login_webview_verifying">ログイン状態を確認中…</string>
+    <string name="login_webview_not_completed">ログインが完了していません。現在も未ログインのセッションです。もう一度ログインしてください</string>
+    <string name="login_webview_oauth_blocked">Google はアプリ内ブラウザでの認可を拒否しました。「手動 Cookie」を使うか、ブラウザでログイン後にメールアドレスとパスワードでログインしてください</string>
+    <string name="login_webview_notice_dismiss">了解しました</string>
+    <string name="login_webview_reload_login">ログインページを再読み込み</string>
+    <string name="login_webview_open_anyway">このまま開く</string>
+    <string name="login_webview_blocked_navigation">「%1$s」への遷移をブロックしました（認可ホワイトリスト外）。外部ブラウザで開くとログインが中断されます</string>
     <string name="account_error_not_logged_in">未ログインのため、アカウント情報を表示できません</string>
     <string name="account_error_name_empty">ユーザー名を空にすることはできません</string>
     <string name="diagnostics_error_title">診断エラー</string>
