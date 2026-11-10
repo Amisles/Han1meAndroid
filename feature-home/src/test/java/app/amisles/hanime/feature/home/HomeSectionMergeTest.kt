@@ -31,7 +31,7 @@ class HomeSectionMergeTest {
     private fun section(title: String, moreUrl: String, vararg ids: String) =
         HomeSection(title = title, moreUrl = moreUrl, videos = ids.map(::video))
 
-    // ---- H-03 ----
+    // ---- 分区合并规则：以标题 + moreUrl 判定同一分区，同名不同链接各自保留 ----
 
     @Test
     fun `same title with different urls keeps both sections`() {

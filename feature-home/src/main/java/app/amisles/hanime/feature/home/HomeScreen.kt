@@ -491,7 +491,7 @@ fun HomeScreenContent(
                     SectionRenderMode.LIST_COLUMN -> {
                         // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
                         // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
-                        // 分区标题在 ViewModel 中已按标题去重，故「标题#url」在列表中唯一。
+                        // sectionKey 追加分区下标，即使同名分区共存也能保证「标题-下标#url」全局唯一。
                         items(
                             count = plan.videos.size,
                             key = { plan.videoKeys[it] },
@@ -673,7 +673,7 @@ private fun HomeSkeletonScreen() {
     }
 }
 
-/** 骨架视频列表行：整宽紧凑行，左缩略图（120x90）+ 右两行文字占位，与内容区 VideoListItem 布局一致。 */
+/** 骨架视频列表行：整宽紧凑行，左缩略图按 listThumbnailWidth / thumbnailAspectRatio 取值 + 右两行文字占位，与内容区 VideoListItem 布局一致。 */
 @Composable
 private fun SkeletonVideoRow(shimmerAlpha: State<Float>) {
     val cfg = LocalUiConfig.current

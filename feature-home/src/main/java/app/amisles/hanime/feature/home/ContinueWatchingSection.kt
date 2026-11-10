@@ -196,7 +196,7 @@ private fun ContinueActionRow(label: String, onClick: () -> Unit) {
     )
 }
 
-/** 剩余时长文案：超过一小时按「X 小时 Y 分」，否则「X 分」，不足一分钟按「不到 1 分」。 */
+/** 剩余时长的紧凑符号文案：不足一分钟返回 `<1`，超过一小时返回 `XhYm`，否则返回 `Xm`。 */
 internal fun formatRemaining(remainMs: Long): String {
     val totalMinutes = remainMs / 60_000L
     return when {

@@ -42,8 +42,8 @@ class HomeViewModel @Inject constructor(
     /**
      * 「继续观看」条目。
      *
-     * 直接暴露仓储的 Flow：播放进度每 5 秒落库一次，用 StateFlow 中转会多一层
-     * 重订阅与去重开销，而界面只需要最新的列表。
+     * 用 stateIn 把仓储 Flow 收敛成 StateFlow：播放进度每 5 秒落库一次，界面只需要最新的列表；
+     * WhileSubscribed(5_000) 让页面短暂退到后台时不立即取消上游收集。
      */
     val continueWatching: StateFlow<List<WatchHistory>> = libraryRepository
         .getContinueWatchingFlow()
@@ -212,8 +212,8 @@ class HomeViewModel @Inject constructor(
                     when (event) {
                         is HomeDataEvent.Banner -> _banner.value = event.banner
                         is HomeDataEvent.Section -> {
-                            // 分区内按 videoUrl 去重：HomeScreen 以 videoUrl 作为 LazyColumn 的 key，
-                            // 站点重复输出同一条视频会触发「key 已被使用」异常导致崩溃
+                            // 分区内按 videoUrl 去重：HomeScreen 的 LazyColumn key 是「分区标题-下标#videoUrl」，
+                            // 同一分区内重复输出同一条视频仍会撞 key，触发「key 已被使用」异常导致崩溃
                             val section = event.section.copy(
                                 videos = event.section.videos.distinctBy { it.videoUrl }
                             )
