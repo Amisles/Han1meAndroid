@@ -116,11 +116,15 @@ class LoginViewModel @Inject constructor(
             cookie.contains("session", ignoreCase = true)
 
     /**
-     * WebView 拿到会话后的收尾：先向站点确认身份，确认通过才落盘。
+     * WebView 拿到会话后的收尾：先向站点确认身份，再按校验结果的三态决定是否落盘。
      *
      * 站点对游客同样下发 laravel_session，只凭 Cookie 内容判定「已登录」会把游客会话存成
      * 登录态 —— 界面显示已登录、抽屉显示错误的用户名，随后任何需要身份的功能都失败。
      * 因此判定必须回落到服务端页面（见 [AccountRepository.verifyWebLogin]）。
+     *
+     * 校验结果分三态：Verified 落盘并带上 userId；NotLoggedIn 明确是游客会话，报错且不落盘；
+     * Inconclusive 表示断网或人机校验挡住了探针、真假难辨，仍按最佳努力落盘（userId 为 null），
+     * 交由后续请求暴露问题。
      *
      * [sourceDomain] 是实际完成登录的站点 host：会话只能注入回该域名，避免用户之后把
      * baseUrl 改成镜像站时把主站会话一并发送过去。

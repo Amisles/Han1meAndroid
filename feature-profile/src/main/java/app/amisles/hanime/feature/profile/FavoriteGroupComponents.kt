@@ -178,7 +178,7 @@ internal fun FavoriteTagsRow(
     }
 }
 
-/** 分组名称输入对话框，用于新建与重命名；样式与收藏管理弹窗保持一致。 */
+/** 新建分组时的名称输入对话框；样式与收藏管理弹窗保持一致。 */
 @Composable
 internal fun GroupNameDialog(
     title: String,
