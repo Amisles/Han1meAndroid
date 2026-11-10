@@ -15,10 +15,10 @@ import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.SearchResult
 import app.amisles.hanime.domain.model.AuthorPageDataEvent
 import app.amisles.hanime.domain.model.PlaylistDetail
+import app.amisles.hanime.domain.model.PlaylistInfo
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.domain.model.SubscriptionsContent
 import app.amisles.hanime.domain.model.UserVideoListResult
-import app.amisles.hanime.domain.model.PlaylistInfo
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.core.common.util.AppLogger

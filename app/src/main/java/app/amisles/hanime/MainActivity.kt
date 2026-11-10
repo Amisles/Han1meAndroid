@@ -158,8 +158,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 重建（切语言、备份导入）时窗口背景会先于内容绘制：沿用带图标的启动图，在应用主题与系统
-        // 夜间模式不一致时会闪出一帧黑底，这里换成与应用主题一致的单色背景
+        // Activity 重建时窗口背景会先于内容绘制：沿用带图标的启动图，在应用主题与系统夜间模式
+        // 不一致时会闪出一帧黑底，重建时改用与应用主题一致的单色背景
         if (savedInstanceState != null) {
             val darkTheme = when (Preferences.themeModeFlow.value) {
                 ThemeMode.DARK -> true
