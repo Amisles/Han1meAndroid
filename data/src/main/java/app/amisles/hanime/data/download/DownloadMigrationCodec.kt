@@ -25,7 +25,7 @@ internal data class MigratedTask(
  * 下载列表迁移的编解码。
  *
  * 与备份包分开：迁移只需要「任务 + 续传位图」，不含收藏、历史等数据，
- * 且位图是二进制，不能塞进纯 JSON 备份。
+ * 位图表作为独立文件随迁移包携带，不与清单 JSON 混放。
  */
 internal object DownloadMigrationCodec {
 

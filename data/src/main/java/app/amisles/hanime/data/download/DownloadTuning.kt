@@ -3,10 +3,9 @@ package app.amisles.hanime.data.download
 import app.amisles.hanime.data.BuildConfig
 
 /**
- * 下载子系统的调参常量。
+ * 下载子系统的包级共享常量：调参阈值、通知/跨进程协议常量、User-Agent 与迁移包清单及限额。
  *
- * 从 `DownloadManager` 的 companion 拆出：分块粒度、慢块判据、探测窗口、缓冲大小、
- * 并发预算等常量由下载链路多个文件共用，放在包级作用域后各文件可直接引用，
+ * 从 `DownloadManager` 的 companion 拆出，放在包级作用域后各文件可直接引用，
  * 无需为了跨文件访问而放宽类内可见性。
  */
 internal const val MAX_CONCURRENT = 5

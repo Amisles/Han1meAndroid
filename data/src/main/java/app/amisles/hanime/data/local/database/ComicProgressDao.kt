@@ -22,7 +22,7 @@ interface ComicProgressDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(progress: ComicProgressEntity)
 
-    /** 只翻页不换书时走单列更新，避免每次翻页都把标题、封面整行重写。 */
+    /** 只翻页不换书时只更新 last_page 与 updated_at 两列，避免整行 REPLACE。 */
     @Query("UPDATE comic_progress SET last_page = :page, updated_at = :updatedAt WHERE comicId = :comicId")
     suspend fun updateLastPage(comicId: String, page: Int, updatedAt: Long): Int
 

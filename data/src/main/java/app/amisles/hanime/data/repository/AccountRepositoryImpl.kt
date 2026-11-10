@@ -61,10 +61,11 @@ class AccountRepositoryImpl @Inject constructor(
 
 
     /**
-     * 发送视频评论，@return Pair(新评论对象, 新评论总数)
+     * 发送视频评论。
      *
      * @param commentCount 当前评论数（取自 VideoDetail.commentCount）
      * @param csrfToken 取自 VideoDetail.csrfToken
+     * @return 成功时为新评论对象与新评论总数，外层由 AppResult 包装失败分支
      */
     override suspend fun postComment(
         videoId: String,

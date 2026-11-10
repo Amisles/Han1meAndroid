@@ -524,7 +524,7 @@ class BackupManager @Inject constructor(
          *
          * 对外契约：**字段只增不改**。新增字段一律给默认值，读取旧版本时缺失字段按默认值处理；
          * 只有「旧版本无法正确理解」的语义变更才允许升版本，且必须在 parseManifest 里
-         * 保留读取旧版本的路径（见下方兼容说明）。
+         * 保留读取旧版本的路径（见上方 parseManifest 的版本校验段）。
          */
         const val SCHEMA_VERSION = 1
         private const val MAX_ENTRY_BYTES = 16L * 1024 * 1024

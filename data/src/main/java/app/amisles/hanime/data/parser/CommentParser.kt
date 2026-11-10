@@ -398,8 +398,8 @@ class CommentParser @Inject constructor() {
  * 站点会给上千的回复数加千分位，只取第一段连续数字会得到 1；这里允许数字之间夹逗号，
  * 取到后统一去分隔符再转 Int。没有数字（或超出 Int 范围）返回 0。
  *
- * 独立成顶层函数：parse() 依赖 android.util.JSONObject，在 JVM 单测里不可用，
- * 而这条规则是纯字符串逻辑，单独测试才能覆盖到。
+ * 独立成顶层函数：站点 HTML 的解析入口 parse() 依赖 org.json.JSONObject，
+ * 而这条规则是纯字符串逻辑，拆出后可在 JVM 单测中直接覆盖。
  */
 internal fun parseReplyCountFromText(text: String): Int {
     val match = Regex("(\\d[\\d,]*)").find(text) ?: return 0

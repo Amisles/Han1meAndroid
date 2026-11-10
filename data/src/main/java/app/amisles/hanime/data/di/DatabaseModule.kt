@@ -43,7 +43,7 @@ object DatabaseModule {
                 FavoriteDatabase.MIGRATION_8_9,
                 FavoriteDatabase.MIGRATION_9_10
             )
-            // 不再使用 fallbackToDestructiveMigration
+            // 全量迁移已覆盖 1→10，禁止改用 fallbackToDestructiveMigration：它会清空用户数据
             .build()
     }
 

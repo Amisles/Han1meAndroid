@@ -13,7 +13,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 import java.security.cert.X509Certificate
 
-/** 已下沉到 domain（[app.amisles.hanime.domain.model.DiagnosticResult]）；保留别名以兼容既有 import。 */
+/** 已下沉到 domain（[app.amisles.hanime.domain.model.DiagnosticType]）；保留别名。 */
 typealias DiagnosticType = app.amisles.hanime.domain.model.DiagnosticType
 
 /** 已下沉到 domain；保留别名。 */

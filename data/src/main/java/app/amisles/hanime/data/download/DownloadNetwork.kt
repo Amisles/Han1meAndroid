@@ -4,10 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 
-/**
- * 当前网络类型判定，用于自适应并行连接数决策。
- */
-// 用于自适应分块数决策
+/** 网络类型枚举；判定结果用于自适应并行连接数决策（与分块数无关）。 */
 internal enum class NetworkClass { WIFI, CELLULAR, OTHER }
 
 internal fun getCurrentNetworkClass(context: Context): NetworkClass {

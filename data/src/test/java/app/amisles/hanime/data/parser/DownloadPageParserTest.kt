@@ -269,9 +269,8 @@ class DownloadPageParserTest {
                 </table>
             </body></html>
         """.trimIndent()
-        // 第一个表格包含「下載」文本但无有效行；继续找下一个
+        // 第一个表格包含「下載」文本但无有效行（cell<4），被跳过；取下一个含 qualities 的表
         val qualities = parser.parse(html, baseUrl)
-        // 首个表无有效行（cell<4）被跳过，取下一个含 qualities 的表
         assertEquals(1, qualities.size)
         assertEquals("720p", qualities[0].resolution)
     }

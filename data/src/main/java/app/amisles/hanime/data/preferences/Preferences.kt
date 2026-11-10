@@ -91,7 +91,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
-    // 播放器相关取值范围：倍速档位与长按加速共用同一上下界，避免出现 3x 档位却被写回 2x
+    // 播放器相关取值范围：倍速档位与长按加速共用 3f 上界，下界各自独立（0.25f / 1.5f）
     const val MIN_PLAYBACK_SPEED = 0.25f
     const val MAX_PLAYBACK_SPEED = 3f
     const val DEFAULT_LONG_PRESS_SPEED = 2f
@@ -232,7 +232,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override val autoRotateFullscreenFlow: StateFlow<Boolean> = _autoRotateFullscreenFlow.asStateFlow()
 
 
-    // 下载存储路径：空串表示使用默认目录（应用外部存储 /Downloads，不可用时回退内部存储）
+    // 下载存储路径：空串表示由 resolveDownloadDir() 解析默认目录（公共 Download/Hanime）
     private val _downloadStoragePathFlow = MutableStateFlow("")
     override val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
 
@@ -938,8 +938,9 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     }
 
     /**
-     * 下载存储路径。空串表示「默认目录」（由 DownloadManager 解析为应用外部存储 /Downloads，
-     * 不可用时回退内部存储）；非空时为用户指定的目录绝对路径。
+     * 下载存储路径。空串表示「默认目录」，由 DownloadManager.resolveDownloadDir() 解析为公共的
+     * Download/Hanime（主外部存储不可写时退回应用外部目录）；非空时为用户指定的目录绝对路径，
+     * 该路径不可写时同样回退到默认目录。
      */
     override var downloadStoragePath: String
         // 读走内存快照而非 sp：本类是 object 且 sp 为 lateinit，直接访问 getter 会在

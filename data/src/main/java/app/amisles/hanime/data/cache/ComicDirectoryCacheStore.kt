@@ -37,6 +37,8 @@ class ComicDirectoryCacheStore @Inject constructor(
                     ComicDirectoryCacheCodec.encode(entries, System.currentTimeMillis())
                 )
                 if (!temporary.renameTo(file)) {
+                    // 缓存可重建：这里允许先删旧文件再 rename，两步之间的崩溃窗口最多丢一份缓存。
+                    // 续传位图不可丢，故 DownloadPartmap 用 .tmp + 原子替换，此处不沿用那套约束。
                     file.delete()
                     temporary.renameTo(file)
                 }

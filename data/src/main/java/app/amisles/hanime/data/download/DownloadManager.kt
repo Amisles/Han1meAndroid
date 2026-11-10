@@ -318,12 +318,6 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * 把下载目录里「有文件、无任务」的成品视频登记为已完成任务。
-     *
-     * 卸载重装后数据库随应用数据一起被清除，但 Download/Hanime 是公共目录、文件仍在。
-     * 不重建任务的话，这些文件既不出现在下载页，也会被当成孤儿数据。
-     */
-    /**
      * 目录直读为空时改走 MediaStore。
      *
      * 分区存储下本应用看不到「上一个安装」写入的文件，但 MediaStore 仍为它们建了索引；
@@ -345,6 +339,12 @@ class DownloadManager @Inject constructor(
                 )
             }
     }
+    /**
+     * 把下载目录里「有文件、无任务」的成品视频登记为已完成任务。
+     *
+     * 卸载重装后数据库随应用数据一起被清除，但 Download/Hanime 是公共目录、文件仍在。
+     * 不重建任务的话，这些文件既不出现在下载页，也会被当成孤儿数据。
+     */
     private fun adoptOrphanFiles(): Int {
         val dir = resolveDownloadDir()
         val known = tasksLock.withLock { taskMap.values.mapTo(mutableSetOf()) { File(it.filePath).name } }
@@ -422,7 +422,7 @@ class DownloadManager @Inject constructor(
 
         tasksLock.withLock {
             // 去重必须按「文件身份」而非 (url, quality)：downloadUrl 是带时效签名的 CDN 直链，
-            // 重新拉取画质页会得到不同 url；而落盘路径由 (title, quality, videoId) 决定。若按不按
+            // 重新拉取画质页会得到不同 url；而落盘路径由 (title, quality, videoId) 决定。若不按
             // filePath 去重，会并存两个 filePath 相同的任务并发写同一文件，删除任一条都会误删共享文件。
             val existingTask = taskMap.values.find { it.filePath == filePath }
             if (existingTask != null) {
@@ -809,7 +809,7 @@ class DownloadManager @Inject constructor(
             if (activeSlots.get() >= concurrencyLimit) return
             AppLogger.log("DownloadManager", "启动下一个等待任务: ${candidate.title}")
             // 暂停序号必须在磁盘 IO 之前取：推导期间用户按了暂停，序号就会变，启动复核随即放弃。
-            // 否则会拿「旧的 PENDING 快照」把刚被暂停的任务重新拉起来（P2-5）。
+            // 否则会拿「旧的 PENDING 快照」把刚被暂停的任务重新拉起来。
             val epochAtSchedule = pauseEpochOf(candidate.id)
             // 锁外推导（含 .partmap 读取/删除、file.length()），不阻塞主线程 pause/cancel
             val (rb, rm) = deriveResumeState(candidate)
@@ -1136,7 +1136,7 @@ class DownloadManager @Inject constructor(
                 lastPersistTime[taskId] = System.currentTimeMillis()
                 persistTask(newTask)
             }
-            // 仅锁定内记录需回调的信息，真正回调移出锁外执行（见下方 D2 说明）。
+            // 锁内只记录需回调的信息；跨进程回调可能耗时且会重入，必须移出 tasksLock 执行。
             val candidate = when (newTask.status) {
                 DownloadStatus.DOWNLOADING -> if (newTask.totalBytes > 0) {
                     ProgressUpdate(taskId, newTask.title, DownloadQueuePolicy.progressPercent(newTask.downloadedBytes, newTask.totalBytes), newTask.status)
@@ -1160,7 +1160,7 @@ class DownloadManager @Inject constructor(
                 }
             }
         }
-        //将跨进程IPC移出 tasksLock，
+        // 跨进程 IPC 回调放在锁外执行，避免在持锁期间做跨进程调用。
         progressUpdate?.let { (id, title, progress, status) ->
             onProgressUpdate?.invoke(id, title, progress, status)
         }
@@ -1271,9 +1271,9 @@ class DownloadManager @Inject constructor(
     }
 
     /**
-     * 一键重试全部失败任务。仅对 FAILED 状态任务触发续传，复用 resumeDownloadInternal
-     * （含续传起点推导与并发槽位门控），受并发上限约束依次进入调度。
-     * 调用方需持有 tasksLock，resumeDownloadInternal 不再重复取锁。
+     * 一键重试全部失败任务。锁内只取 FAILED 任务列表，随后在锁外逐个推导续传状态，
+     * 再持锁调用 startDownloadWithConcurrencyInternal（含并发槽位门控）；不复用
+     * resumeDownloadInternal。调用方不要持有 tasksLock，推导含磁盘 I/O。
      */
     override fun retryAllFailed() {
         // 锁内只取失败列表，磁盘 I/O 与调度都在锁外；失败任务可能多达数十个，
@@ -1428,7 +1428,7 @@ class DownloadManager @Inject constructor(
                     }
                     if (paused.isEmpty()) return@launch
                     AppLogger.log("DownloadManager", "网络已恢复，自动续传 ${paused.size} 个已暂停任务")
-                    // resumeDownloadInternal 现在不持锁（内部自行处理），from within launch 无需 tasksLock
+                    // resumeDownloadInternal 现在不持锁（内部自行处理），在 launch 内直接调用即可
                     paused.forEach { id ->
                         autoPausedByNetwork.remove(id)
                         resumeDownloadInternal(id)
@@ -1468,7 +1468,7 @@ class DownloadManager @Inject constructor(
     /**
      * 闸门的「条件变化」触发源。
      *
-     * 此前闸门只在任务启动时求值（[reevaluateGate] 全仓没有调用方），而充电状态与夜间时段都不会
+     * 此前闸门只在任务启动时求值（[reevaluateGate] 当时没有调用方），而充电状态与夜间时段都不会
      * 触发任何既有回调 —— 「仅充电 / 仅夜间」排队的任务会一直停在 PENDING，直到网络抖动。
      * 这里补上两类触发：
      * - 充电插拔：ACTION_POWER_CONNECTED / DISCONNECTED（系统保护广播，只能动态注册）；

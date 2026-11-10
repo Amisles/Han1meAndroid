@@ -360,11 +360,6 @@ class LibraryRepositoryImpl @Inject constructor(
         }
     }
 
-    // ── 作者页 / 列表页 / 订阅内容 ──────────────────────────────────────────
-    // 原先这些能力由上层直接注入 NetworkService 获得；改为在仓储层转发，
-    // 让 feature 模块只依赖 domain 接口。
-
-
     private companion object {
         /** 单个收藏最多保留的标签数：超出后输入体验与展示都会失控。 */
         const val MAX_TAGS_PER_FAVORITE = 10

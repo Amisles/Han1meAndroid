@@ -29,15 +29,16 @@ import javax.inject.Singleton
 /**
  * 仓储接口 → 实现的绑定。
  *
- * 上层（feature-*）只依赖 `:domain:model` 中的接口，不再 import 任何 `:data` 类型，
- * 因此替换实现（例如加缓存层、或在测试中注入 fake）不需要改动上层代码。
+ * 上层（feature-*）原则上依赖 `:domain:model` 的接口，替换实现不需要改动上层代码；
+ * 但仍有少数具体类型被直接引用（Preferences、NetworkService、CloudflareChallenge、
+ * BackupManager 等），这些调用点不受本模块的接口绑定约束。
  *
  * NetworkDiagnostics 不含 @Inject 构造且需要手动 new，其绑定放在 PreferencesModule
  * 以 @Provides 提供，不在本模块重复声明以免 Dagger 重复绑定报错。
  *
- * 注意 [DownloadManager] 同时是"实现"与"被其它模块直接引用的具体类"——
- * 详情页 / 批量下载页目前仍注入具体类型（它暴露了 tasks Flow 等接口未覆盖的成员）。
- * 这里同时提供接口绑定，供只需要接口能力的新代码使用。
+ * [DownloadManager] 既是接口实现，也被 app 层的 DownloadService 直接注入具体类型；
+ * 各 UI 的 ViewModel 注入的是下载仓储接口。这里同时提供接口绑定，
+ * 供只需要接口能力的代码使用。
  */
 @Module
 @InstallIn(SingletonComponent::class)

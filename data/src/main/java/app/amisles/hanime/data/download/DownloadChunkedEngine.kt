@@ -521,7 +521,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
             throw ce
         }
     } catch (inefficient: ChunkedInefficientException) {
-        // 不让「驱逐预算耗尽」升级为任务失败：保留位图表，改用单连接从「已完成块的连续前缀」处续传
+        // 不让「驱逐预算耗尽」升级为任务失败：丢弃不可信的分块进度，改走单连接从 0 整份重下
         AppLogger.log("DownloadManager", "分块下载降级单连接续传: ${inefficient.message}")
         // 记住「该文件分块无收益」，使后续暂停/恢复直接走单连接，避免周期性震荡
         singleConnectionFiles.add(filePath)
