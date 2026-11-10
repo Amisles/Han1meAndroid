@@ -10,7 +10,7 @@ const val PORTRAIT_COVER_ASPECT_RATIO = 134f / 197f
 /**
  * 卡片封面比例：竖版封面用固定竖图比例，其余沿用界面配置。
  *
- * 卡片与缩略图共用这一个来源，避免各处分别判断 isPortraitCover 而漏改。
+ * 卡片与缩略图共用本函数取得封面比例；缩略图宽度、详情页判断等仍会各自读取 isPortraitCover。
  */
 @Composable
 fun videoCoverAspectRatio(video: HanimeVideo): Float =

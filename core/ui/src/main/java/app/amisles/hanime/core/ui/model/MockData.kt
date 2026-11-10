@@ -29,7 +29,7 @@ val categories = listOf(
     Category("新番预告", R.string.category_new_preview, "新番預告")
 )
 
-// 首页分区标题：服务端返回简体标识，按资源翻译展示，深链接仍传原始 section.title
+// 首页分区标题：服务端返回简体标识，按资源翻译展示；构造搜索参数时以 section.title 查表取 apiValue
 val homeSectionTitleResMap = mapOf(
     "最新上市" to R.string.search_sort_new_release,
     "最新上传" to R.string.search_sort_new_upload,

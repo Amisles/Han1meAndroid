@@ -26,7 +26,7 @@ import app.amisles.hanime.core.ui.theme.LocalUiConfig
 
 /**
  * 列表 / 网格布局切换：两段式图标，选中段用主题色底标示当前模式。
- * 放在 core:ui 是因为 material-icons-extended 只在本模块声明依赖，且此处只暴露布尔状态、不依赖业务枚举。
+ * 放在 core:ui 是因为此处只暴露布尔状态、不依赖业务枚举，可作为与业务无关的通用组件复用。
  */
 @Composable
 fun LayoutModeToggle(

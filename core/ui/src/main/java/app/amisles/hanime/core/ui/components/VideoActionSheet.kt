@@ -33,11 +33,12 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.HanimeVideo
 
 /**
- * 视频卡片长按快捷菜单：收藏 / 下载 / 分享 / 搜索相关视频。
+ * 视频卡片长按快捷菜单：收藏 / 下载 / 稍后观看 / 分享 / 搜索相关视频。
  *
- * 动作的可用性由调用方决定：[isFavorite] 控制收藏项文案，为 false 时整项隐藏，
- * 避免在收藏页里出现「收藏」这种自指操作；[onDownload] 为 null 时隐藏下载项（无法拿到
- * videoId 的场景，如无 id 的列表项）。
+ * 动作的可用性由调用方决定：[onFavorite] 为 null 时整个收藏项隐藏，避免在收藏页里出现
+ * 「收藏」这种自指操作；[isFavorite] 只切换该项的图标与「收藏 / 取消收藏」文案。
+ * [onDownload] 为 null 时隐藏下载项（无法拿到 videoId 的场景，如无 id 的列表项）；
+ * [onWatchLater] 为 null 时隐藏稍后观看项，[isWatchLater] 决定其文案。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -8,7 +8,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
-/** 强调色种子：只替换 primary / secondary，背景与文字仍由中性色板与对比度档位决定。 */
+/** 强调色种子：替换 primary / secondary 及其配套前景与容器色；背景与文字仍由中性色板、AMOLED 与对比度档位决定。 */
 enum class ThemeSeed(
     val lightPrimary: Color,
     val lightOnPrimary: Color,

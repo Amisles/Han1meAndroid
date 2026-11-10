@@ -29,7 +29,7 @@ data class WindowSizeInfo(
     val isTablet: Boolean,
     val isLandscape: Boolean
 ) {
-    /** 视频栅格列数：手机 2 列，平板 3–4 列 */
+    /** 视频栅格列数：按宽度档位取自 UiConfig 的可配置项（默认 2 / 3 / 4） */
     fun gridColumns(cfg: UiConfig): Int = when (widthClass) {
         WindowWidthSizeClass.Compact -> cfg.gridColumnsCompact
         WindowWidthSizeClass.Medium -> cfg.gridColumnsMedium

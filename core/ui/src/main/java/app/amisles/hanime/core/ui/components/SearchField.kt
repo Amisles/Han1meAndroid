@@ -34,7 +34,8 @@ import app.amisles.hanime.core.ui.theme.LocalUiConfig
  *
  * [onSearch] 的语义由调用方决定：搜索页提交查询；本地实时过滤的场景（如下载页）无需传，
  * 组件会照常在回车时收起键盘。[onClear] 仅在点清除图标时触发，用于「清空输入同时重置结果」；
- * 普通输入（含逐字删空）不触发。
+ * 普通输入（含逐字删空）不触发。[showSearchIcon] 为 false 时隐藏前置放大镜，用于复用同一套
+ * 边框样式但语义不是「搜索」的场景（如标签输入）。
  */
 @Composable
 fun SearchField(
@@ -45,7 +46,6 @@ fun SearchField(
     onSearch: (() -> Unit)? = null,
     singleLine: Boolean = false,
     onClear: (() -> Unit)? = null,
-    /** 复用同一套边框样式但语义不是「搜索」时（如标签输入）可隐藏前置放大镜。 */
     showSearchIcon: Boolean = true
 ) {
     val cfg = LocalUiConfig.current

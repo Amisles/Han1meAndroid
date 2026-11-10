@@ -30,8 +30,8 @@ import app.amisles.hanime.domain.model.HanimeVideo
 
 /**
  * 网格卡：竖向排布，供搜索结果等网格布局使用。
- * 与 [VideoCard] 的差异是时长 / 点赞率 / 播放量下沉为缩略图角标，正文区只留「标题 + 作者」两行；
- * 标题固定占两行（minLines = maxLines = 2），避免长短标题导致同行卡片高度参差。
+ * 时长 / 点赞率 / 播放量由 VideoThumbnail 渲染为缩略图角标，正文区为标题行 + 作者行；
+ * 标题行数取 card.titleLines，minLines 与 maxLines 用同一值，避免长短标题导致同行卡片高度参差。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -57,7 +57,7 @@ fun VideoGridCard(
         modifier = modifier
             .fillMaxWidth()
             .cardSurface(geometry.style, geometry.shape)
-            // 先 clip 再 clickable，让点按涟漪跟随圆角而不是方角
+            // 先 clip 再 clickable，让状态层点击反馈跟随圆角而不是方角
             .clip(geometry.shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics(mergeDescendants = true) { contentDescription = cardDescription }

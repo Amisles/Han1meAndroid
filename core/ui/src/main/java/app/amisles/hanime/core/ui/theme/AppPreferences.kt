@@ -22,8 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
  * 这里只暴露**界面真正需要的**几个流，由 `:app` 把 `:data` 的实现适配进来；
  * `:core:ui` 本身不依赖 `:data`（UI 层不应反向依赖数据层）。
  *
- * 刻意不包含任何写入操作：写入一律经由 ViewModel 或注入的 SettingsRepository，
- * 避免 Composable 直接改持久化状态。
+ * 除读取流外，也提供受限的写入方法：播放器与搜索页需要就地改设置，写入同样由 `:app`
+ * 的适配层转发到 SettingsRepository，避免 Composable 直接依赖 `:data`。
  */
 interface AppPreferences {
     val loginStateFlow: StateFlow<Boolean>

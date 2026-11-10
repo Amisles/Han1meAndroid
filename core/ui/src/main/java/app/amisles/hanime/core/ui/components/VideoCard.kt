@@ -163,7 +163,7 @@ fun VideoListItem(
         baseThumbWidth
     }
     // 标题区固定为配置的行数高度并让文字垂直居中：单行标题时空白上下均分，不会全堆在标题与作者之间。
-    // 行高比例与 grid 标题一致（16sp / 12sp），按行数换算，等高且不裁切
+    // 行高按列表标题字号的 4/3 倍推导，再乘配置的行数得到标题区高度，等高且不裁切
     val titleLineHeight = cfg.listTitleFontSize.value.times(4f / 3f).sp
     val titleBlockHeight = with(LocalDensity.current) { (titleLineHeight * card.titleLines).toDp() }
 
@@ -262,8 +262,8 @@ fun VideoListItem(
                         )
                     }
                 }
-                // 发布时间：与 VideoCard 的「作者 • 时间」保持一致，列表行放在统计行末尾，
-                // 不额外占一行高度（首页 / 搜索 / 订阅等列表共用本组件）
+                // 发布时间：列表行用裸 publishTime，放在统计行末尾，不额外占一行高度；
+                // 卡片行的「作者 • 时间」拼接格式不适用于这里（首页 / 搜索 / 订阅等列表共用本组件）
                 if (showTime) {
                     Text(
                         text = video.publishTime,
