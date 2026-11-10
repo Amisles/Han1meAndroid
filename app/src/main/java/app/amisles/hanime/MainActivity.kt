@@ -2,6 +2,8 @@ package app.amisles.hanime
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
@@ -42,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -75,6 +78,8 @@ import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.theme.HanimeBackground
+import app.amisles.hanime.core.ui.theme.HanimeBackgroundLight
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.NavigationStyle
 import app.amisles.hanime.core.ui.theme.UiConfigStore
@@ -153,6 +158,19 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 重建（切语言、备份导入）时窗口背景会先于内容绘制：沿用带图标的启动图，在应用主题与系统
+        // 夜间模式不一致时会闪出一帧黑底，这里换成与应用主题一致的单色背景
+        if (savedInstanceState != null) {
+            val darkTheme = when (Preferences.themeModeFlow.value) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> (resources.configuration.uiMode and
+                    Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            }
+            window.setBackgroundDrawable(
+                ColorDrawable((if (darkTheme) HanimeBackground else HanimeBackgroundLight).toArgb())
+            )
+        }
         super.onCreate(savedInstanceState)
 
         // 走 Application 的语言快照（onCreate 里已预热），不要直接读 Preferences.appLanguage：
@@ -221,7 +239,12 @@ fun HanimeApp(
     // 必须取「基础路由」而非 destination.route 原值：带参目的地的 destination.route 返回的是
     // 完整路由模板（如 "search?keyword={keyword}&genre={genre}&sort={sort}&ts={ts}"），而底部导航 /
     // 导航栏传入的是短路由 "search"，两者永不相等，会让 Tab 的「已在当前页则不动」守卫失效。
-    val currentRoute = navBackStackEntry?.destination?.route?.baseRoute() ?: "home"
+    val entryRoute = navBackStackEntry?.destination?.route?.baseRoute()
+    // currentBackStackEntryAsState 的首个值恒为 null（Activity 重建后同样如此），用 "home" 兜底
+    // 会让底部导航栏在设置页这类隐藏它的页面上先滑入再收回；改为沿用重建前最后已知的路由
+    var lastKnownRoute by rememberSaveable { mutableStateOf("") }
+    val currentRoute = entryRoute ?: lastKnownRoute.ifEmpty { "home" }
+    SideEffect { if (entryRoute != null) lastKnownRoute = entryRoute }
 
     val showBottomBar = shouldShowBottomBar(currentRoute)
 
