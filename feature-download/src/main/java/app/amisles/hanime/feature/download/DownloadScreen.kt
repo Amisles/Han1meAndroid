@@ -77,11 +77,6 @@ enum class DownloadSort {
     ADDED, NAME, SIZE, PROGRESS
 }
 
-/**
- * 筛选 / 排序用的稳定键。
- * tasks 每秒会因进度产生多个新列表；抽出「筛选与排序真正依赖的字段」作不可变键，
- * 进度以外的字段没变时即可复用排序结果，避免每秒重排整表。
- */
 /** 下载页按状态分组 + 按 id 索引的一次性遍历结果，供列表与分组视图共用。 */
 private data class TaskGroups(
     val downloading: List<DownloadTask>,
@@ -91,6 +86,11 @@ private data class TaskGroups(
     val byId: Map<Int, DownloadTask>
 )
 
+/**
+ * 筛选 / 排序用的稳定键。
+ * tasks 每秒会因进度产生多个新列表；抽出「筛选与排序真正依赖的字段」作不可变键，
+ * 进度以外的字段没变时即可复用排序结果，避免每秒重排整表。
+ */
 private data class TaskOrderKey(
     val id: Int,
     val status: DownloadStatus,

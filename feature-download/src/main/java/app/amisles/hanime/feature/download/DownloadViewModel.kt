@@ -28,7 +28,7 @@ class DownloadViewModel @Inject constructor(
 ) : ViewModel() {
     val tasks: StateFlow<List<DownloadTask>> = downloads.tasks
 
-    /** 调度闸门：非空表示正因条件不满足而等待，用于列表顶部提示。 */
+    /** 调度闸门：以 blocked / blockedReasons 表示是否因条件不满足而阻塞，用于列表顶部提示。 */
     val gateState: StateFlow<DownloadGateState> = downloads.gateState
 
     private val _storageInfo = MutableStateFlow<DownloadStorageInfo?>(null)
