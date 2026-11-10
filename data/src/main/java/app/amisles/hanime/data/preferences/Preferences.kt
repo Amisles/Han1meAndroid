@@ -658,6 +658,12 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
                 "加密存储不可用，登录凭据仅保留在内存中（不落盘），重启后需重新登录"
             )
         }
+        // 换账号后本地缓存的昵称属于上一个身份：不清掉，抽屉会一直显示别人的名字 ——
+        // 而 ProfileViewModel.refreshAccountName() 看到昵称非空就不再拉取，错误的名字会一直留着。
+        if (_savedUserNameFlow.value.isNotBlank()) {
+            sp.edit { remove(SP_SAVED_USER_NAME) }
+            _savedUserNameFlow.value = ""
+        }
         _loginStateFlow.value = true
         _loginCookieFlow.value = SessionCookie(safeCookie)
         _loginCookieDomain = domain
