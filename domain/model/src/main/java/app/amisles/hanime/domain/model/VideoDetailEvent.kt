@@ -5,7 +5,7 @@ package app.amisles.hanime.domain.model
  * 解析器按「主信息 → 播放列表 → 相关视频」逐块 emit，使播放器区可先渲染。
  */
 sealed interface VideoDetailEvent {
-    /** 主信息就绪（标题/播放器/封面/标签/作者/订阅态/CSRF 等），相关视频与播放列表暂为空。 */
+    /** 主信息就绪（标题/播放器/封面/标签/作者/订阅态/CSRF 等）；命中详情缓存时已带相关视频与播放列表。 */
     data class MainInfo(val detail: VideoDetail) : VideoDetailEvent
 
     /** 相关视频列表解析完成。 */
