@@ -488,7 +488,7 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
 
-            // 外观：语言 / 主题 / 界面定制
+            // 外观
             SettingsGroupCard {
                 SettingsDropdownRow(
                     icon = Icons.Outlined.Language,
@@ -541,7 +541,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 播放：长按倍速 / 双击快进 / 自动画质 / 旋转自动全屏
+            // 播放
             SettingsGroupCard {
                 SettingsDropdownRow(
                     icon = Icons.Outlined.Speed,
@@ -581,7 +581,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 隐私：公共场合一键遮罩内容
+            // 隐私
             SettingsGroupCard {
                 SettingsSwitchRow(
                     icon = Icons.Outlined.VisibilityOff,
@@ -594,7 +594,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 下载：并发数 / 存储路径
+            // 下载
             SettingsGroupCard {
                 SettingsDropdownRow(
                     icon = Icons.Default.Layers,
@@ -673,7 +673,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 通知：订阅更新提醒
+            // 通知
             SettingsGroupCard {
                 val switchOn: (Boolean) -> Unit = { enabled -> viewModel.setSubscriptionReminder(enabled) }
                 SettingsSwitchRow(
@@ -706,7 +706,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 网络与数据：镜像站 / 诊断 / 缓存
+            // 网络与数据
             SettingsGroupCard {
                 SettingsNavRow(
                     icon = Icons.Outlined.Link,
@@ -818,7 +818,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    // 非法输入会被清洗成默认地址，据返回值提示用户真实结果
+                    // 空白输入恢复默认地址；非法输入被拒绝且原设置不变；合法但需补 https 前缀的输入会被接受。据返回值提示成功或无效
                     val applied = viewModel.setBaseUrl(baseUrlInput)
                     showBaseUrlDialog = false
                     Toast.makeText(

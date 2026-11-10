@@ -55,8 +55,8 @@ import androidx.compose.material3.IconButton
 /**
  * 在浏览器中打开发行版页面 / 安装包直链。
  *
- * 刻意声明为 public（模块可见）：启动时的更新弹窗位于 :app 模块，
- * 需要一个与更新页完全一致的跳转实现，重复实现会带来行为漂移。
+ * 当前调用点都在本模块内（更新页，以及 UpdateViewModel 在 apkUrl 为空时打开发行版页面）；
+ * :app 的启动更新弹窗不复用本函数，只负责导航到更新页。
  */
 fun openReleasePage(context: android.content.Context, url: String) {
     if (url.isBlank()) return
@@ -413,8 +413,8 @@ private fun UpdateAvailableCard(
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(top = 14.dp)
                 )
-                // 变更说明是 Markdown 原文，按纯文本展示并限制高度：
-                // 渲染 Markdown 需要额外依赖，而这里只要「能让用户看清改了什么」。
+                // 变更说明是 Markdown 原文，这里按纯文本展示并限制高度；
+                // 启动弹窗 UpdateDialog 用纯 Compose API 手写 Markdown 渲染，本页保持纯文本展示。
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -498,7 +498,7 @@ private fun UpdateAvailableCard(
     }
 }
 
-/** 供字体截断场景复用的单行样式（保持与设置页一致）。 */
+/** 单行文本样式（当前未被调用）。 */
 @Composable
 @Suppress("unused")
 private fun SingleLineLabel(text: String) {

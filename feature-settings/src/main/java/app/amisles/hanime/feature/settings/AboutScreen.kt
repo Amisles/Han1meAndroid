@@ -75,7 +75,7 @@ private fun appFeatureRes(): List<Pair<ImageVector, Int>> = listOf(
     Icons.Default.Settings to R.string.about_feature_6
 )
 
-/** 致谢列表；版本号需与 `gradle/libs.versions.toml` 手动保持一致，升级依赖时同步本表。 */
+/** 致谢列表；版本号取自 BuildConfig 常量，由构建脚本从 version catalog 自动注入，无需手工维护。 */
 private val openSourceProjects = listOf(
     OpenSourceProject(
         name = "Android Gradle Plugin",
@@ -290,7 +290,7 @@ fun AboutScreen(
                                 .fillMaxWidth()
                                 .height(0.5.dp)
                                 .padding(horizontal = 16.dp)
-                                // 白色半透明线在浅色主题下不可见
+                                // 不使用白色半透明线：浅色主题下不可见，改用随主题变化的 outlineVariant
                                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         )
                         Row(
@@ -397,7 +397,7 @@ fun AboutScreen(
                                         .fillMaxWidth()
                                         .height(0.5.dp)
                                         .padding(horizontal = 16.dp)
-                                        // 白色半透明线在浅色主题下不可见
+                                        // 不使用白色半透明线：浅色主题下不可见，改用随主题变化的 outlineVariant
                                         .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                                 )
                             }

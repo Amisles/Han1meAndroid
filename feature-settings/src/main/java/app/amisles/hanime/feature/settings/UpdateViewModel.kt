@@ -64,10 +64,11 @@ sealed interface UpdateDownloadState {
 /**
  * 更新页 ViewModel。
  *
- * 检查逻辑全部在 [UpdateRepository] 里，本类只负责：
+ * 检查逻辑全部在 [UpdateRepository] 里，本类负责：
  * - 把结果映射成界面状态；
  * - 承载「自动检查」开关与「不再提示」偏好；
- * - 提供安装包大小等展示用的派生值。
+ * - 提供 currentVersion 等展示值；
+ * - 下载并安装 APK（downloadAndInstall / installApk）与失败原因映射（failureMessage）。
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
