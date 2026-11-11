@@ -147,7 +147,7 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateRepository: UpdateRepository
 
-    /** 每个 Activity 需独立包装 Context 才能使切换语言后的资源生效；Application 级别不影响本 Activity 的 Resources。 */
+    /** 创建时按当前语言包装 Context；Application 的 Resources 覆盖不影响本 Activity，运行中换语言由 getResources 的覆盖刷新。 */
     override fun attachBaseContext(newBase: Context) {
         // 必须读取已初始化的 Preferences，不可再用明文 getSharedPreferences 打开同一文件：
         // 会与 EncryptedSharedPreferences 冲突并反复误触发「明文→加密」迁移，覆盖已存的主题/语言。
@@ -157,6 +157,17 @@ class MainActivity : ComponentActivity() {
             // 而默认语言就是唯一合理取值。
             ?: Preferences.LANGUAGE_ZH_CN
         super.attachBaseContext(LocaleHelper.wrapContext(newBase, lang))
+    }
+
+    // Activity 自己的 Resources 也要随所选语言刷新：Compose 的对话框 / 弹层用 LocalView 的 Context
+    // （即本 Activity）另开窗口，窗口内取资源走的是这份 Resources，而不是组合层提供的 LocalContext。
+    @Volatile
+    private var localizedResources: Resources? = null
+
+    override fun getResources(): Resources = localizedResources ?: super.getResources()
+
+    private fun applyLanguageResources(language: String) {
+        localizedResources = LocaleHelper.resourcesContext(baseContext, language).resources
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -191,7 +202,10 @@ class MainActivity : ComponentActivity() {
                     setLocales(LocaleList(LocaleHelper.localeOf(language)))
                 }
             }
-            LaunchedEffect(language) { app?.applyLanguage(language) }
+            LaunchedEffect(language) {
+                app?.applyLanguage(language)
+                applyLanguageResources(language)
+            }
             CompositionLocalProvider(
                 LocalContext provides localizedContext,
                 LocalConfiguration provides localizedConfiguration,
