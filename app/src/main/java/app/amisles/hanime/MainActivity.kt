@@ -70,11 +70,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.metrics.performance.FrameData
+import androidx.metrics.performance.JankStats
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import app.amisles.hanime.BuildConfig
+import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
@@ -241,6 +245,22 @@ class MainActivity : ComponentActivity() {
             }
             }
         }
+        attachJankStats()
+    }
+
+    /** 仅 debug 挂载 JankStats：release 里每帧回调叠加日志落盘本身会制造掉帧，度量不能污染被测对象。 */
+    private fun attachJankStats() {
+        if (!BuildConfig.DEBUG) return
+        JankStats.createAndTrack(
+            window,
+            object : JankStats.OnFrameListener {
+                override fun onFrame(frameData: FrameData) {
+                    if (frameData.isJank) {
+                        AppLogger.d("JankStats", "janky frame ${frameData.frameDurationUiNanos} ns")
+                    }
+                }
+            }
+        )
     }
 }
 
