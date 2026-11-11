@@ -60,6 +60,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PlaylistSaveSheet
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
+import app.amisles.hanime.core.ui.components.ThumbnailPrefetcher
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
@@ -161,6 +162,10 @@ fun DetailScreen(
         delay(1_200L)
         commentVm.selectVideo(videoId)
         commentVm.loadComments()
+    }
+    LaunchedEffect(videoDetail?.relatedVideos) {
+        val urls = videoDetail?.relatedVideos.orEmpty().map { it.thumbnailUrl }
+        ThumbnailPrefetcher.prefetch(context, urls)
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
     val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.decode.DataSource
 import coil3.request.ImageRequest
 import coil3.size.Dimension
 import coil3.size.Precision
@@ -147,9 +148,11 @@ private fun ThumbnailBox(
     ) {
         if (hasThumbnail) {
             var loaded by remember(model) { mutableStateOf(false) }
+            var fromMemory by remember(model) { mutableStateOf(false) }
+            // 内存缓存命中立即上屏：快速滚动复绑定时 180ms 渐入只会表现为成片的「先灰后闪」
             val imageAlpha by animateFloatAsState(
                 targetValue = if (loaded) 1f else 0f,
-                animationSpec = tween(durationMillis = 180),
+                animationSpec = tween(durationMillis = if (fromMemory) 0 else 180),
                 label = "thumbnailFade"
             )
             AsyncImage(
@@ -159,8 +162,14 @@ private fun ThumbnailBox(
                     .fillMaxSize()
                     .graphicsLayer { alpha = imageAlpha },
                 contentScale = contentScale,
-                onSuccess = { loaded = true },
-                onError = { loaded = true }
+                onSuccess = { state ->
+                    fromMemory = state.result.dataSource == DataSource.MEMORY_CACHE
+                    loaded = true
+                },
+                onError = {
+                    fromMemory = true
+                    loaded = true
+                }
             )
         }
 

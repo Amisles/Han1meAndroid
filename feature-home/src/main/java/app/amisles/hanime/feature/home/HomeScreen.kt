@@ -45,10 +45,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +69,7 @@ import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.ThumbnailPrefetcher
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
@@ -82,7 +85,10 @@ import app.amisles.hanime.core.ui.model.categories
 import app.amisles.hanime.core.ui.model.homeSectionTitleResMap
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.UiConfig
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+
+private const val PREFETCH_SECTION_COUNT = 2
 
 /** 横滑布局的卡片宽度。 */
 private val CAROUSEL_CARD_WIDTH = 200.dp
@@ -306,6 +312,24 @@ fun HomeScreenContent(
             idx++ // skeleton
         }
         map
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(plans, sectionTitleToIndex, listState, context) {
+        snapshotFlow { listState.isScrollInProgress }
+            .distinctUntilChanged()
+            .collect { scrolling ->
+                if (scrolling) return@collect
+                val lastVisible = listState.layoutInfo.visibleItemsInfo
+                    .maxOfOrNull { it.index } ?: return@collect
+                val belowUrls = plans.asSequence()
+                    .filter { (sectionTitleToIndex[it.section.title] ?: Int.MAX_VALUE) > lastVisible }
+                    .take(PREFETCH_SECTION_COUNT)
+                    .flatMap { it.videos }
+                    .map { it.thumbnailUrl }
+                    .toList()
+                ThumbnailPrefetcher.prefetch(context, belowUrls)
+            }
     }
 
     PullToRefreshBox(
