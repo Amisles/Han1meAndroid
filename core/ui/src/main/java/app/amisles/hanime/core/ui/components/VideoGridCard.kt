@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +56,7 @@ fun VideoGridCard(
     }
     Column(
         modifier = modifier
+            .testTag("video_grid_card")
             .fillMaxWidth()
             .cardSurface(geometry.style, geometry.shape)
             // 先 clip 再 clickable，让状态层点击反馈跟随圆角而不是方角

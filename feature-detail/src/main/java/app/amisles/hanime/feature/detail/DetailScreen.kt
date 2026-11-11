@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -490,6 +491,7 @@ fun DetailScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .background(MaterialTheme.colorScheme.background)
+                    .testTag("detail_screen")
             ) {
                 // 左侧：视频播放器（垂直居中）
                 Box(
@@ -548,6 +550,7 @@ fun DetailScreen(
                     .fillMaxSize()
                     .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
                     .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
+                    .testTag("detail_screen")
             ) {
                 if (isLoading) {
                     item(key = "detail_skeleton") {
