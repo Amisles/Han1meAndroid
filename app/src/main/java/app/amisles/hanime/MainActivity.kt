@@ -248,7 +248,7 @@ class MainActivity : ComponentActivity() {
         attachJankStats()
     }
 
-    /** 仅 debug 挂载 JankStats：release 里每帧回调叠加日志落盘本身会制造掉帧，度量不能污染被测对象。 */
+    /** 仅 debug 挂载：掉帧数据经 AppLogger 落盘，而它在 release 是空实现；放开门禁只会留下每帧回调的开销，采不到任何数据。 */
     private fun attachJankStats() {
         if (!BuildConfig.DEBUG) return
         JankStats.createAndTrack(
