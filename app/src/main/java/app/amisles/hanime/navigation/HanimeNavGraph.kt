@@ -68,7 +68,7 @@ internal fun HanimeNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "tab_home",
+        startDestination = "home",
         modifier = modifier,
         enterTransition = {
             fadeIn(animationSpec = tween(NAV_TRANSITION_DURATION_MS)) +
@@ -95,44 +95,42 @@ internal fun HanimeNavGraph(
                 )
         }
     ) {
-        navigation(startDestination = "home", route = "tab_home") {
-            composable("home") {
-                HomeScreen(
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                    onSearchClick = { keyword ->
-                        navController.navigateToSearch(searchRoute(keyword = keyword)) },
-                    onGenreSearch = { genre ->
-                        navController.navigateToSearch(searchRoute(genre = genre)) },
-                    onNavigateToSearch = {
-                        navController.navigateToSearch(searchRoute()) },
-                    onAuthorClick = { author ->
-                        navController.navigateToSearch(searchRoute(keyword = author)) },
-                    onViewMore = { section ->
-                        val sortApiValue = sortApiValueOf(section)
-                        val genreApiValue = if (sortApiValue == null) genreApiValueOf(section) else null
-                        if (sortApiValue != null || genreApiValue != null) {
-                            navController.navigateToSearch(
-                                if (sortApiValue != null) searchRoute(sort = sortApiValue)
-                                else searchRoute(genre = genreApiValue)
-                            )
-                        } else if (section.moreUrl.isNotBlank()) {
-                            moreUrlPageRoute(section.moreUrl)?.let { route ->
-                                navController.navigate(route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = false
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = false
+        composable("home") {
+            HomeScreen(
+                onVideoClick = { videoUrl ->
+                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                onSearchClick = { keyword ->
+                    navController.navigateToSearch(searchRoute(keyword = keyword)) },
+                onGenreSearch = { genre ->
+                    navController.navigateToSearch(searchRoute(genre = genre)) },
+                onNavigateToSearch = {
+                    navController.navigateToSearch(searchRoute()) },
+                onAuthorClick = { author ->
+                    navController.navigateToSearch(searchRoute(keyword = author)) },
+                onViewMore = { section ->
+                    val sortApiValue = sortApiValueOf(section)
+                    val genreApiValue = if (sortApiValue == null) genreApiValueOf(section) else null
+                    if (sortApiValue != null || genreApiValue != null) {
+                        navController.navigateToSearch(
+                            if (sortApiValue != null) searchRoute(sort = sortApiValue)
+                            else searchRoute(genre = genreApiValue)
+                        )
+                    } else if (section.moreUrl.isNotBlank()) {
+                        moreUrlPageRoute(section.moreUrl)?.let { route ->
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = false
                                 }
+                                launchSingleTop = true
+                                restoreState = false
                             }
-                        } },
-                    onProfileClick = { onOpenProfile() },
-                    onComicClick = { navController.navigate("comics") },
-                    onVideoLongClick = onVideoLongClick,
-                    onOpenWatchStats = { navController.navigate("watchStats") }
-                )
-            }
+                        }
+                    } },
+                onProfileClick = { onOpenProfile() },
+                onComicClick = { navController.navigate("comics") },
+                onVideoLongClick = onVideoLongClick,
+                onOpenWatchStats = { navController.navigate("watchStats") }
+            )
         }
         composable("comics") {
             ComicScreen(
