@@ -30,8 +30,10 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.FormBody
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -77,6 +79,26 @@ class NetworkService @Inject constructor(
         client.newBuilder()
             .followRedirects(false)
             .followSslRedirects(false)
+            .build()
+    }
+
+    /**
+     * 登录表单提交专用链路：不注入持久化的登录 Cookie。
+     *
+     * 旧会话与本次 GET /login 换到的游客会话同名，两条同名 Cookie 一起下发时服务端只认最后一条，
+     * 表单里的 CSRF Token 就对不上它所属的会话，表现为「密码正确却一直登录不成功」。
+     */
+    private val loginClient by lazy {
+        client.newBuilder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .cookieJar(object : CookieJar {
+                override fun loadForRequest(url: HttpUrl): List<Cookie> =
+                    HCookieJar.observedCookies(url)
+
+                override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) =
+                    HCookieJar.saveFromResponse(url, cookies)
+            })
             .build()
     }
 
@@ -147,7 +169,12 @@ class NetworkService @Inject constructor(
             body.contains("cf_chl_", ignoreCase = true)
     }
 
-    data class LoginFormResult(val code: Int, val setCookies: List<String>, val body: String?)
+    data class LoginFormResult(
+        val code: Int,
+        val setCookies: List<String>,
+        val body: String?,
+        val location: String?
+    )
 
     suspend fun fetchLoginPageWithBaseUrl(): FetchResult = withContext(Dispatchers.IO) {
         AppLogger.log("NetworkService", "fetchLoginPageWithBaseUrl called")
@@ -195,15 +222,19 @@ class NetworkService @Inject constructor(
             .header("Origin", base)
             .header("X-CSRF-TOKEN", csrfToken)
             .build()
-        noRedirectClient.newCall(req).execute().use { resp ->
+        loginClient.newCall(req).execute().use { resp ->
             val code = resp.code
             val cookies = resp.headers("Set-Cookie")
             var body: String? = null
             if (code in 200..299) {
                 body = resp.body.string()
             }
-            AppLogger.log("NetworkService", "postLoginForm code=$code setCookies=${cookies.size} base=$base")
-            LoginFormResult(code, cookies, body)
+            val location = resp.header("Location")
+            AppLogger.log(
+                "NetworkService",
+                "postLoginForm code=$code setCookies=${cookies.size} location=${location?.redactUrlForLog()} base=$base"
+            )
+            LoginFormResult(code, cookies, body, location)
         }
     }
 

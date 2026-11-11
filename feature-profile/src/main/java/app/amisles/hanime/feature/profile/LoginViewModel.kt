@@ -61,7 +61,9 @@ class LoginViewModel @Inject constructor(
                         ErrorMapper.message(
                             context,
                             result.exception,
-                            context.getString(R.string.common_load_failed)
+                            // 仓储把域名/凭据类失败包装成 IllegalStateException，文案已面向用户，
+                            // 这里落到通用兜底会把它吞成「加载失败」，用户看不到该改用 WebView 的提示
+                            result.message.ifBlank { context.getString(R.string.common_load_failed) }
                         )
                     )
                     is AppResult.Loading -> {}

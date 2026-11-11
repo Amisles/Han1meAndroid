@@ -37,8 +37,13 @@ object HCookieJar : CookieJar {
      */
     private val requestGeneration = ThreadLocal<Long>()
 
-    override fun loadForRequest(url: HttpUrl): List<Cookie> {
-        requestGeneration.set(generation)
+    /**
+     * 仅内存里已观察到的 Cookie（不含持久化的登录态）。
+     *
+     * 登录表单提交必须用它：持久化的旧会话与这次 GET /login 换到的游客会话同名，
+     * 两条同名 Cookie 一起下发时服务端只认最后一条，CSRF Token 便与它所属的会话对不上。
+     */
+    fun observedCookies(url: HttpUrl): List<Cookie> {
         val host = url.host
         val secure = url.isHttps
         val out = mutableListOf<Cookie>()
@@ -62,6 +67,14 @@ object HCookieJar : CookieJar {
                 }
             }
         }
+        return out
+    }
+
+    override fun loadForRequest(url: HttpUrl): List<Cookie> {
+        requestGeneration.set(generation)
+        val host = url.host
+        val secure = url.isHttps
+        val out = observedCookies(url).toMutableList()
 
         // 仅向「会话来源域名」注入登录态 Cookie。
         // 刻意不用当前 baseUrl 判定：baseUrl 是用户可随意修改的镜像站地址，若据此注入，
@@ -121,6 +134,16 @@ object HCookieJar : CookieJar {
             }
         }
         AppLogger.d("HCookieJar", "saveFromResponse host=$host setCookies=${cookies.size}")
+    }
+
+    /** 该 host 下仍在有效期内的 Cookie，拼成请求头里的形式，用于把整份会话交给登录流程落盘与校验。 */
+    fun cookieHeaderFor(host: String): String {
+        val stored = cookieMap[host] ?: return ""
+        val now = System.currentTimeMillis()
+        return synchronized(stored) {
+            stored.filter { it.expiresAt > now }
+                .joinToString("; ") { "${it.name}=${it.value}" }
+        }
     }
 
     fun clearHost(host: String) {

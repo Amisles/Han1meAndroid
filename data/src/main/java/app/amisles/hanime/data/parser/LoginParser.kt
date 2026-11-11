@@ -36,16 +36,4 @@ object LoginParser {
         }
         return null
     }
-
-    fun parseUserIdFromSetCookies(setCookies: List<String>): String {
-        for (sc in setCookies) {
-            val kv = sc.substringBefore(';')
-            if (!kv.contains('=')) continue
-            val name = kv.substringBefore('=').trim()
-            val value = kv.substringAfter('=').trim()
-            if (name.contains("user_id", ignoreCase = true) ||
-                name.contains("uid", ignoreCase = true)) return value
-        }
-        return ""
-    }
 }

@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.repository
 
+import app.amisles.hanime.data.cookie.HCookieJar
 import app.amisles.hanime.data.remote.EntryInterceptor
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.AccountIdentityParser
@@ -337,16 +338,31 @@ class AccountRepositoryImpl @Inject constructor(
                         throw IllegalStateException("提交登录失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
                 }
             }
-            val mergedCookie = result.setCookies
+            val responseCookie = result.setCookies
                 .map { it.substringBefore(';').trim() }
                 .filter { it.contains('=') }
                 .joinToString("; ")
+            val sourceDomain = runCatching { android.net.Uri.parse(page.baseUrl).host }.getOrNull()
+            fun containsSession(raw: String) = raw.contains("laravel_session", ignoreCase = true) ||
+                    raw.contains("remember_web", ignoreCase = true) ||
+                    raw.contains("session", ignoreCase = true)
+            // 优先存这次响应下发的会话：CookieJar 里可能还留着上一个账号的 remember 令牌，
+            // 混进来会让站点认出旧身份。响应没带会话时（会话在 GET /login 时就已下发）才回落到 CookieJar。
+            val sessionCookie = responseCookie.takeIf(::containsSession)
+                ?: sourceDomain?.let { HCookieJar.cookieHeaderFor(it) }.orEmpty()
+                    .ifBlank { responseCookie }
             val isRedirect = result.code in 300..399
-            val hasSession = mergedCookie.contains("laravel_session", ignoreCase = true) ||
-                    mergedCookie.contains("remember_web", ignoreCase = true) ||
-                    mergedCookie.contains("session", ignoreCase = true)
+            val hasSession = containsSession(sessionCookie)
             if (result.code == 503) {
                 throw IllegalStateException("触发了 Cloudflare 校验，请切换到 WebView 登录")
+            }
+            if (result.code in 400..599) {
+                throw IllegalStateException("提交登录失败（HTTP ${result.code}），请改用 WebView 登录")
+            }
+            // 登录失败同样是 302：站点会把请求退回 /login 并在页面上给出表单错误。
+            // 只按状态码判定成功，密码错误、人机校验拦截都会被存成登录态。
+            if (isRedirect && result.location.orEmpty().contains("/login")) {
+                throw IllegalStateException("邮箱或密码不正确，或站点要求人机校验，请改用 WebView 登录")
             }
             if (result.code in 200..299 && result.body != null) {
                 val errorMsg = LoginParser.parseLoginFailed(result.body)
@@ -355,15 +371,20 @@ class AccountRepositoryImpl @Inject constructor(
             if (!isRedirect && !hasSession) {
                 throw IllegalStateException("登录失败：请检查邮箱或密码，或切换到 WebView 登录")
             }
-            val userId = LoginParser.parseUserIdFromSetCookies(result.setCookies)
-            // 会话与「实际提交登录的站点」绑定：之后即使用户把 baseUrl 改成镜像站，也不会跨域注入
-            Preferences.saveLogin(
-                mergedCookie,
-                userId,
-                // page.baseUrl 即本次实际登录的站点（可能已切换为镜像站），以它作为会话来源
-                sourceDomain = runCatching { android.net.Uri.parse(page.baseUrl).host }.getOrNull()
-            )
-            mergedCookie
+            // 站点认不认这份会话才是登录成功的唯一判据：只凭 302 + Set-Cookie 落盘，
+            // 界面会显示已登录，而所有需要身份的功能都返回失败（游客会话被当成了登录态）。
+            when (val verification = verifyWebLogin(sessionCookie, sourceDomain)) {
+                is WebLoginVerification.Verified ->
+                    // 会话与「实际提交登录的站点」绑定：之后即使用户把 baseUrl 改成镜像站，也不会跨域注入
+                    Preferences.saveLogin(sessionCookie, verification.userId, sourceDomain)
+
+                WebLoginVerification.NotLoggedIn ->
+                    throw IllegalStateException("登录未成功：站点仍把当前会话当作游客，请检查邮箱与密码，或改用 WebView 登录")
+
+                WebLoginVerification.Inconclusive ->
+                    throw IllegalStateException("无法确认登录结果（会话校验请求失败），请检查网络后重试，或改用 WebView 登录")
+            }
+            sessionCookie
         }.fold(
             onSuccess = { AppResult.success(it) },
             onFailure = { e ->

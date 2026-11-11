@@ -365,24 +365,25 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     // 是否已经进入第三方授权（站内 /auth/* 或 Google 域名）。授权进行中一律不把导航抛给系统：
     // 中途页面都绑定了本次会话，离开 WebView 只会换回一个错误页，登录也再回不来。
     val oauthInProgress = remember { mutableStateOf(false) }
-    // 是否走过第三方登录回调（/auth/{provider}/callback）。只有这种情况下的校验失败才提示用户：
-    // 普通浏览同样会让站点轮换游客会话，把那些也算成「登录失败」只会变成噪音。
+    // 是否走过第三方登录回调（/auth/{provider}/callback）。普通浏览同样会让站点轮换游客会话，
+    // 只有「走完回调」或「从登录页离开去落地页」这两种确实提交过登录的情况，校验失败才提示用户。
     val oauthRoundTrip = remember { mutableStateOf(false) }
-    // 校验单飞 + 节流：上一次校验没回来之前不再发起第二次
-    val verifying = remember { mutableStateOf(false) }
+    val loginAttempted = remember { mutableStateOf(false) }
+    // 节流：同一轮登录里连点几下不该反复打校验请求（并发由 ViewModel 单飞兜住）
     val lastVerifyAt = remember { AtomicLong(0L) }
     val uiState by vm.uiState.collectAsStateWithLifecycle()
+    // 校验中的遮罩由状态派生：手写的开关在「ViewModel 单飞忽略这次调用」时会永远卡在 true
+    val verifying = uiState is LoginViewModel.UiState.Verifying
 
     LaunchedEffect(uiState) {
         when (val state = uiState) {
-            is LoginViewModel.UiState.Verifying -> {
-                verifying.value = true
-                notice = null
-            }
-            is LoginViewModel.UiState.Error -> {
-                verifying.value = false
-                notice = if (oauthRoundTrip.value) LoginNotice(state.message, canReload = true) else null
-            }
+            is LoginViewModel.UiState.Verifying -> notice = null
+            is LoginViewModel.UiState.Error ->
+                notice = if (oauthRoundTrip.value || loginAttempted.value) {
+                    LoginNotice(state.message, canReload = true)
+                } else {
+                    null
+                }
             else -> Unit
         }
     }
@@ -390,30 +391,49 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
     // 页面交还给官方域名、且会话确实换过时，才向站点确认一次身份。
     // 刻意不做「Cookie 里有 session 就判定登录成功」：游客同样拿得到 laravel_session，
     // 那样会在刚点下 Google 登录时误判成功并退出登录页，存下来的却是游客会话。
-    val verifySessionIfReady: (String) -> Unit = { url ->
-        val ready = !verifying.value &&
+    // 返回 true 表示这次确实发起了校验，调用方据此保证一轮登录只提前触发一次。
+    val verifySessionIfReady: (String) -> Boolean = { url ->
+        val ready =
                 WebLoginPolicy.isOfficialHost(url) &&
                 !WebLoginPolicy.isLoginPage(url) &&
                 !WebLoginPolicy.isLogoutUrl(url) &&
                 // 登录入口与回调页都只是跳板，会话要到落地页才建立：
                 // 在这两处校验只会得到「仍是游客」的假失败
                 !WebLoginPolicy.isOAuthEntry(url)
-        if (ready) {
-            val cookies = CookieManager.getInstance().getCookie(url)
-            val sessionReplaced = oauthRoundTrip.value || cookies != cookieAtStart
-            val now = SystemClock.elapsedRealtime()
-            if (WebLoginPolicy.hasSessionCookie(cookies) &&
-                sessionReplaced &&
-                now - lastVerifyAt.get() >= VERIFY_MIN_INTERVAL_MS
-            ) {
-                lastVerifyAt.set(now)
-                verifying.value = true
-                AppLogger.d(
-                    "LoginScreen",
-                    "会话已变化，向站点校验登录状态: host=${WebLoginPolicy.hostOf(url)}"
-                )
-                vm.completeWebViewLogin(cookies.orEmpty(), WebLoginPolicy.hostOf(url))
-            }
+        val cookies = if (ready) CookieManager.getInstance().getCookie(url) else null
+        val sessionReplaced = oauthRoundTrip.value || cookies != cookieAtStart
+        val now = SystemClock.elapsedRealtime()
+        if (!ready ||
+            !WebLoginPolicy.hasSessionCookie(cookies) ||
+            !sessionReplaced ||
+            now - lastVerifyAt.get() < VERIFY_MIN_INTERVAL_MS
+        ) {
+            false
+        } else {
+            lastVerifyAt.set(now)
+            AppLogger.d(
+                "LoginScreen",
+                "会话已变化，向站点校验登录状态: host=${WebLoginPolicy.hostOf(url)}"
+            )
+            vm.completeWebViewLogin(cookies.orEmpty(), WebLoginPolicy.hostOf(url))
+            true
+        }
+    }
+
+    // 提交登录表单后站点立刻 302 到落地页：导航一开始就发起校验，不必等首页整页（缩略图很多）
+    // 加载完才动手 —— 那段时间用户只能盯着站点的首页，登录页迟迟不关。
+    val loginPageSeen = remember { mutableStateOf(false) }
+    val loginLandingHandled = remember { mutableStateOf(false) }
+    val verifyOnLoginLanding: (String) -> Unit = { url ->
+        if (WebLoginPolicy.isLoginPage(url)) {
+            loginPageSeen.value = true
+            loginLandingHandled.value = false
+            // 新一轮登录是用户重新提交表单，不该被上一轮的节流挡住
+            lastVerifyAt.set(0L)
+        } else if (loginPageSeen.value && !loginLandingHandled.value) {
+            val started = verifySessionIfReady(url)
+            loginLandingHandled.value = started
+            if (started) loginAttempted.value = true
         }
     }
 
@@ -498,6 +518,7 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                                     canReload = true
                                 )
                             }
+                            verifyOnLoginLanding(currentUrl)
                         }
 
                         /**
@@ -511,11 +532,15 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
                                 oauthRoundTrip.value = true
                                 AppLogger.d("LoginScreen", "检测到第三方登录回调，等待落地页后校验会话")
                             }
+                            verifyOnLoginLanding(currentUrl)
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             loading = false
-                            verifySessionIfReady(url ?: return)
+                            // 落地导航没触发提前校验（服务端 302 不一定给 onPageStarted / 历史回调）时这里补一次
+                            if (verifySessionIfReady(url ?: return) && loginPageSeen.value) {
+                                loginAttempted.value = true
+                            }
                         }
 
                         override fun onReceivedError(
@@ -609,11 +634,11 @@ private fun WebViewLoginTab(vm: LoginViewModel) {
         }
 
         // 校验本身是一次网络请求，页面上看不出任何变化，必须有明确进度，否则用户会以为点坏了
-        if (verifying.value) {
+        if (verifying) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.82f)),
+                    .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
