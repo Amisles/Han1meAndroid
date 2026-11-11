@@ -371,13 +371,13 @@ fun HanimeApp(
     var drawerCloseSkip by remember { mutableFloatStateOf(0f) }
     val rawProgress by animateFloatAsState(
         targetValue = if (profileOpen) 1f else 0f,
-        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = NAV_TRANSITION_DURATION_MS, easing = FastOutSlowInEasing),
         label = "profileDrawer"
     )
     // 关闭续接必须是乘法：松手当帧 rawProgress 仍为 1，此时抽屉已视觉位移 skip 比例，
     // progress = rawProgress * (1 - skip) 恰好等于松手位置（1 - skip），随 rawProgress
     // 归零平滑收尾。旧实现 (rawProgress + skip).coerceAtMost(1f) 数学上反向：松手当帧
-    // 被 clamp 回 1（弹回全开）、停留 skip×320ms、收尾再由 skip 复位造成第二次跳变。
+    // 被 clamp 回 1（弹回全开）、停留 skip×进场时长、收尾再由 skip 复位造成第二次跳变。
     val progress = rawProgress * (1f - drawerCloseSkip)
     LaunchedEffect(profileOpen, rawProgress) {
         if (!profileOpen && rawProgress == 0f) drawerCloseSkip = 0f
@@ -468,17 +468,31 @@ fun HanimeApp(
         profileOpen = false
     }
 
-    if (showOverlay) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                // 在绘制 lambda 内读 progress：只失效绘制阶段，既不触发重组也不额外分配图层
-                .drawBehind { drawRect(color = Color.Black, alpha = 0.5f * progress) }
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { profileOpen = false }
-        )
+    // 抽屉内容首次展开后常驻组合，后续展开只做位移动画；关闭态整层已平移出屏，收不到触摸。
+    // 每次展开都重建 ProfileScreen 会让打开抽屉的首帧承受整页组合，与页面转场抢同一帧预算。
+    var drawerComposed by remember { mutableStateOf(false) }
+    LaunchedEffect(profileOpen) {
+        if (profileOpen) drawerComposed = true
+    }
+    val onDrawerNavigate = remember(navController) {
+        { route: String ->
+            navController.navigate(route)
+            profileOpen = false
+        }
+    }
+    if (drawerComposed) {
+        if (showOverlay) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // 在绘制 lambda 内读 progress：只失效绘制阶段，既不触发重组也不额外分配图层
+                    .drawBehind { drawRect(color = Color.Black, alpha = 0.5f * progress) }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { profileOpen = false }
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxHeight()
@@ -517,12 +531,7 @@ fun HanimeApp(
                     )
                 }
         ) {
-            ProfileScreen(
-                onNavigate = { route ->
-                    navController.navigate(route)
-                    profileOpen = false
-                }
-            )
+            ProfileScreen(onNavigate = onDrawerNavigate)
         }
     }
     // ── 人机校验弹窗 ──────────────────────────────────────────────────────

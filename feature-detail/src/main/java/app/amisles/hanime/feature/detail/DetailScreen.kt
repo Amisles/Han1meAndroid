@@ -152,10 +152,13 @@ fun DetailScreen(
             }
         }
     }
-    // 进入详情页即预取第一页评论，不必等用户切到评论页；放在主信息到齐之后，避免与详情页请求并发
+    // 进入详情页即预取第一页评论，不必等用户切到评论页；放在主信息到齐之后，避免与详情页请求并发。
+    // 再静默一段让主内容组合与播放器 prepare 先起跑：这一刻的帧预算最紧张，评论请求晚一步发出
+    // 不影响评论页的即时性（用户先切到评论 tab 时由 selectTab 直接触发加载，两侧都有重入守卫）
     LaunchedEffect(videoDetail != null, viewModel.videoId) {
         val videoId = viewModel.videoId
         if (videoDetail == null || videoId.isEmpty()) return@LaunchedEffect
+        delay(1_200L)
         commentVm.selectVideo(videoId)
         commentVm.loadComments()
     }
