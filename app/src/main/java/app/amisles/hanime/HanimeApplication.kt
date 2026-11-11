@@ -24,6 +24,10 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -155,8 +159,19 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
         // 崩溃记录依赖 AppLogger 已就绪（会同步追加一条错误日志），故紧随其后
         CrashLogger.init(this)
         ExoPlayerFactory.prewarmCache(this)
-        LauncherIconRepository.ensureDefaultEntryEnabled(this)
-        syncSubscriptionReminder()
+        deferredStartupInit()
+    }
+
+    /**
+     * 延后到首帧之外：syncSubscriptionReminder 会触发 WorkManager 首次初始化（含建库），
+     * ensureDefaultEntryEnabled 在 debug 包是 PackageManager 的 binder 调用；没有任何启动
+     * 路径依赖二者先完成，同步执行只会把冷启动关键路径拉长。
+     */
+    private fun deferredStartupInit() {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            LauncherIconRepository.ensureDefaultEntryEnabled(this@HanimeApplication)
+            syncSubscriptionReminder()
+        }
     }
 
     private fun syncSystemAppLocale() {

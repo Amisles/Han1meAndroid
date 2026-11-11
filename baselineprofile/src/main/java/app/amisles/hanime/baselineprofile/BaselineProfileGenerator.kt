@@ -13,11 +13,7 @@ import org.junit.runner.RunWith
 /**
  * Baseline Profile 生成器。
  *
- * 只覆盖冷启动与首页首屏滑动：这两段是所有用户每次打开都要走的路径，
- * 也是 macrobenchmark 里对首帧影响最大的部分。搜索、详情等次级页面在
- * 冷启动后再进，对 profile 的收益明显更小，故不纳入。
- *
- * 运行：./gradlew :baselineprofile:generateNonMinifiedReleaseBaselineProfile
+ * 覆盖冷启动、首页滑动、进入视频详情页与打开搜索页四段主路径，
  * 产物落在 app/src/main/baseline-prof.txt，随 release 打包。
  */
 @RunWith(AndroidJUnit4::class)
@@ -47,6 +43,16 @@ class BaselineProfileGenerator {
 
         // 回滚到顶部，覆盖反向滚动时的组合复用路径
         device.findObject(By.scrollable(true))?.scroll(Direction.UP, 0.8f)
+        device.waitForIdle()
+
+        checkNotNull(device.findObject(By.res("video_card"))).click()
+        check(device.wait(Until.hasObject(By.res("detail_screen")), 20_000))
+        device.waitForIdle()
+        device.pressBack()
+        check(device.wait(Until.hasObject(By.res("video_card")), 10_000))
+
+        checkNotNull(device.findObject(By.res("home_search"))).click()
+        check(device.wait(Until.hasObject(By.res("search_screen")), 10_000))
         device.waitForIdle()
     }
 }

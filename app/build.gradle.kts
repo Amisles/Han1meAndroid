@@ -95,6 +95,7 @@ kotlin {
 }
 
 dependencies {
+    baselineProfile(project(":baselineprofile"))
     implementation(project(":core:common"))
     implementation(project(":core:ui"))
 
