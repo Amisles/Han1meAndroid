@@ -10,6 +10,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.model.WatchStats
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.data.cache.HomeSnapshotCache
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
@@ -38,6 +39,7 @@ class HomeViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val statsRepository: app.amisles.hanime.domain.repository.StatsRepository,
     private val settings: SettingsRepository,
+    private val homeSnapshotCache: HomeSnapshotCache,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -161,7 +163,8 @@ class HomeViewModel @Inject constructor(
      * 下拉手势与错误页「重试」共用同一个回调，靠入参区分会漏判（重试时若走刷新分支，
      * 界面会因 sections 为空且无骨架屏而白屏）。
      * - 已有数据 → 刷新：保留 sections / banner 原地更新，只由下拉指示器表达进度；
-     * - 无数据 → 首屏加载：清空后由骨架屏接管。
+     * - 无数据但有按站点持久化的首页快照 → 注入快照原地上屏并转入刷新分支；
+     * - 无数据且无快照 → 首屏加载：清空后由骨架屏接管。
      */
     fun loadHomeData() {
         loadSiteUrl = settings.baseUrl
@@ -181,8 +184,20 @@ class HomeViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             var firstEventArrived = false
             var streamFailed = false
+            var hasRenderableContent = hasContent
+            val siteKey = loadSiteUrl
+            if (!hasRenderableContent) {
+                val snapshot = siteKey?.let { homeSnapshotCache.read(it) }
+                if (snapshot != null && snapshot.sections.isNotEmpty()) {
+                    _sections.value = snapshot.sections
+                    _banner.value = snapshot.banner
+                    _isLoading.value = false
+                    _isRefreshing.value = true
+                    hasRenderableContent = true
+                }
+            }
             val accumulated = _sections.value.toMutableList()
-            val receivedSections = if (hasContent) mutableListOf<HomeSection>() else null
+            val receivedSections = if (hasRenderableContent) mutableListOf<HomeSection>() else null
             var firstPushDone = false
             var flushJob: Job? = null
             val flushScope: CoroutineScope = this
@@ -259,6 +274,9 @@ class HomeViewModel @Inject constructor(
                 accumulated.removeAll(dropped.toSet())
             }
             pushSections()
+            if (!streamFailed && _sections.value.isNotEmpty()) {
+                siteKey?.let { homeSnapshotCache.write(it, _banner.value, _sections.value) }
+            }
         }
     }
 
