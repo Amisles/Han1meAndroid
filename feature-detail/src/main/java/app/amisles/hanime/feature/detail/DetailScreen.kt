@@ -493,7 +493,6 @@ fun DetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
-                    .background(MaterialTheme.colorScheme.background)
                     .testTag("detail_screen")
             ) {
                 // 左侧：视频播放器（垂直居中）
@@ -539,7 +538,6 @@ fun DetailScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.background)
                 ) {
                     videoDetail?.let { detailRestItems(it, restState, restActions) }
                 }
@@ -552,7 +550,7 @@ fun DetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
-                    .background(if (isPlayerFullscreen) Color.Black else MaterialTheme.colorScheme.background)
+                    .then(if (isPlayerFullscreen) Modifier.background(Color.Black) else Modifier)
                     .testTag("detail_screen")
             ) {
                 if (isLoading) {

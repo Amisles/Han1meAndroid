@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,10 +50,12 @@ fun VideoGridCard(
     val coverRatio = videoCoverAspectRatio(video)
     val geometry = cardGeometry(cfg)
 
-    val cardDescription = buildString {
-        append(video.title)
-        if (video.author.isNotEmpty()) append("，").append(video.author)
-        if (video.duration.isNotEmpty()) append("，").append(video.duration)
+    val cardDescription = remember(video) {
+        buildString {
+            append(video.title)
+            if (video.author.isNotEmpty()) append("，").append(video.author)
+            if (video.duration.isNotEmpty()) append("，").append(video.duration)
+        }
     }
     Column(
         modifier = modifier

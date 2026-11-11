@@ -315,7 +315,6 @@ fun HomeScreenContent(
         state = pullState,
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
         ResponsiveContent {
@@ -324,7 +323,6 @@ fun HomeScreenContent(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
         ) {
         item(key = "home-header", contentType = HomeItemType.HEADER) {
             Header(
@@ -622,7 +620,6 @@ private fun HomeSkeletonScreen() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
     ) {
         // Banner 骨架占位
         Box(
