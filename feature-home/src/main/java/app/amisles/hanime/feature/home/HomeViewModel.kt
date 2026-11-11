@@ -12,6 +12,7 @@ import app.amisles.hanime.domain.model.WatchStats
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.data.remote.CloudflareChallengeException
@@ -36,6 +37,7 @@ class HomeViewModel @Inject constructor(
     private val repository: ContentRepository,
     private val libraryRepository: LibraryRepository,
     private val statsRepository: app.amisles.hanime.domain.repository.StatsRepository,
+    private val settings: SettingsRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -145,6 +147,8 @@ class HomeViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
+    private var loadSiteUrl: String? = null
+
     // 首页数据在 VM 创建时即加载（不放到 UI 的 LaunchedEffect）：首页是启动页，越早请求首屏越快
     init {
         loadHomeData()
@@ -160,11 +164,13 @@ class HomeViewModel @Inject constructor(
      * - 无数据 → 首屏加载：清空后由骨架屏接管。
      */
     fun loadHomeData() {
+        loadSiteUrl = settings.baseUrl
         val hasContent = _sections.value.isNotEmpty() || _banner.value != null
         if (hasContent) {
             _isRefreshing.value = true
         } else {
             _isLoading.value = true
+            _isRefreshing.value = false
             _sections.value = emptyList()
             _banner.value = null
         }
@@ -254,6 +260,16 @@ class HomeViewModel @Inject constructor(
             }
             pushSections()
         }
+    }
+
+    /**
+     * 换站后重拉：在途请求仍属于旧站点，按刷新分支重拉还会保留旧站点内容，故先丢弃 sections / banner。
+     */
+    fun refreshIfSiteChanged(siteUrl: String) {
+        if (siteUrl == loadSiteUrl) return
+        _sections.value = emptyList()
+        _banner.value = null
+        loadHomeData()
     }
 }
 

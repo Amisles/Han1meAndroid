@@ -199,6 +199,8 @@ fun HomeScreen(
     val error by viewModel.error.collectAsStateWithLifecycle()
     val challengeHost by viewModel.challengeHost.collectAsStateWithLifecycle()
     val siteUrl by LocalAppPreferences.current.baseUrlFlow.collectAsStateWithLifecycle()
+    // 换站后回到首页必须重拉：LaunchedEffect 在页面重新进入组合时同样会重跑，是否真的换站由 VM 判定
+    LaunchedEffect(siteUrl) { viewModel.refreshIfSiteChanged(siteUrl) }
     // 人机校验通过后自动重拉：否则用户要手动下拉一次才知道已经能用了
     val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
     LaunchedEffect(solvedTick) {
