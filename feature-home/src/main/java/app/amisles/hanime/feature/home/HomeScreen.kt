@@ -19,15 +19,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -100,6 +103,7 @@ private const val LIST_ITEM_H_PADDING_DP = 5f
 private const val LIST_ROW_THUMB_RATIO = 0.42f
 
 private const val SKELETON_SECTION_COUNT = 3
+private const val SKELETON_HERO_SIDE_BLOCKS = 2
 private const val SKELETON_CAROUSEL_CARDS = 2
 private val SKELETON_SECTION_TITLES = listOf("最新上市", "最新上传", "本日排行")
 
@@ -168,8 +172,8 @@ private fun buildPlans(
     SectionPlan(section = section, mode = mode, videos = videos, rowVideos = rowVideos)
 }
 
-private fun sectionPairKey(pair: List<SectionPlan>, index: Int): String =
-    "home-section-$index-" + pair.joinToString("|") { it.section.title }
+private fun sectionItemKey(plan: SectionPlan, index: Int): String =
+    "home-section-$index-" + plan.section.title
 
 @Composable
 fun HomeScreen(
@@ -265,7 +269,7 @@ fun HomeScreenContent(
     onDismissWeeklyReport: () -> Unit = {},
     onOpenWatchStats: () -> Unit = {}
 ) {
-    val listState = rememberLazyListState()
+    val listState = rememberLazyStaggeredGridState()
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
     val sizeInfo = currentWindowSizeInfo()
@@ -286,9 +290,6 @@ fun HomeScreenContent(
     val plans = remember(sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections) {
         buildPlans(sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections)
     }
-    val sectionPairs = remember(plans, twoColumnSections) {
-        if (twoColumnSections) plans.chunked(2) else plans.map { listOf(it) }
-    }
     // 多列时缩略图须按列宽等比缩小：固定 150dp 会把文字区压到几 dp。比例取 0.42，
     // 与手机单列下缩略图占卡宽的比例（150 / 340）一致
     val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
@@ -307,33 +308,38 @@ fun HomeScreenContent(
         }
         if (watchLater.isNotEmpty()) add("home-watch-later")
     }
-    val sectionTitleToIndex: Map<String, Int> = remember(sectionPairs, headKeys) {
+    val sectionTitleToIndex: Map<String, Int> = remember(plans, headKeys) {
         buildMap {
-            sectionPairs.forEachIndexed { index, pair ->
-                pair.forEach { plan -> put(plan.section.title, headKeys.size + index) }
-            }
+            plans.forEachIndexed { index, plan -> put(plan.section.title, headKeys.size + index) }
         }
     }
     // 转屏或分屏改变档位时，item 结构与行高都会变，LazyList 只保留下标，画面会跳到
-    // 别的分区。旧布局仍可读的时刻记下首个可见 item 的 key，新布局量完按 key 找回。
-    val itemKeys = remember(headKeys, sectionPairs) {
-        headKeys + sectionPairs.mapIndexed { index, pair -> sectionPairKey(pair, index) }
+    // 别的分区。旧布局仍可读的时刻记下首个可见 item 的 key 和它被裁掉的高度，
+    // 新布局量完按 key 找回同一个位置；只按下标推断会在两栏与单栏之间错位。
+    val itemKeys = remember(headKeys, plans) {
+        headKeys + plans.mapIndexed { index, plan -> sectionItemKey(plan, index) }
     }
     val layoutSignature = listOf(sizeInfo.widthDp, sizeInfo.heightDp, columns, twoColumnSections, twoColumnHero)
     var pendingAnchorKey by remember { mutableStateOf<String?>(null) }
+    var pendingAnchorOffset by remember { mutableStateOf(0) }
     DisposableEffect(layoutSignature) {
         onDispose {
-            val key = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
-            if (key != null) pendingAnchorKey = key
+            val info = listState.layoutInfo.visibleItemsInfo.minByOrNull { it.index }
+            val key = info?.key as? String
+            if (key != null) {
+                pendingAnchorKey = key
+                pendingAnchorOffset = info.offset.y
+            }
         }
     }
     LaunchedEffect(layoutSignature) {
         val anchor = pendingAnchorKey ?: return@LaunchedEffect
         pendingAnchorKey = null
         val index = itemKeys.indexOf(anchor)
-        if (index >= 0 && index != listState.firstVisibleItemIndex) {
-            listState.scrollToItem(index)
+        if (index >= 0) {
+            listState.scrollToItem(index, pendingAnchorOffset)
         }
+        pendingAnchorOffset = 0
     }
 
     val context = LocalContext.current
@@ -365,12 +371,14 @@ fun HomeScreenContent(
     ) {
         ResponsiveContent {
         // 状态栏内边距已由外层 PullToRefreshBox 提供，这里不再叠加，否则顶部留白翻倍
-        LazyColumn(
+        LazyVerticalStaggeredGrid(
+            columns = StaggeredGridCells.Fixed(if (twoColumnSections) 2 else 1),
             state = listState,
+            horizontalArrangement = Arrangement.spacedBy(HOME_SECTION_GAP),
             modifier = Modifier
                 .fillMaxSize()
         ) {
-        item(key = "home-header", contentType = HomeItemType.HEADER) {
+        item(key = "home-header", contentType = HomeItemType.HEADER, span = StaggeredGridItemSpan.FullLine) {
             Header(
                 siteUrl = siteUrl,
                 onSearchNavigate = onNavigateToSearch,
@@ -380,7 +388,7 @@ fun HomeScreenContent(
         }
 
         if (cfg.homeShowCategoryBar) {
-            item(key = "home-category", contentType = HomeItemType.CATEGORY) {
+            item(key = "home-category", contentType = HomeItemType.CATEGORY, span = StaggeredGridItemSpan.FullLine) {
                 CategoryScroll(
                     selectedCategory = selectedCategory,
                     onCategorySelected = { category ->
@@ -403,22 +411,24 @@ fun HomeScreenContent(
         }
 
         if (isLoading) {
-            item(key = "home-loading", contentType = HomeItemType.SKELETON) {
+            item(key = "home-loading", contentType = HomeItemType.SKELETON, span = StaggeredGridItemSpan.FullLine) {
                 HomeSkeletonScreen()
             }
         } else if (error != null && sections.isEmpty()) {
-            item(key = "home-error", contentType = HomeItemType.ERROR) {
+            item(key = "home-error", contentType = HomeItemType.ERROR, span = StaggeredGridItemSpan.FullLine) {
                 KaomojiErrorView(
                     message = error,
                     onRetry = onRefresh,
-                    modifier = Modifier.fillParentMaxSize(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = (sizeInfo.heightDp * 0.6f).dp),
                     actionLabel = challengeHost?.let { stringResource(R.string.error_action_verify) },
                     onAction = challengeHost?.let { host -> { CloudflareChallenge.request(host) } }
                 )
             }
         } else {
             if (error != null && sections.isNotEmpty()) {
-                item(key = "home-refresh-error", contentType = HomeItemType.REFRESH_ERROR) {
+                item(key = "home-refresh-error", contentType = HomeItemType.REFRESH_ERROR, span = StaggeredGridItemSpan.FullLine) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -450,8 +460,8 @@ fun HomeScreenContent(
             }
 
             val heroBanner = banner
-            if (twoColumnHero && heroBanner != null) {
-                item(key = "home-hero", contentType = HomeItemType.BANNER) {
+            if (twoColumnHero) {
+                item(key = "home-hero", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
                     HomeHeroRow(
                         banner = heroBanner,
                         layout = heroLayout,
@@ -468,7 +478,7 @@ fun HomeScreenContent(
                 }
             } else {
                 if (weeklyReportVisible && weeklyReport != null) {
-                    item(key = "home-weekly-report", contentType = HomeItemType.BANNER) {
+                    item(key = "home-weekly-report", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
                         WeeklyReportCard(
                             stats = weeklyReport,
                             onDismiss = onDismissWeeklyReport,
@@ -479,7 +489,7 @@ fun HomeScreenContent(
                 }
 
                 banner?.let {
-                    item(key = "home-banner", contentType = HomeItemType.BANNER) {
+                    item(key = "home-banner", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
                         Banner(
                             bannerData = it,
                             onPlayClick = { onVideoClick(it.videoUrl) },
@@ -491,7 +501,7 @@ fun HomeScreenContent(
                 }
 
                 if (continueWatching.isNotEmpty()) {
-                    item(key = "home-continue-watching", contentType = HomeItemType.BANNER) {
+                    item(key = "home-continue-watching", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
                         ContinueWatchingSection(
                             items = continueWatching,
                             onItemClick = { history -> onVideoClick(history.videoUrl) },
@@ -504,7 +514,7 @@ fun HomeScreenContent(
             }
 
             if (watchLater.isNotEmpty()) {
-                item(key = "home-watch-later", contentType = HomeItemType.BANNER) {
+                item(key = "home-watch-later", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
                     WatchLaterSection(
                         items = watchLater,
                         onItemClick = { item ->
@@ -517,34 +527,24 @@ fun HomeScreenContent(
                 }
             }
 
-            sectionPairs.forEachIndexed { pairIndex, pair ->
-                item(key = sectionPairKey(pair, pairIndex), contentType = HomeItemType.SECTION) {
-                    Row(
+            plans.forEachIndexed { index, plan ->
+                item(key = sectionItemKey(plan, index), contentType = HomeItemType.SECTION) {
+                    SectionBlock(
+                        plan = plan,
+                        columns = columns,
+                        rowThumbnailWidth = rowThumbnailWidth,
+                        onVideoClick = onVideoClick,
+                        onAuthorClick = onAuthorClick,
+                        onVideoLongClick = onVideoLongClick,
+                        onViewMore = onViewMore,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = if (twoColumnSections) HOME_SIDE_PADDING else 0.dp),
-                        horizontalArrangement = Arrangement.spacedBy(HOME_SECTION_GAP)
-                    ) {
-                        pair.forEach { plan ->
-                            SectionBlock(
-                                plan = plan,
-                                columns = columns,
-                                rowThumbnailWidth = rowThumbnailWidth,
-                                onVideoClick = onVideoClick,
-                                onAuthorClick = onAuthorClick,
-                                onVideoLongClick = onVideoLongClick,
-                                onViewMore = onViewMore,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        if (twoColumnSections && pair.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
+                            .padding(horizontal = if (twoColumnSections) HOME_SIDE_PADDING else 0.dp)
+                    )
                 }
             }
 
-            item(key = "home-bottom-spacer", contentType = HomeItemType.SPACER) {
+            item(key = "home-bottom-spacer", contentType = HomeItemType.SPACER, span = StaggeredGridItemSpan.FullLine) {
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
@@ -744,20 +744,46 @@ private fun HomeSkeletonScreen() {
         val cfg = LocalUiConfig.current
         val homeConfig = LocalHomeSectionConfig.current
         val sizeInfo = currentWindowSizeInfo()
-        val heroHeight = remember(sizeInfo) {
-            homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent = false).height
-        }
-
-        // Banner 骨架占位
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (heroHeight.value > 0f) heroHeight else cfg.bannerHeight)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .graphicsLayer { alpha = shimmerAlpha.value }
-        )
         val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }
+        val heroLayout = remember(sizeInfo, twoColumnSections) {
+            homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent = twoColumnSections)
+        }
+        // Banner 骨架占位：宽屏与内容态同样分两栏，避免加载完成时整块换形
+        if (heroLayout.twoColumn) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = HOME_SIDE_PADDING),
+                horizontalArrangement = Arrangement.spacedBy(HERO_GAP)
+            ) {
+                SkeletonHeroBox(
+                    shimmerAlpha = shimmerAlpha,
+                    modifier = Modifier
+                        .width(heroLayout.bannerWidth)
+                        .height(heroLayout.height)
+                )
+                Column(
+                    modifier = Modifier.width(heroLayout.sideWidth),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    repeat(SKELETON_HERO_SIDE_BLOCKS) {
+                        SkeletonHeroBox(
+                            shimmerAlpha = shimmerAlpha,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(heroLayout.height / SKELETON_HERO_SIDE_BLOCKS)
+                        )
+                    }
+                }
+            }
+        } else {
+            SkeletonHeroBox(
+                shimmerAlpha = shimmerAlpha,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (heroLayout.height.value > 0f) heroLayout.height else cfg.bannerHeight)
+            )
+        }
         val columns = remember(sizeInfo, cfg, twoColumnSections) {
             homeSectionColumns(cfg, sizeInfo, twoColumnSections).coerceAtLeast(1)
         }
@@ -793,6 +819,16 @@ private fun HomeSkeletonScreen() {
 
         Spacer(modifier = Modifier.height(20.dp))
     }
+}
+
+@Composable
+private fun SkeletonHeroBox(shimmerAlpha: State<Float>, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .graphicsLayer { alpha = shimmerAlpha.value }
+    )
 }
 
 @Composable
@@ -982,7 +1018,7 @@ private fun SkeletonCarousel(shimmerAlpha: State<Float>) {
     }
 }
 
-private suspend fun LazyListState.smoothScrollToItem(
+private suspend fun LazyStaggeredGridState.smoothScrollToItem(
     index: Int,
     offset: Int = 0,
     durationMs: Int = 700,
@@ -1006,21 +1042,21 @@ private suspend fun LazyListState.smoothScrollToItem(
             animateScrollToItem(index, offset)
             return
         }
-        val deltaPixels = (targetItem.offset + offset).toFloat()
+        val deltaPixels = (targetItem.offset.y + offset).toFloat()
         if (deltaPixels != 0f) {
             animateScrollBy(deltaPixels, tween(durationMs, easing = easing))
         }
         return
     }
 
-    val avgSize = visibleItems.map { it.size }.average().toInt()
+    val avgSize = visibleItems.map { it.size.height }.average().toInt()
     if (avgSize <= 0) {
         animateScrollToItem(index, offset)
         return
     }
 
     val firstIndex = firstVisible.index
-    val firstOffset = firstVisible.offset
+    val firstOffset = firstVisible.offset.y
     val estimatedDistancePixels =
         ((index - firstIndex) * avgSize + firstOffset + offset).toFloat()
 
@@ -1031,7 +1067,7 @@ private suspend fun LazyListState.smoothScrollToItem(
     val visibleAfter = layoutInfo.visibleItemsInfo
     val target = visibleAfter.firstOrNull { it.index == index }
     if (target != null) {
-        val fineTune = (target.offset + offset).toFloat()
+        val fineTune = (target.offset.y + offset).toFloat()
         if (fineTune != 0f) {
             animateScrollBy(
                 fineTune,
