@@ -144,22 +144,25 @@ private data class SectionPlan(
         }
 }
 
-private fun renderMode(configured: HomeSectionLayout, isCompactWidth: Boolean): SectionRenderMode =
+private fun renderMode(configured: HomeSectionLayout, widthClass: WindowWidthSizeClass): SectionRenderMode =
     when (configured) {
         HomeSectionLayout.LIST -> SectionRenderMode.LIST_COLUMN
         HomeSectionLayout.GRID -> SectionRenderMode.GRID_ROWS
         HomeSectionLayout.CAROUSEL -> SectionRenderMode.CAROUSEL
-        HomeSectionLayout.AUTO ->
-            if (isCompactWidth) SectionRenderMode.LIST_COLUMN else SectionRenderMode.LIST_ROWS
+        HomeSectionLayout.AUTO -> when (widthClass) {
+            WindowWidthSizeClass.Compact -> SectionRenderMode.LIST_COLUMN
+            WindowWidthSizeClass.Medium -> SectionRenderMode.LIST_ROWS
+            WindowWidthSizeClass.Expanded -> SectionRenderMode.GRID_ROWS
+        }
     }
 
 private fun buildPlans(
     sections: List<HomeSection>,
     homeConfig: HomeSectionConfig,
-    isCompactWidth: Boolean,
+    widthClass: WindowWidthSizeClass,
     columns: Int
 ): List<SectionPlan> = homeConfig.arrange(sections).mapIndexed { index, section ->
-    val mode = renderMode(homeConfig.layoutFor(section.title), isCompactWidth)
+    val mode = renderMode(homeConfig.layoutFor(section.title), widthClass)
     val videos = section.videos.take(homeConfig.countFor(section.title))
     val rowVideos = when (mode) {
         SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> videos.chunked(columns)
@@ -282,16 +285,15 @@ fun HomeScreenContent(
     val homeConfig = LocalHomeSectionConfig.current
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
 
-    // 与渲染分支共用同一个判定，避免两处条件漂移
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
-    val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
+    val columns = remember(sizeInfo, cfg) { homeSectionColumns(cfg, sizeInfo).coerceAtLeast(1) }
     val hasSideContent = continueWatching.isNotEmpty() || (weeklyReportVisible && weeklyReport != null)
     val heroLayout = remember(sizeInfo, hasSideContent) {
         homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent)
     }
     val twoColumnHero = heroLayout.twoColumn && banner != null
-    val plans = remember(sections, homeConfig, isCompactWidth, columns) {
-        buildPlans(sections, homeConfig, isCompactWidth, columns)
+    val plans = remember(sections, homeConfig, sizeInfo.widthClass, columns) {
+        buildPlans(sections, homeConfig, sizeInfo.widthClass, columns)
     }
     // 多列时缩略图须按列宽等比缩小：固定 150dp 会把文字区压到几 dp。比例取 0.42，
     // 与手机单列下缩略图占卡宽的比例（150 / 340）一致
@@ -739,7 +741,6 @@ private fun HomeSkeletonScreen() {
         val cfg = LocalUiConfig.current
         val homeConfig = LocalHomeSectionConfig.current
         val sizeInfo = currentWindowSizeInfo()
-        val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
         val heroHeight = remember(sizeInfo) {
             homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent = false).height
         }
@@ -753,10 +754,10 @@ private fun HomeSkeletonScreen() {
                 .background(MaterialTheme.colorScheme.surface)
                 .graphicsLayer { alpha = shimmerAlpha.value }
         )
-        val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
-        val modes = remember(homeConfig, isCompactWidth) {
+        val columns = remember(sizeInfo, cfg) { homeSectionColumns(cfg, sizeInfo).coerceAtLeast(1) }
+        val modes = remember(homeConfig, sizeInfo.widthClass) {
             (SKELETON_SECTION_TITLES + homeConfig.order).distinct()
-                .map { renderMode(homeConfig.layoutFor(it), isCompactWidth) }
+                .map { renderMode(homeConfig.layoutFor(it), sizeInfo.widthClass) }
         }
 
         repeat(SKELETON_SECTION_COUNT) { index ->
