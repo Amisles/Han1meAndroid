@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
@@ -46,14 +47,16 @@ fun Banner(
     bannerData: HanimeBanner,
     onPlayClick: () -> Unit = {},
     onSearchClick: (String) -> Unit = {},
-    onTagClick: (String) -> Unit = {}
+    onTagClick: (String) -> Unit = {},
+    height: Dp? = null
 ) {
     val cfg = LocalUiConfig.current
+    val bannerHeight = height ?: cfg.bannerHeight
     val clickable = bannerData.videoUrl.isNotEmpty() || bannerData.title.isNotEmpty()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(cfg.bannerHeight)
+            .height(bannerHeight)
             .clickable(enabled = clickable) {
                 if (bannerData.videoUrl.isNotEmpty()) {
                     onPlayClick()

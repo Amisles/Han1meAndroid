@@ -285,6 +285,11 @@ fun HomeScreenContent(
     // 与渲染分支共用同一个判定，避免两处条件漂移
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
     val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
+    val hasSideContent = continueWatching.isNotEmpty() || (weeklyReportVisible && weeklyReport != null)
+    val heroLayout = remember(sizeInfo, hasSideContent) {
+        homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent)
+    }
+    val twoColumnHero = heroLayout.twoColumn && banner != null
     val plans = remember(sections, homeConfig, isCompactWidth, columns) {
         buildPlans(sections, homeConfig, isCompactWidth, columns)
     }
@@ -293,15 +298,32 @@ fun HomeScreenContent(
     val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
         rowThumbnailWidth(cfg, sizeInfo.widthDp, sizeInfo.contentMaxWidth, columns, isCompactWidth)
     }
-    val sectionTitleToIndex: Map<String, Int> = remember(plans, banner, isLoading, error, sections, cfg.homeShowCategoryBar) {
+    val sectionTitleToIndex: Map<String, Int> = remember(
+        plans,
+        twoColumnHero,
+        banner,
+        error,
+        sections,
+        cfg.homeShowCategoryBar,
+        continueWatching,
+        weeklyReport,
+        weeklyReportVisible,
+        watchLater
+    ) {
         val map = mutableMapOf<String, Int>()
         var idx = 0
         idx++ // header
         if (cfg.homeShowCategoryBar) idx++ // category
         if (!isLoading) {
             if (error != null && sections.isNotEmpty()) idx++ // 刷新失败提示行
-            if (banner != null) idx++ // banner
-            if (continueWatching.isNotEmpty()) idx++ // 继续观看
+            if (twoColumnHero) {
+                idx++ // hero：banner 与侧栏合并为一项
+            } else {
+                if (weeklyReportVisible && weeklyReport != null) idx++ // 本周报告
+                if (banner != null) idx++ // banner
+                if (continueWatching.isNotEmpty()) idx++ // 继续观看
+            }
+            if (watchLater.isNotEmpty()) idx++ // 稍后再看
             plans.forEach { plan ->
                 map[plan.section.title] = idx // 标题 item 的索引
                 // 标题 + 视频区（条数由 plan.itemCount 给出，与渲染分支同源）+ 分区之间的 spacer
@@ -427,37 +449,57 @@ fun HomeScreenContent(
                 }
             }
 
-            if (weeklyReportVisible && weeklyReport != null) {
-                item(key = "home-weekly-report", contentType = HomeItemType.BANNER) {
-                    WeeklyReportCard(
-                        stats = weeklyReport,
-                        onDismiss = onDismissWeeklyReport,
-                        onOpenStats = onOpenWatchStats,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
-
-            banner?.let {
-                item(key = "home-banner", contentType = HomeItemType.BANNER) {
-                    Banner(
-                        bannerData = it,
-                        onPlayClick = { onVideoClick(it.videoUrl) },
+            val heroBanner = banner
+            if (twoColumnHero && heroBanner != null) {
+                item(key = "home-hero", contentType = HomeItemType.BANNER) {
+                    HomeHeroRow(
+                        banner = heroBanner,
+                        layout = heroLayout,
+                        weeklyReport = weeklyReport.takeIf { weeklyReportVisible },
+                        continueWatching = continueWatching,
+                        onPlayClick = { onVideoClick(heroBanner.videoUrl) },
                         onSearchClick = onSearchClick,
-                        onTagClick = onSearchClick
+                        onContinueClick = { history -> onVideoClick(history.videoUrl) },
+                        onMarkWatched = { history -> onMarkContinueWatched(history.id) },
+                        onRemoveContinue = { history -> onRemoveContinueItem(history.id) },
+                        onDismissWeeklyReport = onDismissWeeklyReport,
+                        onOpenWatchStats = onOpenWatchStats
                     )
                 }
-            }
+            } else {
+                if (weeklyReportVisible && weeklyReport != null) {
+                    item(key = "home-weekly-report", contentType = HomeItemType.BANNER) {
+                        WeeklyReportCard(
+                            stats = weeklyReport,
+                            onDismiss = onDismissWeeklyReport,
+                            onOpenStats = onOpenWatchStats,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
 
-            if (continueWatching.isNotEmpty()) {
-                item(key = "home-continue-watching", contentType = HomeItemType.BANNER) {
-                    ContinueWatchingSection(
-                        items = continueWatching,
-                        onItemClick = { history -> onVideoClick(history.videoUrl) },
-                        onMarkWatched = { history -> onMarkContinueWatched(history.id) },
-                        onRemove = { history -> onRemoveContinueItem(history.id) },
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                banner?.let {
+                    item(key = "home-banner", contentType = HomeItemType.BANNER) {
+                        Banner(
+                            bannerData = it,
+                            onPlayClick = { onVideoClick(it.videoUrl) },
+                            onSearchClick = onSearchClick,
+                            onTagClick = onSearchClick,
+                            height = heroLayout.height.takeIf { height -> height.value > 0f }
+                        )
+                    }
+                }
+
+                if (continueWatching.isNotEmpty()) {
+                    item(key = "home-continue-watching", contentType = HomeItemType.BANNER) {
+                        ContinueWatchingSection(
+                            items = continueWatching,
+                            onItemClick = { history -> onVideoClick(history.videoUrl) },
+                            onMarkWatched = { history -> onMarkContinueWatched(history.id) },
+                            onRemove = { history -> onRemoveContinueItem(history.id) },
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    }
                 }
             }
 
@@ -626,6 +668,55 @@ fun HomeScreenContent(
     }
 }
 
+@Composable
+private fun HomeHeroRow(
+    banner: HanimeBanner,
+    layout: HomeHeroLayout,
+    weeklyReport: WatchStats?,
+    continueWatching: List<WatchHistory>,
+    onPlayClick: () -> Unit,
+    onSearchClick: (String) -> Unit,
+    onContinueClick: (WatchHistory) -> Unit,
+    onMarkWatched: (WatchHistory) -> Unit,
+    onRemoveContinue: (WatchHistory) -> Unit,
+    onDismissWeeklyReport: () -> Unit,
+    onOpenWatchStats: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = HOME_SIDE_PADDING),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(modifier = Modifier.width(layout.bannerWidth)) {
+            Banner(
+                bannerData = banner,
+                onPlayClick = onPlayClick,
+                onSearchClick = onSearchClick,
+                onTagClick = onSearchClick,
+                height = layout.height
+            )
+        }
+        Column(modifier = Modifier.width(layout.sideWidth)) {
+            if (continueWatching.isNotEmpty()) {
+                ContinueWatchingSection(
+                    items = continueWatching,
+                    onItemClick = onContinueClick,
+                    onMarkWatched = onMarkWatched,
+                    onRemove = onRemoveContinue
+                )
+            }
+            if (weeklyReport != null) {
+                WeeklyReportCard(
+                    stats = weeklyReport,
+                    onDismiss = onDismissWeeklyReport,
+                    onOpenStats = onOpenWatchStats
+                )
+            }
+        }
+    }
+}
+
 /** 首页骨架屏：加载时模拟首页布局的占位。 */
 @Composable
 private fun HomeSkeletonScreen() {
@@ -645,20 +736,23 @@ private fun HomeSkeletonScreen() {
         modifier = Modifier
             .fillMaxWidth()
     ) {
-        // Banner 骨架占位
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .graphicsLayer { alpha = shimmerAlpha.value }
-        )
-
         val cfg = LocalUiConfig.current
         val homeConfig = LocalHomeSectionConfig.current
         val sizeInfo = currentWindowSizeInfo()
         val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
+        val heroHeight = remember(sizeInfo) {
+            homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent = false).height
+        }
+
+        // Banner 骨架占位
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (heroHeight.value > 0f) heroHeight else cfg.bannerHeight)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .graphicsLayer { alpha = shimmerAlpha.value }
+        )
         val columns = sizeInfo.gridColumns(cfg).coerceAtLeast(1)
         val modes = remember(homeConfig, isCompactWidth) {
             (SKELETON_SECTION_TITLES + homeConfig.order).distinct()
