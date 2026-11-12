@@ -37,6 +37,7 @@
     
     <!-- Home -->
     <string name="home_load_failed">首页加载失败</string>
+    <string name="home_long_press_hint">长按视频卡片可快速收藏、下载、分享或稍后观看</string>
     
     <!-- Search -->
     <string name="search_placeholder">输入关键词搜索</string>
@@ -431,6 +432,7 @@
     <!-- Download -->
     <string name="download_empty">暂无下载任务</string>
     <string name="download_empty_hint">去详情页下载视频吧</string>
+    <string name="download_quick_download_hint">在视频详情页选画质下载，或长按视频卡片快速添加，完成后可在此离线播放</string>
     <string name="download_downloading">下载中</string>
     <string name="download_paused">已暂停</string>
     <string name="download_failed">下载失败</string>
@@ -869,6 +871,7 @@
     <string name="player_zoom">缩放: %sx</string>
     <string name="player_long_press_boost">加速 %sx</string>
     <string name="player_boost_slide_hint">上下滑动调速</string>
+    <string name="player_gesture_intro">长按画面可加速播放，双击两侧可快进快退</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->

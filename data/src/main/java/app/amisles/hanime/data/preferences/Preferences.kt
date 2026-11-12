@@ -89,6 +89,9 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     /** 是否允许启动时自动检查更新。 */
     private const val SP_AUTO_CHECK_UPDATE = "auto_check_update"
     private const val SP_ONBOARDING_DONE = "onboarding_done"
+    private const val SP_HOME_LONG_PRESS_HINT_DISMISSED = "home_long_press_hint_dismissed"
+    private const val SP_DOWNLOAD_QUICK_HINT_DISMISSED = "download_quick_hint_dismissed"
+    private const val SP_PLAYER_GESTURE_INTRO_SHOWN = "player_gesture_intro_shown"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
@@ -772,6 +775,27 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
 
     fun markOnboardingDone() {
         sp.edit { putBoolean(SP_ONBOARDING_DONE, true) }
+    }
+
+    val homeLongPressHintDismissed: Boolean
+        get() = readBoolean(SP_HOME_LONG_PRESS_HINT_DISMISSED, false)
+
+    fun dismissHomeLongPressHint() {
+        sp.edit { putBoolean(SP_HOME_LONG_PRESS_HINT_DISMISSED, true) }
+    }
+
+    val downloadQuickHintDismissed: Boolean
+        get() = readBoolean(SP_DOWNLOAD_QUICK_HINT_DISMISSED, false)
+
+    fun dismissDownloadQuickHint() {
+        sp.edit { putBoolean(SP_DOWNLOAD_QUICK_HINT_DISMISSED, true) }
+    }
+
+    val playerGestureIntroShown: Boolean
+        get() = readBoolean(SP_PLAYER_GESTURE_INTRO_SHOWN, false)
+
+    fun markPlayerGestureIntroShown() {
+        sp.edit { putBoolean(SP_PLAYER_GESTURE_INTRO_SHOWN, true) }
     }
 
     override fun setSubscriptionReminder(enabled: Boolean) {

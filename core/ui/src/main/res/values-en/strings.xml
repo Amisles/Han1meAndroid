@@ -30,6 +30,7 @@
     <string name="common_videos">Videos</string>
     <string name="common_playlist_videos_count">%1$d videos</string>
     <string name="home_load_failed">Failed to load home page</string>
+    <string name="home_long_press_hint">Long-press a video card to quickly favorite, download, share or watch later</string>
     <string name="search_placeholder">Enter keywords to search</string>
     <string name="search_history">Search History</string>
     <string name="search_suggest_tags">Popular Tags</string>
@@ -419,6 +420,7 @@
 
     <string name="download_empty">No download tasks</string>
     <string name="download_empty_hint">Download videos from the detail page</string>
+    <string name="download_quick_download_hint">Pick a quality on a video page, or long-press a card to add a download; play it offline here</string>
     <string name="download_downloading">Downloading</string>
     <string name="download_paused">Paused</string>
     <string name="download_failed">Failed</string>
@@ -835,6 +837,7 @@
     <string name="player_zoom">Zoom: %sx</string>
     <string name="player_long_press_boost">Boost %sx</string>
     <string name="player_boost_slide_hint">Swipe up or down to adjust</string>
+    <string name="player_gesture_intro">Long-press to boost speed; double-tap the sides to seek</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->

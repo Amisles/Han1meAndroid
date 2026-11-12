@@ -69,6 +69,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
 import app.amisles.hanime.core.ui.components.Header
+import app.amisles.hanime.core.ui.components.HintBanner
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.ThumbnailPrefetcher
 import app.amisles.hanime.core.ui.components.VideoCard
@@ -76,6 +77,7 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.data.remote.CloudflareChallenge
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
@@ -273,6 +275,7 @@ fun HomeScreenContent(
     val cfg = LocalUiConfig.current
     val homeConfig = LocalHomeSectionConfig.current
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
+    var showLongPressHint by remember { mutableStateOf(!Preferences.homeLongPressHintDismissed) }
 
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
     val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }
@@ -294,6 +297,7 @@ fun HomeScreenContent(
     }
     val headKeys = buildList {
         add("home-header")
+        if (showLongPressHint) add("home-long-press-hint")
         if (cfg.homeShowCategoryBar) add("home-category")
         if (error != null && sections.isNotEmpty()) add("home-refresh-error")
         if (twoColumnHero) {
@@ -382,6 +386,19 @@ fun HomeScreenContent(
                 onProfileClick = onProfileClick,
                 onComicClick = onComicClick
             )
+        }
+
+        if (showLongPressHint) {
+            item(key = "home-long-press-hint", span = StaggeredGridItemSpan.FullLine) {
+                HintBanner(
+                    text = stringResource(R.string.home_long_press_hint),
+                    onDismiss = {
+                        Preferences.dismissHomeLongPressHint()
+                        showLongPressHint = false
+                    },
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp)
+                )
+            }
         }
 
         if (cfg.homeShowCategoryBar) {

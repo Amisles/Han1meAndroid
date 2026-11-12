@@ -80,6 +80,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
+import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import coil3.compose.AsyncImage
@@ -224,6 +225,7 @@ fun VideoPlayer(
     // 手势状态
     val gestureHintState = remember { mutableStateOf<String?>(null) }
     var gestureHint by gestureHintState
+    var showGestureIntro by remember { mutableStateOf(!Preferences.playerGestureIntroShown) }
     val lastTapTimeState = remember { mutableLongStateOf(0L) }
     var lastTapTime by lastTapTimeState
     val seekPreviewState = remember { mutableLongStateOf(0L) }
@@ -685,6 +687,14 @@ fun VideoPlayer(
         }
     }
 
+    // 首次播放的入门提示：展示满 3.5s 才落盘已读，中途退出播放页则下次重新出现
+    LaunchedEffect(Unit) {
+        if (!showGestureIntro) return@LaunchedEffect
+        delay(3_500L)
+        Preferences.markPlayerGestureIntroShown()
+        showGestureIntro = false
+    }
+
     // ── 播放器容器与统一手势 ─────────────────────────────────────────────────
     Box(
         modifier = modifier
@@ -774,13 +784,14 @@ fun VideoPlayer(
         }
 
         // 手势提示覆盖层：长按加速期间常驻显示实时倍率（上下滑动即时变化，松手才消失）；
-        // 其余手势提示沿用 800ms 自动清除
+        // 其余手势提示沿用 800ms 自动清除；首次播放的入门提示由 showGestureIntro 控制时长
         val boostText = if (isLongPressBoost) {
             stringResource(R.string.player_long_press_boost, trimSpeedText(boostSpeed))
         } else {
             null
         }
-        val hintText = boostText ?: gestureHint
+        val introText = if (showGestureIntro) stringResource(R.string.player_gesture_intro) else null
+        val hintText = boostText ?: gestureHint ?: introText
         if (hintText != null && !isInPip) {
             Box(
                 modifier = Modifier

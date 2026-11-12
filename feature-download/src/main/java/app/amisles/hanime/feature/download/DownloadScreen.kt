@@ -62,12 +62,14 @@ import androidx.compose.material.icons.outlined.Storage
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.SearchField
+import app.amisles.hanime.core.ui.components.HintBanner
 import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.data.preferences.Preferences
 
 enum class DownloadFilter {
     ALL, DOWNLOADING, COMPLETED, FAILED, PAUSED
@@ -133,6 +135,7 @@ fun DownloadScreen(
     val gateState by viewModel.gateState.collectAsStateWithLifecycle()
     // 不用 rememberSaveable：面板是一次性的浮层，离开页面再回来不应保持展开
     var showStoragePanel by remember { mutableStateOf(false) }
+    var showQuickDownloadHint by remember { mutableStateOf(!Preferences.downloadQuickHintDismissed) }
 
     LaunchedEffect(showStoragePanel) {
         if (showStoragePanel) viewModel.refreshStorageInfo()
@@ -476,30 +479,46 @@ fun DownloadScreen(
         }
 
         if (tasks.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Download,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(bottom = 16.dp)
-                        .size(64.dp)
-                )
-                Text(
-                    text = stringResource(R.string.download_empty),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = stringResource(R.string.download_empty_hint),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (showQuickDownloadHint) {
+                    HintBanner(
+                        text = stringResource(R.string.download_quick_download_hint),
+                        onDismiss = {
+                            Preferences.dismissDownloadQuickHint()
+                            showQuickDownloadHint = false
+                        },
+                        modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(bottom = 16.dp)
+                                .size(64.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.download_empty),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = stringResource(R.string.download_empty_hint),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
             }
         } else {
             LazyColumn(

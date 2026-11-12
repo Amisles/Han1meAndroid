@@ -30,6 +30,7 @@
     <string name="common_videos">動画</string>
     <string name="common_playlist_videos_count">%1$d 本の動画</string>
     <string name="home_load_failed">ホームの読み込みに失敗しました</string>
+    <string name="home_long_press_hint">動画カードを長押しすると、お気に入り・ダウンロード・共有・後で見るを素早く操作できます</string>
     <string name="search_placeholder">キーワードを入力して検索</string>
     <string name="search_history">検索履歴</string>
     <string name="search_suggest_tags">人気タグ</string>
@@ -419,6 +420,7 @@
 
     <string name="download_empty">ダウンロードタスクがありません</string>
     <string name="download_empty_hint">詳細ページから動画をダウンロードしてください</string>
+    <string name="download_quick_download_hint">動画ページで画質を選んでダウンロード、カードの長押しでも追加できます。オフライン再生はここから</string>
     <string name="download_downloading">ダウンロード中</string>
     <string name="download_paused">一時停止</string>
     <string name="download_failed">ダウンロード失敗</string>
@@ -835,6 +837,7 @@
     <string name="player_zoom">缩放: %sx</string>
     <string name="player_long_press_boost">加速 %sx</string>
     <string name="player_boost_slide_hint">上下スワイプで速度調整</string>
+    <string name="player_gesture_intro">長押しで再生速度アップ、両側をダブルタップで早送り・巻き戻し</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
