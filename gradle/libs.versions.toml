@@ -23,8 +23,8 @@ profileinstaller = "1.4.1"
 coroutines = "1.11.0"
 baselineProfile = "1.5.0"
 benchmarkMacro = "1.5.0"
-uiautomator = "2.4.0"
-metrics-performance = "1.0.0-beta04"
+uiautomator = "2.4.1"
+metrics-performance = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
