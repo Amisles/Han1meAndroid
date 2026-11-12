@@ -88,6 +88,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     private const val SP_SKIPPED_UPDATE_VERSION = "skipped_update_version"
     /** 是否允许启动时自动检查更新。 */
     private const val SP_AUTO_CHECK_UPDATE = "auto_check_update"
+    private const val SP_ONBOARDING_DONE = "onboarding_done"
 
     const val DEFAULT_BASE_URL = "https://hanime1.me"
 
@@ -764,6 +765,13 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
 
     fun markNotificationPromptShown() {
         sp.edit { putBoolean(SP_NOTIFICATION_PROMPT_SHOWN, true) }
+    }
+
+    val onboardingDone: Boolean
+        get() = readBoolean(SP_ONBOARDING_DONE, false)
+
+    fun markOnboardingDone() {
+        sp.edit { putBoolean(SP_ONBOARDING_DONE, true) }
     }
 
     override fun setSubscriptionReminder(enabled: Boolean) {
