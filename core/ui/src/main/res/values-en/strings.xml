@@ -376,6 +376,8 @@
     <string name="detail_download">Download</string>
     <string name="detail_favorite">Favorite</string>
     <string name="detail_unfavorite">Unfavorite</string>
+    <string name="detail_resume_hint">Resumed from %1$s</string>
+    <string name="detail_resume_restart">Start over</string>
     <string name="detail_share">Share</string>
     <string name="detail_subscribe">Subscribe</string>
     <string name="detail_subscribed">Subscribed</string>

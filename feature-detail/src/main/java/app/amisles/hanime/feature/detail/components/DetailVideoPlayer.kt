@@ -39,6 +39,7 @@ internal fun DetailVideoPlayer(
     exoPlayer: ExoPlayer,
     detail: VideoDetail,
     initialPositionMs: Long,
+    onInitialSeekApplied: (Long) -> Unit = {},
     isFullscreen: Boolean,
     onFullscreenToggle: (Boolean) -> Unit,
     onPlaybackEnded: () -> Unit,
@@ -64,6 +65,7 @@ internal fun DetailVideoPlayer(
         // 读 StateFlow 缓存值：避免每次重组都对加密存储做一次同步解密
         initialSourceUrl = pickInitialSourceUrl(detail, appPrefs.preferredQualityFlow.value),
         initialPositionMs = initialPositionMs,
+        onInitialSeekApplied = onInitialSeekApplied,
         isFullscreen = isFullscreen,
         onFullscreenToggle = onFullscreenToggle,
         onPlaybackSpeedChanged = { appPrefs.setPlaybackSpeed(it) },

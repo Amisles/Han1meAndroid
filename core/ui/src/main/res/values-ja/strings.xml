@@ -376,6 +376,8 @@
     <string name="detail_download">ダウンロード</string>
     <string name="detail_favorite">お気に入り</string>
     <string name="detail_unfavorite">お気に入り解除</string>
+    <string name="detail_resume_hint">%1$s から再開しました</string>
+    <string name="detail_resume_restart">最初から再生</string>
     <string name="detail_share">共有</string>
     <string name="detail_subscribe">購読</string>
     <string name="detail_subscribed">購読済み</string>

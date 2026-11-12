@@ -387,6 +387,8 @@
     <string name="detail_download">下载</string>
     <string name="detail_favorite">收藏</string>
     <string name="detail_unfavorite">取消收藏</string>
+    <string name="detail_resume_hint">已从 %1$s 继续播放</string>
+    <string name="detail_resume_restart">从头看</string>
     <string name="detail_share">分享</string>
     <string name="detail_subscribe">订阅</string>
     <string name="detail_subscribed">已订阅</string>

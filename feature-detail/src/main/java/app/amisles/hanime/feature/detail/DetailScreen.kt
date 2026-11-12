@@ -29,6 +29,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +73,7 @@ import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
 import app.amisles.hanime.feature.detail.components.DetailVideoPlayer
+import app.amisles.hanime.feature.detail.components.formatTime
 import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
 import app.amisles.hanime.feature.detail.components.VideoUnavailableHint
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -229,6 +232,9 @@ fun DetailScreen(
     // 续播点（毫秒）：进入时由历史记录计算，传给 VideoPlayer 在首帧就绪后跳转
     var initialSeekMs by remember { mutableStateOf(0L) }
 
+    var resumeSeekMs by remember { mutableStateOf(0L) }
+    var resumeHintShownFor by rememberSaveable { mutableStateOf("") }
+
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
     // 续播点在播放器构建期间并行读取，避免「先 await 播放器、再 await 数据库」串行两次 IO，
@@ -369,6 +375,20 @@ fun DetailScreen(
         if (videoUrl != null && videoUrl.isNotEmpty()) {
             selectedTab = 0
             viewModel.loadVideoDetail(videoUrl)
+        }
+    }
+
+    LaunchedEffect(resumeSeekMs) {
+        val position = resumeSeekMs
+        if (position <= 0L || resumeHintShownFor == viewModel.videoId) return@LaunchedEffect
+        resumeHintShownFor = viewModel.videoId
+        val result = snackbarHostState.showSnackbar(
+            message = context.getString(R.string.detail_resume_hint, formatTime(position)),
+            actionLabel = context.getString(R.string.detail_resume_restart),
+            duration = SnackbarDuration.Short
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            exoPlayer?.seekTo(0L)
         }
     }
 
@@ -523,6 +543,7 @@ fun DetailScreen(
                             exoPlayer = player,
                             detail = detail,
                             initialPositionMs = initialSeekMs,
+                            onInitialSeekApplied = { resumeSeekMs = it },
                             isFullscreen = false,
                             onFullscreenToggle = { full -> isPlayerFullscreen = full },
                             onPlaybackEnded = { handlePlaybackEnded() },
@@ -601,6 +622,7 @@ fun DetailScreen(
                                     exoPlayer = player,
                                     detail = detail,
                                     initialPositionMs = initialSeekMs,
+                                    onInitialSeekApplied = { resumeSeekMs = it },
                                     isFullscreen = isPlayerFullscreen,
                                     onFullscreenToggle = { full -> isPlayerFullscreen = full },
                                     onPlaybackEnded = { handlePlaybackEnded() },

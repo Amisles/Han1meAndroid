@@ -110,6 +110,7 @@ fun VideoPlayer(
     videoSources: List<VideoSource> = emptyList(),
     initialSourceUrl: String = "",
     initialPositionMs: Long = 0L,
+    onInitialSeekApplied: (Long) -> Unit = {},
     isFullscreen: Boolean = false,
     modifier: Modifier = Modifier,
     onFullscreenToggle: (Boolean) -> Unit = {},
@@ -388,6 +389,7 @@ fun VideoPlayer(
                             val dur = exoPlayer.duration
                             if (dur <= 0 || initialPositionMsRef.value < dur - 5000) {
                                 exoPlayer.seekTo(initialPositionMsRef.value)
+                                onInitialSeekApplied(initialPositionMsRef.value)
                             }
                             initialSeekAppliedRef.value = true
                         }
