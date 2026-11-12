@@ -62,6 +62,7 @@ class SubscriptionReminderWorker @AssistedInject constructor(
             )
         }
         val launchIntent = Intent(applicationContext, MainActivity::class.java).apply {
+            action = MainActivity.ACTION_OPEN_SUBSCRIPTIONS
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val contentIntent = PendingIntent.getActivity(

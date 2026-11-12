@@ -123,6 +123,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.abs
 import app.amisles.hanime.navigation.baseRoute
+import app.amisles.hanime.navigation.navigateToRoot
 import app.amisles.hanime.navigation.navigateToSearch
 import app.amisles.hanime.navigation.navigateToTab
 import app.amisles.hanime.navigation.NAV_TRANSITION_DURATION_MS
@@ -145,6 +146,9 @@ class MainActivity : ComponentActivity() {
         /** 由 DownloadService 的失败通知拉起，直达下载页并定位到出错任务。 */
         const val ACTION_OPEN_DOWNLOADS = "app.amisles.hanime.action.OPEN_DOWNLOADS"
         const val EXTRA_HIGHLIGHT_TASK_ID = "extra_highlight_task_id"
+
+        /** 由订阅提醒通知拉起，直达订阅页。 */
+        const val ACTION_OPEN_SUBSCRIPTIONS = "app.amisles.hanime.action.OPEN_SUBSCRIPTIONS"
 
     }
 
@@ -385,6 +389,11 @@ fun HanimeApp(
                 pendingShareIntent = null
                 val taskId = intent.getIntExtra(MainActivity.EXTRA_HIGHLIGHT_TASK_ID, -1)
                 navController.navigate(if (taskId >= 0) "download?highlight=$taskId" else "download")
+            }
+            MainActivity.ACTION_OPEN_SUBSCRIPTIONS -> {
+                handledIntentTag = tag
+                pendingShareIntent = null
+                navController.navigateToRoot("subscriptions")
             }
         }
     }
