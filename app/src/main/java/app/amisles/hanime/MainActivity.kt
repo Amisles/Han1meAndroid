@@ -147,7 +147,6 @@ class MainActivity : ComponentActivity() {
         const val ACTION_OPEN_DOWNLOADS = "app.amisles.hanime.action.OPEN_DOWNLOADS"
         const val EXTRA_HIGHLIGHT_TASK_ID = "extra_highlight_task_id"
 
-        /** 由订阅提醒通知拉起，直达订阅页。 */
         const val ACTION_OPEN_SUBSCRIPTIONS = "app.amisles.hanime.action.OPEN_SUBSCRIPTIONS"
 
     }
