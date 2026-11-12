@@ -40,12 +40,13 @@ import kotlinx.coroutines.launch
 fun OnboardingHost(
     onNavigate: (String) -> Unit,
     onComplete: () -> Unit,
+    replayMode: Boolean = false,
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val probeState by viewModel.probeState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { OnboardingPage.entries.size })
     val scope = rememberCoroutineScope()
-    BackHandler { onComplete() }
+    BackHandler(enabled = !replayMode) { onComplete() }
 
     Box(
         modifier = Modifier

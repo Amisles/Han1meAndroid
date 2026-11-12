@@ -748,6 +748,7 @@
     <string name="about_project_links">專案連結</string>
     <string name="about_github_repo">GitHub 儲存庫</string>
     <string name="about_feedback">問題回報</string>
+    <string name="about_user_guide">使用說明</string>
     <string name="about_feature_1">影片瀏覽與搜尋</string>
     <string name="about_feature_2">HLS 串流媒體播放</string>
     <string name="about_feature_3">影片離線下載</string>

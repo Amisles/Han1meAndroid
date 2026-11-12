@@ -43,6 +43,7 @@ import app.amisles.hanime.feature.settings.UpdateScreen
 import app.amisles.hanime.feature.home.list.PlaylistDetailScreen
 import app.amisles.hanime.feature.home.list.PlaylistListPageScreen
 import app.amisles.hanime.feature.home.list.VideoListPageScreen
+import app.amisles.hanime.ui.onboarding.OnboardingHost
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -391,7 +392,15 @@ internal fun HanimeNavGraph(
         }
         composable("about") {
             AboutScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onOpenGuide = { navController.navigate("onboarding") }
+            )
+        }
+        composable("onboarding") {
+            OnboardingHost(
+                replayMode = true,
+                onNavigate = { route -> navController.navigate(route) },
+                onComplete = { navController.popBackStack() }
             )
         }
         composable("settings") {

@@ -12,7 +12,8 @@ private val hiddenRoutes = setOf(
     "comicTags",
     "comicArtists",
     "watchStats",
-    "batchDownload"
+    "batchDownload",
+    "onboarding"
 )
 
 private val hiddenPrefixes = listOf(
