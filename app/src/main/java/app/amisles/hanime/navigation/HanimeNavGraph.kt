@@ -291,7 +291,8 @@ internal fun HanimeNavGraph(
                 onAuthorClick = { author ->
                     navController.navigateToSearch(searchRoute(keyword = author))
                 },
-                onVideoLongClick = onVideoLongClick
+                onVideoLongClick = onVideoLongClick,
+                onBackClick = { navController.popBackStack() }
             )
         }
         composable(

@@ -64,7 +64,8 @@ fun SearchScreen(
      */
     initialToken: String? = null,
     onAuthorClick: (String) -> Unit = {},
-    onVideoLongClick: (HanimeVideo) -> Unit = {}
+    onVideoLongClick: (HanimeVideo) -> Unit = {},
+    onBackClick: () -> Unit = {}
 ) {
     val appPrefs = LocalAppPreferences.current
     val viewModel: SearchViewModel = hiltViewModel()
@@ -273,7 +274,8 @@ fun SearchScreen(
             onClear = {
                 suggestionsOpen = false
                 viewModel.setQuery("")
-            }
+            },
+            onBackClick = onBackClick
         )
 
         SearchFilterBar(
