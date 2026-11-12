@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.home
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -9,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +24,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
@@ -396,11 +393,7 @@ fun HomeScreenContent(
                         val targetIndex = sectionTitleToIndex[category]
                         if (targetIndex != null) {
                             scope.launch {
-                                listState.smoothScrollToItem(
-                                    index = targetIndex,
-                                    offset = -20,
-                                    durationMs = 700
-                                )
+                                listState.animateScrollToItem(targetIndex, scrollOffset = -20)
                             }
                         } else {
                             onGenreSearch(category)
@@ -1018,69 +1011,5 @@ private fun SkeletonCarousel(shimmerAlpha: State<Float>) {
                 )
             }
         }
-    }
-}
-
-private suspend fun LazyStaggeredGridState.smoothScrollToItem(
-    index: Int,
-    offset: Int = 0,
-    durationMs: Int = 700,
-    easing: androidx.compose.animation.core.Easing = FastOutSlowInEasing
-) {
-    require(index >= 0) { "index must be >= 0, but was $index" }
-    require(durationMs > 0) { "durationMs must be > 0, but was $durationMs" }
-
-    val visibleItems = layoutInfo.visibleItemsInfo
-    if (visibleItems.isEmpty()) {
-        animateScrollToItem(index, offset)
-        return
-    }
-
-    val firstVisible = visibleItems.first()
-    val lastVisible = visibleItems.last()
-    val targetInVisibleRange = index in firstVisible.index..lastVisible.index
-
-    if (targetInVisibleRange) {
-        val targetItem = visibleItems.firstOrNull { it.index == index } ?: run {
-            animateScrollToItem(index, offset)
-            return
-        }
-        val deltaPixels = (targetItem.offset.y + offset).toFloat()
-        if (deltaPixels != 0f) {
-            animateScrollBy(deltaPixels, tween(durationMs, easing = easing))
-        }
-        return
-    }
-
-    val avgSize = visibleItems.map { it.size.height }.average().toInt()
-    if (avgSize <= 0) {
-        animateScrollToItem(index, offset)
-        return
-    }
-
-    val firstIndex = firstVisible.index
-    val firstOffset = firstVisible.offset.y
-    val estimatedDistancePixels =
-        ((index - firstIndex) * avgSize + firstOffset + offset).toFloat()
-
-    if (estimatedDistancePixels != 0f) {
-        animateScrollBy(estimatedDistancePixels, tween(durationMs, easing = easing))
-    }
-
-    val visibleAfter = layoutInfo.visibleItemsInfo
-    val target = visibleAfter.firstOrNull { it.index == index }
-    if (target != null) {
-        val fineTune = (target.offset.y + offset).toFloat()
-        if (fineTune != 0f) {
-            animateScrollBy(
-                fineTune,
-                tween(
-                    durationMillis = (durationMs * 0.2).toInt().coerceAtLeast(80),
-                    easing = easing
-                )
-            )
-        }
-    } else {
-        animateScrollToItem(index, offset)
     }
 }
