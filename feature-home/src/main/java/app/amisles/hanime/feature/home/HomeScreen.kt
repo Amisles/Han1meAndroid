@@ -282,7 +282,7 @@ fun HomeScreenContent(
     val columns = remember(sizeInfo, cfg, twoColumnSections) {
         homeSectionColumns(cfg, sizeInfo, twoColumnSections).coerceAtLeast(1)
     }
-    val hasSideContent = continueWatching.isNotEmpty() || (weeklyReportVisible && weeklyReport != null)
+    val hasSideContent = continueWatching.isNotEmpty() || watchLater.isNotEmpty()
     val heroLayout = remember(sizeInfo, hasSideContent) {
         homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent)
     }
@@ -302,11 +302,11 @@ fun HomeScreenContent(
         if (twoColumnHero) {
             add("home-hero")
         } else {
-            if (weeklyReportVisible && weeklyReport != null) add("home-weekly-report")
             if (banner != null) add("home-banner")
             if (continueWatching.isNotEmpty()) add("home-continue-watching")
+            if (watchLater.isNotEmpty()) add("home-watch-later")
         }
-        if (watchLater.isNotEmpty()) add("home-watch-later")
+        if (weeklyReportVisible && weeklyReport != null) add("home-weekly-report")
     }
     val sectionTitleToIndex: Map<String, Int> = remember(plans, headKeys) {
         buildMap {
@@ -465,29 +465,21 @@ fun HomeScreenContent(
                     HomeHeroRow(
                         banner = heroBanner,
                         layout = heroLayout,
-                        weeklyReport = weeklyReport.takeIf { weeklyReportVisible },
                         continueWatching = continueWatching,
+                        watchLater = watchLater,
                         onPlayClick = { onVideoClick(heroBanner.videoUrl) },
                         onSearchClick = onSearchClick,
                         onContinueClick = { history -> onVideoClick(history.videoUrl) },
                         onMarkWatched = { history -> onMarkContinueWatched(history.id) },
                         onRemoveContinue = { history -> onRemoveContinueItem(history.id) },
-                        onDismissWeeklyReport = onDismissWeeklyReport,
-                        onOpenWatchStats = onOpenWatchStats
+                        onWatchLaterClick = { item ->
+                            onConsumeWatchLater(item)
+                            onVideoClick(item.videoUrl)
+                        },
+                        onRemoveWatchLater = { item -> onRemoveWatchLater(item.id) }
                     )
                 }
             } else {
-                if (weeklyReportVisible && weeklyReport != null) {
-                    item(key = "home-weekly-report", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
-                        WeeklyReportCard(
-                            stats = weeklyReport,
-                            onDismiss = onDismissWeeklyReport,
-                            onOpenStats = onOpenWatchStats,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-                }
-
                 banner?.let {
                     item(key = "home-banner", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
                         Banner(
@@ -511,18 +503,29 @@ fun HomeScreenContent(
                         )
                     }
                 }
+
+                if (watchLater.isNotEmpty()) {
+                    item(key = "home-watch-later", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
+                        WatchLaterSection(
+                            items = watchLater,
+                            onItemClick = { item ->
+                                onConsumeWatchLater(item)
+                                onVideoClick(item.videoUrl)
+                            },
+                            onRemove = { item -> onRemoveWatchLater(item.id) },
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    }
+                }
             }
 
-            if (watchLater.isNotEmpty()) {
-                item(key = "home-watch-later", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
-                    WatchLaterSection(
-                        items = watchLater,
-                        onItemClick = { item ->
-                            onConsumeWatchLater(item)
-                            onVideoClick(item.videoUrl)
-                        },
-                        onRemove = { item -> onRemoveWatchLater(item.id) },
-                        modifier = Modifier.padding(bottom = 12.dp)
+            if (weeklyReportVisible && weeklyReport != null) {
+                item(key = "home-weekly-report", contentType = HomeItemType.BANNER, span = StaggeredGridItemSpan.FullLine) {
+                    WeeklyReportCard(
+                        stats = weeklyReport,
+                        onDismiss = onDismissWeeklyReport,
+                        onOpenStats = onOpenWatchStats,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
             }
@@ -557,15 +560,15 @@ fun HomeScreenContent(
 private fun HomeHeroRow(
     banner: HanimeBanner,
     layout: HomeHeroLayout,
-    weeklyReport: WatchStats?,
     continueWatching: List<WatchHistory>,
+    watchLater: List<WatchLaterVideo>,
     onPlayClick: () -> Unit,
     onSearchClick: (String) -> Unit,
     onContinueClick: (WatchHistory) -> Unit,
     onMarkWatched: (WatchHistory) -> Unit,
     onRemoveContinue: (WatchHistory) -> Unit,
-    onDismissWeeklyReport: () -> Unit,
-    onOpenWatchStats: () -> Unit
+    onWatchLaterClick: (WatchLaterVideo) -> Unit,
+    onRemoveWatchLater: (WatchLaterVideo) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -591,11 +594,11 @@ private fun HomeHeroRow(
                     onRemove = onRemoveContinue
                 )
             }
-            if (weeklyReport != null) {
-                WeeklyReportCard(
-                    stats = weeklyReport,
-                    onDismiss = onDismissWeeklyReport,
-                    onOpenStats = onOpenWatchStats
+            if (watchLater.isNotEmpty()) {
+                WatchLaterSection(
+                    items = watchLater,
+                    onItemClick = onWatchLaterClick,
+                    onRemove = onRemoveWatchLater
                 )
             }
         }
