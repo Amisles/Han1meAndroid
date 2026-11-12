@@ -127,7 +127,7 @@ internal fun rowThumbnailWidth(
         .coerceAtLeast(56f).dp
 }
 
-/** 分区在 LazyColumn 中的实际渲染形态；[HomeSectionLayout.AUTO] 由窗口宽度决定，故需与用户可选模式区分。 */
+/** AUTO 解析后的渲染形态：由宽度档位与是否分栏共同决定，故需与用户可选的 [HomeSectionLayout] 区分。 */
 private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
 
 private enum class HomeItemType { HEADER, CATEGORY, SKELETON, ERROR, REFRESH_ERROR, BANNER, SECTION, SPACER }
