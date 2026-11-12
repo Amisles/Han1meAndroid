@@ -1,8 +1,11 @@
 package app.amisles.hanime.data.remote
 
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.SiteProbeResult
 import java.io.IOException
 import java.net.InetAddress
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLException
@@ -36,6 +39,11 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(false)
+        .build()
+
+    private val probeClient = OkHttpClient.Builder()
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .callTimeout(3, TimeUnit.SECONDS)
         .build()
 
     /** 运行全部诊断项，返回按检测顺序排列的结果列表。 */
@@ -470,4 +478,44 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
         title = "登录状态",
         detail = "DNS 解析失败，跳过登录检测"
     )
+
+    override suspend fun probeSite(): SiteProbeResult = withContext(Dispatchers.IO) {
+        if (probeHostOf(Preferences.baseUrl) == null) {
+            return@withContext SiteProbeResult.Unreachable(SiteProbeResult.Reason.INVALID_URL)
+        }
+        val startedAt = System.currentTimeMillis()
+        try {
+            probeCode(Preferences.baseUrl)
+            SiteProbeResult.Reachable(System.currentTimeMillis() - startedAt)
+        } catch (e: IOException) {
+            SiteProbeResult.Unreachable(probeFailureReason(e))
+        } catch (e: IllegalArgumentException) {
+            SiteProbeResult.Unreachable(SiteProbeResult.Reason.INVALID_URL)
+        }
+    }
+
+    internal fun probeHostOf(baseUrl: String): String? =
+        runCatching { URL(baseUrl).host }.getOrNull()?.takeIf { it.isNotBlank() }
+
+    private fun probeCode(baseUrl: String): Int =
+        try {
+            executeProbe(baseUrl, "HEAD")
+        } catch (headFailure: IOException) {
+            executeProbe(baseUrl, "GET")
+        }
+
+    private fun executeProbe(baseUrl: String, method: String): Int {
+        val request = Request.Builder()
+            .url(baseUrl)
+            .method(method, null)
+            .header("User-Agent", uaString)
+            .build()
+        return probeClient.newCall(request).execute().use { it.code }
+    }
+
+    internal fun probeFailureReason(failure: IOException): SiteProbeResult.Reason = when (failure) {
+        is UnknownHostException -> SiteProbeResult.Reason.DNS
+        is SocketTimeoutException -> SiteProbeResult.Reason.TIMEOUT
+        else -> SiteProbeResult.Reason.IO
+    }
 }

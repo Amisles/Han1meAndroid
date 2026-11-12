@@ -1,6 +1,7 @@
 package app.amisles.hanime.domain.repository
 
 import app.amisles.hanime.domain.model.DiagnosticResult
+import app.amisles.hanime.domain.model.SiteProbeResult
 
 /**
  * 站点可用性诊断。
@@ -11,4 +12,6 @@ import app.amisles.hanime.domain.model.DiagnosticResult
 interface DiagnosticsRepository {
     /** 运行全部诊断项，按 DNS → 连接 → SSL → 镜像状态 → 登录状态 的顺序返回。 */
     suspend fun runAll(): List<DiagnosticResult>
+
+    suspend fun probeSite(): SiteProbeResult
 }
