@@ -7,12 +7,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import androidx.navigation.navigation
 import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.feature.comic.ComicDetailScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryResultScreen
@@ -54,9 +52,6 @@ import app.amisles.hanime.domain.model.HanimeVideo
 internal const val NAV_TRANSITION_DURATION_MS = 220
 /** 退场时长略短于进场：让目标页更快接管画面，减少两页同时绘制的帧数。 */
 internal const val NAV_TRANSITION_EXIT_DURATION_MS = 160
-
-private const val SEARCH_ROUTE = "search?keyword={keyword}&genre={genre}&sort={sort}&ts={ts}"
-private const val DOWNLOAD_ROUTE = "download?highlight={highlight}"
 
 @Composable
 internal fun HanimeNavGraph(
@@ -118,7 +113,7 @@ internal fun HanimeNavGraph(
                     } else if (section.moreUrl.isNotBlank()) {
                         moreUrlPageRoute(section.moreUrl)?.let { route ->
                             navController.navigate(route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
+                                popUpTo(navController.graph.startDestinationId) {
                                     saveState = false
                                 }
                                 launchSingleTop = true
@@ -257,63 +252,59 @@ internal fun HanimeNavGraph(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        navigation(startDestination = SEARCH_ROUTE, route = "tab_search") {
-            composable(
-                route = SEARCH_ROUTE,
-                arguments = listOf(
-                    navArgument("keyword") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null },
-                    navArgument("genre") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null },
-                    navArgument("sort") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null },
-                    // 仅用于区分「同参数的新一次点按」，不参与搜索条件
-                    navArgument("ts") {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    }
-                )
-            ) { backStackEntry ->
-                val keyword = backStackEntry.arguments?.getString("keyword")
-                val genre = backStackEntry.arguments?.getString("genre")
-                val sort = backStackEntry.arguments?.getString("sort")
-                val ts = backStackEntry.arguments?.getString("ts")
-                SearchScreen(
-                    initialKeyword = keyword,
-                    initialGenre = genre,
-                    initialSort = sort,
-                    initialToken = ts,
-                    onVideoClick = { videoUrl ->
-                        navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
-                    onAuthorClick = { author ->
-                        navController.navigateToSearch(searchRoute(keyword = author))
-                    },
-                    onVideoLongClick = onVideoLongClick
-                )
-            }
+        composable(
+            route = "search?keyword={keyword}&genre={genre}&sort={sort}&ts={ts}",
+            arguments = listOf(
+                navArgument("keyword") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null },
+                navArgument("genre") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null },
+                navArgument("sort") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null },
+                // 仅用于区分「同参数的新一次点按」，不参与搜索条件
+                navArgument("ts") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val keyword = backStackEntry.arguments?.getString("keyword")
+            val genre = backStackEntry.arguments?.getString("genre")
+            val sort = backStackEntry.arguments?.getString("sort")
+            val ts = backStackEntry.arguments?.getString("ts")
+            SearchScreen(
+                initialKeyword = keyword,
+                initialGenre = genre,
+                initialSort = sort,
+                initialToken = ts,
+                onVideoClick = { videoUrl ->
+                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                onAuthorClick = { author ->
+                    navController.navigateToSearch(searchRoute(keyword = author))
+                },
+                onVideoLongClick = onVideoLongClick
+            )
         }
-        navigation(startDestination = DOWNLOAD_ROUTE, route = "tab_download") {
-            composable(
-                route = DOWNLOAD_ROUTE,
-                arguments = listOf(navArgument("highlight") {
-                    type = NavType.IntType
-                    defaultValue = -1
-                })
-            ) { backStackEntry ->
-                DownloadScreen(
-                    highlightTaskId = backStackEntry.arguments?.getInt("highlight") ?: -1,
-                    onPlayLocalVideo = { filePath ->
-                        navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
-                    }
-                )
-            }
+        composable(
+            route = "download?highlight={highlight}",
+            arguments = listOf(navArgument("highlight") {
+                type = NavType.IntType
+                defaultValue = -1
+            })
+        ) { backStackEntry ->
+            DownloadScreen(
+                highlightTaskId = backStackEntry.arguments?.getInt("highlight") ?: -1,
+                onPlayLocalVideo = { filePath ->
+                    navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
+                }
+            )
         }
         composable(
             route = "subscriptions?query={query}",
