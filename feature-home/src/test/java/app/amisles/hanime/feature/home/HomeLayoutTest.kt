@@ -52,11 +52,26 @@ class HomeLayoutTest {
     }
 
     @Test
-    fun `section columns grow with width only on expanded`() {
+    fun `section pairs only open up once content is wide enough`() {
+        assertTrue(homeTwoColumnSections(computeWindowSizeInfo(1280, 800)))
+        assertTrue(homeTwoColumnSections(computeWindowSizeInfo(2560, 1600)))
+        assertFalse(homeTwoColumnSections(computeWindowSizeInfo(950, 700)))
+        assertFalse(homeTwoColumnSections(computeWindowSizeInfo(800, 1280)))
+    }
+
+    @Test
+    fun `section block width splits the capped content evenly`() {
+        assertEquals(1080f, homeSectionBlockWidth(computeWindowSizeInfo(1280, 800), false).value, 0.5f)
+        assertEquals(520f, homeSectionBlockWidth(computeWindowSizeInfo(1280, 800), true).value, 0.5f)
+    }
+
+    @Test
+    fun `section columns follow block width instead of width class`() {
         val cfg = UiConfig.Default
-        assertEquals(5, homeSectionColumns(cfg, computeWindowSizeInfo(1280, 800)))
-        assertEquals(3, homeSectionColumns(cfg, computeWindowSizeInfo(800, 1280)))
-        assertEquals(2, homeSectionColumns(cfg, computeWindowSizeInfo(360, 640)))
+        assertEquals(2, homeSectionColumns(cfg, computeWindowSizeInfo(1280, 800), true))
+        assertEquals(5, homeSectionColumns(cfg, computeWindowSizeInfo(950, 700), false))
+        assertEquals(3, homeSectionColumns(cfg, computeWindowSizeInfo(800, 1280), false))
+        assertEquals(2, homeSectionColumns(cfg, computeWindowSizeInfo(360, 640), false))
     }
 
     @Test

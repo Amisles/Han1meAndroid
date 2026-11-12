@@ -125,34 +125,29 @@ internal fun rowThumbnailWidth(
 /** 分区在 LazyColumn 中的实际渲染形态；[HomeSectionLayout.AUTO] 由窗口宽度决定，故需与用户可选模式区分。 */
 private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
 
-private enum class HomeItemType { HEADER, CATEGORY, SKELETON, ERROR, REFRESH_ERROR, BANNER, SECTION_TITLE, VIDEO_LIST, VIDEO_ROW, GRID_ROW, CAROUSEL, SPACER }
+private enum class HomeItemType { HEADER, CATEGORY, SKELETON, ERROR, REFRESH_ERROR, BANNER, SECTION, SPACER }
 
 private data class SectionPlan(
     val section: HomeSection,
     val mode: SectionRenderMode,
     val videos: List<HanimeVideo>,
-    val videoKeys: List<String>,
-    val rowVideos: List<List<HanimeVideo>>,
-    val rowKeys: List<String>
-) {
-    /** 该分区在 LazyColumn 中占用的视频 item 数，索引映射与渲染共用，避免两处漂移。 */
-    val itemCount: Int
-        get() = when (mode) {
-            SectionRenderMode.LIST_COLUMN -> videos.size
-            SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> rowVideos.size
-            SectionRenderMode.CAROUSEL -> 1
-        }
-}
+    val rowVideos: List<List<HanimeVideo>>
+)
 
-private fun renderMode(configured: HomeSectionLayout, widthClass: WindowWidthSizeClass): SectionRenderMode =
+private fun renderMode(
+    configured: HomeSectionLayout,
+    widthClass: WindowWidthSizeClass,
+    twoColumnSections: Boolean
+): SectionRenderMode =
     when (configured) {
         HomeSectionLayout.LIST -> SectionRenderMode.LIST_COLUMN
         HomeSectionLayout.GRID -> SectionRenderMode.GRID_ROWS
         HomeSectionLayout.CAROUSEL -> SectionRenderMode.CAROUSEL
-        HomeSectionLayout.AUTO -> when (widthClass) {
-            WindowWidthSizeClass.Compact -> SectionRenderMode.LIST_COLUMN
-            WindowWidthSizeClass.Medium -> SectionRenderMode.LIST_ROWS
-            WindowWidthSizeClass.Expanded -> SectionRenderMode.GRID_ROWS
+        HomeSectionLayout.AUTO -> when {
+            twoColumnSections -> SectionRenderMode.GRID_ROWS
+            widthClass == WindowWidthSizeClass.Compact -> SectionRenderMode.LIST_COLUMN
+            widthClass == WindowWidthSizeClass.Medium -> SectionRenderMode.LIST_ROWS
+            else -> SectionRenderMode.GRID_ROWS
         }
     }
 
@@ -160,28 +155,20 @@ private fun buildPlans(
     sections: List<HomeSection>,
     homeConfig: HomeSectionConfig,
     widthClass: WindowWidthSizeClass,
-    columns: Int
-): List<SectionPlan> = homeConfig.arrange(sections).mapIndexed { index, section ->
-    val mode = renderMode(homeConfig.layoutFor(section.title), widthClass)
+    columns: Int,
+    twoColumnSections: Boolean
+): List<SectionPlan> = homeConfig.arrange(sections).map { section ->
+    val mode = renderMode(homeConfig.layoutFor(section.title), widthClass, twoColumnSections)
     val videos = section.videos.take(homeConfig.countFor(section.title))
     val rowVideos = when (mode) {
         SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> videos.chunked(columns)
         SectionRenderMode.LIST_COLUMN, SectionRenderMode.CAROUSEL -> emptyList()
     }
-    val rowKeyPrefix = if (mode == SectionRenderMode.GRID_ROWS) "home-grid-row" else "home-row"
-    val sectionKey = sectionKey(section, index)
-    SectionPlan(
-        section = section,
-        mode = mode,
-        videos = videos,
-        videoKeys = videos.map { "$sectionKey#${it.videoUrl}" },
-        rowVideos = rowVideos,
-        rowKeys = rowVideos.indices.map { "$rowKeyPrefix-$sectionKey-$it" }
-    )
+    SectionPlan(section = section, mode = mode, videos = videos, rowVideos = rowVideos)
 }
 
-/** LazyColumn 的 item key 前缀：标题不足以区分同名分区，追加下标保证全局唯一。 */
-private fun sectionKey(section: HomeSection, index: Int): String = "${section.title}-$index"
+private fun sectionPairKey(pair: List<SectionPlan>, index: Int): String =
+    "home-section-$index-" + pair.joinToString("|") { it.section.title }
 
 @Composable
 fun HomeScreen(
@@ -286,56 +273,45 @@ fun HomeScreenContent(
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
 
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
-    val columns = remember(sizeInfo, cfg) { homeSectionColumns(cfg, sizeInfo).coerceAtLeast(1) }
+    val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }
+    val columns = remember(sizeInfo, cfg, twoColumnSections) {
+        homeSectionColumns(cfg, sizeInfo, twoColumnSections).coerceAtLeast(1)
+    }
     val hasSideContent = continueWatching.isNotEmpty() || (weeklyReportVisible && weeklyReport != null)
     val heroLayout = remember(sizeInfo, hasSideContent) {
         homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent)
     }
     val twoColumnHero = heroLayout.twoColumn && banner != null
-    val plans = remember(sections, homeConfig, sizeInfo.widthClass, columns) {
-        buildPlans(sections, homeConfig, sizeInfo.widthClass, columns)
+    val plans = remember(sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections) {
+        buildPlans(sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections)
+    }
+    val sectionPairs = remember(plans, twoColumnSections) {
+        if (twoColumnSections) plans.chunked(2) else plans.map { listOf(it) }
     }
     // 多列时缩略图须按列宽等比缩小：固定 150dp 会把文字区压到几 dp。比例取 0.42，
     // 与手机单列下缩略图占卡宽的比例（150 / 340）一致
     val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
         rowThumbnailWidth(cfg, sizeInfo.widthDp, sizeInfo.contentMaxWidth, columns, isCompactWidth)
     }
-    val sectionTitleToIndex: Map<String, Int> = remember(
-        plans,
-        twoColumnHero,
-        banner,
-        error,
-        sections,
-        cfg.homeShowCategoryBar,
-        continueWatching,
-        weeklyReport,
-        weeklyReportVisible,
-        watchLater
-    ) {
-        val map = mutableMapOf<String, Int>()
-        var idx = 0
-        idx++ // header
-        if (cfg.homeShowCategoryBar) idx++ // category
-        if (!isLoading) {
-            if (error != null && sections.isNotEmpty()) idx++ // 刷新失败提示行
-            if (twoColumnHero) {
-                idx++ // hero：banner 与侧栏合并为一项
-            } else {
-                if (weeklyReportVisible && weeklyReport != null) idx++ // 本周报告
-                if (banner != null) idx++ // banner
-                if (continueWatching.isNotEmpty()) idx++ // 继续观看
-            }
-            if (watchLater.isNotEmpty()) idx++ // 稍后再看
-            plans.forEach { plan ->
-                map[plan.section.title] = idx // 标题 item 的索引
-                // 标题 + 视频区（条数由 plan.itemCount 给出，与渲染分支同源）+ 分区之间的 spacer
-                idx += 1 + plan.itemCount + 1
-            }
-            idx++ // bottom spacer
+    val headKeys = buildList {
+        add("home-header")
+        if (cfg.homeShowCategoryBar) add("home-category")
+        if (error != null && sections.isNotEmpty()) add("home-refresh-error")
+        if (twoColumnHero) {
+            add("home-hero")
         } else {
-            idx++ // skeleton
+            if (weeklyReportVisible && weeklyReport != null) add("home-weekly-report")
+            if (banner != null) add("home-banner")
+            if (continueWatching.isNotEmpty()) add("home-continue-watching")
         }
-        map
+        if (watchLater.isNotEmpty()) add("home-watch-later")
+    }
+    val sectionTitleToIndex: Map<String, Int> = remember(sectionPairs, headKeys) {
+        buildMap {
+            sectionPairs.forEachIndexed { index, pair ->
+                pair.forEach { plan -> put(plan.section.title, headKeys.size + index) }
+            }
+        }
     }
 
     val context = LocalContext.current
@@ -519,145 +495,30 @@ fun HomeScreenContent(
                 }
             }
 
-            plans.forEachIndexed { i, plan ->
-                val section = plan.section
-                item(key = "home-section-title-${sectionKey(section, i)}", contentType = HomeItemType.SECTION_TITLE) {
+            sectionPairs.forEachIndexed { pairIndex, pair ->
+                item(key = sectionPairKey(pair, pairIndex), contentType = HomeItemType.SECTION) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 15.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = if (twoColumnSections) HOME_SIDE_PADDING else 0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(HOME_SECTION_GAP)
                     ) {
-                        Text(
-                            text = homeSectionTitleResMap[section.title]?.let { stringResource(it) }
-                                ?: section.title,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { onViewMore(section) }
-                        ) {
-                            Text(
-                                text = stringResource(R.string.common_view_more),
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-
-                when (plan.mode) {
-                    SectionRenderMode.LIST_COLUMN -> {
-                        // key 必须整条 LazyColumn 全局唯一：同一部影片会同时出现在「最新上市 / 本日排行」
-                        // 等排序型分区里，只用 videoUrl 作 key 会触发「Key was already used」崩溃。
-                        // sectionKey 追加分区下标，即使同名分区共存也能保证「标题-下标#url」全局唯一。
-                        items(
-                            count = plan.videos.size,
-                            key = { plan.videoKeys[it] },
-                            contentType = { HomeItemType.VIDEO_LIST }
-                        ) { index ->
-                            val video = plan.videos[index]
-                            VideoListItem(
-                                video = video,
-                                onClick = { onVideoClick(video.videoUrl) },
+                        pair.forEach { plan ->
+                            SectionBlock(
+                                plan = plan,
+                                columns = columns,
+                                rowThumbnailWidth = rowThumbnailWidth,
+                                onVideoClick = onVideoClick,
                                 onAuthorClick = onAuthorClick,
-                                onLongClick = { onVideoLongClick(video) },
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                onVideoLongClick = onVideoLongClick,
+                                onViewMore = onViewMore,
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                    }
-
-                    SectionRenderMode.LIST_ROWS -> {
-                        // 按列数分行渲染，避免单列在大屏下空旷
-                        plan.rowVideos.forEachIndexed { rowIndex, row ->
-                            // 与单列分支同理：行 item 也必须带分区前缀，避免跨分区撞 key
-                            item(key = plan.rowKeys[rowIndex], contentType = HomeItemType.VIDEO_ROW) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(LIST_ROW_SPACING_DP.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    row.forEach { video ->
-                                        VideoListItem(
-                                            video = video,
-                                            onClick = { onVideoClick(video.videoUrl) },
-                                            onAuthorClick = onAuthorClick,
-                                            onLongClick = { onVideoLongClick(video) },
-                                            thumbnailWidth = rowThumbnailWidth,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(
-                                                    horizontal = LIST_ITEM_H_PADDING_DP.dp,
-                                                    vertical = 3.dp
-                                                )
-                                        )
-                                    }
-                                    repeat(columns - row.size) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
-                                }
-                            }
+                        if (twoColumnSections && pair.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
-
-                    SectionRenderMode.GRID_ROWS -> {
-                        plan.rowVideos.forEachIndexed { rowIndex, row ->
-                            item(key = plan.rowKeys[rowIndex], contentType = HomeItemType.GRID_ROW) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 10.dp)
-                                ) {
-                                    row.forEach { video ->
-                                        VideoGridCard(
-                                            video = video,
-                                            onClick = { onVideoClick(video.videoUrl) },
-                                            onAuthorClick = onAuthorClick,
-                                            onLongClick = { onVideoLongClick(video) },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                    repeat(columns - row.size) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    SectionRenderMode.CAROUSEL -> {
-                        // 独立 LazyRow，key 只需在本行内唯一
-                        item(key = "home-carousel-${sectionKey(section, i)}", contentType = HomeItemType.CAROUSEL) {
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                items(plan.videos, key = { it.videoUrl }) { video ->
-                                    VideoCard(
-                                        video = video,
-                                        onClick = { onVideoClick(video.videoUrl) },
-                                        onAuthorClick = onAuthorClick,
-                                        onLongClick = { onVideoLongClick(video) },
-                                        targetWidth = CAROUSEL_CARD_WIDTH,
-                                        modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item(key = "home-section-spacer-${sectionKey(section, i)}", contentType = HomeItemType.SPACER) {
-                    Spacer(modifier = Modifier.height(6.dp))
                 }
             }
 
@@ -719,6 +580,126 @@ private fun HomeHeroRow(
     }
 }
 
+@Composable
+private fun SectionBlock(
+    plan: SectionPlan,
+    columns: Int,
+    rowThumbnailWidth: Dp,
+    onVideoClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit,
+    onVideoLongClick: (HanimeVideo) -> Unit,
+    onViewMore: (HomeSection) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val section = plan.section
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = homeSectionTitleResMap[section.title]?.let { stringResource(it) } ?: section.title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onViewMore(section) }
+            ) {
+                Text(
+                    text = stringResource(R.string.common_view_more),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        when (plan.mode) {
+            SectionRenderMode.LIST_COLUMN -> plan.videos.forEach { video ->
+                VideoListItem(
+                    video = video,
+                    onClick = { onVideoClick(video.videoUrl) },
+                    onAuthorClick = onAuthorClick,
+                    onLongClick = { onVideoLongClick(video) },
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                )
+            }
+
+            SectionRenderMode.LIST_ROWS -> plan.rowVideos.forEach { row ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(LIST_ROW_SPACING_DP.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    row.forEach { video ->
+                        VideoListItem(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            onAuthorClick = onAuthorClick,
+                            onLongClick = { onVideoLongClick(video) },
+                            thumbnailWidth = rowThumbnailWidth,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = LIST_ITEM_H_PADDING_DP.dp, vertical = 3.dp)
+                        )
+                    }
+                    repeat(columns - row.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+
+            SectionRenderMode.GRID_ROWS -> plan.rowVideos.forEach { row ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
+                ) {
+                    row.forEach { video ->
+                        VideoGridCard(
+                            video = video,
+                            onClick = { onVideoClick(video.videoUrl) },
+                            onAuthorClick = onAuthorClick,
+                            onLongClick = { onVideoLongClick(video) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    repeat(columns - row.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+
+            SectionRenderMode.CAROUSEL -> LazyRow(
+                contentPadding = PaddingValues(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(plan.videos, key = { it.videoUrl }) { video ->
+                    VideoCard(
+                        video = video,
+                        onClick = { onVideoClick(video.videoUrl) },
+                        onAuthorClick = onAuthorClick,
+                        onLongClick = { onVideoLongClick(video) },
+                        targetWidth = CAROUSEL_CARD_WIDTH,
+                        modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+    }
+}
+
 /** 首页骨架屏：加载时模拟首页布局的占位。 */
 @Composable
 private fun HomeSkeletonScreen() {
@@ -754,40 +735,74 @@ private fun HomeSkeletonScreen() {
                 .background(MaterialTheme.colorScheme.surface)
                 .graphicsLayer { alpha = shimmerAlpha.value }
         )
-        val columns = remember(sizeInfo, cfg) { homeSectionColumns(cfg, sizeInfo).coerceAtLeast(1) }
-        val modes = remember(homeConfig, sizeInfo.widthClass) {
-            (SKELETON_SECTION_TITLES + homeConfig.order).distinct()
-                .map { renderMode(homeConfig.layoutFor(it), sizeInfo.widthClass) }
+        val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }
+        val columns = remember(sizeInfo, cfg, twoColumnSections) {
+            homeSectionColumns(cfg, sizeInfo, twoColumnSections).coerceAtLeast(1)
         }
-
-        repeat(SKELETON_SECTION_COUNT) { index ->
-            Box(
+        val modes = remember(homeConfig, sizeInfo.widthClass, twoColumnSections) {
+            (SKELETON_SECTION_TITLES + homeConfig.order).distinct()
+                .map { renderMode(homeConfig.layoutFor(it), sizeInfo.widthClass, twoColumnSections) }
+        }
+        val skeletonModes = List(SKELETON_SECTION_COUNT) { index ->
+            modes.getOrElse(index) { SectionRenderMode.LIST_COLUMN }
+        }
+        val skeletonRows = if (twoColumnSections) skeletonModes.chunked(2) else skeletonModes.map { listOf(it) }
+        skeletonRows.forEach { pair ->
+            Row(
                 modifier = Modifier
-                    .padding(horizontal = 15.dp, vertical = 8.dp)
-                    .size(width = 120.dp, height = 18.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .graphicsLayer { alpha = shimmerAlpha.value }
-            )
-
-            val mode = modes.getOrElse(index) { SectionRenderMode.LIST_COLUMN }
-            val items = homeConfig.visibleCount
-            when (mode) {
-                SectionRenderMode.LIST_COLUMN -> repeat(items) {
-                    SkeletonVideoRow(shimmerAlpha = shimmerAlpha)
+                    .fillMaxWidth()
+                    .padding(horizontal = if (twoColumnSections) HOME_SIDE_PADDING else 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(HOME_SECTION_GAP)
+            ) {
+                pair.forEach { mode ->
+                    SkeletonSection(
+                        mode = mode,
+                        columns = columns,
+                        itemCount = homeConfig.visibleCount,
+                        shimmerAlpha = shimmerAlpha,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
-                SectionRenderMode.LIST_ROWS -> repeat(skeletonRowCount(items, columns)) {
-                    SkeletonCompactRow(shimmerAlpha = shimmerAlpha, columns = columns)
+                if (twoColumnSections && pair.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
-                SectionRenderMode.GRID_ROWS -> repeat(skeletonRowCount(items, columns)) {
-                    SkeletonGridRow(shimmerAlpha = shimmerAlpha, columns = columns)
-                }
-                SectionRenderMode.CAROUSEL -> SkeletonCarousel(shimmerAlpha = shimmerAlpha)
             }
-            Spacer(modifier = Modifier.height(6.dp))
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun SkeletonSection(
+    mode: SectionRenderMode,
+    columns: Int,
+    itemCount: Int,
+    shimmerAlpha: State<Float>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 15.dp, vertical = 8.dp)
+                .size(width = 120.dp, height = 18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .graphicsLayer { alpha = shimmerAlpha.value }
+        )
+        when (mode) {
+            SectionRenderMode.LIST_COLUMN -> repeat(itemCount) {
+                SkeletonVideoRow(shimmerAlpha = shimmerAlpha)
+            }
+            SectionRenderMode.LIST_ROWS -> repeat(skeletonRowCount(itemCount, columns)) {
+                SkeletonCompactRow(shimmerAlpha = shimmerAlpha, columns = columns)
+            }
+            SectionRenderMode.GRID_ROWS -> repeat(skeletonRowCount(itemCount, columns)) {
+                SkeletonGridRow(shimmerAlpha = shimmerAlpha, columns = columns)
+            }
+            SectionRenderMode.CAROUSEL -> SkeletonCarousel(shimmerAlpha = shimmerAlpha)
+        }
+        Spacer(modifier = Modifier.height(6.dp))
     }
 }
 

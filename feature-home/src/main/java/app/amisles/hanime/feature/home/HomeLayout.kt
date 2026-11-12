@@ -7,6 +7,7 @@ import app.amisles.hanime.core.ui.theme.WindowSizeInfo
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 
 internal val HOME_SIDE_PADDING = 10.dp
+internal val HOME_SECTION_GAP = 20.dp
 
 internal val HERO_GAP = 16.dp
 private val HERO_MIN_HEIGHT = 180.dp
@@ -15,6 +16,7 @@ private const val HERO_COVER_ASPECT = 9f / 16f
 private const val HERO_VIEWPORT_RATIO = 0.4f
 private const val HERO_MIN_WIDTH_DP = 840
 private const val HERO_MIN_WINDOW_HEIGHT_DP = 600
+private const val SECTION_TWO_COLUMN_MIN_WIDTH_DP = 1000
 
 internal data class HomeHeroLayout(
     val twoColumn: Boolean,
@@ -56,9 +58,19 @@ internal fun homeHeroLayout(
     )
 }
 
-internal fun homeSectionColumns(cfg: UiConfig, sizeInfo: WindowSizeInfo): Int =
-    when (sizeInfo.widthClass) {
-        WindowWidthSizeClass.Expanded ->
-            cfg.gridColumnsFor(homeContentWidth(sizeInfo.widthDp, sizeInfo.contentMaxWidth) - HOME_SIDE_PADDING * 2)
-        else -> sizeInfo.gridColumns(cfg)
+internal fun homeTwoColumnSections(sizeInfo: WindowSizeInfo): Boolean =
+    homeContentWidth(sizeInfo.widthDp, sizeInfo.contentMaxWidth).value >= SECTION_TWO_COLUMN_MIN_WIDTH_DP
+
+internal fun homeSectionBlockWidth(sizeInfo: WindowSizeInfo, twoColumnSections: Boolean): Dp =
+    if (twoColumnSections) {
+        (homeContentWidth(sizeInfo.widthDp, sizeInfo.contentMaxWidth) - HOME_SIDE_PADDING * 2 - HOME_SECTION_GAP) / 2
+    } else {
+        homeContentWidth(sizeInfo.widthDp, sizeInfo.contentMaxWidth)
+    }
+
+internal fun homeSectionColumns(cfg: UiConfig, sizeInfo: WindowSizeInfo, twoColumnSections: Boolean): Int =
+    if (twoColumnSections || sizeInfo.widthClass == WindowWidthSizeClass.Expanded) {
+        cfg.gridColumnsFor(homeSectionBlockWidth(sizeInfo, twoColumnSections) - HOME_SIDE_PADDING * 2)
+    } else {
+        sizeInfo.gridColumns(cfg)
     }
