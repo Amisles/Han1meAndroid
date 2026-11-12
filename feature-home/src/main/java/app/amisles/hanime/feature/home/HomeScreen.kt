@@ -688,7 +688,7 @@ private fun HomeHeroRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = HOME_SIDE_PADDING),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(HERO_GAP)
     ) {
         Box(modifier = Modifier.width(layout.bannerWidth)) {
             Banner(

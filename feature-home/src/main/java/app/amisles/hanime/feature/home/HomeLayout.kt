@@ -8,7 +8,7 @@ import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 
 internal val HOME_SIDE_PADDING = 10.dp
 
-private val HERO_GAP = 16.dp
+internal val HERO_GAP = 16.dp
 private val HERO_MIN_HEIGHT = 180.dp
 private const val HERO_BANNER_RATIO = 0.62f
 private const val HERO_COVER_ASPECT = 9f / 16f
