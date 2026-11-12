@@ -10,6 +10,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.data.remote.CloudflareChallengeException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -401,8 +402,19 @@ class SearchViewModel @Inject constructor(
     fun clearSearchHistory() {
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) {
+                val captured = _searchHistory.value.orEmpty()
+                val ok = withContext(Dispatchers.IO) {
                     library.clearSearchHistory()
+                }
+                if (ok && captured.isNotEmpty()) {
+                    AppSnackbar.show(
+                        context.getString(R.string.search_history_cleared),
+                        context.getString(R.string.common_undo)
+                    ) {
+                        AppSnackbar.undoScope.launch(Dispatchers.IO) {
+                            captured.reversed().forEach { library.addSearchHistory(it) }
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e

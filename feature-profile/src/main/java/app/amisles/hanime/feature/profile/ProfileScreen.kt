@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.profile
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -144,7 +144,7 @@ fun ProfileScreen(
         if (isSessionStored) {
             add(ProfileMenuItem(Icons.AutoMirrored.Filled.Logout, stringResource(R.string.profile_logout)) {
                 profileViewModel.logout()
-                Toast.makeText(context, context.getString(R.string.profile_logout_success), Toast.LENGTH_SHORT).show()
+                AppSnackbar.show(context.getString(R.string.profile_logout_success))
             })
         }
     }

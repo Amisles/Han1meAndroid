@@ -39,8 +39,14 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
@@ -80,6 +86,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.amisles.hanime.BuildConfig
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
@@ -110,6 +117,8 @@ import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.ui.theme.PreferencesAppPreferences
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.abs
@@ -379,6 +388,26 @@ fun HanimeApp(
             }
         }
     }
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        var undoTimeout: Job? = null
+        AppSnackbar.events.collect { event ->
+            undoTimeout?.cancel()
+            undoTimeout = launch {
+                kotlinx.coroutines.delay(5_000L)
+                snackbarHostState.currentSnackbarData?.dismiss()
+            }
+            val result = snackbarHostState.showSnackbar(
+                message = event.text,
+                actionLabel = event.actionLabel,
+                duration = SnackbarDuration.Indefinite
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                event.onAction?.invoke()
+            }
+        }
+    }
+
     // 左滑关闭：拖拽期间的位移，以及松手时跳过的抽屉宽度占比；
     // 关闭动画从松手位置继续，而不是回到完全展开再重播一遍
     var drawerDragOffset by remember { mutableFloatStateOf(0f) }
@@ -415,6 +444,16 @@ fun HanimeApp(
                     .fillMaxHeight()
                     .weight(1f),
                 containerColor = MaterialTheme.colorScheme.background,
+                snackbarHost = {
+                    SnackbarHost(hostState = snackbarHostState) { data ->
+                        Snackbar(
+                            snackbarData = data,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onBackground,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+                },
                 bottomBar = {
                     // 用 AnimatedVisibility 而非条件渲染：底部栏瞬时消失会让 NavHost 的
                     // 内容内边距在同一帧由 ~80dp 突变为 0，与目标页首帧叠加成一次明显掉帧。

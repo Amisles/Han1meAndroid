@@ -1,6 +1,5 @@
 package app.amisles.hanime.ui.components
 
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -9,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PlaylistSaveSheet
 import app.amisles.hanime.core.ui.components.VideoActionSheet
@@ -61,7 +61,7 @@ fun VideoQuickActionsHost(
                 else -> ""
             }
             if (text.isNotEmpty()) {
-                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                AppSnackbar.show(text)
             }
         }
     }
@@ -74,7 +74,7 @@ fun VideoQuickActionsHost(
                 QuickDownloadEvent.InvalidUrl -> R.string.detail_download_invalid_url
                 QuickDownloadEvent.Failed -> R.string.common_load_failed
             }
-            Toast.makeText(context, resources.getString(res), Toast.LENGTH_SHORT).show()
+            AppSnackbar.show(resources.getString(res))
         }
     }
 

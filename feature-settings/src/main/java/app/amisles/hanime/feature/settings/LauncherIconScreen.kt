@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
@@ -110,7 +111,7 @@ fun LauncherIconScreen(
                 },
                 onFailure = { R.string.launcher_icon_custom_failed }
             )
-            Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show()
+            AppSnackbar.show(context.getString(messageRes))
         }
     }
 

@@ -16,6 +16,7 @@ import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.data.remote.CloudflareChallengeException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +67,16 @@ class HomeViewModel @Inject constructor(
     /** 从继续观看移除 = 删除该条历史记录。 */
     fun removeContinueItem(videoId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            libraryRepository.removeWatchHistory(videoId)
+            val captured = libraryRepository.getWatchHistory(videoId)
+            val ok = libraryRepository.removeWatchHistory(videoId)
+            if (ok && captured != null) {
+                AppSnackbar.show(
+                    context.getString(R.string.home_continue_removed),
+                    context.getString(R.string.common_undo)
+                ) {
+                    AppSnackbar.undoScope.launch { libraryRepository.addWatchHistory(captured) }
+                }
+            }
         }
     }
 

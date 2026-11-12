@@ -11,6 +11,7 @@
     <string name="common_delete">Delete</string>
     <string name="common_clear">Clear</string>
     <string name="common_close">Close</string>
+    <string name="common_undo">Undo</string>
     <string name="common_save">Save</string>
     <string name="common_select_all">Select All</string>
     <string name="common_loading">Loading...</string>
@@ -31,7 +32,9 @@
     <string name="common_playlist_videos_count">%1$d videos</string>
     <string name="home_load_failed">Failed to load home page</string>
     <string name="home_long_press_hint">Long-press a video card to quickly favorite, download, share or watch later</string>
+    <string name="home_continue_removed">Removed from Continue watching</string>
     <string name="search_placeholder">Enter keywords to search</string>
+    <string name="search_history_cleared">Search history cleared</string>
     <string name="search_history">Search History</string>
     <string name="search_suggest_tags">Popular Tags</string>
     <string name="search_no_results">No search results</string>
@@ -601,6 +604,7 @@
     <string name="settings_download_storage_new_folder">New folder</string>
     <string name="settings_download_storage_new_folder_hint">Folder name</string>
     <string name="settings_download_storage_enter_name">Please enter a folder name</string>
+    <string name="settings_download_storage_create_failed">Failed to create folder</string>
     <string name="settings_download_storage_no_subdirs">No subfolders</string>
     <string name="settings_download_storage_created">Folder created</string>
     <string name="settings_theme_mode">Theme Mode</string>

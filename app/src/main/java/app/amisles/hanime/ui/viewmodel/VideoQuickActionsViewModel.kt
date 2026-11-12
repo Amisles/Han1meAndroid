@@ -3,6 +3,7 @@ package app.amisles.hanime.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,6 +109,7 @@ class VideoQuickActionsViewModel @Inject constructor(
         val willAdd = !_watchLaterIds.value.contains(videoId)
         viewModelScope.launch {
             try {
+                var removed: WatchLaterVideo? = null
                 val ok = withContext(Dispatchers.IO) {
                     if (willAdd) {
                         library.addWatchLater(
@@ -121,6 +124,7 @@ class VideoQuickActionsViewModel @Inject constructor(
                             )
                         )
                     } else {
+                        removed = library.getWatchLaterFlow().first().firstOrNull { it.id == videoId }
                         library.removeWatchLater(videoId)
                     }
                 }
@@ -129,9 +133,23 @@ class VideoQuickActionsViewModel @Inject constructor(
                 } else {
                     _watchLaterIds.value - videoId
                 }
-                _events.trySend(
-                    if (willAdd) R.string.watch_later_added else R.string.watch_later_removed
-                )
+                if (!ok) {
+                    _events.trySend(R.string.local_save_failed)
+                } else if (willAdd) {
+                    _events.trySend(R.string.watch_later_added)
+                } else {
+                    val restored = removed
+                    if (restored == null) {
+                        _events.trySend(R.string.watch_later_removed)
+                    } else {
+                        AppSnackbar.show(
+                            context.getString(R.string.watch_later_removed),
+                            context.getString(R.string.common_undo)
+                        ) {
+                            AppSnackbar.undoScope.launch { library.addWatchLater(restored) }
+                        }
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -146,6 +164,7 @@ class VideoQuickActionsViewModel @Inject constructor(
         val willAdd = !_favoriteIds.value.contains(videoId)
         viewModelScope.launch {
             try {
+                var removed: FavoriteVideo? = null
                 val ok = withContext(Dispatchers.IO) {
                     if (willAdd) {
                         library.addFavorite(
@@ -162,6 +181,7 @@ class VideoQuickActionsViewModel @Inject constructor(
                             )
                         )
                     } else {
+                        removed = library.getAllFavorites().firstOrNull { it.id == videoId }
                         library.removeFavorite(videoId)
                     }
                 }
@@ -171,10 +191,22 @@ class VideoQuickActionsViewModel @Inject constructor(
                 } else {
                     _favoriteIds.value - videoId
                 }
-                if (!ok) {
-                    _events.trySend(R.string.local_save_failed)
-                } else {
-                    _events.trySend(if (verified) R.string.favorite_added else R.string.favorite_removed)
+                when {
+                    !ok -> _events.trySend(R.string.local_save_failed)
+                    verified -> _events.trySend(R.string.favorite_added)
+                    else -> {
+                        val restored = removed
+                        if (restored == null) {
+                            _events.trySend(R.string.favorite_removed)
+                        } else {
+                            AppSnackbar.show(
+                                context.getString(R.string.favorite_removed),
+                                context.getString(R.string.common_undo)
+                            ) {
+                                AppSnackbar.undoScope.launch { library.addFavorite(restored) }
+                            }
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e

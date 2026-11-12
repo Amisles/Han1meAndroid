@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -22,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.R
 
 internal class DownloadScreenLaunchers(
@@ -113,15 +113,13 @@ internal fun rememberDownloadScreenLaunchers(viewModel: DownloadViewModel): Down
     ) { uri ->
         uri?.let {
             viewModel.readMigrationFrom(it, context) { count ->
-                Toast.makeText(
-                    context,
+                AppSnackbar.show(
                     context.getString(
                         if (count > 0) R.string.download_migration_import_done
                         else R.string.download_migration_import_failed,
                         count
-                    ),
-                    Toast.LENGTH_SHORT
-                ).show()
+                    )
+                )
             }
         }
     }

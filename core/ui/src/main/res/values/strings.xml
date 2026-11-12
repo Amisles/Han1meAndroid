@@ -16,6 +16,7 @@
     <string name="common_delete">删除</string>
     <string name="common_clear">清空</string>
     <string name="common_close">关闭</string>
+    <string name="common_undo">撤销</string>
     <string name="common_save">保存</string>
     <string name="common_select_all">全选</string>
     <string name="common_loading">加载中...</string>
@@ -38,9 +39,11 @@
     <!-- Home -->
     <string name="home_load_failed">首页加载失败</string>
     <string name="home_long_press_hint">长按视频卡片可快速收藏、下载、分享或稍后观看</string>
+    <string name="home_continue_removed">已从继续观看移除</string>
     
     <!-- Search -->
     <string name="search_placeholder">输入关键词搜索</string>
+    <string name="search_history_cleared">搜索历史已清空</string>
     <string name="search_history">搜索历史</string>
     <string name="search_suggest_tags">热门标签</string>
     <string name="search_no_results">暂无搜索结果</string>
@@ -625,6 +628,7 @@
     <string name="settings_download_storage_new_folder">新建文件夹</string>
     <string name="settings_download_storage_new_folder_hint">文件夹名称</string>
     <string name="settings_download_storage_enter_name">请输入文件夹名称</string>
+    <string name="settings_download_storage_create_failed">文件夹创建失败</string>
     <string name="settings_download_storage_no_subdirs">无子文件夹</string>
     <string name="settings_download_storage_created">文件夹已创建</string>
     <string name="settings_theme_mode">主题模式</string>

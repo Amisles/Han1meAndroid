@@ -3,7 +3,6 @@ package app.amisles.hanime.feature.settings
 import android.content.Context
 import android.os.Build
 import android.os.Environment
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -82,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Layers
 import java.io.File
 import app.amisles.hanime.domain.preferences.ThemeMode
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.repository.SettingsRepository
@@ -257,7 +257,7 @@ private fun FolderPickerDialog(
 
     LaunchedEffect(toastRes) {
         toastRes?.let {
-            Toast.makeText(context, context.getString(it), Toast.LENGTH_SHORT).show()
+            AppSnackbar.show(context.getString(it))
             toastRes = null
         }
     }
@@ -297,7 +297,7 @@ private fun FolderPickerDialog(
                             newFolderName = ""
                             showNewFolder = false
                         } else {
-                            toastRes = R.string.settings_download_storage_enter_name
+                            toastRes = R.string.settings_download_storage_create_failed
                         }
                     }
                 }) {
@@ -421,7 +421,7 @@ fun SettingsScreen(
                     } else {
                         context.getString(event.messageResId)
                     }
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    AppSnackbar.show(msg)
                 }
             }
         }
@@ -443,11 +443,9 @@ fun SettingsScreen(
     ) { granted ->
         viewModel.setSubscriptionReminder(granted)
         if (!granted) {
-            Toast.makeText(
-                context,
-                context.getString(app.amisles.hanime.core.ui.R.string.settings_subscription_needs_permission),
-                Toast.LENGTH_SHORT
-            ).show()
+            AppSnackbar.show(
+                context.getString(app.amisles.hanime.core.ui.R.string.settings_subscription_needs_permission)
+            )
         }
     }
 
@@ -598,11 +596,7 @@ fun SettingsScreen(
                     selectedValue = uiState.maxDownloadConcurrent,
                     onSelect = { count ->
                         viewModel.setMaxDownloadConcurrent(count)
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.settings_concurrent_set_toast, count),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        AppSnackbar.show(context.getString(R.string.settings_concurrent_set_toast, count))
                     }
                 )
                 SettingsGroupDivider()
@@ -813,14 +807,12 @@ fun SettingsScreen(
                     // 空白输入恢复默认地址；非法输入被拒绝且原设置不变；合法但需补 https 前缀的输入会被接受。据返回值提示成功或无效
                     val applied = viewModel.setBaseUrl(baseUrlInput)
                     showBaseUrlDialog = false
-                    Toast.makeText(
-                        context,
+                    AppSnackbar.show(
                         context.getString(
                             if (applied) R.string.settings_base_url_updated
                             else R.string.settings_base_url_invalid
-                        ),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                        )
+                    )
                 }) {
                     Text(stringResource(R.string.common_save), color = MaterialTheme.colorScheme.primary)
                 }
@@ -830,7 +822,7 @@ fun SettingsScreen(
                     viewModel.restoreDefaultBaseUrl()
                     baseUrlInput = SettingsRepository.DEFAULT_BASE_URL
                     showBaseUrlDialog = false
-                    Toast.makeText(context, context.getString(R.string.settings_base_url_restored), Toast.LENGTH_SHORT).show()
+                    AppSnackbar.show(context.getString(R.string.settings_base_url_restored))
                 }) {
                     Text(stringResource(R.string.common_restore_default), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

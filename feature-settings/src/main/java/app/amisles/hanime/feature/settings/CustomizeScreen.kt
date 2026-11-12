@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.settings
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.SettingsGroupCard
@@ -104,7 +104,7 @@ fun CustomizeScreen(
             if (target == null) appPrefs.clearRelatedLayoutMode() else appPrefs.setRelatedLayoutMode(target)
         }
         draft.commit()
-        Toast.makeText(context, context.getString(R.string.customize_apply_done), Toast.LENGTH_SHORT).show()
+        AppSnackbar.show(context.getString(R.string.customize_apply_done))
     }
     val revertDraft: () -> Unit = { draft.revert() }
 
@@ -442,11 +442,7 @@ fun CustomizeScreen(
                             title = stringResource(R.string.customize_export),
                             onClick = {
                                 copyToClipboard(context, UiConfigCodec.export(draft.config, draft.sections))
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.customize_export_done),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                AppSnackbar.show(context.getString(R.string.customize_export_done))
                             }
                         )
                         RowDivider()
@@ -499,7 +495,7 @@ fun CustomizeScreen(
             onConfirm = {
                 UiConfigStore.reset()
                 draft.replace(UiConfig.Default, HomeSectionConfig.Default)
-                Toast.makeText(context, context.getString(R.string.customize_reset_done), Toast.LENGTH_SHORT).show()
+                AppSnackbar.show(context.getString(R.string.customize_reset_done))
                 showResetDialog = false
             },
             onDismiss = { showResetDialog = false }
@@ -531,7 +527,7 @@ fun CustomizeScreen(
                             UiConfigImport.UnsupportedVersion -> R.string.customize_import_version
                             UiConfigImport.InvalidFormat -> R.string.customize_import_invalid
                         }
-                        Toast.makeText(context, context.getString(messageRes), Toast.LENGTH_SHORT).show()
+                        AppSnackbar.show(context.getString(messageRes))
                         showImportDialog = false
                     }
                 ) {

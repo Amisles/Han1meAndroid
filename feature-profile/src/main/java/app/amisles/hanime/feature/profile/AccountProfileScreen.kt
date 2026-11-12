@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.profile
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -68,11 +68,11 @@ fun AccountProfileScreen(
     LaunchedEffect(updateState) {
         when (val state = updateState) {
             is AccountUpdateState.Success -> {
-                Toast.makeText(context, context.getString(R.string.profile_account_updated), Toast.LENGTH_SHORT).show()
+                AppSnackbar.show(context.getString(R.string.profile_account_updated))
                 viewModel.resetUpdateState()
             }
             is AccountUpdateState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                AppSnackbar.show(state.message)
                 viewModel.resetUpdateState()
             }
             else -> {}

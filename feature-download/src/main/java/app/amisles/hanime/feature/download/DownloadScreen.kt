@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.download
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,6 +68,7 @@ import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.data.preferences.Preferences
 
 enum class DownloadFilter {
@@ -361,11 +361,9 @@ fun DownloadScreen(
                         label = stringResource(R.string.download_migration_export),
                         onClick = {
                             viewModel.exportMigration {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.download_migration_export_empty),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                AppSnackbar.show(
+                                    context.getString(R.string.download_migration_export_empty)
+                                )
                             }
                         }
                     )
@@ -381,14 +379,12 @@ fun DownloadScreen(
                         label = stringResource(R.string.download_queue_pause_all),
                         onClick = {
                             viewModel.pauseAll()
-                            Toast.makeText(
-                                context,
+                            AppSnackbar.show(
                                 context.getString(
                                     R.string.download_queue_toast_paused,
                                     downloadingTasks.size
-                                ),
-                                Toast.LENGTH_SHORT
-                            ).show()
+                                )
+                            )
                         }
                     )
                 }
@@ -765,11 +761,9 @@ fun DownloadScreen(
                     horizontalPadding = 12.dp,
                     onClick = {
                         viewModel.retryAllFailed()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.download_retry_all_toast, failedTasks.size),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        AppSnackbar.show(
+                            context.getString(R.string.download_retry_all_toast, failedTasks.size)
+                        )
                     }
                 )
             }
