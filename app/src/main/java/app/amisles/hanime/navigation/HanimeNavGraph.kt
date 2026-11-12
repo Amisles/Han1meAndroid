@@ -27,6 +27,7 @@ import app.amisles.hanime.feature.profile.CloudFavoritesScreen
 import app.amisles.hanime.feature.profile.FavoriteScreen
 import app.amisles.hanime.feature.profile.HistoryScreen
 import app.amisles.hanime.feature.profile.LoginScreen
+import app.amisles.hanime.feature.profile.ProfileScreen
 import app.amisles.hanime.feature.profile.SubscriptionsScreen
 import app.amisles.hanime.feature.profile.UserPlaylistDetailScreen
 import app.amisles.hanime.feature.profile.WatchStatsScreen
@@ -306,6 +307,9 @@ internal fun HanimeNavGraph(
                     navController.navigate("localPlayer?filePath=${Uri.encode(filePath)}")
                 }
             )
+        }
+        composable("profile") {
+            ProfileScreen(onNavigate = { route -> navController.navigate(route) })
         }
         composable(
             route = "subscriptions?query={query}",

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.HorizontalDivider
@@ -34,9 +35,10 @@ sealed class Screen(val route: String, val labelResId: Int, val icon: androidx.c
     object Home : Screen("home", R.string.nav_home, Icons.Default.Home)
     object Search : Screen("search", R.string.nav_search, Icons.Default.Search)
     object Download : Screen("download", R.string.nav_download, Icons.Default.Download)
+    object Profile : Screen("profile", R.string.nav_profile, Icons.Default.Person)
 }
 
-val screens = listOf(Screen.Home, Screen.Search, Screen.Download)
+val screens = listOf(Screen.Home, Screen.Search, Screen.Download, Screen.Profile)
 
 /** 底部导航栏单个条目的最小高度（含点击热区），图标与文字在其中垂直居中。 */
 private val BottomNavItemMinHeight = 56.dp
