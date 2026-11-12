@@ -36,7 +36,9 @@ class OnboardingViewModel @Inject constructor(
     private fun runProbe() {
         viewModelScope.launch {
             _probeState.value = ProbeUiState.Running
-            _probeState.value = ProbeUiState.Done(diagnostics.probeSite())
+            val result = runCatching { diagnostics.probeSite() }
+                .getOrElse { SiteProbeResult.Unreachable(SiteProbeResult.Reason.IO) }
+            _probeState.value = ProbeUiState.Done(result)
         }
     }
 }
