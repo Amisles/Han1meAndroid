@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -311,6 +312,27 @@ fun HomeScreenContent(
             sectionPairs.forEachIndexed { index, pair ->
                 pair.forEach { plan -> put(plan.section.title, headKeys.size + index) }
             }
+        }
+    }
+    // 转屏或分屏改变档位时，item 结构与行高都会变，LazyList 只保留下标，画面会跳到
+    // 别的分区。旧布局仍可读的时刻记下首个可见 item 的 key，新布局量完按 key 找回。
+    val itemKeys = remember(headKeys, sectionPairs) {
+        headKeys + sectionPairs.mapIndexed { index, pair -> sectionPairKey(pair, index) }
+    }
+    val layoutSignature = listOf(sizeInfo.widthDp, sizeInfo.heightDp, columns, twoColumnSections, twoColumnHero)
+    var pendingAnchorKey by remember { mutableStateOf<String?>(null) }
+    DisposableEffect(layoutSignature) {
+        onDispose {
+            val key = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
+            if (key != null) pendingAnchorKey = key
+        }
+    }
+    LaunchedEffect(layoutSignature) {
+        val anchor = pendingAnchorKey ?: return@LaunchedEffect
+        pendingAnchorKey = null
+        val index = itemKeys.indexOf(anchor)
+        if (index >= 0 && index != listState.firstVisibleItemIndex) {
+            listState.scrollToItem(index)
         }
     }
 
