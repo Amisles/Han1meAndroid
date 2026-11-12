@@ -143,12 +143,10 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    // 退出全屏时恢复的屏幕方向：页面由 manifest 锁定竖屏，运行期未被改写时也按竖屏复位
+    // 退出全屏时恢复的屏幕方向：不能回落竖屏，否则平板退出全屏后会被钉在竖屏且不再跟随旋转
     val initialOrientation = remember(activity) {
-        activity?.requestedOrientation
-            ?.takeUnless { it.isLandscapeOrientation }
-            ?.takeIf { it != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
-            ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        activity?.requestedOrientation?.takeUnless { it.isLandscapeOrientation }
+            ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
     val initialBarsBehavior = remember(activity) {
         activity?.window?.let { w ->

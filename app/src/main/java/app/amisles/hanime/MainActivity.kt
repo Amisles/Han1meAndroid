@@ -3,6 +3,7 @@ package app.amisles.hanime
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.AssetManager
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -293,6 +294,18 @@ fun HanimeApp(
     val useRail = uiCfg.resolvedNavStyle(sizeInfo.isTablet) == NavigationStyle.RAIL
 
     val activity = LocalActivity.current as? ComponentActivity
+    val landscapeAllowed = sizeInfo.isTablet || currentRoute.startsWith("detail") ||
+        currentRoute.startsWith("localPlayer") || currentRoute.startsWith("comicReader")
+    LaunchedEffect(currentRoute, sizeInfo.isTablet) {
+        val act = activity ?: return@LaunchedEffect
+        runCatching {
+            act.requestedOrientation = if (landscapeAllowed) {
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+    }
 
     val density = LocalDensity.current
     var profileOpen by remember { mutableStateOf(false) }
