@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -50,7 +49,7 @@ import app.amisles.hanime.feature.detail.comment.ReplyTarget
 import app.amisles.hanime.feature.detail.components.DetailIntroSection
 import app.amisles.hanime.feature.detail.components.DetailPlaylistHeader
 import app.amisles.hanime.feature.detail.components.DetailPlaylistVideos
-import app.amisles.hanime.feature.detail.components.DetailRelatedVideoCard
+import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.feature.detail.components.DetailTabBar
 
 /** 详情页「其余组件」（Tab 条 / 简介 / 播放集合 / 相关推荐 / 评论）所需的只读状态。 */
@@ -208,15 +207,17 @@ private fun DetailRelatedRow(
 ) {
     val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
     Box(
-        modifier = Modifier.detailTabSwipe(
-            currentTab = currentTab,
-            thresholdPx = thresholdPx,
-            onSelectTab = onSelectTab
-        )
+        modifier = Modifier
+            .padding(horizontal = 15.dp, vertical = 3.dp)
+            .detailTabSwipe(
+                currentTab = currentTab,
+                thresholdPx = thresholdPx,
+                onSelectTab = onSelectTab
+            )
     ) {
-        DetailRelatedVideoCard(
+        VideoListItem(
             video = video,
-            onVideoClick = onVideoClick,
+            onClick = { onVideoClick(video.videoUrl) },
             onAuthorClick = onAuthorClick,
             onLongClick = { onVideoLongClick(video) }
         )
