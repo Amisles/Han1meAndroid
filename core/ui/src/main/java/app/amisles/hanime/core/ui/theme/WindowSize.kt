@@ -19,12 +19,14 @@ import kotlin.math.min
 
 /** 窗口宽度分级（Material 断点）：Compact < 600dp，Medium 600–839dp，Expanded ≥ 840dp。 */
 enum class WindowWidthSizeClass { Compact, Medium, Expanded }
+enum class WindowHeightSizeClass { Compact, Medium, Expanded }
 
 /** 当前窗口的响应式信息，由 [rememberWindowSizeInfo] 计算并经 CompositionLocal 下发。 */
 data class WindowSizeInfo(
     val widthDp: Int,
     val heightDp: Int,
     val widthClass: WindowWidthSizeClass,
+    val heightClass: WindowHeightSizeClass,
     /** 是否为平板：取宽高较小边 ≥ 600dp，避免横屏手机被误判为平板 */
     val isTablet: Boolean,
     val isLandscape: Boolean
@@ -67,10 +69,16 @@ fun computeWindowSizeInfo(widthDp: Int, heightDp: Int): WindowSizeInfo {
         widthDp < 840 -> WindowWidthSizeClass.Medium
         else -> WindowWidthSizeClass.Expanded
     }
+    val heightClass = when {
+        heightDp < 480 -> WindowHeightSizeClass.Compact
+        heightDp < 900 -> WindowHeightSizeClass.Medium
+        else -> WindowHeightSizeClass.Expanded
+    }
     return WindowSizeInfo(
         widthDp = widthDp,
         heightDp = heightDp,
         widthClass = widthClass,
+        heightClass = heightClass,
         isTablet = min(widthDp, heightDp) >= 600,
         isLandscape = widthDp > heightDp
     )
