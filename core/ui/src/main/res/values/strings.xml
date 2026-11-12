@@ -1159,4 +1159,27 @@
     <string name="cloud_watch_later_empty_hint">在视频列表或详情页点「稍后观看」即可加入</string>
     <string name="cloud_watch_later_login_required">登录后可查看稍后观看</string>
     <string name="cloud_playlist_created_by">由 %1$s 建立</string>
+    <!-- Onboarding -->
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_welcome_title">欢迎使用 Han1me</string>
+    <string name="onboarding_welcome_body">本应用为第三方客户端，所有内容均来自第三方站点，应用本身不存储任何视频。继续使用即表示你确认已年满 18 周岁，并将遵守当地法律法规。</string>
+    <string name="onboarding_welcome_confirm">我已知晓，继续</string>
+    <string name="onboarding_next">继续</string>
+    <string name="onboarding_basics_title">三步上手</string>
+    <string name="onboarding_basics_tabs">底部三个标签：首页 · 搜索 · 下载</string>
+    <string name="onboarding_basics_drawer">首页右上角菜单或向右滑动，打开「我的」：收藏、历史、订阅、设置都在这里</string>
+    <string name="onboarding_basics_long_press">长按任意视频卡片：快速收藏、下载、分享、稍后观看</string>
+    <string name="onboarding_connectivity_title">检查站点连接</string>
+    <string name="onboarding_probe_running">正在检查站点连通性…</string>
+    <string name="onboarding_probe_ok">站点连接正常（%1$d ms）</string>
+    <string name="onboarding_probe_fail">站点暂时无法访问</string>
+    <string name="onboarding_probe_fail_reason_url">官网网址格式无效，请检查镜像站设置</string>
+    <string name="onboarding_probe_fail_reason_dns">域名解析失败，站点域名可能已更换</string>
+    <string name="onboarding_probe_fail_reason_timeout">连接超时，可能需要更换镜像站</string>
+    <string name="onboarding_probe_fail_reason_io">网络连接失败，请检查网络</string>
+    <string name="onboarding_action_mirror">设置镜像站</string>
+    <string name="onboarding_action_diagnostics">网络诊断</string>
+    <string name="onboarding_action_retry">重试</string>
+    <string name="onboarding_privacy_hint">可在设置中开启隐私模式，通知栏磁贴可一键隐藏内容</string>
+    <string name="onboarding_done">开始使用</string>
 </resources>

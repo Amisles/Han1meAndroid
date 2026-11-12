@@ -98,6 +98,7 @@ import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.components.LocalVideoLocalState
 import app.amisles.hanime.ui.components.BottomNav
 import app.amisles.hanime.ui.components.VideoQuickActionsHost
+import app.amisles.hanime.ui.onboarding.OnboardingHost
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.ui.viewmodel.VideoLocalStateViewModel
 import app.amisles.hanime.ui.viewmodel.VideoQuickActionsViewModel
@@ -608,6 +609,29 @@ fun HanimeApp(
         )
     }
 
+    var onboardingDone by rememberSaveable { mutableStateOf(Preferences.onboardingDone) }
+    val deepLinkLaunch = remember {
+        val action = activity?.intent?.action
+        action == MainActivity.ACTION_OPEN_VIDEO ||
+            action == MainActivity.ACTION_PLAY_LOCAL ||
+            action == MainActivity.ACTION_OPEN_DOWNLOADS
+    }
+    var onboardingReady by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(onboardingDone, deepLinkLaunch) {
+        if (onboardingDone || deepLinkLaunch) return@LaunchedEffect
+        kotlinx.coroutines.delay(1_200L)
+        onboardingReady = true
+    }
+    if (onboardingReady && !onboardingDone && currentRoute == "home") {
+        OnboardingHost(
+            onNavigate = { route -> navController.navigate(route) },
+            onComplete = {
+                Preferences.markOnboardingDone()
+                onboardingDone = true
+            }
+        )
+    }
+
     // ── 启动时的更新提示 ──────────────────────────────────────────────────
     // 三条件同时成立才弹：有可用更新、该版本未被用户跳过、且用户没有在本次运行里点过「稍后」。
     // dismissedUpdateVersion 用 rememberSaveable，旋转屏幕后不会重复弹出打扰。
@@ -622,6 +646,7 @@ fun HanimeApp(
     }
     val pendingUpdate = availableUpdate
     if (updatePromptReady &&
+        onboardingDone &&
         pendingUpdate != null &&
         pendingUpdate.versionName != currentSkippedVersion &&
         pendingUpdate.versionName != dismissedUpdateVersion

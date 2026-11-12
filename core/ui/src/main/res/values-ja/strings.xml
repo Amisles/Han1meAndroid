@@ -1124,4 +1124,27 @@
     <string name="cloud_watch_later_empty_hint">動画ページで「後で見る」を押すと追加できます</string>
     <string name="cloud_watch_later_login_required">ログインすると「後で見る」を表示できます</string>
     <string name="cloud_playlist_created_by">%1$s が作成</string>
+    <!-- Onboarding -->
+    <string name="onboarding_skip">スキップ</string>
+    <string name="onboarding_welcome_title">Han1me へようこそ</string>
+    <string name="onboarding_welcome_body">本アプリはサードパーティ製クライアントです。すべてのコンテンツは第三者のサイトから提供され、アプリ自体は動画を保存しません。続行することで、18 歳以上であり、現地の法律を遵守することに同意したものとみなされます。</string>
+    <string name="onboarding_welcome_confirm">同意して続行</string>
+    <string name="onboarding_next">次へ</string>
+    <string name="onboarding_basics_title">3 ステップで開始</string>
+    <string name="onboarding_basics_tabs">下部の 3 つのタブ：ホーム・検索・ダウンロード</string>
+    <string name="onboarding_basics_drawer">ホーム右上のメニューまたは右スワイプで「マイ」ドロワーを開けます。お気に入り・履歴・サブスクリプション・設定はすべてここにあります</string>
+    <string name="onboarding_basics_long_press">動画カードを長押しすると、お気に入り・ダウンロード・共有・後で見るを素早く操作できます</string>
+    <string name="onboarding_connectivity_title">サイト接続の確認</string>
+    <string name="onboarding_probe_running">サイトの接続状態を確認中…</string>
+    <string name="onboarding_probe_ok">サイトに接続できます（%1$d ms）</string>
+    <string name="onboarding_probe_fail">サイトに一時的に接続できません</string>
+    <string name="onboarding_probe_fail_reason_url">サイトのアドレスが無効です。ミラー設定を確認してください</string>
+    <string name="onboarding_probe_fail_reason_dns">ドメイン名の解決に失敗しました。サイトのドメインが変更された可能性があります</string>
+    <string name="onboarding_probe_fail_reason_timeout">接続がタイムアウトしました。ミラーサイトの変更が必要な場合があります</string>
+    <string name="onboarding_probe_fail_reason_io">ネットワークに接続できません。回線を確認してください</string>
+    <string name="onboarding_action_mirror">ミラーサイトを設定</string>
+    <string name="onboarding_action_diagnostics">ネットワーク診断</string>
+    <string name="onboarding_action_retry">再試行</string>
+    <string name="onboarding_privacy_hint">設定でプライバシーモードを有効にできます。クイック設定タイルで即座に非表示にできます</string>
+    <string name="onboarding_done">始める</string>
 </resources>

@@ -1124,4 +1124,27 @@
     <string name="cloud_watch_later_empty_hint">Tap Watch later on any video to add it here</string>
     <string name="cloud_watch_later_login_required">Sign in to see Watch later</string>
     <string name="cloud_playlist_created_by">by %1$s</string>
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_welcome_title">Welcome to Han1me</string>
+    <string name="onboarding_welcome_body">This is a third-party client. All content comes from third-party sites; the app itself stores no videos. By continuing you confirm that you are 18 or older and will comply with your local laws.</string>
+    <string name="onboarding_welcome_confirm">I understand, continue</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_basics_title">Three steps to get started</string>
+    <string name="onboarding_basics_tabs">Three tabs at the bottom: Home · Search · Downloads</string>
+    <string name="onboarding_basics_drawer">Open the Me drawer from the top-right menu on Home, or swipe right — favorites, history, subscriptions and settings live there</string>
+    <string name="onboarding_basics_long_press">Long-press any video card to quickly favorite, download, share or watch later</string>
+    <string name="onboarding_connectivity_title">Check site connection</string>
+    <string name="onboarding_probe_running">Checking site connectivity…</string>
+    <string name="onboarding_probe_ok">Site reachable (%1$d ms)</string>
+    <string name="onboarding_probe_fail">The site is temporarily unreachable</string>
+    <string name="onboarding_probe_fail_reason_url">The site URL is invalid — check your mirror settings</string>
+    <string name="onboarding_probe_fail_reason_dns">Domain lookup failed — the site domain may have changed</string>
+    <string name="onboarding_probe_fail_reason_timeout">Connection timed out — a mirror site may be needed</string>
+    <string name="onboarding_probe_fail_reason_io">Network unavailable — check your connection</string>
+    <string name="onboarding_action_mirror">Set mirror site</string>
+    <string name="onboarding_action_diagnostics">Network diagnostics</string>
+    <string name="onboarding_action_retry">Retry</string>
+    <string name="onboarding_privacy_hint">You can enable privacy mode in Settings; the quick-settings tile hides content instantly</string>
+    <string name="onboarding_done">Get started</string>
 </resources>
