@@ -11,6 +11,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.feature.comic.ComicDetailScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryResultScreen
@@ -401,12 +402,14 @@ internal fun HanimeNavGraph(
                 onOpenGuide = { navController.navigate("onboarding") }
             )
         }
-        composable("onboarding") {
-            OnboardingHost(
-                replayMode = true,
-                onNavigate = { route -> navController.navigate(route) },
-                onComplete = { navController.popBackStack() }
-            )
+        if (AppFeatures.ONBOARDING_ENABLED) {
+            composable("onboarding") {
+                OnboardingHost(
+                    replayMode = true,
+                    onNavigate = { route -> navController.navigate(route) },
+                    onComplete = { navController.popBackStack() }
+                )
+            }
         }
         composable("settings") {
             SettingsScreen(
