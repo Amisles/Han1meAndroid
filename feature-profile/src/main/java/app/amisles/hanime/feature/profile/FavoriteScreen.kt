@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.Checkbox
@@ -44,7 +43,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +60,8 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.ListSkeleton
+import app.amisles.hanime.core.ui.components.EmptyState
 import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
@@ -342,44 +342,15 @@ fun FavoriteScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
+            if (isLoading && favorites.isEmpty()) {
+                ListSkeleton(rows = 6, modifier = Modifier.fillMaxSize())
             } else if (favorites.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Favorite,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .padding(bottom = 16.dp)
-                                .size(48.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.favorite_empty),
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = stringResource(R.string.favorite_empty_hint),
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
+                EmptyState(
+                    icon = Icons.Outlined.Favorite,
+                    title = stringResource(R.string.favorite_empty),
+                    hint = stringResource(R.string.favorite_empty_hint),
+                    modifier = Modifier.fillMaxSize()
+                )
             } else if (isGridMode && !isSelectionMode) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -407,7 +378,8 @@ fun FavoriteScreen(
                     gridItems(visibleFavorites, key = { it.id }) { video ->
                         VideoGridCard(
                             video = video.toHanimeVideo(),
-                            onClick = { onVideoClick(video.videoUrl) }
+                            onClick = { onVideoClick(video.videoUrl) },
+                            modifier = Modifier.animateItem()
                         )
                     }
                     item(span = { GridItemSpan(2) }) {
@@ -440,6 +412,7 @@ fun FavoriteScreen(
 
                         FavoriteVideoItem(
                             video = video,
+                            modifier = Modifier.animateItem(),
                             isSelectionMode = isSelectionMode,
                             isSelected = isSelected,
                             onVideoClick = {
@@ -623,10 +596,11 @@ private fun FavoriteVideoItem(
     isSelected: Boolean,
     onVideoClick: () -> Unit,
     onLongClick: () -> Unit,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 15.dp, vertical = 3.dp)
             .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))

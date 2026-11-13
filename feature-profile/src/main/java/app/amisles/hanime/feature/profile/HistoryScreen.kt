@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
@@ -57,6 +55,8 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.ListSkeleton
+import app.amisles.hanime.core.ui.components.EmptyState
 import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.PageLayoutResolver
@@ -236,44 +236,15 @@ fun HistoryScreen(
                 )
             }
 
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
+            if (isLoading && history.isEmpty()) {
+                ListSkeleton(rows = 6, modifier = Modifier.fillMaxSize())
             } else if (history.isEmpty() || (searchQuery.isNotBlank() && filteredHistory.isEmpty())) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.History,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .padding(bottom = 16.dp)
-                                .size(48.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.history_empty),
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = stringResource(R.string.history_empty_hint),
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
+                EmptyState(
+                    icon = Icons.Outlined.History,
+                    title = stringResource(R.string.history_empty),
+                    hint = stringResource(R.string.history_empty_hint),
+                    modifier = Modifier.fillMaxSize()
+                )
             } else if (isGridMode && !isSelectionMode) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -284,6 +255,7 @@ fun HistoryScreen(
                 ) {
                     gridItems(filteredHistory, key = { it.id }) { video ->
                         VideoGridCard(
+                            modifier = Modifier.animateItem(),
                             video = HanimeVideo(
                                 id = video.id,
                                 title = video.title,
@@ -312,6 +284,7 @@ fun HistoryScreen(
 
                         Row(
                             modifier = Modifier
+                                .animateItem()
                                 .fillMaxWidth()
                                 .padding(horizontal = 15.dp, vertical = 3.dp)
                                 .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))

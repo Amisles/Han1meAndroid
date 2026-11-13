@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,7 +26,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +66,9 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Subscriptions
+import app.amisles.hanime.core.ui.components.ListSkeleton
+import app.amisles.hanime.core.ui.components.EmptyState
 
 @Composable
 fun SubscriptionsScreen(
@@ -151,9 +152,7 @@ fun SubscriptionsScreen(
                     NotLoggedInView(onNavigateToLogin = onNavigateToLogin)
                 }
                 isLoading && videos.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
+                    ListSkeleton(rows = 6, modifier = Modifier.fillMaxSize())
                 }
                 error != null -> {
                     KaomojiErrorView(
@@ -203,27 +202,17 @@ fun SubscriptionsScreen(
                     }
 
                     if (videos.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(top = 60.dp),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            Text(
-                                text = stringResource(R.string.subscriptions_empty),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        EmptyState(
+                            icon = Icons.Default.Subscriptions,
+                            title = stringResource(R.string.subscriptions_empty),
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else if (visibleVideos.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().padding(top = 60.dp),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            Text(
-                                text = stringResource(R.string.subscriptions_all_watched),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        EmptyState(
+                            icon = Icons.Default.Subscriptions,
+                            title = stringResource(R.string.subscriptions_all_watched),
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else if (isGridMode) {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
@@ -236,7 +225,8 @@ fun SubscriptionsScreen(
                                 VideoGridCard(
                                     video = video,
                                     onClick = { onVideoClick(video.videoUrl) },
-                                    onLongClick = { onVideoLongClick(video) }
+                                    onLongClick = { onVideoLongClick(video) },
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                             item(span = { GridItemSpan(2) }) { Spacer(modifier = Modifier.height(20.dp)) }
@@ -251,7 +241,8 @@ fun SubscriptionsScreen(
                                 VideoListItem(
                                     video = video,
                                     onClick = { onVideoClick(video.videoUrl) },
-                                    onLongClick = { onVideoLongClick(video) }
+                                    onLongClick = { onVideoLongClick(video) },
+                                    modifier = Modifier.animateItem()
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(20.dp)) }

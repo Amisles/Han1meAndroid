@@ -3,7 +3,6 @@ package app.amisles.hanime.feature.comic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,6 +33,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.components.ScreenHeader
+import app.amisles.hanime.core.ui.components.EmptyState
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.Icons
 import app.amisles.hanime.domain.model.ComicProgress
 
 @Composable
@@ -56,16 +58,11 @@ fun ComicHistoryScreen(
             onBackClick = onBackClick
         )
         if (progressList != null && progressList.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.comic_history_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp
-                )
-            }
+            EmptyState(
+                icon = Icons.Default.MenuBook,
+                title = stringResource(R.string.comic_history_empty),
+                modifier = Modifier.fillMaxSize()
+            )
         } else if (progressList != null) {
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp),

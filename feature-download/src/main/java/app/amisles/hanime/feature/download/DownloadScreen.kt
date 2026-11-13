@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -66,6 +65,7 @@ import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
+import app.amisles.hanime.core.ui.components.EmptyState
 import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
@@ -500,30 +500,11 @@ fun DownloadScreen(
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Download,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(bottom = 16.dp)
-                                    .size(64.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.download_empty),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = stringResource(R.string.download_empty_hint),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
+                        EmptyState(
+                            icon = Icons.Outlined.Download,
+                            title = stringResource(R.string.download_empty),
+                            hint = stringResource(R.string.download_empty_hint)
+                        )
                     }
                 }
             } else {
