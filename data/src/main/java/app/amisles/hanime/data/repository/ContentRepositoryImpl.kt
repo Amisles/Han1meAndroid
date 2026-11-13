@@ -23,6 +23,7 @@ import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.result.DomainError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.emitAll
@@ -52,7 +53,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getHomeData: ${e.message}", e)
-            AppResult.error(e.message ?: "加载首页失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -69,7 +70,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getHomeDataStream: ${e.message}", e)
-            emit(HomeDataEvent.Error(e.message ?: "加载首页失败", e))
+            emit(HomeDataEvent.Error(e.message.orEmpty(), e))
         }
     }.flowOn(Dispatchers.IO)
 
@@ -83,7 +84,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in searchVideos: ${e.message}", e)
-            AppResult.error(e.message ?: "搜索失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -106,7 +107,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in searchVideosWithPagination: ${e.message}", e)
-            AppResult.error(e.message ?: "搜索失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -116,7 +117,7 @@ class ContentRepositoryImpl @Inject constructor(
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
             AppLogger.log("ContentRepositoryImpl", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             val detail = watchPageParser.parse(result.html, result.baseUrl)
-                ?: return AppResult.error("无法解析视频详情页")
+                ?: return AppResult.error(DomainError.DETAIL_PARSE_FAILED)
             // 单次解析拿到的也是最新结果：写回缓存，避免刷新的播放地址被上一次的旧缓存顶掉
             if (detail.title.isNotBlank()) {
                 videoDetailCache.put(videoDetailCacheKey(videoUrl), detail)
@@ -126,7 +127,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getVideoDetail: ${e.message}", e)
-            AppResult.error(e.message ?: "加载视频详情失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -180,7 +181,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getVideoDetailStream: ${e.message}", e)
-            emit(VideoDetailEvent.Error(e.message ?: "加载视频详情失败", e))
+            emit(VideoDetailEvent.Error(e.message.orEmpty(), e))
         }
     }.flowOn(Dispatchers.IO)
 
@@ -200,7 +201,7 @@ class ContentRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getDownloadQualities: ${e.message}", e)
-            AppResult.error(e.message ?: "获取下载画质失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 

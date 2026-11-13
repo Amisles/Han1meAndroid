@@ -270,7 +270,7 @@ class HomeViewModel @Inject constructor(
                             _error.value = ErrorMapper.message(
                                 context,
                                 cause,
-                                event.message
+                                context.getString(R.string.home_load_failed)
                             )
                         }
                     }

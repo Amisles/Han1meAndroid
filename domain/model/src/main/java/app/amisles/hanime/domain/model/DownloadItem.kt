@@ -20,7 +20,7 @@ data class DownloadTask(
     val thumbnailUrl: String = "",
     // 所属视频 id，去重 / 状态判定以 videoId 为准
     val videoId: String = "",
-    // 失败原因细分，供 UI 展示（进程重启后保留）
+    // 失败原因的 DownloadErrorCode 名称，由界面本地化；旧版本写入的文案无法识别时原样展示
     val errorMessage: String = ""
 )
 

@@ -396,7 +396,7 @@ class NetworkService @Inject constructor(
             emitAll(authorPageParser.parseStreaming(html, authorPageUrl))
         }.flowOn(Dispatchers.IO)
             .catch { e ->
-                emit(AuthorPageDataEvent.Error(e.message ?: "无法解析作者主页", e))
+                emit(AuthorPageDataEvent.Error(e.message.orEmpty(), e))
             }
     }
 

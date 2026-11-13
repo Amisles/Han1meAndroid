@@ -50,7 +50,7 @@ class ComicRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ComicRepositoryImpl", "Error in getComics: " + e.message, e)
-            AppResult.error(e.message ?: "加载漫画失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -94,7 +94,7 @@ class ComicRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ComicRepositoryImpl", "Error in getComicDirectoryResult: " + e.message, e)
-            AppResult.error(e.message ?: "加载漫画列表失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -107,7 +107,7 @@ class ComicRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ComicRepositoryImpl", "Error in getComicDetail: " + e.message, e)
-            AppResult.error(e.message ?: "加载漫画详情失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -120,7 +120,7 @@ class ComicRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ComicRepositoryImpl", "Error in getComicChapter: " + e.message, e)
-            AppResult.error(e.message ?: "加载漫画失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 

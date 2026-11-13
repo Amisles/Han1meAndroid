@@ -7,6 +7,7 @@ import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.model.DownloadErrorCode
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.extension.redactUrlForLog
@@ -286,7 +287,7 @@ class DownloadManager @Inject constructor(
                                 "DownloadManager",
                                 "已完成任务的本地文件缺失，标记为失败: ${task.title} (${task.filePath})"
                             )
-                            task.copy(status = DownloadStatus.FAILED, errorMessage = "本地文件已被删除或移动")
+                            task.copy(status = DownloadStatus.FAILED, errorMessage = DownloadErrorCode.FILE_MISSING.name)
                         }
                     }
                 }
@@ -746,9 +747,9 @@ class DownloadManager @Inject constructor(
                         t.copy(
                             status = DownloadStatus.FAILED,
                             errorMessage = if (t.totalBytes <= 0) {
-                                "下载失败：未收到任何数据"
+                                DownloadErrorCode.NO_DATA.name
                             } else {
-                                "下载不完整（${t.downloadedBytes}/${t.totalBytes} 字节）"
+                                DownloadErrorCode.INCOMPLETE.name
                             }
                         )
                     } else {
@@ -764,7 +765,7 @@ class DownloadManager @Inject constructor(
                     return@launch
                 }
                 AppLogger.logError("DownloadManager", "下载失败 ${task.title}: ${e.message}", e)
-                updateTask(task.id) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
+                updateTask(task.id) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e).name) }
             } finally {
                 currentCoroutineContext()[Job]?.let { self -> downloadJobs.remove(task.id, self) }
                 if (!downloadJobs.containsKey(task.id)) {
@@ -891,7 +892,7 @@ class DownloadManager @Inject constructor(
                 if (!file.exists() || file.length() <= 0) {
                     task = task.copy(
                         status = DownloadStatus.FAILED,
-                        errorMessage = "本地文件已被删除或移动"
+                        errorMessage = DownloadErrorCode.FILE_MISSING.name
                     )
                 }
             }

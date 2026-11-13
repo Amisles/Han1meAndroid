@@ -97,7 +97,7 @@ class AuthorViewModel @Inject constructor(
                         is AuthorPageDataEvent.Error -> _error.value = ErrorMapper.message(
                             context,
                             event.exception,
-                            event.message
+                            context.getString(R.string.author_load_failed)
                         )
                     }
                 }

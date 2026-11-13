@@ -8,7 +8,11 @@ package app.amisles.hanime.domain.result
  */
 sealed class AppResult<T> {
     data class Success<T>(val data: T) : AppResult<T>()
-    data class Error<T>(val message: String, val exception: Throwable? = null) : AppResult<T>()
+    data class Error<T>(
+        val message: String,
+        val exception: Throwable? = null,
+        val code: DomainError? = null
+    ) : AppResult<T>()
     data class Loading<T>(val progress: Float = 0f) : AppResult<T>()
 
     val isSuccess: Boolean get() = this is Success
@@ -28,7 +32,7 @@ sealed class AppResult<T> {
 
     inline fun <R> map(transform: (T) -> R): AppResult<R> = when (this) {
         is Success -> Success(transform(data))
-        is Error -> Error(message, exception)
+        is Error -> Error(message, exception, code)
         is Loading -> Loading(progress)
     }
 
@@ -45,6 +49,8 @@ sealed class AppResult<T> {
     companion object {
         fun <T> success(data: T): AppResult<T> = Success(data)
         fun <T> error(message: String, exception: Throwable? = null): AppResult<T> = Error(message, exception)
+
+        fun <T> error(code: DomainError): AppResult<T> = Error(code.name, null, code)
         fun <T> loading(progress: Float = 0f): AppResult<T> = Loading(progress)
     }
 }

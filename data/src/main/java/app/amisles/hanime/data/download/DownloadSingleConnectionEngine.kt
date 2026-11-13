@@ -116,7 +116,7 @@ internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url
             if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(taskId)) throw e
             attempt++
             if (attempt >= MAX_CHUNK_ATTEMPTS) {
-                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e)) }
+                updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyError(e).name) }
                 return
             }
             AppLogger.log("DownloadManager", "单连接下载中断，1s 后重试($attempt): ${e.message}")
@@ -146,11 +146,11 @@ private suspend fun DownloadManager.downloadSingleConnectionAttempt(taskId: Int,
     trackCall(taskId, call)
     call.execute().use { resp ->
         if (resumeBytes > 0 && resp.code != 206 && !resp.isSuccessful) {
-            updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = "HTTP ${resp.code}") }
+            updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyHttpError(resp.code).name) }
             return
         }
         if (resumeBytes == 0L && !resp.isSuccessful) {
-            updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyHttpError(resp.code)) }
+            updateTask(taskId) { it.copy(status = DownloadStatus.FAILED, errorMessage = classifyHttpError(resp.code).name) }
             return
         }
 

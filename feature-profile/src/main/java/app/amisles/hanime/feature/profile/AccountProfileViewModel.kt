@@ -127,6 +127,7 @@ class AccountProfileViewModel @Inject constructor(
                             ErrorMapper.message(
                                 context,
                                 result.exception,
+                                result.code,
                                 context.getString(R.string.common_load_failed)
                             )
                         )

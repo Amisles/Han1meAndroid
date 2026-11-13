@@ -42,6 +42,7 @@ import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.domain.model.DownloadErrorCode
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import coil3.compose.AsyncImage
@@ -252,7 +253,7 @@ internal fun DownloadTaskItem(
                 // 展示细分失败原因（如网络超时、HTTP 4xx/5xx）
                 if (task.errorMessage.isNotBlank()) {
                     Text(
-                        text = task.errorMessage,
+                        text = downloadErrorText(task.errorMessage),
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp)
@@ -353,4 +354,25 @@ internal fun DownloadTaskItem(
             }
         }
     }
+}
+
+@Composable
+private fun downloadErrorText(raw: String): String {
+    val code = DownloadErrorCode.entries.firstOrNull { it.name == raw } ?: return raw
+    return stringResource(
+        when (code) {
+            DownloadErrorCode.STORAGE_FULL -> R.string.download_error_storage_full
+            DownloadErrorCode.NETWORK_TIMEOUT -> R.string.download_error_network_timeout
+            DownloadErrorCode.NETWORK_DNS -> R.string.download_error_network_dns
+            DownloadErrorCode.NETWORK_TLS -> R.string.download_error_network_tls
+            DownloadErrorCode.NETWORK_CONNECT -> R.string.download_error_network_connect
+            DownloadErrorCode.NETWORK_IO -> R.string.download_error_network_io
+            DownloadErrorCode.HTTP_REJECTED -> R.string.download_error_http_rejected
+            DownloadErrorCode.HTTP_SERVER -> R.string.download_error_http_server
+            DownloadErrorCode.NO_DATA -> R.string.download_error_no_data
+            DownloadErrorCode.INCOMPLETE -> R.string.download_error_incomplete
+            DownloadErrorCode.FILE_MISSING -> R.string.download_error_file_missing
+            DownloadErrorCode.UNKNOWN -> R.string.download_error_unknown
+        }
+    )
 }

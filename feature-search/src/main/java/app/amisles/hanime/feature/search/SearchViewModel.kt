@@ -357,7 +357,7 @@ class SearchViewModel @Inject constructor(
                             _challengeHost.value = cause.host
                         }
                         _videos.value = emptyList()
-                        _error.value = ErrorMapper.message(context, cause, result.message)
+                        _error.value = ErrorMapper.message(context, cause, result.code, context.getString(R.string.common_load_failed))
                     }
                     is AppResult.Loading -> {}
                 }

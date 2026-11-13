@@ -221,7 +221,7 @@ class DetailViewModel @Inject constructor(
                             _error.value = ErrorMapper.message(
                                 context,
                                 event.exception,
-                                event.message
+                                context.getString(R.string.error_load_detail_failed)
                             )
                             _isLoading.value = false
                         }

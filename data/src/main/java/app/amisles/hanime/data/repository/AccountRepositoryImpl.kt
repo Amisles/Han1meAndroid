@@ -16,6 +16,7 @@ import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.result.DomainError
 import app.amisles.hanime.domain.result.WebLoginVerification
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.map
@@ -42,7 +43,7 @@ class AccountRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in getComments: ${e.message}", e)
-            AppResult.error(e.message ?: "加载评论失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -56,7 +57,7 @@ class AccountRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in getReplies: ${e.message}", e)
-            AppResult.error(e.message ?: "加载回复失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -76,10 +77,10 @@ class AccountRepositoryImpl @Inject constructor(
     ): AppResult<Pair<Comment, Int>> {
         return try {
             val userId = Preferences.savedUserId.ifBlank {
-                return AppResult.error("未登录，无法发表评论")
+                return AppResult.error(DomainError.COMMENT_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
-                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+                return AppResult.error(DomainError.CSRF_MISSING)
             }
             val json = networkService.postComment(
                 videoId = videoId,
@@ -90,13 +91,13 @@ class AccountRepositoryImpl @Inject constructor(
             )
             AppLogger.log("AccountRepositoryImpl", "postComment JSON received, length: ${json.length}")
             val parsed = commentParser.parsePostedComment(json)
-                ?: return AppResult.error("评论发表成功但解析失败")
+                ?: return AppResult.error(DomainError.COMMENT_PARSE_FAILED)
             AppResult.success(parsed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in postComment: ${e.message}", e)
-            AppResult.error(e.message ?: "发表评论失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -117,10 +118,10 @@ class AccountRepositoryImpl @Inject constructor(
     ): AppResult<Unit> {
         return try {
             val userId = Preferences.savedUserId.ifBlank {
-                return AppResult.error("请先登录后再点赞评论")
+                return AppResult.error(DomainError.LIKE_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
-                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+                return AppResult.error(DomainError.CSRF_MISSING)
             }
             networkService.toggleCommentLike(
                 commentId = commentId,
@@ -134,7 +135,7 @@ class AccountRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in toggleCommentLike: ${e.message}", e)
-            AppResult.error(e.message ?: "评论点赞失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -153,10 +154,10 @@ class AccountRepositoryImpl @Inject constructor(
     ): AppResult<Reply> {
         return try {
             if (Preferences.savedUserId.isBlank()) {
-                return AppResult.error("未登录，无法回复评论")
+                return AppResult.error(DomainError.REPLY_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
-                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+                return AppResult.error(DomainError.CSRF_MISSING)
             }
             val json = networkService.replyComment(
                 commentId = commentId,
@@ -165,13 +166,13 @@ class AccountRepositoryImpl @Inject constructor(
             )
             AppLogger.log("AccountRepositoryImpl", "replyComment JSON received, length: ${json.length}")
             val parsed = commentParser.parsePostedReply(json)
-                ?: return AppResult.error("回复发表成功但解析失败")
+                ?: return AppResult.error(DomainError.REPLY_PARSE_FAILED)
             AppResult.success(parsed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in replyComment: ${e.message}", e)
-            AppResult.error(e.message ?: "回复评论失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -192,13 +193,13 @@ class AccountRepositoryImpl @Inject constructor(
     ): AppResult<SubscribeResult> {
         return try {
             if (userId.isBlank()) {
-                return AppResult.error("请先登录后再订阅作者")
+                return AppResult.error(DomainError.SUBSCRIBE_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
-                return AppResult.error("CSRF Token 缺失，请刷新页面后重试")
+                return AppResult.error(DomainError.CSRF_MISSING)
             }
             if (artistId.isBlank()) {
-                return AppResult.error("作者 ID 缺失，无法订阅")
+                return AppResult.error(DomainError.SUBSCRIBE_ARTIST_MISSING)
             }
             val json = networkService.toggleSubscribe(
                 csrfToken = csrfToken,
@@ -208,13 +209,13 @@ class AccountRepositoryImpl @Inject constructor(
             )
             AppLogger.log("AccountRepositoryImpl", "toggleSubscribe JSON received, length: ${json.length}")
             val parsed = subscribeParser.parse(json)
-                ?: return AppResult.error("订阅操作失败")
+                ?: return AppResult.error(DomainError.SUBSCRIBE_FAILED)
             AppResult.success(parsed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in toggleSubscribe: ${e.message}", e)
-            AppResult.error(e.message ?: "订阅操作失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -247,19 +248,19 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun getAccountProfile(): AppResult<AccountProfile> {
         return try {
             val userId = ensureUserId().ifBlank {
-                return AppResult.error("无法确认登录用户，请重新登录后再试")
+                return AppResult.error(DomainError.USER_ID_MISSING)
             }
             val result = networkService.fetchAccountEditPage(userId)
             AppLogger.log("AccountRepositoryImpl", "Account edit page HTML length: ${result.html.length}")
             val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
-                ?: return AppResult.error("登录状态可能已失效，请重新登录后再试")
+                ?: return AppResult.error(DomainError.SESSION_EXPIRED)
             Preferences.saveUserName(profile.name)
             AppResult.success(profile)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in getAccountProfile: ${e.message}", e)
-            AppResult.error(e.message ?: "加载账户资料失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -280,10 +281,10 @@ class AccountRepositoryImpl @Inject constructor(
     ): AppResult<Unit> {
         return try {
             val userId = ensureUserId().ifBlank {
-                return AppResult.error("无法确认登录用户，请重新登录后再试")
+                return AppResult.error(DomainError.USER_ID_MISSING)
             }
             if (csrfToken.isBlank()) {
-                return AppResult.error("CSRF Token 缺失，请返回重试")
+                return AppResult.error(DomainError.CSRF_MISSING)
             }
             val code = networkService.updateAccountProfile(
                 userId = userId,
@@ -295,13 +296,13 @@ class AccountRepositoryImpl @Inject constructor(
                 Preferences.saveUserName(name)
                 AppResult.success(Unit)
             } else {
-                AppResult.error("更新失败（HTTP $code）")
+                AppResult.error(DomainError.ACCOUNT_UPDATE_FAILED)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             AppLogger.logError("AccountRepositoryImpl", "Error in updateAccountProfile: ${e.message}", e)
-            AppResult.error(e.message ?: "更新账户资料失败", e)
+            AppResult.error(e.message.orEmpty(), e)
         }
     }
 
@@ -390,7 +391,7 @@ class AccountRepositoryImpl @Inject constructor(
             onFailure = { e ->
                 if (e is CancellationException) throw e
                 AppLogger.logError("AccountRepositoryImpl", "Login failed: ${e.message}", e)
-                AppResult.error(e.message ?: "登录失败", e)
+                AppResult.error(e.message.orEmpty(), e)
             }
         )
     }
