@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.local.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -22,6 +23,16 @@ interface WatchHistoryDao {
 
     @Query("SELECT * FROM watch_history ORDER BY watchedAt DESC")
     suspend fun getAllOnce(): List<WatchHistoryEntity>
+
+    @Query(
+        """
+        SELECT id, playback_position, playback_duration FROM watch_history
+        WHERE playback_position > 0 AND playback_duration > 0
+        ORDER BY watchedAt DESC
+        LIMIT 500
+        """
+    )
+    fun getProgressRows(): Flow<List<WatchProgressRow>>
 
     /**
      * 「继续观看」：有进度且未看完（< 95%）。
@@ -74,3 +85,9 @@ interface WatchHistoryDao {
     @Query("SELECT COUNT(*) FROM watch_history")
     suspend fun getWatchHistoryCount(): Int
 }
+
+data class WatchProgressRow(
+    val id: String,
+    @ColumnInfo(name = "playback_position") val position: Long,
+    @ColumnInfo(name = "playback_duration") val duration: Long
+)

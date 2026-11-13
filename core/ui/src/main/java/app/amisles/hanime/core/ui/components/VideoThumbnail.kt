@@ -6,7 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,7 +60,8 @@ fun VideoThumbnail(
     // 竖版封面（如里番）与配置里的横版比例不同，需按实际比例算解码高度
     aspectRatioOverride: Float? = null,
     videoId: String = "",
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    showProgress: Boolean = true
 ) {
     val cfg = LocalUiConfig.current
     val quality = cfg.thumbnailQuality
@@ -103,6 +107,7 @@ fun VideoThumbnail(
         cfg = cfg,
         videoId = videoId,
         contentDescription = contentDescription,
+        showProgress = showProgress,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -141,6 +146,7 @@ private fun ThumbnailBox(
     cfg: UiConfig,
     videoId: String,
     contentDescription: String?,
+    showProgress: Boolean,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -173,6 +179,29 @@ private fun ThumbnailBox(
             )
         }
 
+        val localState = LocalVideoLocalState.current
+        val progressRatio = if (showProgress && cfg.card.showBadges && videoId.isNotEmpty()) {
+            localState.progressOf(videoId)
+        } else {
+            null
+        }
+        if (progressRatio != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(Color.Black.copy(alpha = 0.45f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progressRatio)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+            }
+        }
+
         if (cfg.card.showBadges && duration.isNotEmpty()) {
             Text(
                 text = duration,
@@ -187,7 +216,6 @@ private fun ThumbnailBox(
             )
         }
 
-        val localState = LocalVideoLocalState.current
         if (cfg.card.showBadges && videoId.isNotEmpty()) {
             val downloaded = localState.isDownloaded(videoId)
             val favorite = localState.isFavorite(videoId)

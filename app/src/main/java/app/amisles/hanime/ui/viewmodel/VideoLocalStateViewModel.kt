@@ -31,8 +31,14 @@ class VideoLocalStateViewModel @Inject constructor(
             }
             .distinctUntilChanged(),
         library.getFavoriteIdsFlow().map { it.toSet() }.distinctUntilChanged(),
-        library.getWatchedIdsFlow().map { it.toSet() }.distinctUntilChanged()
-    ) { downloaded, favorite, watched ->
-        VideoLocalState(downloaded = downloaded, favorite = favorite, watched = watched)
+        library.getWatchedIdsFlow().map { it.toSet() }.distinctUntilChanged(),
+        library.getProgressRatiosFlow().distinctUntilChanged()
+    ) { downloaded, favorite, watched, progress ->
+        VideoLocalState(
+            downloaded = downloaded,
+            favorite = favorite,
+            watched = watched,
+            progress = progress
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VideoLocalState())
 }

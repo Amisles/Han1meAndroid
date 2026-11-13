@@ -61,6 +61,7 @@ interface LibraryRepository {
 
     fun getAllWatchHistoryFlow(): Flow<List<WatchHistory>>
     fun getWatchedIdsFlow(): Flow<List<String>>
+    fun getProgressRatiosFlow(): Flow<Map<String, Float>>
     suspend fun removeWatchHistory(videoId: String): Boolean
     suspend fun removeWatchHistories(videoIds: List<String>): Boolean
     suspend fun clearWatchHistory(): Boolean

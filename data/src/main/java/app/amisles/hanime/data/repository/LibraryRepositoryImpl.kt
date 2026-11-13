@@ -37,6 +37,18 @@ class LibraryRepositoryImpl @Inject constructor(
 
     override fun getWatchedIdsFlow(): Flow<List<String>> = watchHistoryDao.getWatchedIds()
 
+    override fun getProgressRatiosFlow(): Flow<Map<String, Float>> =
+        watchHistoryDao.getProgressRows().map { rows ->
+            rows.asSequence()
+                .mapNotNull { row ->
+                    if (row.duration <= 0L) return@mapNotNull null
+                    val ratio = row.position.toFloat() / row.duration.toFloat()
+                    val quantized = (ratio * PROGRESS_STEPS).toInt() / PROGRESS_STEPS
+                    if (quantized <= 0f || quantized >= WATCHED_RATIO) null else row.id to quantized
+                }
+                .toMap()
+        }
+
     override suspend fun addFavorite(video: FavoriteVideo): Boolean {
         return try {
             favoriteDao.addFavorite(video.toEntity())
@@ -363,5 +375,11 @@ class LibraryRepositoryImpl @Inject constructor(
     private companion object {
         /** 单个收藏最多保留的标签数：超出后输入体验与展示都会失控。 */
         const val MAX_TAGS_PER_FAVORITE = 10
+
+        /** 与 getWatchedIds 的 90% 口径必须一致：两条阈值不同会让同一视频同时出现进度条与「已看完」角标。 */
+        const val WATCHED_RATIO = 0.9f
+
+        /** 进度按固定档位量化：进度持续落库，不量化会让全局本地状态在整段播放里反复失效。 */
+        const val PROGRESS_STEPS = 20f
     }
 }
