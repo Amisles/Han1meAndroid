@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
+import app.amisles.hanime.data.preferences.SearchFilterState
+import app.amisles.hanime.data.preferences.SearchFilterStore
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
@@ -29,6 +31,7 @@ class SearchViewModel @Inject constructor(
     // 搜索页既要读站点内容，也要读写本地搜索历史 —— 两个窄接口分别注入
     private val content: ContentRepository,
     private val library: LibraryRepository,
+    private val filters: SearchFilterStore,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -114,6 +117,7 @@ class SearchViewModel @Inject constructor(
     private var loadMoreEpoch = 0
 
     init {
+        restoreFilters()
         viewModelScope.launch {
             try {
                 library.getSearchHistory().collect { queries ->
@@ -150,8 +154,13 @@ class SearchViewModel @Inject constructor(
         // 无关键词时也要显式清空：否则复用条目场景下，上一次的关键词会残留在输入框，
         // 与「点大图只想按标题搜索」的意图不符。
         _query.value = cleaned
-        _genre.value = genre?.takeIf { it.isNotBlank() }
-        _sort.value = sort?.takeIf { it.isNotBlank() }
+        // 三个参数全空 = 只是点开了搜索页，此时保留上次筛选；任一参数存在则以导航参数为准，
+        // 未提供的那两项照旧清空（否则「点大图按标题搜」会带着上次的分类一起搜）
+        if (cleaned.isNotEmpty() || !genre.isNullOrBlank() || !sort.isNullOrBlank()) {
+            _genre.value = genre?.takeIf { it.isNotBlank() }
+            _sort.value = sort?.takeIf { it.isNotBlank() }
+        }
+        persistFilters()
         if (hasAnyCriteria()) executeSearch()
         return true
     }
@@ -171,6 +180,7 @@ class SearchViewModel @Inject constructor(
     fun setGenre(newGenre: String?) {
         if (_genre.value != newGenre) {
             _genre.value = newGenre
+            persistFilters()
             resetSearch()
         }
     }
@@ -178,6 +188,7 @@ class SearchViewModel @Inject constructor(
     fun setSort(newSort: String?) {
         if (_sort.value != newSort) {
             _sort.value = newSort
+            persistFilters()
             resetSearch()
         }
     }
@@ -185,11 +196,13 @@ class SearchViewModel @Inject constructor(
     /** 设置标签搜索条件（多选）；仅更新状态，由调用方在面板「应用」时统一提交，避免每次勾选都发请求。 */
     fun setTags(newTags: List<String>) {
         _tags.value = newTags
+        persistFilters()
     }
 
     /** 设置广泛匹配开关；与 [setTags] 同样只更新状态，由「应用」动作统一提交。 */
     fun setBroad(newBroad: Boolean) {
         _broad.value = newBroad
+        persistFilters()
     }
 
     /**
@@ -205,6 +218,7 @@ class SearchViewModel @Inject constructor(
         _broad.value = false
         _date.value = ""
         _duration.value = ""
+        persistFilters()
         resetSearch()
     }
 
@@ -212,6 +226,7 @@ class SearchViewModel @Inject constructor(
     fun setDate(newDate: String) {
         if (_date.value != newDate) {
             _date.value = newDate
+            persistFilters()
             resetSearch()
         }
     }
@@ -220,6 +235,7 @@ class SearchViewModel @Inject constructor(
     fun setDuration(newDuration: String) {
         if (_duration.value != newDuration) {
             _duration.value = newDuration
+            persistFilters()
             resetSearch()
         }
     }
@@ -234,7 +250,31 @@ class SearchViewModel @Inject constructor(
         _broad.value = false
         _date.value = ""
         _duration.value = ""
+        persistFilters()
         resetSearch()
+    }
+
+    private fun restoreFilters() {
+        val stored = filters.load()
+        _genre.value = stored.genre
+        _sort.value = stored.sort
+        _tags.value = stored.tags
+        _broad.value = stored.broad
+        _date.value = stored.date
+        _duration.value = stored.duration
+    }
+
+    private fun persistFilters() {
+        filters.save(
+            SearchFilterState(
+                genre = _genre.value,
+                sort = _sort.value,
+                tags = _tags.value,
+                broad = _broad.value,
+                date = _date.value,
+                duration = _duration.value
+            )
+        )
     }
 
     /** 是否存在任一有效搜索条件（关键词 / 分类 / 排序 / 标签 / 发布日期 / 时长）。 */

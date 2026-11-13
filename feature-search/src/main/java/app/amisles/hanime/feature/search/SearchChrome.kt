@@ -104,6 +104,93 @@ internal fun SearchNoMoreHint() {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun SearchRelaxHints(
+    genreLabel: String?,
+    tagCount: Int,
+    dateValue: String,
+    durationValue: String,
+    onRemoveGenre: () -> Unit,
+    onRemoveTags: () -> Unit,
+    onRemoveDate: () -> Unit,
+    onRemoveDuration: () -> Unit,
+    onClearAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.search_no_results),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = stringResource(R.string.search_relax_hint),
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (genreLabel != null) {
+                RelaxChip(label = genreLabel, onRemove = onRemoveGenre)
+            }
+            if (tagCount > 0) {
+                RelaxChip(label = stringResource(R.string.search_filter_tag_count, tagCount), onRemove = onRemoveTags)
+            }
+            if (dateValue.isNotBlank()) {
+                RelaxChip(label = dateChipLabel(dateValue), onRemove = onRemoveDate)
+            }
+            if (durationValue.isNotBlank()) {
+                RelaxChip(label = durationChipLabel(durationValue), onRemove = onRemoveDuration)
+            }
+        }
+        Text(
+            text = stringResource(R.string.search_filter_clear_all),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clickable { onClearAll() }
+                .padding(4.dp)
+        )
+    }
+}
+
+@Composable
+private fun RelaxChip(label: String, onRemove: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable { onRemove() }
+            .padding(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.search_relax_remove),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp)
+        )
+    }
+}
+
 /** 筛选入口 chip（标签 / 日期 / 时长共用）：文字右侧固定带下拉箭头，与点一下就选中的「分类」chip 区分。 */
 @Composable
 internal fun FilterEntryChip(

@@ -412,18 +412,29 @@ fun SearchScreen(
                 }
             }
         } else if (videos.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.search_no_results),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            SearchRelaxHints(
+                genreLabel = genreValue?.let { value ->
+                    categories.firstOrNull { it.apiValue == value || it.label == value }?.label ?: value
+                },
+                tagCount = tagsValue.size,
+                dateValue = dateValue,
+                durationValue = durationValue,
+                onRemoveGenre = { viewModel.setGenre(null) },
+                onRemoveTags = {
+                    selectedTags.value = emptySet()
+                    broadLocal.value = false
+                    viewModel.setTags(emptyList())
+                    viewModel.executeSearch()
+                },
+                onRemoveDate = { viewModel.setDate("") },
+                onRemoveDuration = { viewModel.setDuration("") },
+                onClearAll = {
+                    selectedTags.value = emptySet()
+                    broadLocal.value = false
+                    selectedFilter.value = allCategory
+                    viewModel.clearFilters()
+                }
+            )
         } else {
             SearchResultList(
                 videos = videos,

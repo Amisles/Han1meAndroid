@@ -47,6 +47,8 @@
     <string name="search_history">搜索历史</string>
     <string name="search_suggest_tags">热门标签</string>
     <string name="search_no_results">暂无搜索结果</string>
+    <string name="search_relax_hint">试试减少筛选条件或换个关键词</string>
+    <string name="search_relax_remove">移除该筛选</string>
     <string name="search_sort">排序</string>
     <string name="search_sort_default">默认排序</string>
     <string name="search_genre">分类</string>

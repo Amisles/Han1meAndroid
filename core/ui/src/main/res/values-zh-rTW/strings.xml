@@ -38,6 +38,8 @@
     <string name="search_history">搜尋歷史</string>
     <string name="search_suggest_tags">熱門標籤</string>
     <string name="search_no_results">暫無搜尋結果</string>
+    <string name="search_relax_hint">試試減少篩選條件或換個關鍵詞</string>
+    <string name="search_relax_remove">移除該篩選</string>
     <string name="search_sort">排序</string>
     <string name="search_sort_default">預設排序</string>
     <string name="search_genre">分類</string>
