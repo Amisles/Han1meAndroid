@@ -85,6 +85,7 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.amisles.hanime.BuildConfig
+import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.core.common.util.CrashLogger
@@ -656,7 +657,10 @@ fun HanimeApp(
         )
     }
 
-    var onboardingDone by rememberSaveable { mutableStateOf(Preferences.onboardingDone) }
+    val onboardingEnabled = AppFeatures.ONBOARDING_ENABLED
+    var onboardingDone by rememberSaveable {
+        mutableStateOf(!onboardingEnabled || Preferences.onboardingDone)
+    }
     val deepLinkLaunch = remember {
         val action = activity?.intent?.action
         action == MainActivity.ACTION_OPEN_VIDEO ||
@@ -665,11 +669,11 @@ fun HanimeApp(
     }
     var onboardingReady by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(onboardingDone, deepLinkLaunch) {
-        if (onboardingDone || deepLinkLaunch) return@LaunchedEffect
+        if (!onboardingEnabled || onboardingDone || deepLinkLaunch) return@LaunchedEffect
         kotlinx.coroutines.delay(1_200L)
         onboardingReady = true
     }
-    if (onboardingReady && !onboardingDone && currentRoute == "home") {
+    if (onboardingEnabled && onboardingReady && !onboardingDone && currentRoute == "home") {
         OnboardingHost(
             onNavigate = { route -> navController.navigate(route) },
             onComplete = {
@@ -680,7 +684,7 @@ fun HanimeApp(
     }
 
     // ── 启动时的更新提示 ──────────────────────────────────────────────────
-    // 三条件同时成立才弹：有可用更新、该版本未被用户跳过、且用户没有在本次运行里点过「稍后」。
+    // 引导结束前不弹：引导是整屏覆盖层，与对话框同时出现会互相遮挡。
     // dismissedUpdateVersion 用 rememberSaveable，旋转屏幕后不会重复弹出打扰。
     // 延后约 1.2s 再弹：更新检查是网络请求，若在冷启动的第一秒就盖住首页，
     // 会让用户觉得「应用一打开就弹窗」。等首屏稳定后再提示，观感上更接近「打开后才提醒你」。
