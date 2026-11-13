@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.detail.util
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.VideoDetail
 
@@ -14,9 +15,14 @@ internal fun pickInitialSourceUrl(detail: VideoDetail, preferredQuality: String)
     return detail.defaultSourceUrl
 }
 
-/** 调用系统分享面板分享视频（标题 + 链接）。 */
+/** 调用系统分享面板分享视频：标题 + 应用深链 + 网页地址，装有本应用的一方点深链可直达。 */
 public fun shareVideo(context: Context, title: String, url: String) {
-    val shareText = if (url.isNotEmpty()) "$title\n$url" else title
+    val deepLink = watchDeepLink(url)
+    val shareText = buildString {
+        if (title.isNotEmpty()) append(title).append('\n')
+        if (deepLink != null) append(deepLink).append('\n')
+        if (url.isNotEmpty()) append(url)
+    }.trim()
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, shareText)
@@ -27,3 +33,10 @@ public fun shareVideo(context: Context, title: String, url: String) {
     // 极端裁剪的 ROM 上可能不存在任何可处理 ACTION_SEND 的应用，用 runCatching 避免抛 ActivityNotFoundException
     runCatching { context.startActivity(chooser) }
 }
+
+private fun watchDeepLink(url: String): String? =
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+        "hanime://video?url=" + Uri.encode(url)
+    } else {
+        null
+    }
