@@ -96,7 +96,7 @@ internal fun HanimeNavGraph(
         composable("home") {
             HomeScreen(
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                    navController.openVideo(videoUrl) },
                 onSearchClick = { keyword ->
                     navController.navigateToSearch(searchRoute(keyword = keyword)) },
                 onGenreSearch = { genre ->
@@ -288,7 +288,7 @@ internal fun HanimeNavGraph(
                 initialSort = sort,
                 initialToken = ts,
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                    navController.openVideo(videoUrl) },
                 onAuthorClick = { author ->
                     navController.navigateToSearch(searchRoute(keyword = author))
                 },
@@ -326,7 +326,7 @@ internal fun HanimeNavGraph(
                 initialQuery = query,
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                    navController.openVideo(videoUrl) },
                 onNavigateToLogin = {
                     navController.navigate("login")
                 },
@@ -345,7 +345,7 @@ internal fun HanimeNavGraph(
             FavoriteScreen(
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    navController.openVideo(videoUrl)
                 }
             )
         }
@@ -358,7 +358,7 @@ internal fun HanimeNavGraph(
                 onLocalFavoritesClick = { navController.navigate("favorite") },
                 onLoginClick = { navController.navigate("login") },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    navController.openVideo(videoUrl)
                 }
             )
         }
@@ -374,7 +374,7 @@ internal fun HanimeNavGraph(
                 url = backStackEntry.arguments?.getString("url").orEmpty(),
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    navController.openVideo(videoUrl)
                 }
             )
         }
@@ -387,7 +387,7 @@ internal fun HanimeNavGraph(
             HistoryScreen(
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    navController.openVideo(videoUrl)
                 }
             )
         }
@@ -484,7 +484,7 @@ internal fun HanimeNavGraph(
                 authorPageUrl = authorPageUrl ?: "",
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}") },
+                    navController.openVideo(videoUrl) },
                 onViewAllVideos = { url ->
                     navController.navigate("videoListPage?url=${Uri.encode(url)}") },
                 onViewAllPlaylists = { url ->
@@ -510,7 +510,7 @@ internal fun HanimeNavGraph(
                 url = url ?: "",
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    navController.openVideo(videoUrl)
                 },
                 onVideoLongClick = onVideoLongClick
             )
@@ -545,7 +545,7 @@ internal fun HanimeNavGraph(
                 url = url ?: "",
                 onBackClick = { navController.popBackStack() },
                 onVideoClick = { videoUrl ->
-                    navController.navigate("detail?videoUrl=${Uri.encode(videoUrl)}")
+                    navController.openVideo(videoUrl)
                 },
                 onVideoLongClick = onVideoLongClick,
                 onFavoriteAll = { videos -> onFavoriteAll(videos) }

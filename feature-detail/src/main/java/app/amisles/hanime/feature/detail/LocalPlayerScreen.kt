@@ -5,6 +5,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -20,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
@@ -27,8 +34,10 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.feature.detail.components.VideoPlayer
+import app.amisles.hanime.feature.detail.components.formatTime
 import java.io.File
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 /**
@@ -51,10 +60,15 @@ fun LocalPlayerScreen(
 ) {
     val appPrefs = LocalAppPreferences.current
     val context = LocalContext.current
+    val viewModel: LocalPlaybackViewModel = hiltViewModel()
+    val playbackState by viewModel.state.collectAsStateWithLifecycle()
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
     val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
     var isPlayerFullscreen by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(filePath) { filePath?.let { viewModel.bind(it) } }
 
     // 与详情页同理：不能在组合期同步构建播放器，否则整段构建压在页面首帧上
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -74,15 +88,37 @@ fun LocalPlayerScreen(
 
     val fileExists = remember(filePath) { !filePath.isNullOrEmpty() && File(filePath).exists() }
 
-    // 装载本地文件。playWhenReady 已在工厂里置 true，这里显式 play() 只是兜底。
-    // 以 exoPlayer 为键：播放器异步就绪，就绪后必须重新装载一次。
-    LaunchedEffect(filePath, fileExists, exoPlayer) {
+    // 装载本地文件。必须等续播点读到再 prepare：VideoPlayer 只在 READY 时应用续播，
+    // 先就绪会让首次跳转被跳过，表现为「离线播放从不续播」。
+    LaunchedEffect(filePath, fileExists, exoPlayer, playbackState.ready) {
         val path = filePath
         val player = exoPlayer
-        if (player != null && fileExists && !path.isNullOrEmpty()) {
-            player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
-            player.prepare()
-            player.play()
+        if (!playbackState.ready || player == null || !fileExists || path.isNullOrEmpty()) return@LaunchedEffect
+        player.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
+        player.prepare()
+        player.play()
+    }
+
+    LaunchedEffect(exoPlayer, playbackState.ready) {
+        val player = exoPlayer ?: return@LaunchedEffect
+        while (isActive) {
+            delay(5_000L)
+            if (player.isPlaying) viewModel.saveProgress(player.currentPosition, player.duration)
+        }
+    }
+
+    LaunchedEffect(playbackState.ready, playbackState.resumePositionMs) {
+        if (!playbackState.ready || playbackState.resumePositionMs <= 5_000L) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = context.getString(
+                R.string.detail_resume_hint,
+                formatTime(playbackState.resumePositionMs)
+            ),
+            actionLabel = context.getString(R.string.detail_resume_restart),
+            duration = SnackbarDuration.Short
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            exoPlayer?.seekTo(0L)
         }
     }
 
@@ -93,7 +129,10 @@ fun LocalPlayerScreen(
             onDispose { }
         } else {
             // 同步释放：延后一帧的 post 在宿主提前销毁时会丢失，导致播放器与解码器泄漏
-            onDispose { releasePlayerSafely(player) }
+            onDispose {
+                viewModel.saveFinalProgress(player.currentPosition, player.duration)
+                releasePlayerSafely(player)
+            }
         }
     }
 
@@ -120,10 +159,12 @@ fun LocalPlayerScreen(
                 VideoPlayer(
                     exoPlayer = player,
                     initialSourceUrl = filePath.orEmpty(),
+                    initialPositionMs = playbackState.resumePositionMs,
                     isFullscreen = isPlayerFullscreen,
                     onFullscreenToggle = { full -> isPlayerFullscreen = full },
                     onPlaybackSpeedChanged = { appPrefs.setPlaybackSpeed(it) },
                     onQualityChanged = { appPrefs.setPreferredQuality(it) },
+                    onPlaybackEnded = { viewModel.markWatched() },
                     autoPlayNext = autoPlayNext,
                     onAutoPlayNextChanged = { appPrefs.setAutoPlayNext(it) },
                     isLoopPlayback = loopPlayback,
@@ -132,8 +173,9 @@ fun LocalPlayerScreen(
                     autoFullscreenEnabled = !sizeInfo.isTablet,
                     longPressBoostSpeed = appPrefs.longPressBoostSpeedFlow.value,
                     doubleTapSeekEnabled = appPrefs.doubleTapSeekFlow.value,
-                    // 本地播放没有作品信息：用去掉扩展名的文件名做通知标题
-                    mediaTitle = File(filePath.orEmpty()).nameWithoutExtension,
+                    mediaTitle = playbackState.title.ifBlank {
+                        File(filePath.orEmpty()).nameWithoutExtension
+                    },
                     onBackClick = onBackClick,
                     onNavigateHome = onNavigateHome,
                     showNavButtons = !isPlayerFullscreen,
@@ -141,5 +183,13 @@ fun LocalPlayerScreen(
                 )
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(16.dp)
+        )
     }
 }

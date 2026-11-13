@@ -1,5 +1,6 @@
 package app.amisles.hanime.navigation
 
+import android.net.Uri
 import androidx.navigation.NavController
 
 /**
@@ -24,4 +25,14 @@ internal fun NavController.navigateToSearch(route: String) = navigateToRoot(rout
 internal fun NavController.navigateToTab(route: String) {
     if (currentDestination?.route?.baseRoute() == route) return
     navigateToRoot(route)
+}
+
+/** 打开视频；离线播放写入观看历史时 videoUrl 存的是本地文件路径，这类条目必须进本地播放页。 */
+internal fun NavController.openVideo(url: String) {
+    if (url.isBlank()) return
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+        navigate("detail?videoUrl=" + Uri.encode(url))
+    } else {
+        navigate("localPlayer?filePath=" + Uri.encode(url))
+    }
 }
