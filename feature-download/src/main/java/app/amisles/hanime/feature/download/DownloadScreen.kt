@@ -66,6 +66,7 @@ import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
+import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.common.AppFeatures
@@ -273,434 +274,285 @@ fun DownloadScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-    Column(
+    RefreshableContent(
+        onRefresh = {
+            viewModel.rescanDownloads()
+            viewModel.refreshStorageInfo()
+        },
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        // 标题与搜索框同行。英文 "Download Manager"、日文 "ダウンロード管理" 这类长标题在
-        // 大字号下会几乎吃满整行，把搜索框压到极窄 —— 其提示文案随之折行，表头被撑高。
-        // 因此给标题设「最多占内容区一半」的上限（超出走省略号），剩余宽度全部让给搜索框；
-        // 标题与提示文案都限单行省略，表头高度便不再随语言与字号变化。
-        BoxWithConstraints(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                // 原先此处的 padding 与 Header 组件内部的 padding 叠加成了 30/20，
-                // 现收敛为单层：顶部 12dp 与搜索页表头对齐，底部收到 2dp 以缩短与下方内容的间距
-                .padding(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 2.dp)
         ) {
-            // 常规字号下英文标题约 150dp，不足一半宽度，此上限不生效；只有标题确实要吃掉
-            // 半行以上（大字号 / 窄屏）时才截断，保证搜索框始终拿到一半以上的宽度
-            val titleMaxWidth = maxWidth * 0.5f
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isSelectionMode) {
-                    IconButton(
-                        onClick = { isSelectionMode = false },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_cancel),
-                            tint = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = stringResource(R.string.search_selected_count, selectedIds.size),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = stringResource(R.string.common_select_all),
-                        fontSize = 14.sp,
-                        color = if (selectedIds.containsAll(selectableIds)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clickable {
-                                selectedIds = if (selectedIds.containsAll(selectableIds)) {
-                                    emptySet()
-                                } else {
-                                    selectableIds
-                                }
-                            }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.download_title),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = titleMaxWidth)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    DownloadSearchField(
-                        query = nameQuery,
-                        onQueryChange = { nameQuery = it },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        // 导入入口始终可用：换机后列表为空正是最需要导入的时候
-        if (!isSelectionMode) {
-            WrappingActionRow(
-                modifier = Modifier.padding(horizontal = 15.dp, vertical = 2.dp)
-            ) {
-                if (tasks.isNotEmpty()) {
-                    QueueActionButton(
-                        label = stringResource(R.string.download_migration_export),
-                        onClick = {
-                            viewModel.exportMigration {
-                                AppSnackbar.show(
-                                    context.getString(R.string.download_migration_export_empty)
-                                )
-                            }
-                        }
-                    )
-                }
-                QueueActionButton(
-                    label = stringResource(R.string.download_migration_import),
-                    onClick = {
-                        downloadLaunchers.importMigration()
-                    }
-                )
-                if (downloadingTasks.isNotEmpty()) {
-                    QueueActionButton(
-                        label = stringResource(R.string.download_queue_pause_all),
-                        onClick = {
-                            viewModel.pauseAll()
-                            AppSnackbar.show(
-                                context.getString(
-                                    R.string.download_queue_toast_paused,
-                                    downloadingTasks.size
-                                )
-                            )
-                        }
-                    )
-                }
-                if (pausedTasks.isNotEmpty()) {
-                    QueueActionButton(
-                        label = stringResource(R.string.download_queue_resume_all),
-                        onClick = { viewModel.resumeAll() }
-                    )
-                }
-                if (downloadLaunchers.notificationPermissionMissing) {
-                    QueueActionButton(
-                        label = stringResource(R.string.permission_notification_title),
-                        onClick = downloadLaunchers.requestNotificationPermission
-                    )
-                }
-                if (downloadLaunchers.mediaPermissionMissing) {
-                    QueueActionButton(
-                        label = stringResource(R.string.download_permission_media_action),
-                        onClick = downloadLaunchers.requestMediaPermission
-                    )
-                }
-            }
-        }
-
-        // 筛选 + 排序控制栏（非选择模式且有任务时展示）
-        if (!isSelectionMode && tasks.isNotEmpty()) {
-            Row(
+            // 标题与搜索框同行。英文 "Download Manager"、日文 "ダウンロード管理" 这类长标题在
+            // 大字号下会几乎吃满整行，把搜索框压到极窄 —— 其提示文案随之折行，表头被撑高。
+            // 因此给标题设「最多占内容区一半」的上限（超出走省略号），剩余宽度全部让给搜索框；
+            // 标题与提示文案都限单行省略，表头高度便不再随语言与字号变化。
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .background(MaterialTheme.colorScheme.background)
+                    // 原先此处的 padding 与 Header 组件内部的 padding 叠加成了 30/20，
+                    // 现收敛为单层：顶部 12dp 与搜索页表头对齐，底部收到 2dp 以缩短与下方内容的间距
+                    .padding(start = 15.dp, end = 15.dp, top = 12.dp, bottom = 2.dp)
             ) {
-                DownloadFilter.entries.forEach { filter ->
-                    FilterChip(
-                        selected = downloadFilter == filter,
-                        onClick = { downloadFilter = filter },
-                        label = { Text(stringResource(downloadFilterLabel(filter))) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        modifier = Modifier.padding(end = 6.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .clickable { sortMenuExpanded = true }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Sort,
-                            contentDescription = stringResource(R.string.download_sort_title),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(downloadSortLabel(downloadSort)),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = sortMenuExpanded,
-                        onDismissRequest = { sortMenuExpanded = false },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                    ) {
-                        DownloadSort.entries.forEach { sort ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(downloadSortLabel(sort))) },
-                                onClick = {
-                                    downloadSort = sort
-                                    sortMenuExpanded = false
-                                }
+                // 常规字号下英文标题约 150dp，不足一半宽度，此上限不生效；只有标题确实要吃掉
+                // 半行以上（大字号 / 窄屏）时才截断，保证搜索框始终拿到一半以上的宽度
+                val titleMaxWidth = maxWidth * 0.5f
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isSelectionMode) {
+                        IconButton(
+                            onClick = { isSelectionMode = false },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.common_cancel),
+                                tint = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
-                    }
-                }
-            }
-        }
-
-        if (tasks.isEmpty()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (showQuickDownloadHint) {
-                    HintBanner(
-                        text = stringResource(R.string.download_quick_download_hint),
-                        onDismiss = {
-                            Preferences.dismissDownloadQuickHint()
-                            showQuickDownloadHint = false
-                        },
-                        modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp)
-                    )
-                }
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = null,
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(R.string.search_selected_count, selectedIds.size),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = stringResource(R.string.common_select_all),
+                            fontSize = 14.sp,
+                            color = if (selectedIds.containsAll(selectableIds)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                             modifier = Modifier
-                                .padding(bottom = 16.dp)
-                                .size(64.dp)
+                                .clickable {
+                                    selectedIds = if (selectedIds.containsAll(selectableIds)) {
+                                        emptySet()
+                                    } else {
+                                        selectableIds
+                                    }
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
+                    } else {
                         Text(
-                            text = stringResource(R.string.download_empty),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = stringResource(R.string.download_title),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = titleMaxWidth)
                         )
-                        Text(
-                            text = stringResource(R.string.download_empty_hint),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        DownloadSearchField(
+                            query = nameQuery,
+                            onQueryChange = { nameQuery = it },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
             }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (gateState.blocked && downloadingTasks.isNotEmpty()) {
-                    item(key = "download-gate-banner") {
-                        DownloadGateBanner(gateState)
-                    }
-                }
-                if (useGroupedView && downloadingTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = stringResource(R.string.download_downloading),
-                            isSelectionMode = isSelectionMode,
-                            tasks = downloadingTasks,
-                            selectedIds = selectedIds,
-                            onToggleAll = { allSelected ->
-                                selectedIds = if (allSelected) {
-                                    selectedIds - downloadingTasks.map { it.id }.toSet()
-                                } else {
-                                    selectedIds + downloadingTasks.map { it.id }.toSet()
+
+            // 导入入口始终可用：换机后列表为空正是最需要导入的时候
+            if (!isSelectionMode) {
+                WrappingActionRow(
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 2.dp)
+                ) {
+                    if (tasks.isNotEmpty()) {
+                        QueueActionButton(
+                            label = stringResource(R.string.download_migration_export),
+                            onClick = {
+                                viewModel.exportMigration {
+                                    AppSnackbar.show(
+                                        context.getString(R.string.download_migration_export_empty)
+                                    )
                                 }
                             }
                         )
                     }
-                    items(downloadingTasks, key = { it.id }) { task ->
-                        DownloadTaskItem(
-                            task = task,
-                            isSelectionMode = isSelectionMode,
-                            isSelected = task.id in selectedIds,
-                            actions = DownloadItemActions(
-                                onToggleSelection = {
-                                    selectedIds = if (task.id in selectedIds) {
-                                        selectedIds - task.id
-                                    } else {
-                                        selectedIds + task.id
-                                    }
-                                },
-                                onPauseClick = { viewModel.pauseDownload(task.id) },
-                                onCancelClick = { viewModel.cancelDownload(task.id) },
-                                onMoveToFront = { viewModel.moveToFront(task.id) }
-                            )
-                        )
-                    }
-                }
-
-                if (useGroupedView && pausedTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = stringResource(R.string.download_paused),
-                            isSelectionMode = isSelectionMode,
-                            tasks = pausedTasks,
-                            selectedIds = selectedIds,
-                            onToggleAll = { allSelected ->
-                                selectedIds = if (allSelected) {
-                                    selectedIds - pausedTasks.map { it.id }.toSet()
-                                } else {
-                                    selectedIds + pausedTasks.map { it.id }.toSet()
-                                }
+                    QueueActionButton(
+                        label = stringResource(R.string.download_migration_import),
+                        onClick = {
+                            downloadLaunchers.importMigration()
+                        }
+                    )
+                    if (downloadingTasks.isNotEmpty()) {
+                        QueueActionButton(
+                            label = stringResource(R.string.download_queue_pause_all),
+                            onClick = {
+                                viewModel.pauseAll()
+                                AppSnackbar.show(
+                                    context.getString(
+                                        R.string.download_queue_toast_paused,
+                                        downloadingTasks.size
+                                    )
+                                )
                             }
                         )
                     }
-                    items(pausedTasks, key = { it.id }) { task ->
-                        DownloadTaskItem(
-                            task = task,
-                            isSelectionMode = isSelectionMode,
-                            isSelected = task.id in selectedIds,
-                            actions = DownloadItemActions(
-                                onToggleSelection = {
-                                    selectedIds = if (task.id in selectedIds) {
-                                        selectedIds - task.id
-                                    } else {
-                                        selectedIds + task.id
-                                    }
-                                },
-                                onResumeClick = { viewModel.resumeDownload(task.id) },
-                                onCancelClick = { viewModel.cancelDownload(task.id) }
-                            )
+                    if (pausedTasks.isNotEmpty()) {
+                        QueueActionButton(
+                            label = stringResource(R.string.download_queue_resume_all),
+                            onClick = { viewModel.resumeAll() }
+                        )
+                    }
+                    if (downloadLaunchers.notificationPermissionMissing) {
+                        QueueActionButton(
+                            label = stringResource(R.string.permission_notification_title),
+                            onClick = downloadLaunchers.requestNotificationPermission
+                        )
+                    }
+                    if (downloadLaunchers.mediaPermissionMissing) {
+                        QueueActionButton(
+                            label = stringResource(R.string.download_permission_media_action),
+                            onClick = downloadLaunchers.requestMediaPermission
                         )
                     }
                 }
+            }
 
-                if (useGroupedView && failedTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = stringResource(R.string.download_failed),
-                            isSelectionMode = isSelectionMode,
-                            tasks = failedTasks,
-                            selectedIds = selectedIds,
-                            onToggleAll = { allSelected ->
-                                selectedIds = if (allSelected) {
-                                    selectedIds - failedTasks.map { it.id }.toSet()
-                                } else {
-                                    selectedIds + failedTasks.map { it.id }.toSet()
-                                }
-                            }
+            // 筛选 + 排序控制栏（非选择模式且有任务时展示）
+            if (!isSelectionMode && tasks.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    DownloadFilter.entries.forEach { filter ->
+                        FilterChip(
+                            selected = downloadFilter == filter,
+                            onClick = { downloadFilter = filter },
+                            label = { Text(stringResource(downloadFilterLabel(filter))) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.padding(end = 6.dp)
                         )
                     }
-                    items(failedTasks, key = { it.id }) { task ->
-                        DownloadTaskItem(
-                            task = task,
-                            isSelectionMode = isSelectionMode,
-                            isSelected = task.id in selectedIds,
-                            actions = DownloadItemActions(
-                                onToggleSelection = {
-                                    selectedIds = if (task.id in selectedIds) {
-                                        selectedIds - task.id
-                                    } else {
-                                        selectedIds + task.id
-                                    }
-                                },
-                                onRetryClick = { viewModel.resumeDownload(task.id) },
-                                onCancelClick = { viewModel.cancelDownload(task.id) }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clickable { sortMenuExpanded = true }
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Sort,
+                                contentDescription = stringResource(R.string.download_sort_title),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
                             )
-                        )
-                    }
-                }
-
-                if (useGroupedView && completedTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = stringResource(R.string.download_completed),
-                            isSelectionMode = isSelectionMode,
-                            tasks = completedTasks,
-                            selectedIds = selectedIds,
-                            onToggleAll = { allSelected ->
-                                selectedIds = if (allSelected) {
-                                    selectedIds - completedTasks.map { it.id }.toSet()
-                                } else {
-                                    selectedIds + completedTasks.map { it.id }.toSet()
-                                }
-                            }
-                        )
-                    }
-                    items(completedTasks, key = { it.id }) { task ->
-                        DownloadTaskItem(
-                            task = task,
-                            isSelectionMode = isSelectionMode,
-                            isSelected = task.id in selectedIds,
-                            actions = DownloadItemActions(
-                                onToggleSelection = {
-                                    selectedIds = if (task.id in selectedIds) {
-                                        selectedIds - task.id
-                                    } else {
-                                        selectedIds + task.id
-                                    }
-                                },
-                                onPlayClick = { onPlayLocalVideo(task.filePath) },
-                                onDeleteClick = {
-                                    // 删除已完成任务会连带删除本地文件，先确认
-                                    deleteTargetId = task.id
-                                    showDeleteConfirm = true
-                                }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(downloadSortLabel(downloadSort)),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        )
-                    }
-                }
-
-                // 非分组视图（已筛选 / 已排序）：扁平渲染可见列表，状态图标由 DownloadTaskItem 内部按状态处理
-                if (!useGroupedView) {
-                    if (visibleTasks.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(
-                                        if (nameQuery.isBlank()) {
-                                            R.string.download_filter_empty
-                                        } else {
-                                            R.string.download_search_empty
-                                        }
-                                    ),
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            DownloadSort.entries.forEach { sort ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(downloadSortLabel(sort))) },
+                                    onClick = {
+                                        downloadSort = sort
+                                        sortMenuExpanded = false
+                                    }
                                 )
                             }
                         }
-                    } else {
-                        items(visibleTasks, key = { it.id }) { task ->
+                    }
+                }
+            }
+
+            if (tasks.isEmpty()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (showQuickDownloadHint) {
+                        HintBanner(
+                            text = stringResource(R.string.download_quick_download_hint),
+                            onDismiss = {
+                                Preferences.dismissDownloadQuickHint()
+                                showQuickDownloadHint = false
+                            },
+                            modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Download,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .size(64.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.download_empty),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = stringResource(R.string.download_empty_hint),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (gateState.blocked && downloadingTasks.isNotEmpty()) {
+                        item(key = "download-gate-banner") {
+                            DownloadGateBanner(gateState)
+                        }
+                    }
+                    if (useGroupedView && downloadingTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = stringResource(R.string.download_downloading),
+                                isSelectionMode = isSelectionMode,
+                                tasks = downloadingTasks,
+                                selectedIds = selectedIds,
+                                onToggleAll = { allSelected ->
+                                    selectedIds = if (allSelected) {
+                                        selectedIds - downloadingTasks.map { it.id }.toSet()
+                                    } else {
+                                        selectedIds + downloadingTasks.map { it.id }.toSet()
+                                    }
+                                }
+                            )
+                        }
+                        items(downloadingTasks, key = { it.id }) { task ->
                             DownloadTaskItem(
                                 task = task,
                                 isSelectionMode = isSelectionMode,
@@ -714,9 +566,114 @@ fun DownloadScreen(
                                         }
                                     },
                                     onPauseClick = { viewModel.pauseDownload(task.id) },
-                                    onResumeClick = { viewModel.resumeDownload(task.id) },
                                     onCancelClick = { viewModel.cancelDownload(task.id) },
+                                    onMoveToFront = { viewModel.moveToFront(task.id) }
+                                )
+                            )
+                        }
+                    }
+
+                    if (useGroupedView && pausedTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = stringResource(R.string.download_paused),
+                                isSelectionMode = isSelectionMode,
+                                tasks = pausedTasks,
+                                selectedIds = selectedIds,
+                                onToggleAll = { allSelected ->
+                                    selectedIds = if (allSelected) {
+                                        selectedIds - pausedTasks.map { it.id }.toSet()
+                                    } else {
+                                        selectedIds + pausedTasks.map { it.id }.toSet()
+                                    }
+                                }
+                            )
+                        }
+                        items(pausedTasks, key = { it.id }) { task ->
+                            DownloadTaskItem(
+                                task = task,
+                                isSelectionMode = isSelectionMode,
+                                isSelected = task.id in selectedIds,
+                                actions = DownloadItemActions(
+                                    onToggleSelection = {
+                                        selectedIds = if (task.id in selectedIds) {
+                                            selectedIds - task.id
+                                        } else {
+                                            selectedIds + task.id
+                                        }
+                                    },
+                                    onResumeClick = { viewModel.resumeDownload(task.id) },
+                                    onCancelClick = { viewModel.cancelDownload(task.id) }
+                                )
+                            )
+                        }
+                    }
+
+                    if (useGroupedView && failedTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = stringResource(R.string.download_failed),
+                                isSelectionMode = isSelectionMode,
+                                tasks = failedTasks,
+                                selectedIds = selectedIds,
+                                onToggleAll = { allSelected ->
+                                    selectedIds = if (allSelected) {
+                                        selectedIds - failedTasks.map { it.id }.toSet()
+                                    } else {
+                                        selectedIds + failedTasks.map { it.id }.toSet()
+                                    }
+                                }
+                            )
+                        }
+                        items(failedTasks, key = { it.id }) { task ->
+                            DownloadTaskItem(
+                                task = task,
+                                isSelectionMode = isSelectionMode,
+                                isSelected = task.id in selectedIds,
+                                actions = DownloadItemActions(
+                                    onToggleSelection = {
+                                        selectedIds = if (task.id in selectedIds) {
+                                            selectedIds - task.id
+                                        } else {
+                                            selectedIds + task.id
+                                        }
+                                    },
                                     onRetryClick = { viewModel.resumeDownload(task.id) },
+                                    onCancelClick = { viewModel.cancelDownload(task.id) }
+                                )
+                            )
+                        }
+                    }
+
+                    if (useGroupedView && completedTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = stringResource(R.string.download_completed),
+                                isSelectionMode = isSelectionMode,
+                                tasks = completedTasks,
+                                selectedIds = selectedIds,
+                                onToggleAll = { allSelected ->
+                                    selectedIds = if (allSelected) {
+                                        selectedIds - completedTasks.map { it.id }.toSet()
+                                    } else {
+                                        selectedIds + completedTasks.map { it.id }.toSet()
+                                    }
+                                }
+                            )
+                        }
+                        items(completedTasks, key = { it.id }) { task ->
+                            DownloadTaskItem(
+                                task = task,
+                                isSelectionMode = isSelectionMode,
+                                isSelected = task.id in selectedIds,
+                                actions = DownloadItemActions(
+                                    onToggleSelection = {
+                                        selectedIds = if (task.id in selectedIds) {
+                                            selectedIds - task.id
+                                        } else {
+                                            selectedIds + task.id
+                                        }
+                                    },
                                     onPlayClick = { onPlayLocalVideo(task.filePath) },
                                     onDeleteClick = {
                                         // 删除已完成任务会连带删除本地文件，先确认
@@ -727,10 +684,63 @@ fun DownloadScreen(
                             )
                         }
                     }
-                }
 
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+                    // 非分组视图（已筛选 / 已排序）：扁平渲染可见列表，状态图标由 DownloadTaskItem 内部按状态处理
+                    if (!useGroupedView) {
+                        if (visibleTasks.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            if (nameQuery.isBlank()) {
+                                                R.string.download_filter_empty
+                                            } else {
+                                                R.string.download_search_empty
+                                            }
+                                        ),
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            items(visibleTasks, key = { it.id }) { task ->
+                                DownloadTaskItem(
+                                    task = task,
+                                    isSelectionMode = isSelectionMode,
+                                    isSelected = task.id in selectedIds,
+                                    actions = DownloadItemActions(
+                                        onToggleSelection = {
+                                            selectedIds = if (task.id in selectedIds) {
+                                                selectedIds - task.id
+                                            } else {
+                                                selectedIds + task.id
+                                            }
+                                        },
+                                        onPauseClick = { viewModel.pauseDownload(task.id) },
+                                        onResumeClick = { viewModel.resumeDownload(task.id) },
+                                        onCancelClick = { viewModel.cancelDownload(task.id) },
+                                        onRetryClick = { viewModel.resumeDownload(task.id) },
+                                        onPlayClick = { onPlayLocalVideo(task.filePath) },
+                                        onDeleteClick = {
+                                            // 删除已完成任务会连带删除本地文件，先确认
+                                            deleteTargetId = task.id
+                                            showDeleteConfirm = true
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
                 }
             }
         }

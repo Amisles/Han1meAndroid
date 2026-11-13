@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
@@ -255,11 +256,16 @@ fun SearchScreen(
                 .fillMaxSize()
                 .testTag("search_screen")
         ) {
+        RefreshableContent(
+            onRefresh = { viewModel.executeSearch() },
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .statusBarsPadding()
         ) {
         SearchTopBar(
             value = localQuery,
@@ -452,6 +458,7 @@ fun SearchScreen(
             )
         }
     }
+        }
         if (showTagSheet) {
             TagFilterSheet(
                 initialTags = selectedTags.value,

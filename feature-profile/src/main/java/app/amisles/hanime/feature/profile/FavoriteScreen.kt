@@ -62,6 +62,7 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.PageLayoutResolver
@@ -179,289 +180,295 @@ fun FavoriteScreen(
         }
     }
 
-    Column(
+    RefreshableContent(
+        onRefresh = { viewModel.loadFavorites() },
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        if (isLogin && favorites.isNotEmpty() && pendingSync == 0) {
-            Text(
-                text = stringResource(R.string.favorite_cloud_local_hint),
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-        }
-        if (pendingSync > 0) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            if (isLogin && favorites.isNotEmpty() && pendingSync == 0) {
                 Text(
-                    text = stringResource(R.string.playlist_sheet_pending_count, pendingSync),
-                    fontSize = 12.sp,
+                    text = stringResource(R.string.favorite_cloud_local_hint),
+                    fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.common_retry),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .clickable { viewModel.retryCloudSync() }
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
                 )
             }
-        }
-        SelectionTopBar(
-            title = if (isSelectionMode) {
-                stringResource(R.string.history_selected_count, selectedIds.size)
-            } else {
-                stringResource(R.string.profile_favorites)
-            },
-            isSelectionMode = isSelectionMode,
-            onBack = onBackClick,
-            onExitSelection = { isSelectionMode = false }
-        ) {
-            if (!isSelectionMode && favorites.isNotEmpty()) {
-                LayoutModeToggle(
-                    isGrid = isGridMode,
-                    onToggle = { grid ->
-                        appPrefs.setPageLayoutMode(
-                            PageLayoutKey.FAVORITE,
-                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
-                        )
-                    },
-                    modifier = Modifier.padding(end = 4.dp)
-                )
-                Box {
+            if (pendingSync > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = stringResource(R.string.favorite_sort),
+                        text = stringResource(R.string.playlist_sheet_pending_count, pendingSync),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(R.string.common_retry),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable { viewModel.retryCloudSync() }
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            SelectionTopBar(
+                title = if (isSelectionMode) {
+                    stringResource(R.string.history_selected_count, selectedIds.size)
+                } else {
+                    stringResource(R.string.profile_favorites)
+                },
+                isSelectionMode = isSelectionMode,
+                onBack = onBackClick,
+                onExitSelection = { isSelectionMode = false }
+            ) {
+                if (!isSelectionMode && favorites.isNotEmpty()) {
+                    LayoutModeToggle(
+                        isGrid = isGridMode,
+                        onToggle = { grid ->
+                            appPrefs.setPageLayoutMode(
+                                PageLayoutKey.FAVORITE,
+                                if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                            )
+                        },
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Box {
+                        Text(
+                            text = stringResource(R.string.favorite_sort),
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clickable { sortMenuExpanded = true }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false }
+                        ) {
+                            FavoriteSortMode.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = stringResource(
+                                                when (mode) {
+                                                    FavoriteSortMode.RECENT -> R.string.favorite_sort_recent
+                                                    FavoriteSortMode.TITLE -> R.string.favorite_sort_title
+                                                    FavoriteSortMode.AUTHOR -> R.string.favorite_sort_author
+                                                }
+                                            ),
+                                            fontSize = 14.sp
+                                        )
+                                    },
+                                    trailingIcon = if (sortMode == mode) {
+                                        { Icon(Icons.Default.Check, contentDescription = null) }
+                                    } else null,
+                                    onClick = {
+                                        sortMode = mode
+                                        sortMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.common_manage),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .clickable { sortMenuExpanded = true }
+                            .clickable { isSelectionMode = true }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
-                    DropdownMenu(
-                        expanded = sortMenuExpanded,
-                        onDismissRequest = { sortMenuExpanded = false }
-                    ) {
-                        FavoriteSortMode.entries.forEach { mode ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(
-                                            when (mode) {
-                                                FavoriteSortMode.RECENT -> R.string.favorite_sort_recent
-                                                FavoriteSortMode.TITLE -> R.string.favorite_sort_title
-                                                FavoriteSortMode.AUTHOR -> R.string.favorite_sort_author
-                                            }
-                                        ),
-                                        fontSize = 14.sp
-                                    )
-                                },
-                                trailingIcon = if (sortMode == mode) {
-                                    { Icon(Icons.Default.Check, contentDescription = null) }
-                                } else null,
-                                onClick = {
-                                    sortMode = mode
-                                    sortMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Text(
-                    text = stringResource(R.string.common_manage),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clickable { isSelectionMode = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            } else if (isSelectionMode) {
-                // 全选只作用于当前过滤视图（分组 / 搜索）内的条目，与列表渲染同源：
-                // 若用全量 favorites，过滤视图外的收藏会被一并选中删除——用户按可见集合
-                // 理解「全选」，屏幕外的条目不该陪葬。取消全选同理只移除可见条目，
-                // 此前因切换分组/搜索而保留的显式选中项不受影响。
-                val allVisibleSelected = visibleFavorites.isNotEmpty() &&
-                    visibleFavorites.all { it.id in selectedIds }
-                Text(
-                    text = stringResource(R.string.common_select_all),
-                    fontSize = 14.sp,
-                    color = if (allVisibleSelected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clickable {
-                            val visibleIds = visibleFavorites.map { it.id }.toSet()
-                            selectedIds = if (allVisibleSelected) {
-                                selectedIds - visibleIds
-                            } else {
-                                selectedIds + visibleIds
-                            }
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-        }
-
-        FavoriteSearchField(
-            query = searchQuery,
-            onQueryChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 4.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        FavoriteGroupBar(
-            groups = groups,
-            selectedGroupId = selectedGroupId,
-            onSelect = { selectedGroupId = it },
-            onCreateGroup = { showCreateGroup = true }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-        } else if (favorites.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Favorite,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                } else if (isSelectionMode) {
+                    // 全选只作用于当前过滤视图（分组 / 搜索）内的条目，与列表渲染同源：
+                    // 若用全量 favorites，过滤视图外的收藏会被一并选中删除——用户按可见集合
+                    // 理解「全选」，屏幕外的条目不该陪葬。取消全选同理只移除可见条目，
+                    // 此前因切换分组/搜索而保留的显式选中项不受影响。
+                    val allVisibleSelected = visibleFavorites.isNotEmpty() &&
+                        visibleFavorites.all { it.id in selectedIds }
+                    Text(
+                        text = stringResource(R.string.common_select_all),
+                        fontSize = 14.sp,
+                        color = if (allVisibleSelected) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .size(48.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.favorite_empty),
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stringResource(R.string.favorite_empty_hint),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-        } else if (isGridMode && !isSelectionMode) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                if (visibleFavorites.isEmpty()) {
-                    item(span = { GridItemSpan(2) }) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 60.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.favorite_search_empty),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-                gridItems(visibleFavorites, key = { it.id }) { video ->
-                    VideoGridCard(
-                        video = video.toHanimeVideo(),
-                        onClick = { onVideoClick(video.videoUrl) }
-                    )
-                }
-                item(span = { GridItemSpan(2) }) {
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (visibleFavorites.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 60.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.favorite_search_empty),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                items(visibleFavorites, key = { it.id }) { video ->
-                    val isSelected = video.id in selectedIds
-
-                    FavoriteVideoItem(
-                        video = video,
-                        isSelectionMode = isSelectionMode,
-                        isSelected = isSelected,
-                        onVideoClick = {
-                            if (isSelectionMode) {
-                                selectedIds = if (isSelected) {
-                                    selectedIds - video.id
+                            .clickable {
+                                val visibleIds = visibleFavorites.map { it.id }.toSet()
+                                selectedIds = if (allVisibleSelected) {
+                                    selectedIds - visibleIds
                                 } else {
-                                    selectedIds + video.id
+                                    selectedIds + visibleIds
                                 }
-                            } else {
-                                onVideoClick(video.videoUrl)
                             }
-                        },
-                        onLongClick = {
-                            if (!isSelectionMode) {
-                                editingVideoId = video.id
-                                editingVideoTitle = video.title
-                                editingTags = video.tags
-                                editingGroupId = video.groupId
-                                showEditDialog = true
-                            }
-                        },
-                        onCheckedChange = { checked ->
-                            selectedIds = if (checked) {
-                                selectedIds + video.id
-                            } else {
-                                selectedIds - video.id
-                            }
-                        }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
+            }
 
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+            FavoriteSearchField(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp, vertical = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            FavoriteGroupBar(
+                groups = groups,
+                selectedGroupId = selectedGroupId,
+                onSelect = { selectedGroupId = it },
+                onCreateGroup = { showCreateGroup = true }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (favorites.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Favorite,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(bottom = 16.dp)
+                                .size(48.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.favorite_empty),
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = stringResource(R.string.favorite_empty_hint),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            } else if (isGridMode && !isSelectionMode) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    if (visibleFavorites.isEmpty()) {
+                        item(span = { GridItemSpan(2) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 60.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.favorite_search_empty),
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    gridItems(visibleFavorites, key = { it.id }) { video ->
+                        VideoGridCard(
+                            video = video.toHanimeVideo(),
+                            onClick = { onVideoClick(video.videoUrl) }
+                        )
+                    }
+                    item(span = { GridItemSpan(2) }) {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (visibleFavorites.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 60.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.favorite_search_empty),
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    items(visibleFavorites, key = { it.id }) { video ->
+                        val isSelected = video.id in selectedIds
+
+                        FavoriteVideoItem(
+                            video = video,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = isSelected,
+                            onVideoClick = {
+                                if (isSelectionMode) {
+                                    selectedIds = if (isSelected) {
+                                        selectedIds - video.id
+                                    } else {
+                                        selectedIds + video.id
+                                    }
+                                } else {
+                                    onVideoClick(video.videoUrl)
+                                }
+                            },
+                            onLongClick = {
+                                if (!isSelectionMode) {
+                                    editingVideoId = video.id
+                                    editingVideoTitle = video.title
+                                    editingTags = video.tags
+                                    editingGroupId = video.groupId
+                                    showEditDialog = true
+                                }
+                            },
+                            onCheckedChange = { checked ->
+                                selectedIds = if (checked) {
+                                    selectedIds + video.id
+                                } else {
+                                    selectedIds - video.id
+                                }
+                            }
+                        )
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
                 }
             }
         }

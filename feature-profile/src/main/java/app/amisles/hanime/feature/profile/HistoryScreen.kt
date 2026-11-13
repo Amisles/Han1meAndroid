@@ -57,6 +57,7 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoThumbnail
 import app.amisles.hanime.core.ui.components.FullScreenOverlayDialog
 import app.amisles.hanime.core.ui.components.LayoutModeToggle
+import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.PageLayoutResolver
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
@@ -161,259 +162,265 @@ fun HistoryScreen(
         }
     }
 
-    Column(
+    RefreshableContent(
+        onRefresh = { viewModel.loadHistory() },
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        SelectionTopBar(
-            title = if (isSelectionMode) stringResource(R.string.history_selected_count, selectedIds.size) else stringResource(R.string.history_title),
-            isSelectionMode = isSelectionMode,
-            onBack = onBackClick,
-            onExitSelection = { isSelectionMode = false }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            if (!isSelectionMode && history.isNotEmpty()) {
-                LayoutModeToggle(
-                    isGrid = isGridMode,
-                    onToggle = { grid ->
-                        appPrefs.setPageLayoutMode(
-                            PageLayoutKey.HISTORY,
-                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
-                        )
-                    },
-                    modifier = Modifier.padding(end = 4.dp)
-                )
-                Text(
-                    text = stringResource(R.string.history_manage),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clickable { isSelectionMode = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            } else if (isSelectionMode) {
-                Text(
-                    text = stringResource(R.string.common_select_all),
-                    fontSize = 14.sp,
-                    color = if (selectedIds.size == history.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clickable {
-                            selectedIds = if (selectedIds.size == history.size) {
-                                emptySet()
-                            } else {
-                                history.map { it.id }.toSet()
-                            }
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-        }
-
-        if (!isSelectionMode && history.isNotEmpty()) {
-            SearchField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = stringResource(R.string.history_search_hint),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 15.dp, vertical = 4.dp)
-            )
-        }
-
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            SelectionTopBar(
+                title = if (isSelectionMode) stringResource(R.string.history_selected_count, selectedIds.size) else stringResource(R.string.history_title),
+                isSelectionMode = isSelectionMode,
+                onBack = onBackClick,
+                onExitSelection = { isSelectionMode = false }
             ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-        } else if (history.isEmpty() || (searchQuery.isNotBlank() && filteredHistory.isEmpty())) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.History,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .size(48.dp)
+                if (!isSelectionMode && history.isNotEmpty()) {
+                    LayoutModeToggle(
+                        isGrid = isGridMode,
+                        onToggle = { grid ->
+                            appPrefs.setPageLayoutMode(
+                                PageLayoutKey.HISTORY,
+                                if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                            )
+                        },
+                        modifier = Modifier.padding(end = 4.dp)
                     )
                     Text(
-                        text = stringResource(R.string.history_empty),
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stringResource(R.string.history_empty_hint),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-        } else if (isGridMode && !isSelectionMode) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                gridItems(filteredHistory, key = { it.id }) { video ->
-                    VideoGridCard(
-                        video = HanimeVideo(
-                            id = video.id,
-                            title = video.title,
-                            thumbnailUrl = video.thumbnailUrl,
-                            duration = video.duration,
-                            likeRate = "",
-                            viewCount = "",
-                            author = video.author,
-                            publishTime = formatWatchedTimeRaw(video.watchedAt),
-                            videoUrl = video.videoUrl
-                        ),
-                        onClick = { onVideoClick(video.videoUrl) }
-                    )
-                }
-                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位
-                items(filteredHistory, key = { it.id }) { video ->
-                    val isSelected = video.id in selectedIds
-
-                    Row(
+                        text = stringResource(R.string.history_manage),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 15.dp, vertical = 3.dp)
-                            .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                            .surfaceEdge(RoundedCornerShape(8.dp))
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .combinedClickable(
-                                onClick = {
-                                    if (isSelectionMode) {
-                                        selectedIds = if (isSelected) {
-                                            selectedIds - video.id
-                                        } else {
-                                            selectedIds + video.id
-                                        }
-                                    } else {
-                                        onVideoClick(video.videoUrl)
-                                    }
-                                },
-                                onLongClick = {
-                                    if (!isSelectionMode) {
-                                        deleteTargetId = video.id
-                                        showDeleteConfirm = true
-                                    }
+                            .clickable { isSelectionMode = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                } else if (isSelectionMode) {
+                    Text(
+                        text = stringResource(R.string.common_select_all),
+                        fontSize = 14.sp,
+                        color = if (selectedIds.size == history.size) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable {
+                                selectedIds = if (selectedIds.size == history.size) {
+                                    emptySet()
+                                } else {
+                                    history.map { it.id }.toSet()
                                 }
-                            ),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            if (!isSelectionMode && history.isNotEmpty()) {
+                SearchField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = stringResource(R.string.history_search_hint),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 15.dp, vertical = 4.dp)
+                )
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (history.isEmpty() || (searchQuery.isNotBlank() && filteredHistory.isEmpty())) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (isSelectionMode) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { checked ->
-                                    selectedIds = if (checked) {
-                                        selectedIds + video.id
-                                    } else {
-                                        selectedIds - video.id
-                                    }
-                                },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = MaterialTheme.colorScheme.primary,
-                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        VideoThumbnail(
-                            thumbnailUrl = video.thumbnailUrl,
-                            duration = video.duration,
-                            likeRate = "",
-                            viewCount = "",
-                            crop = true,
-                            targetWidth = ROW_THUMB_WIDTH,
-                            videoId = video.id,
-                            contentDescription = video.title,
+                        Icon(
+                            imageVector = Icons.Outlined.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
-                                .width(ROW_THUMB_WIDTH)
-                                .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(6.dp))
+                                .padding(bottom = 16.dp)
+                                .size(48.dp)
                         )
+                        Text(
+                            text = stringResource(R.string.history_empty),
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = stringResource(R.string.history_empty_hint),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            } else if (isGridMode && !isSelectionMode) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    gridItems(filteredHistory, key = { it.id }) { video ->
+                        VideoGridCard(
+                            video = HanimeVideo(
+                                id = video.id,
+                                title = video.title,
+                                thumbnailUrl = video.thumbnailUrl,
+                                duration = video.duration,
+                                likeRate = "",
+                                viewCount = "",
+                                author = video.author,
+                                publishTime = formatWatchedTimeRaw(video.watchedAt),
+                                videoUrl = video.videoUrl
+                            ),
+                            onClick = { onVideoClick(video.videoUrl) }
+                        )
+                    }
+                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // 带 key：删除中间项后按 id 复用组合，避免缩略图短暂错位
+                    items(filteredHistory, key = { it.id }) { video ->
+                        val isSelected = video.id in selectedIds
 
-                        Column(
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 4.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
+                                .fillMaxWidth()
+                                .padding(horizontal = 15.dp, vertical = 3.dp)
+                                .background(if (isSelectionMode && isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                .surfaceEdge(RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            selectedIds = if (isSelected) {
+                                                selectedIds - video.id
+                                            } else {
+                                                selectedIds + video.id
+                                            }
+                                        } else {
+                                            onVideoClick(video.videoUrl)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (!isSelectionMode) {
+                                            deleteTargetId = video.id
+                                            showDeleteConfirm = true
+                                        }
+                                    }
+                                ),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = video.title,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth()
+                            if (isSelectionMode) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { checked ->
+                                        selectedIds = if (checked) {
+                                            selectedIds + video.id
+                                        } else {
+                                            selectedIds - video.id
+                                        }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            VideoThumbnail(
+                                thumbnailUrl = video.thumbnailUrl,
+                                duration = video.duration,
+                                likeRate = "",
+                                viewCount = "",
+                                crop = true,
+                                targetWidth = ROW_THUMB_WIDTH,
+                                videoId = video.id,
+                                contentDescription = video.title,
+                                modifier = Modifier
+                                    .width(ROW_THUMB_WIDTH)
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(6.dp))
                             )
-                            if (video.author.isNotEmpty()) {
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 4.dp),
+                                verticalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
-                                    text = video.author,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
+                                    text = video.title,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                if (video.author.isNotEmpty()) {
+                                    Text(
+                                        text = video.author,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = formatWatchedTime(video.watchedAt),
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    softWrap = false,
                                     modifier = Modifier.padding(top = 2.dp)
                                 )
                             }
-                            Text(
-                                text = formatWatchedTime(video.watchedAt),
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                softWrap = false,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
 
-                        if (!isSelectionMode) {
-                            IconButton(
-                                onClick = {
-                                    deleteTargetId = video.id
-                                    showDeleteConfirm = true
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = stringResource(R.string.common_delete),
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                            if (!isSelectionMode) {
+                                IconButton(
+                                    onClick = {
+                                        deleteTargetId = video.id
+                                        showDeleteConfirm = true
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = stringResource(R.string.common_delete),
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
                 }
             }
         }

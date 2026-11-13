@@ -62,6 +62,7 @@ import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
+import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.domain.model.HanimeVideo
 import coil3.compose.AsyncImage
@@ -100,155 +101,161 @@ fun SubscriptionsScreen(
         if (isLogin) viewModel.load(initialQuery)
     }
 
-    Column(
+    RefreshableContent(
+        onRefresh = { if (isLogin) viewModel.load(selectedQuery) },
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        // 顶部返回栏 + 标题
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            IconButton(onClick = onBackClick, modifier = Modifier.size(24.dp)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.common_back),
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.subscriptions),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
-            )
-            LayoutModeToggle(
-                isGrid = isGridMode,
-                onToggle = { grid ->
-                    appPrefs.setPageLayoutMode(
-                        PageLayoutKey.SUBSCRIPTIONS,
-                        if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+            // 顶部返回栏 + 标题
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 15.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBackClick, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.common_back),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-            )
-        }
-
-        when {
-            !isLogin -> {
-                NotLoggedInView(onNavigateToLogin = onNavigateToLogin)
-            }
-            isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            error != null -> {
-                KaomojiErrorView(
-                    message = error ?: stringResource(R.string.subscriptions_load_failed),
-                    onRetry = { viewModel.load(selectedQuery) }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.subscriptions),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f)
+                )
+                LayoutModeToggle(
+                    isGrid = isGridMode,
+                    onToggle = { grid ->
+                        appPrefs.setPageLayoutMode(
+                            PageLayoutKey.SUBSCRIPTIONS,
+                            if (grid) PageLayoutMode.GRID else PageLayoutMode.LIST
+                        )
+                    }
                 )
             }
-            else -> {
-                // 已订阅作者横向筛选行（含「全部」）
-                if (artists.isNotEmpty()) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item(key = "__all__") {
-                            ArtistChip(
-                                name = stringResource(R.string.subscriptions_all),
-                                avatarUrl = "",
-                                isSelected = selectedQuery.isEmpty(),
-                                onClick = { viewModel.selectArtist("") }
-                            )
-                        }
-                        // key 必须唯一：SubscribedArtist 没有 ID，故用「名字 + 位次」保证唯一
-                        itemsIndexed(artists, key = { index, artist -> "${artist.name}#$index" }) { _, artist ->
-                            ArtistChip(
-                                name = artist.name,
-                                avatarUrl = artist.avatarUrl,
-                                isSelected = selectedQuery == artist.name,
-                                onClick = { viewModel.selectArtist(artist.name) }
-                            )
-                        }
+
+            when {
+                !isLogin -> {
+                    NotLoggedInView(onNavigateToLogin = onNavigateToLogin)
+                }
+                isLoading && videos.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
-
-                // 当前范围标题：呼应官网「全部订阅」/「该作者的所有作品」语义
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ScopeHeader(selectedQuery = selectedQuery)
-                    Spacer(modifier = Modifier.weight(1f))
-                    FilterChip(
-                        selected = hideWatched,
-                        onClick = { appPrefs.setSubscriptionsHideWatched(!hideWatched) },
-                        label = { Text(stringResource(R.string.subscriptions_hide_watched), fontSize = 12.sp) }
+                error != null -> {
+                    KaomojiErrorView(
+                        message = error ?: stringResource(R.string.subscriptions_load_failed),
+                        onRetry = { viewModel.load(selectedQuery) }
                     )
                 }
+                else -> {
+                    // 已订阅作者横向筛选行（含「全部」）
+                    if (artists.isNotEmpty()) {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            item(key = "__all__") {
+                                ArtistChip(
+                                    name = stringResource(R.string.subscriptions_all),
+                                    avatarUrl = "",
+                                    isSelected = selectedQuery.isEmpty(),
+                                    onClick = { viewModel.selectArtist("") }
+                                )
+                            }
+                            // key 必须唯一：SubscribedArtist 没有 ID，故用「名字 + 位次」保证唯一
+                            itemsIndexed(artists, key = { index, artist -> "${artist.name}#$index" }) { _, artist ->
+                                ArtistChip(
+                                    name = artist.name,
+                                    avatarUrl = artist.avatarUrl,
+                                    isSelected = selectedQuery == artist.name,
+                                    onClick = { viewModel.selectArtist(artist.name) }
+                                )
+                            }
+                        }
+                    }
 
-                if (videos.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(top = 60.dp),
-                        contentAlignment = Alignment.TopCenter
+                    // 当前范围标题：呼应官网「全部订阅」/「该作者的所有作品」语义
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = stringResource(R.string.subscriptions_empty),
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ScopeHeader(selectedQuery = selectedQuery)
+                        Spacer(modifier = Modifier.weight(1f))
+                        FilterChip(
+                            selected = hideWatched,
+                            onClick = { appPrefs.setSubscriptionsHideWatched(!hideWatched) },
+                            label = { Text(stringResource(R.string.subscriptions_hide_watched), fontSize = 12.sp) }
                         )
                     }
-                } else if (visibleVideos.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(top = 60.dp),
-                        contentAlignment = Alignment.TopCenter
-                    ) {
-                        Text(
-                            text = stringResource(R.string.subscriptions_all_watched),
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else if (isGridMode) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        gridItems(visibleVideos, key = { it.id }) { video ->
-                            VideoGridCard(
-                                video = video,
-                                onClick = { onVideoClick(video.videoUrl) },
-                                onLongClick = { onVideoLongClick(video) }
+
+                    if (videos.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(top = 60.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Text(
+                                text = stringResource(R.string.subscriptions_empty),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        item(span = { GridItemSpan(2) }) { Spacer(modifier = Modifier.height(20.dp)) }
-                    }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(visibleVideos, key = { it.id }) { video ->
-                            VideoListItem(
-                                video = video,
-                                onClick = { onVideoClick(video.videoUrl) },
-                                onLongClick = { onVideoLongClick(video) }
+                    } else if (visibleVideos.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(top = 60.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Text(
+                                text = stringResource(R.string.subscriptions_all_watched),
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        item { Spacer(modifier = Modifier.height(20.dp)) }
+                    } else if (isGridMode) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            gridItems(visibleVideos, key = { it.id }) { video ->
+                                VideoGridCard(
+                                    video = video,
+                                    onClick = { onVideoClick(video.videoUrl) },
+                                    onLongClick = { onVideoLongClick(video) }
+                                )
+                            }
+                            item(span = { GridItemSpan(2) }) { Spacer(modifier = Modifier.height(20.dp)) }
+                        }
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 15.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(visibleVideos, key = { it.id }) { video ->
+                                VideoListItem(
+                                    video = video,
+                                    onClick = { onVideoClick(video.videoUrl) },
+                                    onLongClick = { onVideoLongClick(video) }
+                                )
+                            }
+                            item { Spacer(modifier = Modifier.height(20.dp)) }
+                        }
                     }
                 }
             }
