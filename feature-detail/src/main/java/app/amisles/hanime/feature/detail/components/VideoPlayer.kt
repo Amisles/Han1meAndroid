@@ -76,6 +76,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.theme.HanimePrimary
@@ -226,7 +227,7 @@ fun VideoPlayer(
     // 手势状态
     val gestureHintState = remember { mutableStateOf<String?>(null) }
     var gestureHint by gestureHintState
-    var showGestureIntro by remember { mutableStateOf(!Preferences.playerGestureIntroShown) }
+    var showGestureIntro by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.playerGestureIntroShown) }
     val lastTapTimeState = remember { mutableLongStateOf(0L) }
     var lastTapTime by lastTapTimeState
     val seekPreviewState = remember { mutableLongStateOf(0L) }

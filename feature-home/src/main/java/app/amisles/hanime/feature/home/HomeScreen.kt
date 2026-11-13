@@ -65,6 +65,7 @@ import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.model.WatchStats
+import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
 import app.amisles.hanime.core.ui.components.CategoryScroll
@@ -275,7 +276,7 @@ fun HomeScreenContent(
     val cfg = LocalUiConfig.current
     val homeConfig = LocalHomeSectionConfig.current
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
-    var showLongPressHint by remember { mutableStateOf(!Preferences.homeLongPressHintDismissed) }
+    var showLongPressHint by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.homeLongPressHintDismissed) }
 
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
     val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }

@@ -68,6 +68,7 @@ import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.data.preferences.Preferences
 
@@ -135,7 +136,7 @@ fun DownloadScreen(
     val gateState by viewModel.gateState.collectAsStateWithLifecycle()
     // 不用 rememberSaveable：面板是一次性的浮层，离开页面再回来不应保持展开
     var showStoragePanel by remember { mutableStateOf(false) }
-    var showQuickDownloadHint by remember { mutableStateOf(!Preferences.downloadQuickHintDismissed) }
+    var showQuickDownloadHint by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.downloadQuickHintDismissed) }
 
     LaunchedEffect(showStoragePanel) {
         if (showStoragePanel) viewModel.refreshStorageInfo()
