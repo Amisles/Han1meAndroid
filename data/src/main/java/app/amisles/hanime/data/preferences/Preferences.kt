@@ -59,6 +59,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_PLAYBACK_SPEED = "playback_speed"
     private const val SP_PREFERRED_QUALITY = "preferred_quality"
     private const val SP_AUTO_PLAY_NEXT = "auto_play_next"
+    private const val SP_AUTO_PLAY_RELATED = "auto_play_related"
     private const val SP_LOOP_PLAYBACK = "loop_playback"
     private const val SP_LONG_PRESS_SPEED = "long_press_boost_speed"
     private const val SP_DOUBLE_TAP_SEEK = "double_tap_seek"
@@ -217,6 +218,9 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     private val _autoPlayNextFlow = MutableStateFlow(false)
     override val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
+    private val _autoPlayRelatedFlow = MutableStateFlow(false)
+    override val autoPlayRelatedFlow: StateFlow<Boolean> = _autoPlayRelatedFlow.asStateFlow()
+
     // 循环播放：开启后当前视频播完自动从头重播（由 player.repeatMode 实现）
     private val _loopPlaybackFlow = MutableStateFlow(false)
     override val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
@@ -321,6 +325,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         _playbackSpeedFlow.value = readFloat(SP_PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = readString(SP_PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = readBoolean(SP_AUTO_PLAY_NEXT, false)
+        _autoPlayRelatedFlow.value = readBoolean(SP_AUTO_PLAY_RELATED, false)
         _loopPlaybackFlow.value = readBoolean(SP_LOOP_PLAYBACK, false)
         _longPressBoostSpeedFlow.value = readFloat(SP_LONG_PRESS_SPEED, DEFAULT_LONG_PRESS_SPEED)
             .coerceIn(MIN_LONG_PRESS_SPEED, MAX_LONG_PRESS_SPEED)
@@ -574,6 +579,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override val playbackSpeed: Float get() = _playbackSpeedFlow.value
     override val preferredQuality: String get() = _preferredQualityFlow.value
     override val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
+    override val autoPlayRelated: Boolean get() = _autoPlayRelatedFlow.value
     override val loopPlayback: Boolean get() = _loopPlaybackFlow.value
     override val longPressBoostSpeed: Float get() = _longPressBoostSpeedFlow.value
     override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
@@ -871,6 +877,11 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override fun setAutoPlayNext(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_PLAY_NEXT, enabled) }
         _autoPlayNextFlow.value = enabled
+    }
+
+    override fun setAutoPlayRelated(enabled: Boolean) {
+        sp.edit { putBoolean(SP_AUTO_PLAY_RELATED, enabled) }
+        _autoPlayRelatedFlow.value = enabled
     }
 
     override fun setLoopPlayback(enabled: Boolean) {

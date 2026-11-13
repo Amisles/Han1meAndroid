@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
@@ -566,6 +567,14 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_auto_rotate_fullscreen_summary),
                     checked = uiState.autoRotateFullscreen,
                     onCheckedChange = { enabled -> viewModel.setAutoRotateFullscreen(enabled) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.SkipNext,
+                    title = stringResource(R.string.settings_auto_play_related),
+                    subtitle = stringResource(R.string.settings_auto_play_related_summary),
+                    checked = uiState.autoPlayRelated,
+                    onCheckedChange = { enabled -> viewModel.setAutoPlayRelated(enabled) }
                 )
             }
 

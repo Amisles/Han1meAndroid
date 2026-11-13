@@ -17,6 +17,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val playbackSpeedFlow = Preferences.playbackSpeedFlow
     override val preferredQualityFlow = Preferences.preferredQualityFlow
     override val autoPlayNextFlow = Preferences.autoPlayNextFlow
+    override val autoPlayRelatedFlow = Preferences.autoPlayRelatedFlow
     override val loopPlaybackFlow = Preferences.loopPlaybackFlow
     override val searchLayoutModeFlow = Preferences.searchLayoutModeFlow
     override val pageLayoutModesFlow = Preferences.pageLayoutModesFlow

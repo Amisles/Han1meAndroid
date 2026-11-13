@@ -68,6 +68,11 @@ interface SettingsRepository {
     val autoPlayNextFlow: StateFlow<Boolean>
     fun setAutoPlayNext(enabled: Boolean)
 
+    /** 无播放列表时是否继续播放相关推荐；默认关闭，否则「连播」会跳到毫不相关的视频。 */
+    val autoPlayRelated: Boolean
+    val autoPlayRelatedFlow: StateFlow<Boolean>
+    fun setAutoPlayRelated(enabled: Boolean)
+
     val loopPlayback: Boolean
     val loopPlaybackFlow: StateFlow<Boolean>
     fun setLoopPlayback(enabled: Boolean)

@@ -411,6 +411,12 @@
     <string name="detail_loop_playback">循环播放</string>
     <string name="detail_more">更多</string>
     <string name="detail_pip">画中画</string>
+    <string name="detail_up_next_title">%1$d 秒后播放</string>
+    <string name="detail_up_next_from_playlist">来自当前播放列表</string>
+    <string name="detail_up_next_from_related">来自相关推荐</string>
+    <string name="detail_up_next_play_now">立即播放</string>
+    <string name="detail_up_next_cancel">取消</string>
+    <string name="detail_up_next_disable">关闭连播</string>
 
     <!-- Comments -->
     <string name="detail_tab_intro">简介</string>
@@ -942,6 +948,8 @@
     <string name="settings_auto_quality_summary">卡顿时自动降档、稳定后回升；关闭后手动选择的画质不会被覆盖</string>
     <string name="settings_auto_rotate_fullscreen">旋转自动全屏</string>
     <string name="settings_auto_rotate_fullscreen_summary">旋转屏幕时自动进出全屏；关闭后请用播放器的全屏按钮</string>
+    <string name="settings_auto_play_related">连播相关推荐</string>
+    <string name="settings_auto_play_related_summary">无播放列表时，一部播完继续播放相关推荐；关闭后只连播同一播放列表的下一集</string>
     <string name="playback_notification_channel">播放控制</string>
     <string name="playback_seek_back">后退 15 秒</string>
     <string name="playback_seek_forward">前进 15 秒</string>

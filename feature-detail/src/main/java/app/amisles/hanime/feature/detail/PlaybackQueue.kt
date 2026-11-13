@@ -3,12 +3,20 @@ package app.amisles.hanime.feature.detail
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistInfo
 
+internal enum class NextEpisodeSource { PLAYLIST, RELATED }
+
+internal data class NextEpisode(
+    val video: HanimeVideo,
+    val source: NextEpisodeSource
+)
+
 internal fun nextEpisodeOf(
     playlist: PlaylistInfo?,
     relatedVideos: List<HanimeVideo>,
     currentVideoId: String,
-    currentVideoUrl: String
-): HanimeVideo? {
+    currentVideoUrl: String,
+    allowRelated: Boolean
+): NextEpisode? {
     val videos = playlist?.videos.orEmpty()
     if (videos.isNotEmpty()) {
         val index = videos.indexOfFirst { video ->
@@ -16,8 +24,12 @@ internal fun nextEpisodeOf(
                 (currentVideoId.isNotEmpty() && video.id == currentVideoId)
         }
         if (index >= 0) {
-            return videos.getOrNull(index + 1)?.takeIf { it.videoUrl.isNotBlank() }
+            videos.getOrNull(index + 1)
+                ?.takeIf { it.videoUrl.isNotBlank() }
+                ?.let { return NextEpisode(it, NextEpisodeSource.PLAYLIST) }
         }
     }
-    return relatedVideos.firstOrNull { it.videoUrl.isNotBlank() }
+    if (!allowRelated) return null
+    val related = relatedVideos.firstOrNull { it.videoUrl.isNotBlank() } ?: return null
+    return NextEpisode(related, NextEpisodeSource.RELATED)
 }

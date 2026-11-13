@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -75,6 +77,7 @@ import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
 import app.amisles.hanime.feature.detail.components.DetailVideoPlayer
 import app.amisles.hanime.feature.detail.components.formatTime
 import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
+import app.amisles.hanime.feature.detail.components.UpNextCard
 import app.amisles.hanime.feature.detail.components.VideoUnavailableHint
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
@@ -180,6 +183,7 @@ fun DetailScreen(
         videoDetail?.saveOptions?.takeIf { it.videoId.isNotBlank() }?.let { playlistVm.onWatchPageLoaded(it) }
     }
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
+    val autoPlayRelated by appPrefs.autoPlayRelatedFlow.collectAsStateWithLifecycle()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -204,6 +208,8 @@ fun DetailScreen(
     var showDownloadDialog by remember { mutableStateOf(false) }
     var isPlayerFullscreen by remember { mutableStateOf(false) }
     var showDescription by remember { mutableStateOf(false) }
+    var upNext by remember { mutableStateOf<NextEpisode?>(null) }
+    var upNextCountdown by remember { mutableIntStateOf(0) }
     // 0 = 简介（除评论外的全部信息），1 = 评论
     var selectedTab by remember { mutableStateOf(0) }
     // 简介与评论必须各持一个列表状态：共用一个会让两页共用同一滚动位置，翻其中一页时另一页跟着位移
@@ -302,7 +308,7 @@ fun DetailScreen(
         }
     }
 
-    // 播放结束处理：保存进度；若开启连播则自动播放下一集
+    // 播放结束处理：保存进度；若开启连播则给出可撤销的下一集预告
     fun handlePlaybackEnded() {
         val player = exoPlayer ?: return
         val pos = player.currentPosition
@@ -315,12 +321,25 @@ fun DetailScreen(
                 playlist = videoDetail?.playlist,
                 relatedVideos = videoDetail?.relatedVideos.orEmpty(),
                 currentVideoId = viewModel.videoId,
-                currentVideoUrl = videoUrl.orEmpty()
+                currentVideoUrl = videoUrl.orEmpty(),
+                allowRelated = autoPlayRelated
             )
             if (next != null) {
-                onAutoPlayNext(next.videoUrl)
+                upNextCountdown = UP_NEXT_COUNTDOWN_SECONDS
+                upNext = next
             }
         }
+    }
+
+    LaunchedEffect(upNext) {
+        val target = upNext ?: return@LaunchedEffect
+        upNextCountdown = UP_NEXT_COUNTDOWN_SECONDS
+        while (upNextCountdown > 0) {
+            delay(1_000L)
+            upNextCountdown--
+        }
+        onAutoPlayNext(target.video.videoUrl)
+        upNext = null
     }
 
     // 进度记忆：每 5 秒检查一次，仅当「页面至少 STARTED 且播放位置确实前进」时落库，离场时保存最终进度。
@@ -697,18 +716,43 @@ fun DetailScreen(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter
     ) {
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp)
-        ) { data ->
-            Snackbar(
-                snackbarData = data,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onBackground,
-                shape = RoundedCornerShape(8.dp)
-            )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            upNext?.let { next ->
+                UpNextCard(
+                    title = next.video.title,
+                    thumbnailUrl = next.video.thumbnailUrl,
+                    countdownSeconds = upNextCountdown,
+                    fromPlaylist = next.source == NextEpisodeSource.PLAYLIST,
+                    onPlayNow = {
+                        upNext = null
+                        onAutoPlayNext(next.video.videoUrl)
+                    },
+                    onCancel = { upNext = null },
+                    onDisable = {
+                        appPrefs.setAutoPlayNext(false)
+                        upNext = null
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = if (isPlayerFullscreen) 80.dp else 8.dp)
+                )
+            }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp)
+            ) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onBackground,
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
         }
     }
 
@@ -744,6 +788,8 @@ fun DetailScreen(
         )
     }
 }
+
+private const val UP_NEXT_COUNTDOWN_SECONDS = 5
 
 /** 把 DownloadRepository.startDownload 的结果码映射为提示文案。 */
 private fun downloadResultMessage(result: Int): Int = when (result) {

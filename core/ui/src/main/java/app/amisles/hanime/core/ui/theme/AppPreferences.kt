@@ -32,6 +32,7 @@ interface AppPreferences {
     val playbackSpeedFlow: StateFlow<Float>
     val preferredQualityFlow: StateFlow<String>
     val autoPlayNextFlow: StateFlow<Boolean>
+    val autoPlayRelatedFlow: StateFlow<Boolean>
     val loopPlaybackFlow: StateFlow<Boolean>
     val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
     val pageLayoutModesFlow: StateFlow<PageLayoutModes>

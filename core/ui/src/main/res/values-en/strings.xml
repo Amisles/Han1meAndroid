@@ -400,6 +400,12 @@
     <string name="detail_loop_playback">Loop</string>
     <string name="detail_more">More</string>
     <string name="detail_pip">Picture-in-Picture</string>
+    <string name="detail_up_next_title">Playing in %1$d s</string>
+    <string name="detail_up_next_from_playlist">From this playlist</string>
+    <string name="detail_up_next_from_related">From related videos</string>
+    <string name="detail_up_next_play_now">Play now</string>
+    <string name="detail_up_next_cancel">Cancel</string>
+    <string name="detail_up_next_disable">Turn off autoplay</string>
 
     <!-- Comments -->
     <string name="detail_tab_intro">Info</string>
@@ -908,6 +914,8 @@
     <string name="settings_auto_quality_summary">Downgrade on stutter and recover when stable; when off, a manually selected quality is never overridden</string>
     <string name="settings_auto_rotate_fullscreen">Fullscreen on rotate</string>
     <string name="settings_auto_rotate_fullscreen_summary">Enter or exit fullscreen when rotating; when off, use the fullscreen button</string>
+    <string name="settings_auto_play_related">Autoplay related videos</string>
+    <string name="settings_auto_play_related_summary">Keep playing a related video after the current one ends when it is not in a playlist; when off, only the next episode of the same playlist is played</string>
     <string name="playback_notification_channel">Playback controls</string>
     <string name="playback_seek_back">Back 15 seconds</string>
     <string name="playback_seek_forward">Forward 15 seconds</string>

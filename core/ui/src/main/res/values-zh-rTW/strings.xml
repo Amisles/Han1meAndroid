@@ -400,6 +400,12 @@
     <string name="detail_loop_playback">循環播放</string>
     <string name="detail_more">更多</string>
     <string name="detail_pip">畫中畫</string>
+    <string name="detail_up_next_title">%1$d 秒後播放</string>
+    <string name="detail_up_next_from_playlist">來自目前播放清單</string>
+    <string name="detail_up_next_from_related">來自相關推薦</string>
+    <string name="detail_up_next_play_now">立即播放</string>
+    <string name="detail_up_next_cancel">取消</string>
+    <string name="detail_up_next_disable">關閉連播</string>
 
     <!-- Comments -->
     <string name="detail_tab_intro">簡介</string>
@@ -908,6 +914,8 @@
     <string name="settings_auto_quality_summary">卡頓時自動降檔、穩定後回升；關閉後手動選擇的畫質不會被覆蓋</string>
     <string name="settings_auto_rotate_fullscreen">旋轉自動全螢幕</string>
     <string name="settings_auto_rotate_fullscreen_summary">旋轉螢幕時自動進出全螢幕；關閉後請用播放器的全螢幕按鈕</string>
+    <string name="settings_auto_play_related">連播相關推薦</string>
+    <string name="settings_auto_play_related_summary">無播放清單時，一部播完繼續播放相關推薦；關閉後只連播同一播放清單的下一集</string>
     <string name="playback_notification_channel">播放控制</string>
     <string name="playback_seek_back">後退 15 秒</string>
     <string name="playback_seek_forward">前進 15 秒</string>

@@ -400,6 +400,12 @@
     <string name="detail_loop_playback">ループ再生</string>
     <string name="detail_more">その他</string>
     <string name="detail_pip">ピクチャー・イン・ピクチャー</string>
+    <string name="detail_up_next_title">%1$d 秒後に再生</string>
+    <string name="detail_up_next_from_playlist">この再生リストから</string>
+    <string name="detail_up_next_from_related">関連動画から</string>
+    <string name="detail_up_next_play_now">今すぐ再生</string>
+    <string name="detail_up_next_cancel">キャンセル</string>
+    <string name="detail_up_next_disable">自動再生をオフ</string>
 
     <!-- Comments -->
     <string name="detail_tab_intro">概要</string>
@@ -908,6 +914,8 @@
     <string name="settings_auto_quality_summary">再生が止まると自動で下げ、安定後に戻す。オフにすると手動選択した画質は上書きされない</string>
     <string name="settings_auto_rotate_fullscreen">回転で全画面</string>
     <string name="settings_auto_rotate_fullscreen_summary">回転で全画面を自動切替。オフ時は全画面ボタンを使用</string>
+    <string name="settings_auto_play_related">関連動画の自動再生</string>
+    <string name="settings_auto_play_related_summary">再生リストがない場合、終了後に次の動画へ進みます。オフ時は同じ再生リスト内の次のエピソードのみ再生します</string>
     <string name="playback_notification_channel">再生コントロール</string>
     <string name="playback_seek_back">15 秒戻る</string>
     <string name="playback_seek_forward">15 秒進む</string>
