@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
@@ -127,6 +128,7 @@ fun ProfileScreen(
 
     val menuItems = buildList {
         add(ProfileMenuItem(Icons.Default.History, stringResource(R.string.profile_watch_history)) { onNavigate("history") })
+        add(ProfileMenuItem(Icons.Default.MenuBook, stringResource(R.string.profile_comic_history)) { onNavigate("comicHistory") })
         add(ProfileMenuItem(Icons.Default.Favorite, stringResource(R.string.profile_favorites)) {
             onNavigate(if (isLogin) "cloudFavorite" else "favorite")
         })

@@ -497,6 +497,7 @@
     <string name="batch_skipped_no_quality">%1$d video(s) skipped because quality info was not loaded; the rest were queued</string>
     <string name="batch_download_added">Added %1$d download task(s)</string>
     <string name="profile_watch_history">Watch History</string>
+    <string name="profile_comic_history">Comic reading</string>
     <string name="profile_favorites">Favorites</string>
     <string name="subscriptions">Subscriptions</string>
     <string name="subscriptions_all">All</string>
@@ -957,6 +958,9 @@
     <string name="crash_notice_body">The app did not exit normally last time. Crash details were recorded so you can review and decide whether to share them.</string>
     <string name="crash_notice_view">View</string>
     <string name="comic_title">Comics</string>
+    <string name="comic_history_title">Comic reading history</string>
+    <string name="comic_history_empty">No reading history yet</string>
+    <string name="comic_history_progress">Page %1$d / %2$d</string>
     <string name="comic_entry">Comics</string>
     <string name="comic_entry_summary">Browse comics on hanimeone.me</string>
     <string name="comic_empty">No comics available</string>

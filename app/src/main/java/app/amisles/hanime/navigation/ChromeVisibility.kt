@@ -9,6 +9,7 @@ private val hiddenRoutes = setOf(
     "backup",
     "crashLog",
     "comics",
+    "comicHistory",
     "comicTags",
     "comicArtists",
     "watchStats",

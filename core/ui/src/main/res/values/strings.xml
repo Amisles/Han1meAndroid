@@ -513,6 +513,7 @@
 
     <!-- Profile -->
     <string name="profile_watch_history">观看历史</string>
+    <string name="profile_comic_history">漫画阅读</string>
     <string name="profile_favorites">我的收藏</string>
     <string name="subscriptions">订阅内容</string>
     <string name="subscriptions_all">全部</string>
@@ -991,6 +992,9 @@
     <string name="crash_notice_body">应用上次未正常退出，已记录崩溃信息。可以查看并决定是否反馈给开发者。</string>
     <string name="crash_notice_view">查看</string>
     <string name="comic_title">漫画</string>
+    <string name="comic_history_title">漫画阅读记录</string>
+    <string name="comic_history_empty">还没有阅读记录</string>
+    <string name="comic_history_progress">第 %1$d / %2$d 页</string>
     <string name="comic_entry">漫画</string>
     <string name="comic_entry_summary">浏览 hanimeone.me 的漫画</string>
     <string name="comic_empty">暂无漫画内容</string>

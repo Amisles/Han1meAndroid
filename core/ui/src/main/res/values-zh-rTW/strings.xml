@@ -497,6 +497,7 @@
     <string name="batch_skipped_no_quality">%1$d 個影片因畫質未載入已跳過，其餘已加入下載佇列</string>
     <string name="batch_download_added">已新增 %1$d 個下載任務</string>
     <string name="profile_watch_history">觀看歷史</string>
+    <string name="profile_comic_history">漫畫閱讀</string>
     <string name="profile_favorites">我的收藏</string>
     <string name="subscriptions">訂閱內容</string>
     <string name="subscriptions_all">全部</string>
@@ -957,6 +958,9 @@
     <string name="crash_notice_body">應用程式上次未正常結束，已記錄崩潰資訊。可以檢視並決定是否回報給開發者。</string>
     <string name="crash_notice_view">檢視</string>
     <string name="comic_title">漫畫</string>
+    <string name="comic_history_title">漫畫閱讀紀錄</string>
+    <string name="comic_history_empty">還沒有閱讀紀錄</string>
+    <string name="comic_history_progress">第 %1$d / %2$d 頁</string>
     <string name="comic_entry">漫畫</string>
     <string name="comic_entry_summary">瀏覽 hanimeone.me 的漫畫</string>
     <string name="comic_empty">暫無漫畫內容</string>

@@ -46,7 +46,8 @@ fun PrivacyAwareAsyncImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     alignment: Alignment = Alignment.Center,
-    alpha: Float = 1f
+    alpha: Float = 1f,
+    onLoadedSize: ((width: Int, height: Int) -> Unit)? = null
 ) {
     if (LocalPrivacyMode.current) {
         PrivacyPlaceholder(modifier)
@@ -57,7 +58,15 @@ fun PrivacyAwareAsyncImage(
             modifier = modifier,
             contentScale = contentScale,
             alignment = alignment,
-            alpha = alpha
+            alpha = alpha,
+            onSuccess = if (onLoadedSize == null) {
+                null
+            } else {
+                { state ->
+                    val image = state.result.image
+                    onLoadedSize(image.width, image.height)
+                }
+            }
         )
     }
 }

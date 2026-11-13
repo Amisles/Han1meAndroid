@@ -16,6 +16,7 @@ import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.feature.comic.ComicDetailScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryResultScreen
 import app.amisles.hanime.feature.comic.ComicDirectoryScreen
+import app.amisles.hanime.feature.comic.ComicHistoryScreen
 import app.amisles.hanime.feature.comic.ComicReaderScreen
 import app.amisles.hanime.feature.comic.ComicScreen
 import app.amisles.hanime.feature.detail.DetailScreen
@@ -138,6 +139,19 @@ internal fun HanimeNavGraph(
                 },
                 onTagsClick = { navController.navigate("comicTags") },
                 onArtistsClick = { navController.navigate("comicArtists") }
+            )
+        }
+        composable("comicHistory") {
+            ComicHistoryScreen(
+                onBackClick = { navController.popBackStack() },
+                onReadClick = { comicId, page, title, coverUrl ->
+                    navController.navigate(
+                        "comicReader?comicId=" + Uri.encode(comicId) +
+                            "&page=" + page +
+                            "&title=" + Uri.encode(title) +
+                            "&cover=" + Uri.encode(coverUrl)
+                    )
+                }
             )
         }
         composable("comicTags") {

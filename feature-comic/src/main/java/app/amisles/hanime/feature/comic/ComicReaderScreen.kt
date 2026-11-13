@@ -2,6 +2,10 @@ package app.amisles.hanime.feature.comic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +53,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -58,13 +64,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -79,6 +89,8 @@ import app.amisles.hanime.domain.model.ComicReadMode
 import coil3.compose.AsyncImage
 
 private val PAGE_ASPECT_RATIO = 0.7f
+private const val MIN_PAGE_ZOOM = 1f
+private const val MAX_PAGE_ZOOM = 4f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -241,7 +253,7 @@ private fun PagedReader(
         state = pagerState,
         modifier = Modifier.fillMaxSize()
     ) { index ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        ZoomablePage(pageKey = index) {
             PageImage(
                 url = pages.getOrNull(index).orEmpty(),
                 blackBackground = blackBackground,
@@ -287,6 +299,7 @@ private fun ContinuousReader(
     onPageChanged: (Int) -> Unit,
     onToggleChrome: () -> Unit
 ) {
+    val ratios = remember { mutableStateMapOf<String, Float>() }
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = (startPage - 1).coerceIn(0, (pages.size - 1).coerceAtLeast(0))
     )
@@ -320,16 +333,27 @@ private fun ContinuousReader(
                 url = url,
                 blackBackground = blackBackground,
                 contentScale = ContentScale.Fit,
+                onLoadedSize = { width, height ->
+                    if (width > 0 && height > 0) {
+                        ratios[url] = width.toFloat() / height.toFloat()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(PAGE_ASPECT_RATIO)
+                    .aspectRatio(ratios[url] ?: PAGE_ASPECT_RATIO)
             )
         }
     }
 }
 
 @Composable
-private fun PageImage(url: String, blackBackground: Boolean, contentScale: ContentScale, modifier: Modifier) {
+private fun PageImage(
+    url: String,
+    blackBackground: Boolean,
+    contentScale: ContentScale,
+    modifier: Modifier,
+    onLoadedSize: ((Int, Int) -> Unit)? = null
+) {
     Box(
         modifier = modifier.background(
             if (blackBackground) Color.Black else MaterialTheme.colorScheme.surfaceVariant
@@ -340,10 +364,62 @@ private fun PageImage(url: String, blackBackground: Boolean, contentScale: Conte
                 model = url,
                 contentDescription = null,
                 contentScale = contentScale,
+                onLoadedSize = onLoadedSize,
                 modifier = Modifier.fillMaxSize()
             )
         }
     }
+}
+
+@Composable
+private fun ZoomablePage(pageKey: Any, content: @Composable () -> Unit) {
+    var scale by remember(pageKey) { mutableFloatStateOf(1f) }
+    var offset by remember(pageKey) { mutableStateOf(Offset.Zero) }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .pointerInput(pageKey) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val pointers = event.changes.count { it.pressed }
+                        val pan = event.calculatePan()
+                        if (pointers >= 2) {
+                            val next = (scale * event.calculateZoom()).coerceIn(MIN_PAGE_ZOOM, MAX_PAGE_ZOOM)
+                            scale = next
+                            offset = clampPageOffset(offset + pan, next, size)
+                            event.changes.forEach { it.consume() }
+                        } else if (scale > 1f) {
+                            offset = clampPageOffset(offset + pan, scale, size)
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                    if (scale <= 1.01f) {
+                        scale = 1f
+                        offset = Offset.Zero
+                    }
+                }
+            }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationX = offset.x
+                translationY = offset.y
+            }
+    ) {
+        content()
+    }
+}
+
+private fun clampPageOffset(offset: Offset, scale: Float, size: IntSize): Offset {
+    val maxX = size.width * (scale - 1f) / 2f
+    val maxY = size.height * (scale - 1f) / 2f
+    return Offset(
+        x = offset.x.coerceIn(-maxX, maxX),
+        y = offset.y.coerceIn(-maxY, maxY)
+    )
 }
 
 @Composable
