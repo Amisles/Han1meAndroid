@@ -9,6 +9,7 @@
     <string name="common_cancel">取消</string>
     <string name="common_confirm">確認</string>
     <string name="common_delete">刪除</string>
+    <string name="common_deleted">已刪除</string>
     <string name="common_clear">清空</string>
     <string name="common_close">關閉</string>
     <string name="common_undo">復原</string>
@@ -554,7 +555,6 @@
     <string name="login_not_supported_dismiss">我知道了</string>
     <string name="favorite_empty">暫無收藏</string>
     <string name="favorite_empty_hint">去發現喜歡的影片吧</string>
-    <string name="favorite_delete_title">確認刪除</string>
     <string name="favorite_delete_message">確定要刪除這個收藏嗎？</string>
     <string name="history_empty">暫無觀看歷史</string>
     <string name="history_empty_hint">觀看影片後這裡會顯示記錄</string>
@@ -797,9 +797,6 @@
     <string name="history_title">觀看歷史</string>
     <string name="history_selected_count">已選 %1$d 項</string>
     <string name="history_manage">管理</string>
-    <string name="history_delete_title">確認刪除</string>
-    <string name="history_delete_message">確定刪除選取的 %1$d 筆記錄嗎？</string>
-    <string name="history_delete_message_single">確定刪除這筆記錄嗎？</string>
     <string name="history_time_just_now">剛剛觀看</string>
     <string name="history_time_minutes_ago">%1$d 分鐘前</string>
     <string name="history_time_hours_ago">%1$d 小時前</string>
@@ -856,7 +853,6 @@
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
-    <string name="favorite_delete_confirm_message">確定刪除 \"%1$s\" 嗎？</string>
     <string name="favorite_batch_count">%1$d 個收藏</string>
     <string name="login_tab_password">帳號密碼</string>
     <string name="login_tab_webview">WebView 登入</string>

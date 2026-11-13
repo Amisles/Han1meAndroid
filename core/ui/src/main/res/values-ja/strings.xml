@@ -9,6 +9,7 @@
     <string name="common_cancel">キャンセル</string>
     <string name="common_confirm">確認</string>
     <string name="common_delete">削除</string>
+    <string name="common_deleted">削除しました</string>
     <string name="common_clear">クリア</string>
     <string name="common_close">閉じる</string>
     <string name="common_undo">元に戻す</string>
@@ -564,7 +565,6 @@
     <string name="login_not_supported_dismiss">了解しました</string>
     <string name="favorite_empty">お気に入りがありません</string>
     <string name="favorite_empty_hint">好きな動画を見つけましょう</string>
-    <string name="favorite_delete_title">削除の確認</string>
     <string name="favorite_delete_message">このお気に入りを削除しますか？</string>
     <string name="history_empty">視聴履歴がありません</string>
     <string name="history_empty_hint">動画を視聴するとここに履歴が表示されます</string>
@@ -797,9 +797,6 @@
     <string name="history_title">視聴履歴</string>
     <string name="history_selected_count">%1$d 件選択中</string>
     <string name="history_manage">管理</string>
-    <string name="history_delete_title">削除の確認</string>
-    <string name="history_delete_message">選択した %1$d 件を削除しますか？</string>
-    <string name="history_delete_message_single">この履歴を削除しますか？</string>
     <string name="history_time_just_now">今視聴しました</string>
     <string name="history_time_minutes_ago">%1$d 分前</string>
     <string name="history_time_hours_ago">%1$d 時間前</string>
@@ -856,7 +853,6 @@
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
-    <string name="favorite_delete_confirm_message">「%1$s」を削除しますか？</string>
     <string name="favorite_batch_count">%1$d 件のお気に入り</string>
     <string name="login_tab_password">メールアドレス</string>
     <string name="login_tab_webview">WebView ログイン</string>

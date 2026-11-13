@@ -81,6 +81,23 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    fun restoreHistory(items: List<WatchHistory>) {
+        if (items.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val ok = withContext(Dispatchers.IO) {
+                    items.map { repository.addWatchHistory(it) }.all { it }
+                }
+                loadHistory()
+                reportWriteResult(ok)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("HistoryViewModel", "Error restoring history: ${e.message}", e)
+            }
+        }
+    }
+
     fun removeHistories(videoIds: List<String>) {
         if (videoIds.isEmpty()) return
         AppLogger.d("HistoryViewModel", "removeHistories called, count: ${videoIds.size}")

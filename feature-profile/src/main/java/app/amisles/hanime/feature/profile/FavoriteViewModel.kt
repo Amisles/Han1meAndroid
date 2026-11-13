@@ -225,6 +225,25 @@ class FavoriteViewModel @Inject constructor(
         }
     }
 
+    fun restoreFavorites(items: List<FavoriteVideo>) {
+        if (items.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                mutationMutex.withLock {
+                    val ok = withContext(Dispatchers.IO) {
+                        items.map { repository.addFavorite(it) }.all { it }
+                    }
+                    loadFavoritesLocked()
+                    reportWriteResult(ok)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("FavoriteViewModel", "Error restoring favorites: " + e.message, e)
+            }
+        }
+    }
+
     fun removeFavorites(videoIds: List<String>) {
         if (videoIds.isEmpty()) return
         viewModelScope.launch {

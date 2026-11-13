@@ -64,9 +64,9 @@ import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
-import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.components.SelectionTopBar
@@ -128,9 +128,7 @@ fun HistoryScreen(
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
-    var deleteTargetId by remember { mutableStateOf<String?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val filteredHistory = remember(history, searchQuery) {
@@ -153,6 +151,17 @@ fun HistoryScreen(
     LaunchedEffect(Unit) {
         viewModel.messages.collect { messageRes ->
             AppSnackbar.show(context.getString(messageRes))
+        }
+    }
+
+    val deleteWithUndo: (List<WatchHistory>) -> Unit = { items ->
+        if (items.isNotEmpty()) {
+            viewModel.removeHistories(items.map { it.id })
+            AppSnackbar.show(
+                text = context.getString(R.string.common_deleted),
+                actionLabel = context.getString(R.string.common_undo),
+                onAction = { viewModel.restoreHistory(items) }
+            )
         }
     }
 
@@ -322,10 +331,7 @@ fun HistoryScreen(
                                         }
                                     },
                                     onLongClick = {
-                                        if (!isSelectionMode) {
-                                            deleteTargetId = video.id
-                                            showDeleteConfirm = true
-                                        }
+                                        if (!isSelectionMode) deleteWithUndo(listOf(video))
                                     }
                                 ),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -401,10 +407,7 @@ fun HistoryScreen(
 
                             if (!isSelectionMode) {
                                 IconButton(
-                                    onClick = {
-                                        deleteTargetId = video.id
-                                        showDeleteConfirm = true
-                                    },
+                                    onClick = { deleteWithUndo(listOf(video)) },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
@@ -433,7 +436,11 @@ fun HistoryScreen(
             BottomBarAction(
                 text = stringResource(R.string.common_delete),
                 color = MaterialTheme.colorScheme.error,
-                onClick = { showDeleteConfirm = true }
+                onClick = {
+                    deleteWithUndo(history.filter { it.id in selectedIds })
+                    selectedIds = emptySet()
+                    isSelectionMode = false
+                }
             )
         }
     }
@@ -449,31 +456,6 @@ fun HistoryScreen(
                 onClick = { showClearConfirm = true }
             )
         }
-    }
-
-    if (showDeleteConfirm) {
-        ConfirmDeleteDialog(
-            title = stringResource(R.string.history_delete_title),
-            message = if (deleteTargetId != null) {
-                stringResource(R.string.history_delete_message_single)
-            } else {
-                stringResource(R.string.history_delete_message, selectedIds.size)
-            },
-            onDismiss = {
-                deleteTargetId = null
-                showDeleteConfirm = false
-            },
-            onConfirm = {
-                if (deleteTargetId != null) {
-                    viewModel.removeHistory(deleteTargetId!!)
-                } else {
-                    viewModel.removeHistories(selectedIds.toList())
-                    isSelectionMode = false
-                }
-                deleteTargetId = null
-                showDeleteConfirm = false
-            }
-        )
     }
 
     if (showClearConfirm) {

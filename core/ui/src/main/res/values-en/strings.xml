@@ -9,6 +9,7 @@
     <string name="common_cancel">Cancel</string>
     <string name="common_confirm">Confirm</string>
     <string name="common_delete">Delete</string>
+    <string name="common_deleted">Deleted</string>
     <string name="common_clear">Clear</string>
     <string name="common_close">Close</string>
     <string name="common_undo">Undo</string>
@@ -554,7 +555,6 @@
     <string name="login_not_supported_dismiss">Got it</string>
     <string name="favorite_empty">No favorites</string>
     <string name="favorite_empty_hint">Discover videos you like</string>
-    <string name="favorite_delete_title">Confirm Delete</string>
     <string name="favorite_delete_message">Are you sure you want to remove this favorite?</string>
     <string name="history_empty">No watch history</string>
     <string name="history_empty_hint">Watch history will appear here</string>
@@ -797,9 +797,6 @@
     <string name="history_title">Watch History</string>
     <string name="history_selected_count">Selected %1$d</string>
     <string name="history_manage">Manage</string>
-    <string name="history_delete_title">Confirm Deletion</string>
-    <string name="history_delete_message">Delete the selected %1$d record(s)?</string>
-    <string name="history_delete_message_single">Delete this record?</string>
     <string name="history_time_just_now">Just watched</string>
     <string name="history_time_minutes_ago">%1$d min ago</string>
     <string name="history_time_hours_ago">%1$d hr ago</string>
@@ -856,7 +853,6 @@
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
-    <string name="favorite_delete_confirm_message">Delete \"%1$s\"?</string>
     <string name="favorite_batch_count">%1$d favorites</string>
     <string name="login_tab_password">Email</string>
     <string name="login_tab_webview">WebView login</string>

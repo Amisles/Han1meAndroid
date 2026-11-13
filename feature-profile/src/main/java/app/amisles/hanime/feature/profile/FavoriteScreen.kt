@@ -70,7 +70,6 @@ import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
-import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.components.SelectionTopBar
@@ -163,15 +162,22 @@ fun FavoriteScreen(
 
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var deleteTargetId by remember { mutableStateOf<String?>(null) }
-    var deleteTargetTitle by remember { mutableStateOf("") }
-    val batchDeleteTitle = stringResource(R.string.favorite_batch_count, selectedIds.size)
 
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
         viewModel.refreshCloudSync()
         viewModel.checkMigration()
+    }
+
+    val deleteWithUndo: (List<FavoriteVideo>) -> Unit = { items ->
+        if (items.isNotEmpty()) {
+            viewModel.removeFavorites(items.map { it.id })
+            AppSnackbar.show(
+                text = context.getString(R.string.common_deleted),
+                actionLabel = context.getString(R.string.common_undo),
+                onAction = { viewModel.restoreFavorites(items) }
+            )
+        }
     }
 
     LaunchedEffect(isSelectionMode) {
@@ -510,9 +516,9 @@ fun FavoriteScreen(
                 text = stringResource(R.string.common_delete),
                 color = MaterialTheme.colorScheme.error,
                 onClick = {
-                    deleteTargetId = null
-                    deleteTargetTitle = batchDeleteTitle
-                    showDeleteConfirm = true
+                    deleteWithUndo(favorites.filter { it.id in selectedIds })
+                    selectedIds = emptySet()
+                    isSelectionMode = false
                 }
             )
             BottomBarAction(
@@ -545,22 +551,6 @@ fun FavoriteScreen(
         )
     }
 
-    if (showDeleteConfirm) {
-        ConfirmDeleteDialog(
-            title = stringResource(R.string.favorite_delete_title),
-            message = stringResource(R.string.favorite_delete_confirm_message, deleteTargetTitle),
-            onDismiss = { showDeleteConfirm = false },
-            onConfirm = {
-                if (deleteTargetId != null) {
-                    viewModel.removeFavorite(deleteTargetId!!)
-                } else {
-                    viewModel.removeFavorites(selectedIds.toList())
-                    isSelectionMode = false
-                }
-                showDeleteConfirm = false
-            }
-        )
-    }
 }
 
 @Composable
