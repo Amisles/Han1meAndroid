@@ -43,6 +43,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
+import app.amisles.hanime.core.ui.theme.HanimePrimary
+import app.amisles.hanime.domain.preferences.PlayerResizeMode
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.BoxScope
 import android.app.Activity
 import android.app.PictureInPictureParams
@@ -62,6 +75,8 @@ internal fun BoxScope.PlayerControls(
     onAutoPlayNextChanged: (Boolean) -> Unit,
     isLoopPlayback: Boolean,
     onLoopPlaybackChanged: (Boolean) -> Unit,
+    sleepTimer: PlayerSleepTimer,
+    resizeMode: PlayerResizeMode,
     isPlaying: Boolean,
     isBuffering: Boolean,
     isReady: Boolean,
@@ -93,6 +108,9 @@ internal fun BoxScope.PlayerControls(
     onSetPlaybackSpeed: (Float) -> Unit,
     onSwitchQuality: (VideoSource, Boolean) -> Unit,
     onToggleFullscreen: () -> Unit,
+    onLock: () -> Unit,
+    onSleepTimerChange: (PlayerSleepTimer) -> Unit,
+    onResizeModeChange: (PlayerResizeMode) -> Unit,
     onBuildPipParams: () -> PictureInPictureParams
 ) {
     Box(
@@ -258,6 +276,23 @@ internal fun BoxScope.PlayerControls(
             }
         }
 
+        if (isFullscreen) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onLock()
+                },
+                modifier = Modifier.size(30.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = stringResource(R.string.player_lock),
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+
         IconButton(
             onClick = {
                 onMarkControlTap()
@@ -298,7 +333,7 @@ internal fun BoxScope.PlayerControls(
             DropdownMenu(
                 expanded = showMoreMenu,
                 onDismissRequest = { onShowMoreMenuChange(false) },
-                modifier = Modifier.widthIn(min = 160.dp, max = 280.dp),
+                modifier = Modifier.widthIn(min = 160.dp, max = 300.dp),
                 containerColor = Color.Black.copy(alpha = 0.7f)
             ) {
                 // 连播（下一集自动播放）开关
@@ -343,6 +378,22 @@ internal fun BoxScope.PlayerControls(
                     },
                     onClick = { onLoopPlaybackChanged(!isLoopPlayback) },
                     modifier = Modifier.height(40.dp)
+                )
+
+                ResizeModeMenu(
+                    resizeMode = resizeMode,
+                    onSelect = {
+                        onResizeModeChange(it)
+                        onShowMoreMenuChange(false)
+                    }
+                )
+
+                SleepTimerMenu(
+                    timer = sleepTimer,
+                    onChange = {
+                        onSleepTimerChange(it)
+                        onShowMoreMenuChange(false)
+                    }
                 )
 
                 if (isFullscreen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -402,4 +453,127 @@ internal fun BoxScope.PlayerControls(
             )
         )
     }
+}
+
+private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60)
+
+@Composable
+private fun ResizeModeMenu(resizeMode: PlayerResizeMode, onSelect: (PlayerResizeMode) -> Unit) {
+    MenuSection(label = stringResource(R.string.player_resize_mode)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(top = 6.dp)
+        ) {
+            listOf(
+                PlayerResizeMode.FIT to R.string.player_resize_fit,
+                PlayerResizeMode.CROP to R.string.player_resize_crop,
+                PlayerResizeMode.STRETCH to R.string.player_resize_stretch,
+                PlayerResizeMode.RATIO_16_9 to R.string.player_resize_16_9
+            ).forEach { (mode, labelRes) ->
+                MenuChip(
+                    label = stringResource(labelRes),
+                    selected = mode == resizeMode,
+                    onClick = { onSelect(mode) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SleepTimerMenu(timer: PlayerSleepTimer, onChange: (PlayerSleepTimer) -> Unit) {
+    val remaining = rememberSleepRemaining(timer.endAtMillis)
+    MenuSection(
+        label = stringResource(R.string.player_sleep_timer),
+        trailing = remaining.takeIf { it > 0L }?.let { formatSleepRemaining(it) }
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(top = 6.dp)
+        ) {
+            SLEEP_TIMER_MINUTES.forEach { minutes ->
+                MenuChip(
+                    label = stringResource(R.string.player_sleep_minutes, minutes),
+                    selected = timer.minutes == minutes,
+                    onClick = {
+                        onChange(
+                            PlayerSleepTimer(
+                                endAtMillis = System.currentTimeMillis() + minutes * 60_000L,
+                                minutes = minutes
+                            )
+                        )
+                    }
+                )
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(top = 4.dp)
+        ) {
+            MenuChip(
+                label = stringResource(R.string.player_sleep_episode),
+                selected = timer.afterEpisode,
+                onClick = { onChange(PlayerSleepTimer(afterEpisode = true)) }
+            )
+            MenuChip(
+                label = stringResource(R.string.player_sleep_off),
+                selected = !timer.active,
+                onClick = { onChange(PlayerSleepTimer()) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MenuSection(
+    label: String,
+    trailing: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = label, color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+            if (trailing != null) {
+                Text(text = " · $trailing", color = HanimePrimary, fontSize = 11.sp)
+            }
+        }
+        content()
+    }
+}
+
+@Composable
+private fun MenuChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        text = label,
+        color = if (selected) HanimePrimary else Color.White.copy(alpha = 0.85f),
+        fontSize = 12.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent)
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    )
+}
+
+@Composable
+private fun rememberSleepRemaining(endAtMillis: Long): Long {
+    var remaining by remember(endAtMillis) {
+        mutableLongStateOf((endAtMillis - System.currentTimeMillis()).coerceAtLeast(0L))
+    }
+    LaunchedEffect(endAtMillis) {
+        while (endAtMillis > 0L) {
+            remaining = (endAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            if (remaining <= 0L) break
+            delay(1000L)
+        }
+    }
+    return remaining
+}
+
+private fun formatSleepRemaining(remainingMs: Long): String {
+    val totalSeconds = remainingMs / 1000
+    val seconds = (totalSeconds % 60).toString().padStart(2, '0')
+    return "${totalSeconds / 60}:$seconds"
 }

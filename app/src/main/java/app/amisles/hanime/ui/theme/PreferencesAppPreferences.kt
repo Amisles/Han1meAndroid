@@ -2,6 +2,7 @@ package app.amisles.hanime.ui.theme
 
 import app.amisles.hanime.core.ui.theme.AppPreferences
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 
 /**
@@ -28,6 +29,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
     override val autoQualityFlow = Preferences.autoQualityFlow
     override val autoRotateFullscreenFlow = Preferences.autoRotateFullscreenFlow
+    override val playerResizeModeFlow = Preferences.playerResizeModeFlow
     override val baseUrlFlow = Preferences.baseUrlFlow
     override val privacyModeFlow = Preferences.privacyModeFlow
     override val subscriptionsHideWatchedFlow = Preferences.subscriptionsHideWatchedFlow
@@ -47,6 +49,7 @@ object PreferencesAppPreferences : AppPreferences {
     override fun setLongPressBoostSpeed(speed: Float) = Preferences.setLongPressBoostSpeed(speed)
     override fun setDoubleTapSeek(enabled: Boolean) = Preferences.setDoubleTapSeek(enabled)
     override fun setAutoQuality(enabled: Boolean) = Preferences.setAutoQuality(enabled)
+    override fun setPlayerResizeMode(mode: PlayerResizeMode) = Preferences.setPlayerResizeMode(mode)
     override fun setPrivacyMode(enabled: Boolean) = Preferences.setPrivacyMode(enabled)
     override fun setSubscriptionsHideWatched(enabled: Boolean) =
         Preferences.setSubscriptionsHideWatched(enabled)

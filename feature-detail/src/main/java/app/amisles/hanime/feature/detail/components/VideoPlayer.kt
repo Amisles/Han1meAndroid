@@ -72,6 +72,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.ui.AspectRatioFrameLayout
+import app.amisles.hanime.domain.preferences.PlayerResizeMode
+import androidx.compose.ui.draw.clipToBounds
 import androidx.media3.common.util.UnstableApi
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
@@ -97,6 +101,12 @@ private const val STABLE_TICKS_FOR_UPGRADE = 4
 
 // 视频缩放模式：SCALE_TO_FIT
 private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
+
+// 视频缩放模式：SCALE_TO_FIT_WITH_CROPPING（裁切填满，留给裁切模式）
+private const val VIDEO_SCALING_MODE_SCALE_TO_FIT_CROPPING = 4
+
+// 睡眠定时进入倒计时提示的窗口：最后这段时间才逐秒刷新
+private const val SLEEP_COUNTDOWN_WINDOW_MS = 30_000L
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 主组件：VideoPlayer
@@ -176,6 +186,13 @@ fun VideoPlayer(
     // 旋转自动全屏：设置项是总开关，调用方仍可按布局单独关闭
     val appPrefs = LocalAppPreferences.current
     val autoRotateFullscreen by appPrefs.autoRotateFullscreenFlow.collectAsStateWithLifecycle()
+
+    val playerResizeMode by appPrefs.playerResizeModeFlow.collectAsStateWithLifecycle()
+    // 睡眠定时与播放锁都是会话级状态：不落盘，避免下次打开莫名停住或锁住
+    var sleepTimer by remember { mutableStateOf(PlayerSleepTimer()) }
+    var isLocked by rememberSaveable { mutableStateOf(false) }
+    // 视频真实宽高比（含像素宽高比）：拉伸模式据此推算铺满容器所需的缩放系数
+    var videoAspect by remember { mutableFloatStateOf(0f) }
 
     val privacyMode = LocalPrivacyMode.current
     // 隐私模式只遮罩缩略图，播放器照常可用；遮罩只在息屏后出现，亮屏时保持到用户主动点开
@@ -282,6 +299,7 @@ fun VideoPlayer(
     val sourcesRef = rememberUpdatedState(sortedSources)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
     val isLoopPlaybackRef = rememberUpdatedState(isLoopPlayback)
+    val sleepAfterEpisodeRef = rememberUpdatedState(sleepTimer.afterEpisode)
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
     val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu)
@@ -413,8 +431,25 @@ fun VideoPlayer(
                     Player.STATE_ENDED -> {
                         // 循环播放时必须跳过：ExoPlayer 已在 repeatMode=REPEAT_MODE_ONE 下自行重播，
                         // 若仍走「结束」流程会切到下一集或停在结束画面，循环被打断
-                        if (!isLoopPlaybackRef.value) onPlaybackEndedRef.value.invoke()
+                        if (!isLoopPlaybackRef.value) {
+                            // 「播完当前集」定时到期：停在结束画面，不再触发连播
+                            if (sleepAfterEpisodeRef.value) {
+                                sleepTimer = PlayerSleepTimer()
+                                isControlsVisible = true
+                                gestureHint = context.getString(R.string.player_sleep_finished)
+                            } else {
+                                onPlaybackEndedRef.value.invoke()
+                            }
+                        }
                     }
+                }
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                videoAspect = if (videoSize.height > 0) {
+                    videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+                } else {
+                    0f
                 }
             }
 
@@ -492,9 +527,25 @@ fun VideoPlayer(
         }
     }
 
-    // 解码优化：统一缩放模式为 SCALE_TO_FIT，避免画面变形
-    LaunchedEffect(Unit) {
-        exoPlayer.videoScalingMode = VIDEO_SCALING_MODE_SCALE_TO_FIT
+    // 画面比例：适应与拉伸都要求解码器不裁切（拉伸由视图缩放实现），只有裁切模式才铺满容器
+    LaunchedEffect(playerResizeMode) {
+        exoPlayer.videoScalingMode = if (playerResizeMode == PlayerResizeMode.CROP) {
+            VIDEO_SCALING_MODE_SCALE_TO_FIT_CROPPING
+        } else {
+            VIDEO_SCALING_MODE_SCALE_TO_FIT
+        }
+    }
+
+    // 睡眠定时：长延时到期即暂停（不停止，保留最后一帧）；AFTER_EPISODE 由 STATE_ENDED 处理
+    LaunchedEffect(sleepTimer.endAtMillis) {
+        val endAt = sleepTimer.endAtMillis
+        if (endAt <= 0L) return@LaunchedEffect
+        val remaining = endAt - System.currentTimeMillis()
+        if (remaining > 0L) delay(remaining)
+        runCatching { exoPlayer.pause() }
+        sleepTimer = PlayerSleepTimer()
+        isControlsVisible = true
+        gestureHint = context.getString(R.string.player_sleep_paused)
     }
 
     // 控件自动隐藏：播放中且未开菜单 / 画中画时，空闲 3.5s 后隐藏；手势 / 暂停 / 开菜单时重置计时
@@ -643,6 +694,21 @@ fun VideoPlayer(
         return PictureInPictureParams.Builder().setAspectRatio(ratio).build()
     }
 
+    // 锁定即收起全部控件（锁图标是唯一出口）；退出全屏必须自动解锁，否则回到竖屏播放器再也点不动
+    LaunchedEffect(isLocked, isFullscreen) {
+        if (!isFullscreen) {
+            isLocked = false
+            return@LaunchedEffect
+        }
+        if (isLocked) {
+            isControlsVisible = false
+            showSpeedMenu = false
+            showQualityMenu = false
+            showMoreMenu = false
+            setLongPressBoost(false)
+        }
+    }
+
     // ── 全屏与旋屏 ───────────────────────────────────────────────────────────
     // 全屏：隐藏系统栏并把方向锁到横屏，退出时复位。方向优先用监听到的物理朝向（deviceTilt）锁到
     // 具体一侧，而非丢一个 SENSOR_LANDSCAPE 让系统猜——系统「自动旋转」关闭时其方向传感器停用，
@@ -706,6 +772,7 @@ fun VideoPlayer(
                 else Modifier.fillMaxWidth().aspectRatio(16f / 9f)
             )
             .background(Color.Black)
+            .clipToBounds()
             .onGloballyPositioned { coords ->
                 val w = coords.size.width.toFloat()
                 val h = coords.size.height.toFloat()
@@ -723,6 +790,7 @@ fun VideoPlayer(
                 density = density,
                 context = context,
                 menuOpen = { menuOpenRef.value },
+                isLocked = { isLocked },
     isControlsVisible = { isControlsVisible },
     onControlsVisibleChange = { isControlsVisible = it },
     controlsActivityRef = controlsActivityRef,
@@ -751,6 +819,18 @@ fun VideoPlayer(
                 doubleTapSeekEnabled = { doubleTapSeekEnabled }
             )
     ) {
+        // 拉伸模式先在视图层把「适应后」的画面按容器比例放大；裁切交给 PlayerView 自己的 zoom，
+        // 两套缩放不要叠加，否则裁切模式会被二次放大
+        val (stretchX, stretchY) = if (
+            playerResizeMode == PlayerResizeMode.STRETCH &&
+            videoAspect > 0f && playerWidth > 0f && playerHeight > 0f
+        ) {
+            val containerAspect = playerWidth / playerHeight
+            if (containerAspect > videoAspect) containerAspect / videoAspect to 1f
+            else 1f to videoAspect / containerAspect
+        } else {
+            1f to 1f
+        }
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -759,10 +839,22 @@ fun VideoPlayer(
                 }
             },
             update = { view ->
-                view.scaleX = videoZoom
-                view.scaleY = videoZoom
+                view.resizeMode = if (playerResizeMode == PlayerResizeMode.CROP) {
+                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                } else {
+                    AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+                view.scaleX = videoZoom * stretchX
+                view.scaleY = videoZoom * stretchY
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = if (isFullscreen && playerResizeMode == PlayerResizeMode.RATIO_16_9) {
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .align(Alignment.Center)
+            } else {
+                Modifier.fillMaxSize()
+            }
         )
 
         // 首帧海报占位：渲染前显示 poster，渲染后淡出，消除黑屏等待
@@ -820,6 +912,15 @@ fun VideoPlayer(
                     }
                 }
             }
+        }
+
+        if (!isInPip) {
+            SleepCountdownHint(
+                endAtMillis = sleepTimer.endAtMillis,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 12.dp)
+            )
         }
 
         if (isBuffering) {
@@ -937,7 +1038,25 @@ fun VideoPlayer(
                 onSetPlaybackSpeed = { setPlaybackSpeed(it) },
                 onSwitchQuality = { source, userInitiated -> switchQuality(source, userInitiated) },
                 onToggleFullscreen = { toggleFullscreen() },
+                sleepTimer = sleepTimer,
+                resizeMode = playerResizeMode,
+                onLock = { isLocked = true },
+                onSleepTimerChange = { sleepTimer = it },
+                onResizeModeChange = { appPrefs.setPlayerResizeMode(it) },
                 onBuildPipParams = { buildPipParams() }
+            )
+        }
+
+        if (isLocked && isFullscreen && !isInPip) {
+            PlayerLockBadge(
+                onHint = { gestureHint = context.getString(R.string.player_unlock_hint) },
+                onUnlock = {
+                    isLocked = false
+                    isControlsVisible = true
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp)
             )
         }
 
@@ -1011,4 +1130,31 @@ private fun playbackErrorTextRes(error: PlaybackException): Int = when (error.er
     PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
     PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED -> R.string.player_error_source
     else -> R.string.player_error_unknown
+}
+
+@Composable
+private fun SleepCountdownHint(endAtMillis: Long, modifier: Modifier = Modifier) {
+    var remainingMs by remember(endAtMillis) {
+        mutableLongStateOf(endAtMillis - System.currentTimeMillis())
+    }
+    LaunchedEffect(endAtMillis) {
+        if (endAtMillis <= 0L) return@LaunchedEffect
+        delay((endAtMillis - System.currentTimeMillis() - SLEEP_COUNTDOWN_WINDOW_MS).coerceAtLeast(0L))
+        while (true) {
+            remainingMs = (endAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            if (remainingMs <= 0L) break
+            delay(1000L)
+        }
+    }
+    val seconds = (remainingMs / 1000).toInt()
+    if (seconds in 1..(SLEEP_COUNTDOWN_WINDOW_MS / 1000).toInt()) {
+        Text(
+            text = stringResource(R.string.player_sleep_remaining, seconds),
+            color = Color.White,
+            fontSize = 13.sp,
+            modifier = modifier
+                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
 }

@@ -868,6 +868,21 @@
     <string name="player_long_press_boost">加速 %sx</string>
     <string name="player_boost_slide_hint">上下滑動調速</string>
     <string name="player_gesture_intro">長按畫面可加速播放，雙擊兩側可快進快退</string>
+    <string name="player_sleep_timer">定時關閉</string>
+    <string name="player_sleep_minutes">%1$d 分鐘</string>
+    <string name="player_sleep_episode">播完目前集數</string>
+    <string name="player_sleep_off">關閉</string>
+    <string name="player_sleep_remaining">%1$d 秒後暫停</string>
+    <string name="player_sleep_paused">定時結束，已暫停</string>
+    <string name="player_sleep_finished">已播完目前集數，定時暫停</string>
+    <string name="player_resize_mode">畫面比例</string>
+    <string name="player_resize_fit">適應</string>
+    <string name="player_resize_crop">裁切</string>
+    <string name="player_resize_stretch">拉伸</string>
+    <string name="player_resize_16_9">16:9</string>
+    <string name="player_lock">鎖定</string>
+    <string name="player_unlock">解鎖</string>
+    <string name="player_unlock_hint">長按解鎖</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->

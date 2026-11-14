@@ -6,6 +6,7 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutModes
+import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,7 @@ interface AppPreferences {
     val doubleTapSeekFlow: StateFlow<Boolean>
     val autoQualityFlow: StateFlow<Boolean>
     val autoRotateFullscreenFlow: StateFlow<Boolean>
+    val playerResizeModeFlow: StateFlow<PlayerResizeMode>
     val baseUrlFlow: StateFlow<String>
     val privacyModeFlow: StateFlow<Boolean>
     val subscriptionsHideWatchedFlow: StateFlow<Boolean>
@@ -68,6 +70,7 @@ interface AppPreferences {
     fun setDoubleTapSeek(enabled: Boolean)
     fun setPrivacyMode(enabled: Boolean)
     fun setAutoQuality(enabled: Boolean)
+    fun setPlayerResizeMode(mode: PlayerResizeMode)
     fun setSubscriptionsHideWatched(enabled: Boolean)
 
     /**

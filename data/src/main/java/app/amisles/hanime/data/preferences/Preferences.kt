@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.model.SessionCookie
 import app.amisles.hanime.domain.preferences.PageLayoutKey
+import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutModes
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
@@ -69,6 +70,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_DOUBLE_TAP_SEEK = "double_tap_seek"
     private const val SP_AUTO_QUALITY = "auto_quality"
     private const val SP_AUTO_ROTATE_FULLSCREEN = "auto_rotate_fullscreen"
+    private const val SP_PLAYER_RESIZE_MODE = "player_resize_mode"
     private const val SP_PLAYLIST_CSRF_TOKEN = "playlist_csrf_token"
     private const val SP_PLAYLIST_MIGRATION_DONE = "playlist_migration_done"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
@@ -245,6 +247,9 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     private val _autoRotateFullscreenFlow = MutableStateFlow(true)
     override val autoRotateFullscreenFlow: StateFlow<Boolean> = _autoRotateFullscreenFlow.asStateFlow()
 
+    private val _playerResizeModeFlow = MutableStateFlow(PlayerResizeMode.FIT)
+    override val playerResizeModeFlow: StateFlow<PlayerResizeMode> = _playerResizeModeFlow.asStateFlow()
+
 
     // 下载存储路径：空串表示由 resolveDownloadDir() 解析默认目录（公共 Download/Hanime）
     private val _downloadStoragePathFlow = MutableStateFlow("")
@@ -399,6 +404,8 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         _doubleTapSeekFlow.value = readBoolean(SP_DOUBLE_TAP_SEEK, true)
         _autoQualityFlow.value = readBoolean(SP_AUTO_QUALITY, true)
         _autoRotateFullscreenFlow.value = readBoolean(SP_AUTO_ROTATE_FULLSCREEN, true)
+        _playerResizeModeFlow.value =
+            PlayerResizeMode.fromNameOrNull(readString(SP_PLAYER_RESIZE_MODE, null)) ?: PlayerResizeMode.FIT
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
@@ -631,6 +638,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
     override val autoQuality: Boolean get() = _autoQualityFlow.value
     override val autoRotateFullscreen: Boolean get() = _autoRotateFullscreenFlow.value
+    override val playerResizeMode: PlayerResizeMode get() = _playerResizeModeFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
     override val pageLayoutModes: PageLayoutModes get() = _pageLayoutModesFlow.value
@@ -909,6 +917,11 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override fun setAutoRotateFullscreen(enabled: Boolean) {
         sp.edit { putBoolean(SP_AUTO_ROTATE_FULLSCREEN, enabled) }
         _autoRotateFullscreenFlow.value = enabled
+    }
+
+    override fun setPlayerResizeMode(mode: PlayerResizeMode) {
+        sp.edit { putString(SP_PLAYER_RESIZE_MODE, mode.name) }
+        _playerResizeModeFlow.value = mode
     }
 
     /** 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。 */

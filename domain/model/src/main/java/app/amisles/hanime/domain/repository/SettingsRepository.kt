@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutModes
+import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
@@ -96,6 +97,11 @@ interface SettingsRepository {
     val autoRotateFullscreen: Boolean
     val autoRotateFullscreenFlow: StateFlow<Boolean>
     fun setAutoRotateFullscreen(enabled: Boolean)
+
+    /** 播放器画面比例；裁切与拉伸都会改变画面形状，默认适应。 */
+    val playerResizeMode: PlayerResizeMode
+    val playerResizeModeFlow: StateFlow<PlayerResizeMode>
+    fun setPlayerResizeMode(mode: PlayerResizeMode)
 
     // ── 下载 ────────────────────────────────────────────────────────────────
     val maxDownloadConcurrent: Int

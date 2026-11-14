@@ -29,6 +29,7 @@ internal fun Modifier.playerGestures(
     density: Density,
     context: android.content.Context,
     menuOpen: () -> Boolean,
+    isLocked: () -> Boolean,
     isInPip: () -> Boolean,
     playerWidth: () -> Float,
     playerHeight: () -> Float,
@@ -75,6 +76,11 @@ internal fun Modifier.playerGestures(
                 var longPressJob: Job? = null
                 while (true) {
                     val event = awaitPointerEvent()
+                    // 锁定后画面不接受任何手势；仍要消费事件，否则下滑会滚动下层列表
+                    if (isLocked()) {
+                        event.changes.forEach { it.consume() }
+                        continue
+                    }
                     val presses = event.changes.filter { it.pressed }
                     pointerCount = presses.size
                     if (pointerCount == 0) {
