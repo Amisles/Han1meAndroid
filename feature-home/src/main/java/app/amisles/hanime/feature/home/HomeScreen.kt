@@ -130,7 +130,20 @@ internal fun rowThumbnailWidth(
 /** AUTO 解析后的渲染形态：由宽度档位与是否分栏共同决定，故需与用户可选的 [HomeSectionLayout] 区分。 */
 private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
 
-private enum class HomeItemType { HEADER, CATEGORY, SKELETON, ERROR, REFRESH_ERROR, BANNER, SECTION, SPACER }
+private enum class HomeItemType {
+    HEADER,
+    CATEGORY,
+    SKELETON,
+    ERROR,
+    REFRESH_ERROR,
+    BANNER,
+    SECTION,
+    SECTION_HEADER,
+    SECTION_VIDEO,
+    SECTION_ROW,
+    SECTION_CAROUSEL,
+    SPACER
+}
 
 private data class SectionPlan(
     val section: HomeSection,
@@ -174,6 +187,51 @@ private fun buildPlans(
 
 private fun sectionItemKey(plan: SectionPlan, index: Int): String =
     "home-section-$index-" + plan.section.title
+
+private enum class SectionEntryKind { BLOCK, HEADER, VIDEO, ROW, CAROUSEL }
+
+/**
+ * 分区拆成独立 item 后的最小单元。
+ *
+ * 一个分区整体作为一个 item 时，它第一次进入视口要在同一帧里组合十来个卡片；拆开之后由
+ * LazyVerticalStaggeredGrid 决定先组合哪几行。[sectionKey] 与分区块的 item key 相同，锚点
+ * 在「整块/拆行」两种结构之间切换时仍能落回同一个分区。
+ */
+private data class SectionEntry(
+    val key: String,
+    val sectionKey: String,
+    val plan: SectionPlan,
+    val kind: SectionEntryKind,
+    val videos: List<HanimeVideo> = emptyList(),
+    val bottomGap: Boolean = false
+)
+
+private fun buildSectionEntries(
+    plans: List<SectionPlan>,
+    splitRows: Boolean
+): List<SectionEntry> = buildList {
+    plans.forEachIndexed { index, plan ->
+        val sectionKey = sectionItemKey(plan, index)
+        if (!splitRows) {
+            add(SectionEntry(sectionKey, sectionKey, plan, SectionEntryKind.BLOCK))
+            return@forEachIndexed
+        }
+        add(SectionEntry(sectionKey, sectionKey, plan, SectionEntryKind.HEADER))
+        val rows = when (plan.mode) {
+            SectionRenderMode.LIST_COLUMN -> plan.videos.mapIndexed { i, video ->
+                SectionEntry("$sectionKey-video-$i", sectionKey, plan, SectionEntryKind.VIDEO, listOf(video))
+            }
+            SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> plan.rowVideos.mapIndexed { i, row ->
+                SectionEntry("$sectionKey-row-$i", sectionKey, plan, SectionEntryKind.ROW, row)
+            }
+            SectionRenderMode.CAROUSEL -> listOf(
+                SectionEntry("$sectionKey-carousel", sectionKey, plan, SectionEntryKind.CAROUSEL)
+            )
+        }
+        rows.dropLast(1).forEach(::add)
+        rows.lastOrNull()?.let { add(it.copy(bottomGap = true)) }
+    }
+}
 
 @Composable
 fun HomeScreen(
@@ -310,19 +368,29 @@ fun HomeScreenContent(
         }
         if (weeklyReportVisible && weeklyReport != null) add("home-weekly-report")
     }
-    val sectionTitleToIndex: Map<String, Int> = remember(plans, headKeys) {
+    val sectionEntries = remember(plans, twoColumnSections) { buildSectionEntries(plans, !twoColumnSections) }
+    val sectionTitleToIndex: Map<String, Int> = remember(sectionEntries, headKeys) {
         buildMap {
-            plans.forEachIndexed { index, plan -> put(plan.section.title, headKeys.size + index) }
+            sectionEntries.forEachIndexed { index, entry ->
+                if (entry.kind == SectionEntryKind.HEADER || entry.kind == SectionEntryKind.BLOCK) {
+                    put(entry.plan.section.title, headKeys.size + index)
+                }
+            }
         }
     }
     // 转屏或分屏改变档位时，item 结构与行高都会变，LazyList 只保留下标，画面会跳到
     // 别的分区。旧布局仍可读的时刻记下首个可见 item 的 key 和它被裁掉的高度，
     // 新布局量完按 key 找回同一个位置；只按下标推断会在两栏与单栏之间错位。
-    val itemKeys = remember(headKeys, plans) {
-        headKeys + plans.mapIndexed { index, plan -> sectionItemKey(plan, index) }
+    val itemKeys = remember(headKeys, sectionEntries) {
+        headKeys + sectionEntries.map { it.key }
+    }
+    // 分区拆行后单个 item 的 key 只属于一种布局：退回分区 key 才能在两栏与单栏之间落回同一处
+    val sectionKeyByItemKey = remember(sectionEntries) {
+        sectionEntries.associate { it.key to it.sectionKey }
     }
     val layoutSignature = listOf(sizeInfo.widthDp, sizeInfo.heightDp, columns, twoColumnSections, twoColumnHero)
     var pendingAnchorKey by remember { mutableStateOf<String?>(null) }
+    var pendingAnchorSectionKey by remember { mutableStateOf<String?>(null) }
     var pendingAnchorOffset by remember { mutableStateOf(0) }
     DisposableEffect(layoutSignature) {
         onDispose {
@@ -330,18 +398,23 @@ fun HomeScreenContent(
             val key = info?.key as? String
             if (key != null) {
                 pendingAnchorKey = key
+                pendingAnchorSectionKey = sectionKeyByItemKey[key]
                 pendingAnchorOffset = info.offset.y
             }
         }
     }
     LaunchedEffect(layoutSignature) {
         val anchor = pendingAnchorKey ?: return@LaunchedEffect
+        val fallback = pendingAnchorSectionKey
+        val offset = pendingAnchorOffset
         pendingAnchorKey = null
-        val index = itemKeys.indexOf(anchor)
-        if (index >= 0) {
-            listState.scrollToItem(index, pendingAnchorOffset)
-        }
+        pendingAnchorSectionKey = null
         pendingAnchorOffset = 0
+        val index = itemKeys.indexOf(anchor).takeIf { it >= 0 }
+            ?: fallback?.let { itemKeys.indexOf(it) }?.takeIf { it >= 0 }
+        if (index != null) {
+            listState.scrollToItem(index, offset)
+        }
     }
 
     val context = LocalContext.current
@@ -541,20 +614,66 @@ fun HomeScreenContent(
                 }
             }
 
-            plans.forEachIndexed { index, plan ->
-                item(key = sectionItemKey(plan, index), contentType = HomeItemType.SECTION) {
-                    SectionBlock(
-                        plan = plan,
-                        columns = columns,
-                        rowThumbnailWidth = rowThumbnailWidth,
-                        onVideoClick = onVideoClick,
-                        onAuthorClick = onAuthorClick,
-                        onVideoLongClick = onVideoLongClick,
-                        onViewMore = onViewMore,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = if (twoColumnSections) HOME_SIDE_PADDING else 0.dp)
-                    )
+            sectionEntries.forEach { entry ->
+                when (entry.kind) {
+                    SectionEntryKind.BLOCK -> item(key = entry.key, contentType = HomeItemType.SECTION) {
+                        SectionBlock(
+                            plan = entry.plan,
+                            columns = columns,
+                            rowThumbnailWidth = rowThumbnailWidth,
+                            onVideoClick = onVideoClick,
+                            onAuthorClick = onAuthorClick,
+                            onVideoLongClick = onVideoLongClick,
+                            onViewMore = onViewMore,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = if (twoColumnSections) HOME_SIDE_PADDING else 0.dp)
+                        )
+                    }
+
+                    SectionEntryKind.HEADER -> item(key = entry.key, contentType = HomeItemType.SECTION_HEADER) {
+                        SectionHeaderRow(plan = entry.plan, onViewMore = onViewMore)
+                    }
+
+                    SectionEntryKind.VIDEO -> item(key = entry.key, contentType = HomeItemType.SECTION_VIDEO) {
+                        entry.videos.firstOrNull()?.let { video ->
+                            VideoListItem(
+                                video = video,
+                                onClick = { onVideoClick(video.videoUrl) },
+                                onAuthorClick = onAuthorClick,
+                                onLongClick = { onVideoLongClick(video) },
+                                modifier = Modifier.padding(
+                                    start = 10.dp,
+                                    end = 10.dp,
+                                    top = 3.dp,
+                                    bottom = if (entry.bottomGap) 9.dp else 3.dp
+                                )
+                            )
+                        }
+                    }
+
+                    SectionEntryKind.ROW -> item(key = entry.key, contentType = HomeItemType.SECTION_ROW) {
+                        SectionVideoRow(
+                            plan = entry.plan,
+                            videos = entry.videos,
+                            columns = columns,
+                            rowThumbnailWidth = rowThumbnailWidth,
+                            bottomGap = entry.bottomGap,
+                            onVideoClick = onVideoClick,
+                            onAuthorClick = onAuthorClick,
+                            onVideoLongClick = onVideoLongClick
+                        )
+                    }
+
+                    SectionEntryKind.CAROUSEL -> item(key = entry.key, contentType = HomeItemType.SECTION_CAROUSEL) {
+                        SectionCarouselRow(
+                            plan = entry.plan,
+                            bottomGap = entry.bottomGap,
+                            onVideoClick = onVideoClick,
+                            onAuthorClick = onAuthorClick,
+                            onVideoLongClick = onVideoLongClick
+                        )
+                    }
                 }
             }
 
@@ -627,38 +746,8 @@ private fun SectionBlock(
     onViewMore: (HomeSection) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val section = plan.section
     Column(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 15.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = homeSectionTitleResMap[section.title]?.let { stringResource(it) } ?: section.title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { onViewMore(section) }
-            ) {
-                Text(
-                    text = stringResource(R.string.common_view_more),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
+        SectionHeaderRow(plan = plan, onViewMore = onViewMore)
 
         when (plan.mode) {
             SectionRenderMode.LIST_COLUMN -> plan.videos.forEach { video ->
@@ -671,68 +760,141 @@ private fun SectionBlock(
                 )
             }
 
-            SectionRenderMode.LIST_ROWS -> plan.rowVideos.forEach { row ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(LIST_ROW_SPACING_DP.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    row.forEach { video ->
-                        VideoListItem(
-                            video = video,
-                            onClick = { onVideoClick(video.videoUrl) },
-                            onAuthorClick = onAuthorClick,
-                            onLongClick = { onVideoLongClick(video) },
-                            thumbnailWidth = rowThumbnailWidth,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = LIST_ITEM_H_PADDING_DP.dp, vertical = 3.dp)
-                        )
-                    }
-                    repeat(columns - row.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
+            SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> plan.rowVideos.forEach { row ->
+                SectionVideoRow(
+                    plan = plan,
+                    videos = row,
+                    columns = columns,
+                    rowThumbnailWidth = rowThumbnailWidth,
+                    bottomGap = false,
+                    onVideoClick = onVideoClick,
+                    onAuthorClick = onAuthorClick,
+                    onVideoLongClick = onVideoLongClick
+                )
             }
 
-            SectionRenderMode.GRID_ROWS -> plan.rowVideos.forEach { row ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp)
-                ) {
-                    row.forEach { video ->
-                        VideoGridCard(
-                            video = video,
-                            onClick = { onVideoClick(video.videoUrl) },
-                            onAuthorClick = onAuthorClick,
-                            onLongClick = { onVideoLongClick(video) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    repeat(columns - row.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-
-            SectionRenderMode.CAROUSEL -> LazyRow(
-                contentPadding = PaddingValues(horizontal = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(plan.videos, key = { it.videoUrl }) { video ->
-                    VideoCard(
-                        video = video,
-                        onClick = { onVideoClick(video.videoUrl) },
-                        onAuthorClick = onAuthorClick,
-                        onLongClick = { onVideoLongClick(video) },
-                        targetWidth = CAROUSEL_CARD_WIDTH,
-                        modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
-                    )
-                }
-            }
+            SectionRenderMode.CAROUSEL -> SectionCarouselRow(
+                plan = plan,
+                bottomGap = false,
+                onVideoClick = onVideoClick,
+                onAuthorClick = onAuthorClick,
+                onVideoLongClick = onVideoLongClick
+            )
         }
         Spacer(modifier = Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun SectionHeaderRow(plan: SectionPlan, onViewMore: (HomeSection) -> Unit) {
+    val section = plan.section
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 15.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = homeSectionTitleResMap[section.title]?.let { stringResource(it) } ?: section.title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { onViewMore(section) }
+        ) {
+            Text(
+                text = stringResource(R.string.common_view_more),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionVideoRow(
+    plan: SectionPlan,
+    videos: List<HanimeVideo>,
+    columns: Int,
+    rowThumbnailWidth: Dp,
+    bottomGap: Boolean,
+    onVideoClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit,
+    onVideoLongClick: (HanimeVideo) -> Unit
+) {
+    val grid = plan.mode == SectionRenderMode.GRID_ROWS
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(
+            if (grid) 10.dp else LIST_ROW_SPACING_DP.dp
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = if (grid) 10.dp else 0.dp,
+                end = if (grid) 10.dp else 0.dp,
+                bottom = if (bottomGap) 6.dp else 0.dp
+            )
+    ) {
+        videos.forEach { video ->
+            if (grid) {
+                VideoGridCard(
+                    video = video,
+                    onClick = { onVideoClick(video.videoUrl) },
+                    onAuthorClick = onAuthorClick,
+                    onLongClick = { onVideoLongClick(video) },
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                VideoListItem(
+                    video = video,
+                    onClick = { onVideoClick(video.videoUrl) },
+                    onAuthorClick = onAuthorClick,
+                    onLongClick = { onVideoLongClick(video) },
+                    thumbnailWidth = rowThumbnailWidth,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = LIST_ITEM_H_PADDING_DP.dp, vertical = 3.dp)
+                )
+            }
+        }
+        repeat(columns - videos.size) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun SectionCarouselRow(
+    plan: SectionPlan,
+    bottomGap: Boolean,
+    onVideoClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit,
+    onVideoLongClick: (HanimeVideo) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.padding(bottom = if (bottomGap) 6.dp else 0.dp)
+    ) {
+        items(plan.videos, key = { it.videoUrl }) { video ->
+            VideoCard(
+                video = video,
+                onClick = { onVideoClick(video.videoUrl) },
+                onAuthorClick = onAuthorClick,
+                onLongClick = { onVideoLongClick(video) },
+                targetWidth = CAROUSEL_CARD_WIDTH,
+                modifier = Modifier.width(CAROUSEL_CARD_WIDTH)
+            )
+        }
     }
 }
 
