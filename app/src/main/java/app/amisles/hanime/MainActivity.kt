@@ -170,9 +170,8 @@ class MainActivity : ComponentActivity() {
 
     /** 创建时按当前语言包装 Context；Application 的 Resources 覆盖不影响本 Activity，运行中换语言由 getResources 的覆盖刷新。 */
     override fun attachBaseContext(newBase: Context) {
-        // 必须读取已初始化的 Preferences，不可再用明文 getSharedPreferences 打开同一文件：
-        // 会与 EncryptedSharedPreferences 冲突并反复误触发「明文→加密」迁移，覆盖已存的主题/语言。
-        // 走 Application 的语言缓存：该回调位于 Activity 创建最早期，不应在这里做加密存储解密。
+        // 走 Application 的语言缓存：该回调位于 Activity 创建最早期，此时 Preferences 可能尚未
+        // 初始化（系统可以在极早期拉起 Activity），直接读会落到未初始化的 lateinit 上。
         val lang = (newBase.applicationContext as? HanimeApplication)?.currentLanguage()
             // 兜底同样不读 Preferences：Application 尚未就绪时它可能未初始化（lateinit 崩溃），
             // 而默认语言就是唯一合理取值。
@@ -194,9 +193,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 走 Application 的语言快照（onCreate 里已预热），不要直接读 Preferences.appLanguage：
-        // 那是加密存储的 getter，在 Activity 创建路径上读会把 Keystore 解密拉回主线程，
-        // 等于绕开了 HanimeApplication 专门为此建立的缓存。
+        // 走 Application 的语言快照（onCreate 里已预热）：它与 Application 级 Resources 同源，
+        // 改读持久化值会多一次读盘，且可能与已应用的 Resources 不一致。
         val app = application as? HanimeApplication
         app?.applyLanguage(app.currentLanguage())
 

@@ -63,9 +63,8 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
     /**
      * 供 Activity.attachBaseContext 使用的语言快照。
      *
-     * 该回调发生在 Activity 创建的最早期，此时读 Preferences.appLanguage 是读 StateFlow，
-     * 正常情况下只是一次内存读取；但若 Preferences 尚未初始化（例如系统在极早期拉起 Activity），
-     * 就会退化为一次「加密存储解密」，把主线程卡在 Activity 创建路径上。
+     * 该回调发生在 Activity 创建的最早期，而 Preferences 由 [onCreate] 初始化：直接读
+     * appLanguage 在系统极早期拉起 Activity 时会落到未初始化的 lateinit 上。
      * 快照统一托管在 LocaleHelper：启动时预热，Preferences 写入语言时同步刷新。
      */
     fun currentLanguage(): String = LocaleHelper.languageSnapshot { persistedLanguage() }
@@ -74,9 +73,9 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
      * 只记录原始 base context，供 [applyLanguage] 重新包装。
      *
      * **此处不能初始化 Preferences**：attachBaseContext 阶段 Application 尚未 attach 完成，
-     * `context.applicationContext` 为 null、且传入的 base context 也不足以让
-     * `EncryptedSharedPreferences.create` 正常工作。曾在此调用 init，导致加密存储创建失败 →
-     * 触发「清空旧偏好后重建」→ 每次启动都会把用户配置抹成默认值。
+     * `context.applicationContext` 为 null，传入的 base context 也不足以让
+     * `EncryptedSharedPreferences.create` 正常工作 —— 会话存储会创建失败并被判为
+     * 「换机恢复后主密钥不匹配」，进而清空用户偏好。
      */
     override fun attachBaseContext(newBase: Context) {
         rawBaseContext = newBase

@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import app.amisles.hanime.core.common.util.AppLogger
@@ -39,6 +40,9 @@ object Preferences : SettingsRepository, SessionRepository {
     private val preferencesScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private const val NAME = "hanime_app_prefs"
+    /** 非敏感偏好单独一个文件：与会话分离后，首帧不必等 Android Keystore 解密。 */
+    private const val HOT_NAME = "hanime_hot_prefs"
+    private const val SP_HOT_SPLIT_DONE = "hot_split_done"
 
     private const val SP_ALREADY_LOGIN = "already_login"
     private const val SP_LOGIN_COOKIE = "login_cookie"
@@ -120,16 +124,18 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
 
     private lateinit var sp: android.content.SharedPreferences
 
-    /**
-     * 加密存储是否可用。
-     *
-     * 不可用时回退明文存储，但**不再持久化任何会话凭据**（见 [saveLogin] / [saveCloudFlareCookie]）：
-     * 明文落盘的登录 Cookie 可被同设备上任意应用或 root 读取，其代价高于「每次启动需重新登录」。
-     */
-    @Volatile
-    private var secureStorageAvailable = true
+    private val secureSession = SecureSession()
 
-    /** init 幂等标记：Application.attachBaseContext 与 onCreate 都会调用，只允许真正初始化一次。 */
+    private val SESSION_KEYS = setOf(
+        SP_ALREADY_LOGIN,
+        SP_LOGIN_COOKIE,
+        SP_LOGIN_COOKIE_DOMAIN,
+        SP_CF_COOKIE,
+        SP_CF_COOKIE_DOMAIN,
+        SP_PLAYLIST_CSRF_TOKEN
+    )
+
+    /** init 幂等标记：只允许真正初始化一次。 */
     @Volatile
     private var initialized = false
 
@@ -273,32 +279,93 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     /**
      * 初始化偏好存储。幂等，可安全重复调用。
      *
-     * 调用点：`HanimeApplication.attachBaseContext`（最早，Application 级语言包装需要读到持久化语言）
-     * 与 `HanimeApplication.onCreate`（兜底）。刻意不做异步化 —— Activity 的 attachBaseContext 需要
-     * 同步拿到语言/主题，异步初始化会让首帧用错语言与主题。
+     * 非敏感项走普通 SharedPreferences，同步读完就能上首帧；会话凭据留在加密存储，由
+     * [secureSession] 后台打开、就绪后回填。
      */
     @Synchronized
     fun init(context: Context) {
         if (initialized) return
-        // 先保证 sp 一定被赋值：任何异常都不能让后续访问落到 lateinit 未初始化崩溃上
-        sp = runCatching { provideSecurePreferences(context) }.getOrElse { e ->
-            AppLogger.logError("Preferences", "偏好存储初始化失败: ${e.message}", e)
-            // 用传入的 context 兜底：attachBaseContext 阶段 applicationContext 尚为 null
-            plainFallback(context)
+        val appCtx = context.applicationContext ?: context
+        val hot = appCtx.getSharedPreferences(HOT_NAME, Context.MODE_PRIVATE)
+        if (!runCatching { hot.getBoolean(SP_HOT_SPLIT_DONE, false) }.getOrDefault(false)) {
+            migrateHotKeys(appCtx, hot)
         }
+        sp = SplitPreferences(hot, secureSession, SESSION_KEYS)
         runCatching { readPersistedValues() }.onFailure { e ->
             AppLogger.logError("Preferences", "读取已保存偏好失败，沿用默认值: ${e.message}", e)
         }
+        if (secureSession.isReady()) applySessionValues()
         initialized = true
+        secureSession.onDemandOpen = { preferencesScope.launch { openSecureStore(appCtx) } }
+        // 从未登录过的设备没有会话文件，连 Keystore 都不必碰
+        if (!secureSession.isReady() && !secureSession.hasFailed() && sessionFile(appCtx).exists()) {
+            preferencesScope.launch { openSecureStore(appCtx) }
+        }
     }
 
-    /** 把持久化值读入各 StateFlow */
-    private fun readPersistedValues() {
+    private fun sessionFile(context: Context): File =
+        File(context.filesDir.parentFile, "shared_prefs/$NAME.xml")
+
+    @Synchronized
+    private fun openSecureStore(context: Context) {
+        if (secureSession.isReady()) return
+        val opened = runCatching { openSecure(context) }.getOrNull()
+        secureSession.attach(opened)
+        if (opened != null && !secureSession.written) applySessionValues()
+    }
+
+    private fun applySessionValues() {
         _loginStateFlow.value = readBoolean(SP_ALREADY_LOGIN, false)
         _loginCookieFlow.value = SessionCookie(readString(SP_LOGIN_COOKIE, "").orEmpty())
         _loginCookieDomain = readString(SP_LOGIN_COOKIE_DOMAIN, "").orEmpty().lowercase()
         _cloudFlareCookieFlow.value = SessionCookie(readString(SP_CF_COOKIE, "").orEmpty())
         _cloudFlareCookieDomain = readString(SP_CF_COOKIE_DOMAIN, "").orEmpty().lowercase()
+        migrateLegacyLoginCookieDomain()
+    }
+
+    /**
+     * 把加密文件里的非会话键搬进热存储，只在分层存储启用后的第一次启动执行。
+     *
+     * 这一次必须同步打开加密存储：迁移前热存储是空的，语言与主题一旦用默认值，首帧就是错的。
+     */
+    private fun migrateHotKeys(context: Context, hot: SharedPreferences) {
+        if (!sessionFile(context).exists()) {
+            // 全新安装没有历史数据可搬，直接落标记，省掉一次 Keystore 解密
+            runCatching { hot.edit(commit = true) { putBoolean(SP_HOT_SPLIT_DONE, true) } }
+            return
+        }
+        val secure = runCatching { openSecure(context) }.getOrNull()
+        if (secure == null) {
+            secureSession.attach(null)
+            return
+        }
+        secureSession.attach(secure)
+        val carried = runCatching { secure.all }.getOrDefault(emptyMap())
+            .filterKeys { it !in SESSION_KEYS && it != SP_MIGRATED_TO_ENCRYPTED }
+        runCatching {
+            hot.edit(commit = true) {
+                carried.forEach { (key, value) -> putValue(this, key, value) }
+                putBoolean(SP_HOT_SPLIT_DONE, true)
+            }
+            secure.edit(commit = true) { carried.keys.forEach { remove(it) } }
+        }.onFailure { e ->
+            AppLogger.logError("Preferences", "偏好分层迁移失败: ${e.message}", e)
+        }
+    }
+
+    private fun putValue(editor: SharedPreferences.Editor, key: String, value: Any?) {
+        when (value) {
+            is String -> editor.putString(key, value)
+            is Int -> editor.putInt(key, value)
+            is Long -> editor.putLong(key, value)
+            is Float -> editor.putFloat(key, value)
+            is Boolean -> editor.putBoolean(key, value)
+            is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+        }
+    }
+
+    /** 把热存储里的持久化值读入各 StateFlow */
+    private fun readPersistedValues() {
         _savedUserIdFlow.value = readString(SP_SAVED_USER_ID, "").orEmpty()
         _savedUserNameFlow.value = readString(SP_SAVED_USER_NAME, "").orEmpty()
         _maxDownloadConcurrentFlow.value = readInt(SP_MAX_DOWNLOAD_CONCURRENT, 3)
@@ -342,7 +409,6 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         _comicReaderBlackFlow.value = readBoolean(SP_COMIC_READER_BLACK, false)
         _skippedUpdateVersionFlow.value = readString(SP_SKIPPED_UPDATE_VERSION, "").orEmpty()
         _autoCheckUpdateFlow.value = readBoolean(SP_AUTO_CHECK_UPDATE, true)
-        migrateLegacyLoginCookieDomain()
     }
 
     private fun readBoolean(key: String, default: Boolean): Boolean =
@@ -358,10 +424,10 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         runCatching { sp.getString(key, default) }.getOrDefault(default)
 
     /**
-     * 提供加密的 SharedPreferences（AndroidX Security）。
-     * - 首次从明文旧文件迁移：读取旧值 → 删除旧文件 → 写入加密文件，避免明文会话残留。
-     * - Android Keystore 不可用（极端设备）时回退明文存储，但不再落盘会话凭据。
-     * - 换机恢复后旧密文无法解密时清空重建，而不是把加密文件当明文读写。
+     * 打开会话凭据所在的加密存储。
+     *
+     * 首次从明文旧文件迁移：读取旧值 → 删除旧文件 → 写入加密文件，避免明文会话残留。
+     * 换机恢复后旧密文无法解密时清空重建，而不是把加密文件当明文读写。
      *
      * 局部抑制 DEPRECATION：EncryptedSharedPreferences 与 MasterKey 在
      * security-crypto 1.1.0 被标记弃用，但 AndroidX 没有给出替代 API（官方建议
@@ -370,19 +436,16 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
      * 待上游给出迁移方案，或本模块整体更换存储方案时再处理。
      */
     @Suppress("DEPRECATION")
-    private fun provideSecurePreferences(context: Context): SharedPreferences {
-        // Application.attachBaseContext 阶段 applicationContext 仍为 null，直接使用传入的 context
+    private fun openSecure(context: Context): SharedPreferences? {
         val appCtx = context.applicationContext ?: context
         val masterKey = runCatching {
             MasterKey.Builder(appCtx)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
-        }.getOrNull() ?: return plainFallback(context)
+        }.getOrNull() ?: return null
 
-        // 加密存储只创建一次：既用于读取迁移标记，也直接作为返回值。
-        // 早期实现是先创建一次判断标记、再创建一次返回，每次启动多付一次 Keystore/文件解析成本。
         val encrypted = createEncrypted(appCtx, masterKey)
-        val legacyFile = File(appCtx.filesDir.parentFile, "shared_prefs/$NAME.xml")
+        val legacyFile = sessionFile(appCtx)
         // 仅当旧文件确为明文格式才迁移，否则会误读加密文件为 null 并覆盖已保存数据。
         // 迁移标记写在加密存储里，已迁移的用户不再触发 isLegacyPlaintextPrefs（它会额外打开
         // 一次同名 SharedPreferences 并解析整份 XML）。
@@ -406,7 +469,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
             val themeMode = legacy.getString(SP_THEME_MODE, ThemeMode.SYSTEM.name).orEmpty()
             appCtx.deleteSharedPreferences(NAME)
             // 删除明文文件后需要重建：旧实例仍指向已删除的文件，复用会读到空数据
-            val enc = createEncrypted(appCtx, masterKey) ?: return plainFallback(context)
+            val enc = createEncrypted(appCtx, masterKey) ?: return null
             enc.edit {
                 putBoolean(SP_ALREADY_LOGIN, alreadyLogin)
                 putString(SP_LOGIN_COOKIE, loginCookie)
@@ -428,8 +491,6 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         }
 
         encrypted?.let { enc ->
-            val size = runCatching { enc.all.size }.getOrDefault(-1)
-            AppLogger.log("Preferences", "加密存储已就绪，条目数=$size")
             // 首次确认没有可迁移的明文文件后落标记，后续启动无需再打开明文 SharedPreferences
             if (!alreadyMigrated) {
                 runCatching { enc.edit { putBoolean(SP_MIGRATED_TO_ENCRYPTED, true) } }
@@ -451,7 +512,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
                 "Preferences",
                 "加密存储创建失败且无法访问偏好文件（多为 Context 尚未就绪），为避免丢失配置，本次不清空重建"
             )
-            return plainFallback(context)
+            return null
         }
 
         AppLogger.logError(
@@ -459,7 +520,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
             "加密存储创建失败（常见于换机恢复后 Keystore 主密钥不匹配），清空旧偏好后重建，需重新登录"
         )
         appCtx.deleteSharedPreferences(NAME)
-        return createEncrypted(appCtx, masterKey) ?: plainFallback(context)
+        return createEncrypted(appCtx, masterKey)
     }
 
     @Suppress("DEPRECATION")
@@ -472,21 +533,6 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     }.getOrNull()
-
-    /**
-     * 回退明文存储（Android Keystore 不可用，或加密存储反复创建失败）。
-     *
-     * 置位 [secureStorageAvailable] = false，此后 [saveLogin] / [saveCloudFlareCookie] 不再把
-     * 会话凭据落盘，只在内存中保留，避免明文存储造成凭据泄露。
-     */
-    private fun plainFallback(context: Context): SharedPreferences {
-        secureStorageAvailable = false
-        AppLogger.logError(
-            "Preferences",
-            "加密存储不可用，回退明文存储；登录态将仅保留在内存中，不会落盘"
-        )
-        return context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
-    }
 
     /**
      * 判断 shared_prefs/$NAME.xml 是否为升级前的明文旧格式：加密存储的键是密文，用明文
@@ -655,18 +701,17 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         val domain = sourceDomain?.trim()?.lowercase()
             ?.ifBlank { null }
             ?: currentBaseHost()
-        if (secureStorageAvailable) {
-            sp.edit {
-                putBoolean(SP_ALREADY_LOGIN, true)
-                putString(SP_LOGIN_COOKIE, safeCookie)
-                putString(SP_SAVED_USER_ID, id)
-                putString(SP_LOGIN_COOKIE_DOMAIN, domain)
-            }
-        } else {
+        if (secureSession.hasFailed()) {
             AppLogger.logError(
                 "Preferences",
                 "加密存储不可用，登录凭据仅保留在内存中（不落盘），重启后需重新登录"
             )
+        }
+        sp.edit {
+            putBoolean(SP_ALREADY_LOGIN, true)
+            putString(SP_LOGIN_COOKIE, safeCookie)
+            putString(SP_SAVED_USER_ID, id)
+            putString(SP_LOGIN_COOKIE_DOMAIN, domain)
         }
         // 换账号后本地缓存的昵称属于上一个身份：不清掉，抽屉会一直显示别人的名字 ——
         // 而 ProfileViewModel.refreshAccountName() 看到昵称非空就不再拉取，错误的名字会一直留着。
@@ -705,16 +750,15 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         val safe = cookieString.take(8192)
         // 域名只认这次校验实际发生的站点：改了 baseUrl 换镜像后，旧 Cookie 不应被发到新域名
         val domain = sourceDomain?.trim()?.lowercase()?.ifBlank { null }
-        if (secureStorageAvailable) {
-            sp.edit {
-                putString(SP_CF_COOKIE, safe)
-                if (domain != null) putString(SP_CF_COOKIE_DOMAIN, domain)
-            }
-        } else {
+        if (secureSession.hasFailed()) {
             AppLogger.logError(
                 "Preferences",
                 "加密存储不可用，Cloudflare Cookie 仅保留在内存中（不落盘）"
             )
+        }
+        sp.edit {
+            putString(SP_CF_COOKIE, safe)
+            if (domain != null) putString(SP_CF_COOKIE_DOMAIN, domain)
         }
         if (domain != null) _cloudFlareCookieDomain = domain
         _cloudFlareCookieFlow.value = SessionCookie(safe)
