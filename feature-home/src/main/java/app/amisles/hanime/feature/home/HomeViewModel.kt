@@ -8,7 +8,7 @@ import app.amisles.hanime.domain.model.HomeDataEvent
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
-import app.amisles.hanime.domain.model.WatchStats
+import app.amisles.hanime.domain.model.WeeklyReportStats
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.cache.HomeSnapshotCache
 import app.amisles.hanime.domain.repository.ContentRepository
@@ -85,8 +85,8 @@ class HomeViewModel @Inject constructor(
         .getWatchLaterFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val _weeklyReport = MutableStateFlow<WatchStats?>(null)
-    val weeklyReport: StateFlow<WatchStats?> = _weeklyReport.asStateFlow()
+    private val _weeklyReport = MutableStateFlow<WeeklyReportStats?>(null)
+    val weeklyReport: StateFlow<WeeklyReportStats?> = _weeklyReport.asStateFlow()
 
     private val _weeklyReportVisible = MutableStateFlow(false)
     val weeklyReportVisible: StateFlow<Boolean> = _weeklyReportVisible.asStateFlow()
@@ -112,9 +112,10 @@ class HomeViewModel @Inject constructor(
         if (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) return
         if (Preferences.weeklyReportDismissedWeek() == weekKeyOf()) return
         viewModelScope.launch(Dispatchers.IO) {
-            val stats = runCatching { statsRepository.loadWatchStats() }.getOrNull() ?: return@launch
-            if (!stats.hasData) return@launch
-            _weeklyReport.value = stats
+            val report = runCatching { statsRepository.loadWeeklyReportStats() }.getOrNull() ?: return@launch
+            // 上周没有任何观看（时长与完成数均为 0）时，回顾卡片没有可回顾的内容，不弹出
+            if (!report.hasData) return@launch
+            _weeklyReport.value = report
             _weeklyReportVisible.value = true
         }
     }

@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.domain.model.WatchStats
+import app.amisles.hanime.domain.model.WeeklyReportStats
 
 private fun formatWeeklyDuration(millis: Long): String {
     val totalMinutes = millis / 60_000L
@@ -39,7 +39,7 @@ private fun formatWeeklyDuration(millis: Long): String {
 
 @Composable
 internal fun WeeklyReportCard(
-    stats: WatchStats,
+    stats: WeeklyReportStats,
     onDismiss: () -> Unit,
     onOpenStats: () -> Unit,
     modifier: Modifier = Modifier
@@ -81,17 +81,17 @@ internal fun WeeklyReportCard(
         Text(
             text = stringResource(
                 R.string.weekly_report_body,
-                formatWeeklyDuration(stats.weekWatchMillis),
+                formatWeeklyDuration(stats.watchMillis),
                 stats.completedCount
             ),
             fontSize = 13.sp,
             lineHeight = 19.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        if (stats.topAuthors.isNotEmpty()) {
+        if (stats.topAuthor.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.weekly_report_top_author, stats.topAuthors.first().author),
+                text = stringResource(R.string.weekly_report_top_author, stats.topAuthor),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.primary
             )

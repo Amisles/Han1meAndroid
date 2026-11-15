@@ -2,12 +2,38 @@ package app.amisles.hanime.data.stats
 
 import app.amisles.hanime.data.local.entity.WatchHistoryEntity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import java.text.SimpleDateFormat
 
 class StatsManagerTest {
+
+    // 每周回顾用例以固定日期（2026-11-16 是周一）构造时间戳，须把时区与 locale 钉住；
+    // 既有用例全部使用相对毫秒，不依赖具体时区，不受此设置影响
+    private val testTimeZone = TimeZone.getTimeZone("GMT+8")
+    private var originalTimeZone: TimeZone? = null
+    private var originalLocale: Locale? = null
+
+    @Before
+    fun pinTimeZoneAndLocale() {
+        originalTimeZone = TimeZone.getDefault()
+        originalLocale = Locale.getDefault()
+        TimeZone.setDefault(testTimeZone)
+        Locale.setDefault(Locale.SIMPLIFIED_CHINESE)
+    }
+
+    @After
+    fun restoreTimeZoneAndLocale() {
+        TimeZone.setDefault(originalTimeZone)
+        Locale.setDefault(originalLocale)
+    }
 
     private fun row(
         id: String,
@@ -29,6 +55,12 @@ class StatsManagerTest {
 
     private val now = 1_700_000_000_000L
     private val day = TimeUnit.DAYS.toMillis(1)
+
+    // 2026-11-16 是周一；上周一 = 2026-11-09，上周日 = 2026-11-15
+    private fun at(date: String, hour: Int): Long =
+        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).apply {
+            timeZone = testTimeZone
+        }.parse("$date ${"%02d".format(hour)}:00")!!.time
 
     @Test
     fun emptyHistoryYieldsZeroedStats() {
@@ -97,5 +129,68 @@ class StatsManagerTest {
         }
         assertEquals(Calendar.MONDAY, calendar.get(Calendar.DAY_OF_WEEK))
         assertTrue(stats.weekWatchMillis > 0L)
+    }
+
+    // ── 每周回顾卡片：上周窗口 [上周一 00:00, 本周一 00:00) ─────────────────
+
+    private fun mondayReport() = computeWeeklyReportStats(
+        listOf(
+            row("two-weeks-ago", "作者B", at("2026-11-02", 10), 5000, 0),
+            // 上周内：三天共 6000，作者A 两条（1000+3000）、作者B 一条（2000）
+            row("last-mon", "作者A", at("2026-11-09", 10), 1000, 0),
+            row("last-fri", "作者B", at("2026-11-13", 10), 2000, 0),
+            row("last-sun", "作者A", at("2026-11-15", 10), 3000, 0),
+            // 本周一凌晨：不在「上周」窗口内
+            row("this-mon", "作者A", at("2026-11-16", 9), 4000, 0)
+        ),
+        at("2026-11-16", 12)
+    )
+
+    @Test
+    fun weeklyReportCountsOnlyTheReportedWeek() {
+        assertEquals(6000L, mondayReport().watchMillis)
+    }
+
+    @Test
+    fun weeklyReportTopAuthorIgnoresRowsOutsideWindow() {
+        // 窗口外那条 5000 的作者B 若被计入会翻转最常看结果
+        assertEquals("作者A", mondayReport().topAuthor)
+    }
+
+    @Test
+    fun weeklyReportHasDataFalseWhenNothingWatchedLastWeek() {
+        val report = computeWeeklyReportStats(
+            listOf(row("this-week", "作者A", at("2026-11-16", 9), 4000, 0)),
+            at("2026-11-16", 12)
+        )
+        assertFalse(report.hasData)
+        assertEquals(0L, report.watchMillis)
+        assertEquals(0, report.completedCount)
+        assertEquals("", report.topAuthor)
+    }
+
+    @Test
+    fun weeklyReportHasDataTrueWhenLastWeekHadWatching() {
+        assertTrue(mondayReport().hasData)
+    }
+
+    @Test
+    fun startOfLastWeekFallsExactlySevenDaysBeforeThisWeeksMonday() {
+        assertEquals(at("2026-11-09", 0), startOfLastWeek(at("2026-11-16", 12)))
+        assertEquals(at("2026-11-02", 0), startOfLastWeek(at("2026-11-09", 12)))
+        // now 恰为周一 00:00 时，「上周一」就是自身减 7 天
+        assertEquals(at("2026-11-02", 0), startOfLastWeek(at("2026-11-09", 0)))
+    }
+
+    @Test
+    fun completionThresholdAt95Percent() {
+        val stats = computeWatchStats(
+            listOf(
+                row("at-threshold", "A", at("2026-11-10", 10), 950, 1000),
+                row("below-threshold", "A", at("2026-11-11", 10), 949, 1000)
+            ),
+            at("2026-11-16", 12)
+        )
+        assertEquals(1, stats.completedCount)
     }
 }

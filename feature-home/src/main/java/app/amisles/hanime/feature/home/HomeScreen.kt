@@ -64,7 +64,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
-import app.amisles.hanime.domain.model.WatchStats
+import app.amisles.hanime.domain.model.WeeklyReportStats
 import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.Banner
@@ -307,7 +307,7 @@ fun HomeScreenContent(
     sections: List<HomeSection>,
     continueWatching: List<WatchHistory> = emptyList(),
     watchLater: List<WatchLaterVideo> = emptyList(),
-    weeklyReport: WatchStats? = null,
+    weeklyReport: WeeklyReportStats? = null,
     weeklyReportVisible: Boolean = false,
     banner: HanimeBanner?,
     isLoading: Boolean,
