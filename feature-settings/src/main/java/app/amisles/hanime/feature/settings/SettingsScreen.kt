@@ -7,6 +7,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -408,6 +410,7 @@ private fun FolderPickerDialog(
 fun SettingsScreen(
     onBackClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
+    openBaseUrlEditor: Boolean = false,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -435,6 +438,14 @@ fun SettingsScreen(
     var themeModeMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
+
+    val baseUrlEditorRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(openBaseUrlEditor) {
+        if (!openBaseUrlEditor) return@LaunchedEffect
+        baseUrlInput = uiState.baseUrl
+        baseUrlEditorRequester.bringIntoView()
+        showBaseUrlDialog = true
+    }
 
     var showStoragePathDialog by remember { mutableStateOf(false) }
     var longPressMenuExpanded by remember { mutableStateOf(false) }
@@ -703,15 +714,17 @@ fun SettingsScreen(
 
             // 网络与数据
             SettingsGroupCard {
-                SettingsNavRow(
-                    icon = Icons.Outlined.Link,
-                    title = stringResource(R.string.settings_base_url),
-                    subtitle = uiState.baseUrl,
-                    onClick = {
-                        baseUrlInput = uiState.baseUrl
-                        showBaseUrlDialog = true
-                    }
-                )
+                Box(modifier = Modifier.bringIntoViewRequester(baseUrlEditorRequester)) {
+                    SettingsNavRow(
+                        icon = Icons.Outlined.Link,
+                        title = stringResource(R.string.settings_base_url),
+                        subtitle = uiState.baseUrl,
+                        onClick = {
+                            baseUrlInput = uiState.baseUrl
+                            showBaseUrlDialog = true
+                        }
+                    )
+                }
                 SettingsGroupDivider()
                 SettingsNavRow(
                     icon = Icons.Outlined.NetworkCheck,

@@ -128,7 +128,8 @@ internal fun HanimeNavGraph(
                 onProfileClick = { onOpenProfile() },
                 onComicClick = { navController.navigate("comics") },
                 onVideoLongClick = onVideoLongClick,
-                onOpenWatchStats = { navController.navigate("watchStats") }
+                onOpenWatchStats = { navController.navigate("watchStats") },
+                onOpenSiteSettings = { navController.navigate("settings?openBaseUrl=true") }
             )
         }
         composable("comics") {
@@ -425,7 +426,13 @@ internal fun HanimeNavGraph(
                 )
             }
         }
-        composable("settings") {
+        composable(
+            route = "settings?openBaseUrl={openBaseUrl}",
+            arguments = listOf(navArgument("openBaseUrl") {
+                type = NavType.BoolType
+                defaultValue = false
+            })
+        ) { backStackEntry ->
             SettingsScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigate = { route ->
@@ -437,7 +444,8 @@ internal fun HanimeNavGraph(
                         "backup" -> navController.navigate("backup")
                         "crashLog" -> navController.navigate("crashLog")
                     }
-                }
+                },
+                openBaseUrlEditor = backStackEntry.arguments?.getBoolean("openBaseUrl") ?: false
             )
         }
         composable("diagnostics") {
