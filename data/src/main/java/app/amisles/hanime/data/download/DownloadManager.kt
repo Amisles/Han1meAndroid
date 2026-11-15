@@ -507,12 +507,13 @@ class DownloadManager @Inject constructor(
         deferredResumeTask?.let { task ->
             // 先取「暂停序号」再做磁盘 IO：推导期间用户若按了暂停，序号会变，启动复核随即放弃本次调度
             val epochAtSchedule = pauseEpochOf(task.id)
-            val (rb, rm) = deriveResumeState(task)
+            val (rb, rm, rp) = deriveResumeState(task)
             tasksLock.withLock {
                 startDownloadWithConcurrencyInternal(
                     task,
                     rb,
                     rm,
+                    rp,
                     expectedStatus = task.status,
                     scheduledPauseEpoch = epochAtSchedule
                 )
@@ -567,24 +568,25 @@ class DownloadManager @Inject constructor(
      * 槽位满退回 PENDING 后须重新推导，否则会以「首下」语义整文件重下；
      * resumeDownloadInternal 复用此函数，保证两条路径判定一致。
      */
-    private fun deriveResumeState(task: DownloadTask): Pair<Long, BooleanArray?> {
+    private fun deriveResumeState(task: DownloadTask): Triple<Long, BooleanArray?, LongArray?> {
         val file = File(task.filePath)
         val partmapFile = File(task.filePath + PARTMAP_SUFFIX)
         // writePartmap 的中间文件：它的存在本身就是「上次位图表替换未完成」的证据
         val partmapTmpFile = File(task.filePath + PARTMAP_SUFFIX + ".tmp")
         if (partmapFile.exists() && file.exists()) {
-            val (cc, bitmap) = readPartmap(partmapFile)
+            val (cc, bitmap, partial) = readPartmap(partmapFile)
             if (cc > 0 && bitmap != null) {
                 // 位图表有效：顺手清理上次替换失败残留的 .tmp，避免孤儿文件堆积
                 if (partmapTmpFile.exists()) runCatching { partmapTmpFile.delete() }
                 // 位图表只是「上次写入时的意图记录」，与文件实际长度可能不一致。只有「该块区间末尾
                 // 字节确实落在当前文件长度内」才承认完成，否则清位重下，避免「位图说完成、数据不在」
-                // 导致收尾校验恒失败且无法自愈。
+                // 导致收尾校验恒失败且无法自愈。块内字节数同样要与磁盘长度对齐。
                 val sanitized = sanitizePartmap(task, file, cc, bitmap)
+                val sanitizedPartial = sanitizePartials(task, file, cc, bitmap, partial)
                 // 该文件已被判定分块无收益时，本应改走单连接续传。但分块写入是稀疏的：
                 // contiguousDoneBytes 只保证「位图中的逻辑前缀连续」，且 sanitizePartmap 只校验
                 // 各块末尾字节是否落在 file.length() 内 —— 文件中间仍可能有从未写入的空洞。
-                // 若按前缀截断后单连接续写，空洞将永久保留，而收尾只比对文件长度，最终会得到
+                // 若按前缀截断后单连接续写，空洞将永久保留，而收尾只比对长度，最终会得到
                 // 「长度正确但中段是垃圾数据」的坏文件。故此处一律丢弃分块进度，整份重下。
                 if (singleConnectionFiles.contains(task.filePath)) {
                     AppLogger.logError(
@@ -596,9 +598,9 @@ class DownloadManager @Inject constructor(
                     runCatching { file.delete() }
                     runCatching { partmapFile.delete() }
                     clearChunkedMark(task.id)
-                    return 0L to null
+                    return Triple(0L, null, null)
                 }
-                return 0L to sanitized
+                return Triple(0L, sanitized, sanitizedPartial)
             }
         }
         // 位图表替换被中断：.partmap 缺失但 .partmap.tmp 残留，说明分块进度已不可信。
@@ -615,14 +617,14 @@ class DownloadManager @Inject constructor(
             if (file.exists()) runCatching { file.delete() }
             runCatching { partmapTmpFile.delete() }
             clearChunkedMark(task.id)
-            return 0L to null
+            return Triple(0L, null, null)
         }
         // 回退：文件级续传（单连接）或整文件重下
         if (partmapFile.exists()) {
             if (file.exists()) runCatching { file.delete() }
             runCatching { partmapFile.delete() }
             clearChunkedMark(task.id)
-            return 0L to null
+            return Triple(0L, null, null)
         }
 
         // 位图表缺失、但本任务此前确实走过分块下载：成品可能是稀疏的（file.length() 只是最大
@@ -635,7 +637,7 @@ class DownloadManager @Inject constructor(
             )
             if (file.exists()) runCatching { file.delete() }
             clearChunkedMark(task.id)
-            return 0L to null
+            return Triple(0L, null, null)
         }
 
         val fileLen = if (file.exists()) file.length() else 0L
@@ -643,9 +645,9 @@ class DownloadManager @Inject constructor(
         val safeResume = fileLen > 0
                 && fileLen >= task.downloadedBytes.coerceAtLeast(0L)
                 && (!totalKnown || fileLen < task.totalBytes)
-        if (safeResume) return fileLen to null
+        if (safeResume) return Triple(fileLen, null, null)
         if (file.exists()) runCatching { file.delete() }
-        return 0L to null
+        return Triple(0L, null, null)
     }
 
     /**
@@ -663,6 +665,7 @@ class DownloadManager @Inject constructor(
         task: DownloadTask,
         resumeBytes: Long = 0L,
         resumeChunkMap: BooleanArray? = null,
+        resumePartial: LongArray? = null,
         expectedStatus: DownloadStatus? = null,
         scheduledPauseEpoch: Long = -1L
     ) {
@@ -756,7 +759,7 @@ class DownloadManager @Inject constructor(
                 AppLogger.log("DownloadManager", "开始下载: ${task.title} (并发槽位已获取, resumeFrom=$resumeBytes)")
 
                 try {
-                    downloadFile(task.id, task.url, task.filePath, resumeBytes, resumeChunkMap)
+                    downloadFile(task.id, task.url, task.filePath, resumeBytes, resumeChunkMap, resumePartial)
                 } catch (e: SourceChangedException) {
                     // 源文件已变，旧位图表/旧文件已无意义，丢弃后整份重下。
                     // 首下（无续传起点）时直接上抛交给失败处理，不做无谓的重试。
@@ -769,7 +772,7 @@ class DownloadManager @Inject constructor(
                     runCatching { File(task.filePath).takeIf { f -> f.exists() }?.delete() }
                     runCatching { File(task.filePath + PARTMAP_SUFFIX).delete() }
                     updateTask(task.id) { it.copy(downloadedBytes = 0, totalBytes = 0, errorMessage = "") }
-                    downloadFile(task.id, task.url, task.filePath, 0L, null)
+                    downloadFile(task.id, task.url, task.filePath, 0L, null, null)
                 }
 
                 if (currentCoroutineContext()[Job]?.isActive != true || isTaskCancelled(task.id)) {
@@ -857,12 +860,13 @@ class DownloadManager @Inject constructor(
             // 否则会拿「旧的 PENDING 快照」把刚被暂停的任务重新拉起来。
             val epochAtSchedule = pauseEpochOf(candidate.id)
             // 锁外推导（含 .partmap 读取/删除、file.length()），不阻塞主线程 pause/cancel
-            val (rb, rm) = deriveResumeState(candidate)
+            val (rb, rm, rp) = deriveResumeState(candidate)
             val launched = tasksLock.withLock {
                 startDownloadWithConcurrencyInternal(
                     candidate,
                     rb,
                     rm,
+                    rp,
                     expectedStatus = DownloadStatus.PENDING,
                     scheduledPauseEpoch = epochAtSchedule
                 )
@@ -1032,12 +1036,13 @@ class DownloadManager @Inject constructor(
             // 取号后再推导：期间用户若暂停（哪怕对象本来就是 PAUSED，status 不会变）或点了
             // 「全部暂停」，序号都会变，据此跳过，不会出现「暂停全部」之后仍在拉起任务的情况。
             val epochAtSchedule = pauseEpochOf(id)
-            val (rb, rm) = deriveResumeState(task)
+            val (rb, rm, rp) = deriveResumeState(task)
             tasksLock.withLock {
                 startDownloadWithConcurrencyInternal(
                     task,
                     rb,
                     rm,
+                    rp,
                     expectedStatus = DownloadStatus.PAUSED,
                     scheduledPauseEpoch = epochAtSchedule
                 )
@@ -1076,12 +1081,13 @@ class DownloadManager @Inject constructor(
             val candidate = tasksLock.withLock { pickPendingTaskLocked(exclude = emptySet()) }
                 ?: break
             val epochAtSchedule = pauseEpochOf(candidate.id)
-            val (rb, rm) = deriveResumeState(candidate)
+            val (rb, rm, rp) = deriveResumeState(candidate)
             val launched = tasksLock.withLock {
                 startDownloadWithConcurrencyInternal(
                     candidate,
                     rb,
                     rm,
+                    rp,
                     expectedStatus = DownloadStatus.PENDING,
                     scheduledPauseEpoch = epochAtSchedule
                 )
@@ -1096,7 +1102,8 @@ class DownloadManager @Inject constructor(
         url: String,
         filePath: String,
         resumeBytes: Long = 0L,
-        resumeChunkMap: BooleanArray? = null
+        resumeChunkMap: BooleanArray? = null,
+        resumePartial: LongArray? = null
     ) {
         // 权威判定：该文件在本进程内已被判定分块无收益时，一律走单连接。deriveResumeState 给出的是
         // 连续完成前缀作为续传起点，这里兜住前缀为 0 的边界，否则 resumeBytes=0 会绕过记忆重新走分块。
@@ -1107,7 +1114,7 @@ class DownloadManager @Inject constructor(
         if (resumeChunkMap != null) {
             val total = taskMap[taskId]?.totalBytes ?: 0L
             if (total > 0) {
-                downloadFileChunked(taskId, url, filePath, total, resumeMap = resumeChunkMap)
+                downloadFileChunked(taskId, url, filePath, total, resumeMap = resumeChunkMap, resumePartial = resumePartial)
                 return
             }
         }
@@ -1337,7 +1344,7 @@ class DownloadManager @Inject constructor(
         failedIds.forEach { id ->
             val task = taskMap[id] ?: return@forEach
             val epochAtSchedule = pauseEpochOf(id)
-            val (rb, rm) = deriveResumeState(task)
+            val (rb, rm, rp) = deriveResumeState(task)
             tasksLock.withLock {
                 val current = taskMap[id] ?: return@withLock
                 if (current.status != DownloadStatus.FAILED) return@withLock
@@ -1345,6 +1352,7 @@ class DownloadManager @Inject constructor(
                     current,
                     rb,
                     rm,
+                    rp,
                     expectedStatus = DownloadStatus.FAILED,
                     scheduledPauseEpoch = epochAtSchedule
                 )
@@ -1364,12 +1372,13 @@ class DownloadManager @Inject constructor(
         // 推导含磁盘 IO：期间可能被暂停/取消，故先记录期望状态与暂停序号，开跑前复核
         val expectedStatus = task.status
         val epochAtSchedule = pauseEpochOf(taskId)
-        val (resumeBytes, resumeMap) = deriveResumeState(task)
+        val (resumeBytes, resumeMap, resumePartial) = deriveResumeState(task)
         tasksLock.withLock {
             startDownloadWithConcurrencyInternal(
                 task,
                 resumeBytes,
                 resumeMap,
+                resumePartial,
                 expectedStatus = expectedStatus,
                 scheduledPauseEpoch = epochAtSchedule
             )

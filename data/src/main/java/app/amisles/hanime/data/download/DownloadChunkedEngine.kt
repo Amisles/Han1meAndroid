@@ -125,7 +125,8 @@ internal suspend fun DownloadManager.downloadFileChunked(
     filePath: String,
     totalBytes: Long,
     singleBps: Long = 0L,
-    resumeMap: BooleanArray? = null
+    resumeMap: BooleanArray? = null,
+    resumePartial: LongArray? = null
 ) {
     // 块数由固定块长 CHUNK_SIZE 推导（不再等于并行连接数），使并发写入窗口只覆盖文件的一段
     // 连续区域，重试与续传粒度同步变细。块布局仍由 chunkSize = totalBytes / chunkCount 推导，
@@ -144,6 +145,25 @@ internal suspend fun DownloadManager.downloadFileChunked(
     }
 
     val chunkDone = resumeMap ?: BooleanArray(chunkCount)
+    val chunkSize = totalBytes / chunkCount
+    val chunkDownloaded = AtomicLongArray(chunkCount)
+    // 续传：已完成块预置整块长度，未完成块预置暂停检查点记录的块内已写字节数，
+    // 使 worker 从块内偏移续传而不是把该块从 0 重下
+    if (resumeMap != null) {
+        for (i in chunkDone.indices) {
+            if (chunkDone[i]) {
+                val start = i * chunkSize
+                val end = if (i == chunkCount - 1) totalBytes - 1 else start + chunkSize - 1
+                chunkDownloaded.set(i, end - start + 1)
+            } else if (resumePartial != null && i < resumePartial.size) {
+                chunkDownloaded.set(
+                    i,
+                    resumePartial[i].coerceIn(0L, chunkLength(i, chunkCount, totalBytes))
+                )
+            }
+        }
+    }
+
     if (resumeMap == null) {
         // 首下：清空旧文件与旧位图表，重新分块
         if (outputFile.exists()) outputFile.delete()
@@ -151,7 +171,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
         outputFile.createNewFile()
         // 位图表是分块续传的唯一依据，首下写失败必须立刻放弃分块路径：否则一旦崩溃/暂停，
         // deriveResumeState 会退化为按文件长度做单连接续传，而分块文件是带空洞的稀疏写。
-        if (!writePartmap(partmapFile, chunkCount, chunkDone)) {
+        if (!writePartmap(partmapFile, chunkCount, chunkDone, currentChunkBytes(chunkCount, chunkDownloaded))) {
             AppLogger.logError(
                 "DownloadManager",
                 "分块下载：位图表写入失败，本次改为单连接顺序下载（该文件不可续传）: $filePath",
@@ -166,27 +186,19 @@ internal suspend fun DownloadManager.downloadFileChunked(
             return
         }
     } else if (!partmapFile.exists()) {
-        if (!writePartmap(partmapFile, chunkCount, chunkDone)) {
+        if (!writePartmap(partmapFile, chunkCount, chunkDone, currentChunkBytes(chunkCount, chunkDownloaded))) {
             AppLogger.log("DownloadManager", "续传位图表重建失败，该文件可能无法跨进程续传: ${partmapFile.name}")
         }
     }
 
+    // 总量必须在开跑立即可见：reporter 首次上报前（约 500ms）任务态的 totalBytes 还是 0，
+    // 这期间暂停的任务在恢复时会被 downloadFile 判成「总量未知」而跳过分块续传分支，
+    // 落到首下路径把整个文件删掉重下。
+    updateTask(taskId) { it.copy(totalBytes = totalBytes) }
+
     // 从这一行起，成品文件就是「稀疏写」的：位图表一旦丢失（用户清理公共目录 / 清理动作被中断），
     // 单凭 file.length() 续传会留下永远回填不了的空洞。标记写在私有目录，跨进程仍然可信。
     markChunkedFile(taskId)
-
-    val chunkSize = totalBytes / chunkCount
-    val chunkDownloaded = AtomicLongArray(chunkCount)
-    // 续传：恢复已完成块的已下载字节，计入总进度
-    if (resumeMap != null) {
-        for (i in chunkDone.indices) {
-            if (chunkDone[i]) {
-                val start = i * chunkSize
-                val end = if (i == chunkCount - 1) totalBytes - 1 else start + chunkSize - 1
-                chunkDownloaded.set(i, end - start + 1)
-            }
-        }
-    }
 
     val lock = Any()
     // 位图表写盘串行化：reporter 的周期落盘与收尾落盘并发时都会走「写 .tmp → rename」，
@@ -497,12 +509,15 @@ internal suspend fun DownloadManager.downloadFileChunked(
                             lastPersistedDone = done
                             // 先拷贝快照再释放 lock，避免持锁做 fsync 阻塞 worker 登记块完成
                             val snapshot = chunkDone.copyOf()
-                            partmapWriteLock.withLock { writePartmap(partmapFile, chunkCount, snapshot) }
+                            val partialSnapshot = currentChunkBytes(chunkCount, chunkDownloaded)
+                            partmapWriteLock.withLock { writePartmap(partmapFile, chunkCount, snapshot, partialSnapshot) }
                         }
                     }
                 }
                 if (outputFile.exists()) {
-                    synchronized(lock) { writePartmap(partmapFile, chunkCount, chunkDone) }
+                    synchronized(lock) {
+                        writePartmap(partmapFile, chunkCount, chunkDone, currentChunkBytes(chunkCount, chunkDownloaded))
+                    }
                 }
             }
 
@@ -517,7 +532,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
             // CancellationException 退出，根本走不到那里 —— 位图停在上一次节流落盘（最多早 5 秒）
             // 的状态，暂停后「续传」实际会丢失这段时间内完成的块，并可能退回整份重下。
             // 这里不调用 updateTask：暂停态由 DownloadManager.pauseDownload 负责写入。
-            flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, lock, partmapWriteLock)
+            flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, chunkDownloaded, lock, partmapWriteLock)
             throw ce
         }
     } catch (inefficient: ChunkedInefficientException) {
@@ -552,7 +567,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
     }
 
     if (isTaskCancelled(taskId)) {
-        flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, lock, partmapWriteLock)
+        flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, chunkDownloaded, lock, partmapWriteLock)
         AppLogger.log("DownloadManager", "分块下载中止（暂停/取消）: taskId=$taskId，位图表已保留供续传")
         return
     }
@@ -587,17 +602,23 @@ private fun flushPartmapBestEffort(
     outputFile: File,
     chunkCount: Int,
     chunkDone: BooleanArray,
+    chunkDownloaded: AtomicLongArray,
     lock: Any,
     writeLock: ReentrantLock
 ) {
     runCatching {
         if (!outputFile.exists()) return
         val snapshot = synchronized(lock) { chunkDone.copyOf() }
-        writeLock.withLock { writePartmap(partmapFile, chunkCount, snapshot) }
+        val partialSnapshot = currentChunkBytes(chunkCount, chunkDownloaded)
+        writeLock.withLock { writePartmap(partmapFile, chunkCount, snapshot, partialSnapshot) }
     }.onFailure { e ->
         AppLogger.logError("DownloadManager", "位图表落盘失败（续传进度可能丢失一部分）: " + e.message, e)
     }
 }
+
+/** 各块已写字节数的当前快照，与 [chunkDone] 位图同尺寸同序，落盘时一并写入位图表第三行。 */
+private fun currentChunkBytes(chunkCount: Int, chunkDownloaded: AtomicLongArray): LongArray =
+    LongArray(chunkCount) { chunkDownloaded.get(it) }
 
 /**
  * 下载单个分块（HTTP Range 请求），写入 outputFile 的 [start, end] 区间。
