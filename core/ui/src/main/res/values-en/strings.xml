@@ -887,6 +887,8 @@
     <string name="player_resize_16_9">16:9</string>
     <string name="player_lock">Lock</string>
     <string name="player_unlock">Unlock</string>
+    <string name="cd_lock_orientation">Lock screen orientation</string>
+    <string name="cd_unlock_orientation">Resume auto-rotate</string>
     <string name="player_unlock_hint">Long-press to unlock</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>

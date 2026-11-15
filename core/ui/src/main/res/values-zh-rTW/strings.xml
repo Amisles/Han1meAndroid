@@ -887,6 +887,8 @@
     <string name="player_resize_16_9">16:9</string>
     <string name="player_lock">鎖定</string>
     <string name="player_unlock">解鎖</string>
+    <string name="cd_lock_orientation">鎖定螢幕方向</string>
+    <string name="cd_unlock_orientation">恢復自動旋轉</string>
     <string name="player_unlock_hint">長按解鎖</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>

@@ -51,6 +51,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ScreenLockRotation
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +111,8 @@ internal fun BoxScope.PlayerControls(
     onSwitchQuality: (VideoSource, Boolean) -> Unit,
     onToggleFullscreen: () -> Unit,
     onLock: () -> Unit,
+    isOrientationPinned: Boolean = false,
+    onToggleOrientationPin: () -> Unit = {},
     onSleepTimerChange: (PlayerSleepTimer) -> Unit,
     onResizeModeChange: (PlayerResizeMode) -> Unit,
     onBuildPipParams: () -> PictureInPictureParams
@@ -287,6 +291,26 @@ internal fun BoxScope.PlayerControls(
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = stringResource(R.string.player_lock),
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onToggleOrientationPin()
+                },
+                modifier = Modifier.size(30.dp)
+            ) {
+                Icon(
+                    imageVector = if (isOrientationPinned) {
+                        Icons.Default.ScreenLockRotation
+                    } else {
+                        Icons.Default.ScreenRotation
+                    },
+                    contentDescription = stringResource(
+                        if (isOrientationPinned) R.string.cd_unlock_orientation else R.string.cd_lock_orientation
+                    ),
                     tint = Color.White,
                     modifier = Modifier.size(26.dp)
                 )

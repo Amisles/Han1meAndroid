@@ -22,9 +22,10 @@ internal fun PlayerFullscreenEffect(
     activity: Activity?,
     deviceTilt: DeviceTilt?,
     initialOrientation: Int,
-    initialBarsBehavior: Int
+    initialBarsBehavior: Int,
+    pinnedOrientation: Int? = null
 ) {
-    LaunchedEffect(isFullscreen, activity, deviceTilt) {
+    LaunchedEffect(isFullscreen, activity, deviceTilt, pinnedOrientation) {
         if (activity != null) {
             val window = activity.window
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -32,7 +33,7 @@ internal fun PlayerFullscreenEffect(
                 insetsController.hide(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                val target = deviceTilt?.landscapeOrientation
+                val target = pinnedOrientation ?: deviceTilt?.landscapeOrientation
                 if (target != null) {
                     try { activity.requestedOrientation = target } catch (_: Exception) {}
                 } else if (!activity.requestedOrientation.isLandscapeOrientation) {
@@ -57,11 +58,12 @@ internal fun PlayerOrientationWatcher(
     autoFullscreenEnabled: Boolean,
     isInPip: Boolean,
     isFullscreen: Boolean,
+    orientationPinned: Boolean,
     onFullscreenToggle: (Boolean) -> Unit,
     onDeviceTiltChange: (DeviceTilt) -> Unit
 ) {
     val orientationFlipRef = rememberUpdatedState { landscape: Boolean ->
-        if (autoFullscreenEnabled && !isInPip) {
+        if (autoFullscreenEnabled && !isInPip && !orientationPinned) {
             if (landscape && !isFullscreen) onFullscreenToggle(true)
             else if (!landscape && isFullscreen) onFullscreenToggle(false)
         }

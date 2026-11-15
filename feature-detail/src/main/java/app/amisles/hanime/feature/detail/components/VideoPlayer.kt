@@ -191,6 +191,8 @@ fun VideoPlayer(
     // 睡眠定时与播放锁都是会话级状态：不落盘，避免下次打开莫名停住或锁住
     var sleepTimer by remember { mutableStateOf(PlayerSleepTimer()) }
     var isLocked by rememberSaveable { mutableStateOf(false) }
+    // 手动钉住的全屏方向（SCREEN_ORIENTATION_* 常量）；null 表示跟随 deviceTilt 自动选择
+    var pinnedOrientation by remember { mutableStateOf<Int?>(null) }
     // 视频真实宽高比（含像素宽高比）：拉伸模式据此推算铺满容器所需的缩放系数
     var videoAspect by remember { mutableFloatStateOf(0f) }
 
@@ -677,6 +679,14 @@ fun VideoPlayer(
         onFullscreenToggle(!isFullscreen)
     }
 
+    fun toggleOrientationPin() {
+        pinnedOrientation = if (pinnedOrientation == null) {
+            deviceTilt?.landscapeOrientation ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            null
+        }
+    }
+
     /**
      * 标记「本次触摸落在播放器控件上」。外层手势在抬起时读取：为真则跳过「切换控件显隐」，
      * 使点击控件只执行控件自身逻辑。隐藏途径由此收敛为点击空白或空闲超时两种。
@@ -698,6 +708,7 @@ fun VideoPlayer(
     LaunchedEffect(isLocked, isFullscreen) {
         if (!isFullscreen) {
             isLocked = false
+            pinnedOrientation = null
             return@LaunchedEffect
         }
         if (isLocked) {
@@ -714,7 +725,7 @@ fun VideoPlayer(
     // 具体一侧，而非丢一个 SENSOR_LANDSCAPE 让系统猜——系统「自动旋转」关闭时其方向传感器停用，
     // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧再翻回来（表现为点全屏瞬间画面上下颠倒再转正）。
     // 只有朝向未确定或设备本就竖持时才回退 SENSOR_LANDSCAPE。
-    PlayerFullscreenEffect(isFullscreen, activity, deviceTilt, initialOrientation, initialBarsBehavior)
+    PlayerFullscreenEffect(isFullscreen, activity, deviceTilt, initialOrientation, initialBarsBehavior, pinnedOrientation)
 
     // ── 横屏自动全屏 ─────────────────────────────────────────────────────────
     // 设备由竖转横时自动进入全屏，由横转竖时自动退出；平板分栏、或用户在设置里关掉
@@ -725,6 +736,7 @@ fun VideoPlayer(
         autoFullscreenEnabled = autoFullscreenEnabled && autoRotateFullscreen,
         isInPip = isInPip,
         isFullscreen = isFullscreen,
+        orientationPinned = pinnedOrientation != null,
         onFullscreenToggle = onFullscreenToggle
     ) { deviceTilt = it }
 
@@ -1041,6 +1053,8 @@ fun VideoPlayer(
                 sleepTimer = sleepTimer,
                 resizeMode = playerResizeMode,
                 onLock = { isLocked = true },
+                isOrientationPinned = pinnedOrientation != null,
+                onToggleOrientationPin = { toggleOrientationPin() },
                 onSleepTimerChange = { sleepTimer = it },
                 onResizeModeChange = { appPrefs.setPlayerResizeMode(it) },
                 onBuildPipParams = { buildPipParams() }
