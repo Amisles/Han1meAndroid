@@ -48,6 +48,9 @@ import app.amisles.hanime.core.ui.theme.surfaceEdge
 import coil3.compose.AsyncImage
 import java.util.Locale
 
+private val QUALITY_RESOLUTION_REGEX = Regex("\\((\\d+p)\\)")
+private val BARE_RESOLUTION_REGEX = Regex("\\d{3,4}p")
+
 /**
  * 下载条目的交互回调。
  *
@@ -165,13 +168,12 @@ internal fun DownloadTaskItem(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // quality 为官网画质全称（可能较长），限制两行 + 省略号并居中，避免撑破缩略图位
                 Text(
-                    text = task.quality,
+                    text = resolutionLabel(task.quality),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
                 )
@@ -364,6 +366,24 @@ internal fun DownloadTaskItem(
                 }
             }
         }
+    }
+}
+
+/**
+ * 从官网画质全称（如「全高清畫質 (1080p)」）提取分辨率短文案（如「1080p」）。
+ *
+ * 官网全称是繁体中文，直接占位会让非中文界面出现中文残留；分辨率数字本身是语言中立的。
+ * 全称写回 [DownloadTask.quality] 参与文件名与去重，这里只做展示层提取，识别不出时回退原文。
+ */
+internal fun resolutionLabel(quality: String): String {
+    QUALITY_RESOLUTION_REGEX.find(quality)?.groupValues?.get(1)?.let { return it }
+    BARE_RESOLUTION_REGEX.find(quality)?.value?.let { return it }
+    val bare = quality.lowercase()
+    return when {
+        "1080" in bare -> "1080p"
+        "720" in bare -> "720p"
+        "480" in bare -> "480p"
+        else -> quality
     }
 }
 
