@@ -1216,4 +1216,8 @@
     <string name="time_weeks_ago">%1$d wk ago</string>
     <string name="time_months_ago">%1$d mo ago</string>
     <string name="time_years_ago">%1$d yr ago</string>
+
+    <!-- Duration -->
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
 </resources>

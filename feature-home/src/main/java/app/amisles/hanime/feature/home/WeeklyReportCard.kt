@@ -30,11 +30,16 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.WeeklyReportStats
 
+@Composable
 private fun formatWeeklyDuration(millis: Long): String {
     val totalMinutes = millis / 60_000L
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
-    return if (hours > 0) hours.toString() + "h " + minutes + "min" else minutes.toString() + "min"
+    return if (hours > 0) {
+        stringResource(R.string.duration_hours_minutes, hours, minutes)
+    } else {
+        stringResource(R.string.duration_minutes, totalMinutes)
+    }
 }
 
 @Composable

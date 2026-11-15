@@ -1216,4 +1216,8 @@
     <string name="time_weeks_ago">%1$d 週前</string>
     <string name="time_months_ago">%1$d 個月前</string>
     <string name="time_years_ago">%1$d 年前</string>
+
+    <!-- Duration -->
+    <string name="duration_hours_minutes">%1$d 小時 %2$d 分鐘</string>
+    <string name="duration_minutes">%1$d 分鐘</string>
 </resources>
