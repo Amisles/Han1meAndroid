@@ -100,7 +100,7 @@ class DownloadManager @Inject constructor(
         _tasks.value = cur.toMutableList().also { it[idx] = newTask }
     }
 
-    var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus) -> Unit)? = null
+    var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus, speedBps: Long, remainingMs: Long) -> Unit)? = null
 
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
     // 在途 Call 跟踪。用 ConcurrentLinkedQueue 而非 CopyOnWriteArrayList：后者每次 add 都复制
@@ -134,6 +134,48 @@ class DownloadManager @Inject constructor(
     private val serviceBridge = DownloadServiceBridge(context)
     // 各任务最近一次已转发的整数百分比，用于抑制「百分比未变」的重复跨进程通知
     private val lastNotifiedPercent = ConcurrentHashMap<Int, Int>()
+
+    // 速率采样：字节差 / 时间差的指数滑动平均。updateTask 在 tasksLock 内串行执行，
+    // 采样读写天然单线程，无需额外同步；清理时机与 lastNotifiedPercent 一致。
+    private val speedSamples = ConcurrentHashMap<Int, SpeedSample>()
+
+    internal class SpeedSample(val bytes: Long, val atMs: Long, val emaBps: Long)
+
+    /**
+     * 由最近两次字节快照估算下载速率并写回任务；非 DOWNLOADING 或总量未知时清零并丢弃采样。
+     * 采样间隔小于 [SPEED_MIN_SAMPLE_MS] 时沿用上一次均值，避免同毫秒内的连续更新把瞬时值放大。
+     */
+    internal fun applySpeedSample(taskId: Int, newTask: DownloadTask): DownloadTask {
+        if (newTask.status != DownloadStatus.DOWNLOADING || newTask.totalBytes <= 0L) {
+            speedSamples.remove(taskId)
+            return newTask.copy(speedBps = 0L)
+        }
+        val now = System.currentTimeMillis()
+        val prev = speedSamples[taskId]
+        val sampled = when {
+            prev == null || newTask.downloadedBytes < prev.bytes ->
+                SpeedSample(newTask.downloadedBytes, now, 0L)
+            else -> {
+                val deltaBytes = newTask.downloadedBytes - prev.bytes
+                val deltaMs = now - prev.atMs
+                if (deltaMs < SPEED_MIN_SAMPLE_MS) {
+                    prev
+                } else {
+                    val instantBps = deltaBytes * 1000L / deltaMs
+                    SpeedSample(newTask.downloadedBytes, now, (prev.emaBps * 3L + instantBps) / 4L)
+                }
+            }
+        }
+        speedSamples[taskId] = sampled
+        if (newTask.speedBps == sampled.emaBps) return newTask
+        return newTask.copy(speedBps = sampled.emaBps)
+    }
+
+    internal fun estimatedRemainingMs(task: DownloadTask): Long {
+        if (task.speedBps <= 0L || task.totalBytes <= 0L) return 0L
+        val remainingBytes = (task.totalBytes - task.downloadedBytes).coerceAtLeast(0L)
+        return remainingBytes * 1000L / task.speedBps
+    }
 
     /**
      * 本进程内已判定「分块无收益」的文件（按 filePath）。
@@ -215,8 +257,8 @@ class DownloadManager @Inject constructor(
     override val gateState: StateFlow<DownloadGateState> = _gateState.asStateFlow()
 
     init {
-        onProgressUpdate = { taskId, title, progress, status ->
-            serviceBridge.forwardProgress(title, progress, status, taskId)
+        onProgressUpdate = { taskId, title, progress, status, speedBps, remainingMs ->
+            serviceBridge.forwardProgress(title, progress, status, taskId, speedBps = speedBps, remainingMs = remainingMs)
         }
 
         scope.launch {
@@ -659,7 +701,9 @@ class DownloadManager @Inject constructor(
                     gateNoticeTaskId,
                     gateNoticeTitle,
                     gateNoticeProgress,
-                    DownloadStatus.PENDING
+                    DownloadStatus.PENDING,
+                    0L,
+                    0L
                 )
             }
             return
@@ -907,6 +951,7 @@ class DownloadManager @Inject constructor(
             pauseEpoch.clear()
             lastNotifiedPercent.clear()
             lastPersistTime.clear()
+            speedSamples.clear()
             emitTasks()
         }
         restored.forEach { persistTask(it) }
@@ -1127,7 +1172,7 @@ class DownloadManager @Inject constructor(
         var progressUpdate: ProgressUpdate? = null
         tasksLock.withLock {
             val current = taskMap[taskId] ?: return
-            val newTask = updater(current)
+            val newTask = applySpeedSample(taskId, updater(current))
             val statusChanged = newTask.status != current.status
             // 纯进度刷新仅就地替换对应元素（updateTaskInList），避免每次 500ms 都全量重建列表。
             taskMap[taskId] = newTask
@@ -1140,7 +1185,13 @@ class DownloadManager @Inject constructor(
             // 锁内只记录需回调的信息；跨进程回调可能耗时且会重入，必须移出 tasksLock 执行。
             val candidate = when (newTask.status) {
                 DownloadStatus.DOWNLOADING -> if (newTask.totalBytes > 0) {
-                    ProgressUpdate(taskId, newTask.title, DownloadQueuePolicy.progressPercent(newTask.downloadedBytes, newTask.totalBytes), newTask.status)
+                    ProgressUpdate(
+                        taskId, newTask.title,
+                        DownloadQueuePolicy.progressPercent(newTask.downloadedBytes, newTask.totalBytes),
+                        newTask.status,
+                        newTask.speedBps,
+                        estimatedRemainingMs(newTask)
+                    )
                 } else null
                 DownloadStatus.PAUSED -> ProgressUpdate(
                     taskId, newTask.title,
@@ -1153,6 +1204,7 @@ class DownloadManager @Inject constructor(
             }
             // 通知转发节流：reporter 每 500ms 触发一次 updateTask，若每次转发即约 10 次/秒的 binder
             // 调用 + 通知重绘，而整数百分比多数未变。状态切换始终转发，保证通知语义不丢。
+            // 速率随百分比节流同频刷新：通知条本身也只按整数百分比推进，两者保持一致节奏。
             if (candidate != null) {
                 val last = lastNotifiedPercent[taskId]
                 if (DownloadQueuePolicy.shouldForwardProgress(statusChanged, last, candidate.progress)) {
@@ -1162,8 +1214,8 @@ class DownloadManager @Inject constructor(
             }
         }
         // 跨进程 IPC 回调放在锁外执行，避免在持锁期间做跨进程调用。
-        progressUpdate?.let { (id, title, progress, status) ->
-            onProgressUpdate?.invoke(id, title, progress, status)
+        progressUpdate?.let { pu ->
+            onProgressUpdate?.invoke(pu.taskId, pu.title, pu.progress, pu.status, pu.speedBps, pu.remainingMs)
         }
         // 完成事件额外携带成品文件路径，通知点击即可直达本地播放页
         val completedPath = progressUpdate
@@ -1345,6 +1397,7 @@ class DownloadManager @Inject constructor(
         persistDelete(taskId)
         lastNotifiedPercent.remove(taskId)
         pauseEpoch.remove(taskId)
+        speedSamples.remove(taskId)
         // 任务记录已删除，无法再走 updateTask 进度通道；必须显式通知前台服务撤销该任务的
         // 常驻通知并重算活动集合，否则通知（ongoing 不可划掉）与 dataSync 前台服务会永久残留。
         serviceBridge.forwardRemove(taskId)
@@ -1538,6 +1591,7 @@ class DownloadManager @Inject constructor(
         downloadJobs.clear()
         taskCalls.clear()
         taskCancelFlags.clear()
+        speedSamples.clear()
         activeSlots.set(0)
         AppLogger.log("DownloadManager", "shutdown: 已取消下载作用域并清理在途状态")
     }

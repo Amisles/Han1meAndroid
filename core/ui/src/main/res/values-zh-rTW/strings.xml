@@ -466,6 +466,10 @@
     <string name="download_notification_failed">下載失敗</string>
     <string name="download_notification_progress">下載中 %1$d%%</string>
     <string name="download_notification_paused">已暫停 %1$d%%</string>
+    <string name="download_notification_speed_eta">下載中 %1$d%% · %2$s/s · 剩約 %3$s</string>
+    <string name="download_eta_minutes">%1$d 分鐘</string>
+    <string name="download_eta_hours">%1$s 小時</string>
+    <string name="download_speed_eta">%1$s/s · 剩約 %2$s</string>
     <string name="notification_action_pause_all">暫停全部</string>
     <string name="notification_action_resume">繼續</string>
     <string name="notification_action_cancel">取消下載</string>

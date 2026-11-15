@@ -15,12 +15,14 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -57,6 +59,10 @@ class DownloadService : Service() {
         const val EXTRA_PROGRESS = "extra_progress"
         const val EXTRA_STATUS = "extra_status"
 
+        /** 下载速率（字节/秒）与预计剩余毫秒数；须与 DownloadManager 侧同名常量手工保持一致。 */
+        const val EXTRA_SPEED_BPS = "extra_speed_bps"
+        const val EXTRA_REMAINING_MS = "extra_remaining_ms"
+
         /** 下载完成事件携带的成品文件绝对路径，用于通知点击直达本地播放页。 */
         const val EXTRA_FILE_PATH = "extra_file_path"
 
@@ -77,7 +83,13 @@ class DownloadService : Service() {
      * 必须连状态一起记：只有真正在传输（DOWNLOADING）时才该持 CPU / Wi-Fi 锁。等待闸门的
      * PENDING 任务可能挂上数小时，而无超时的 WIFI_MODE_FULL_HIGH_PERF 会一直抑制省电模式。
      */
-    private data class ActiveTask(val title: String, val progress: Int, val status: DownloadStatus?)
+    private data class ActiveTask(
+        val title: String,
+        val progress: Int,
+        val status: DownloadStatus?,
+        val speedBps: Long = 0L,
+        val remainingMs: Long = 0L
+    )
 
     private val activeTasks = ConcurrentHashMap<Int, ActiveTask>()
     /**
@@ -169,6 +181,8 @@ class DownloadService : Service() {
         val progress = if (progressExtra >= 0) progressExtra else 0
         val statusStr = intent?.getStringExtra(EXTRA_STATUS)
         val status = statusStr?.let { runCatching { DownloadStatus.valueOf(it) }.getOrNull() }
+        val speedBps = intent?.getLongExtra(EXTRA_SPEED_BPS, 0L) ?: 0L
+        val remainingMs = intent?.getLongExtra(EXTRA_REMAINING_MS, 0L) ?: 0L
         val action = intent?.action
 
         when {
@@ -189,7 +203,7 @@ class DownloadService : Service() {
         // 标志若未复位，后续 startForegroundService 的 5 秒履约就永远不满足，Android 12+ 会抛
         // ForegroundServiceDidNotStartInTimeException。系统对重复 startForeground 是幂等的，
         // 因此这里不做缓存，直接推进履约。
-        ensureForeground(taskId, title ?: "", progress, status)
+        ensureForeground(taskId, title ?: "", progress, status, speedBps, remainingMs)
 
         if (taskId < 0) {
             // 非法 taskId：已占位进入前台以履约，随即撤销并停止服务。
@@ -237,9 +251,16 @@ class DownloadService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun ensureForeground(taskId: Int, title: String, progress: Int, status: DownloadStatus?) {
+    private fun ensureForeground(
+        taskId: Int,
+        title: String,
+        progress: Int,
+        status: DownloadStatus?,
+        speedBps: Long,
+        remainingMs: Long
+    ) {
         val id = if (taskId >= 0) notificationId(taskId) else NOTIFICATION_ID_PLACEHOLDER
-        startForegroundSafely(id, taskId, buildProgressNotification(title, progress, status))
+        startForegroundSafely(id, taskId, buildProgressNotification(title, progress, status, speedBps, remainingMs))
     }
 
     private fun startForegroundSafely(id: Int, taskId: Int, notification: Notification): Boolean {
@@ -320,6 +341,21 @@ class DownloadService : Service() {
             0
         }
 
+    /** 按任务内存态里的速率估算剩余毫秒；速率未知或已无剩余字节时返回 0（通知不显示剩余时间）。 */
+    private fun remainingMsOf(task: DownloadTask): Long {
+        if (task.speedBps <= 0L || task.totalBytes <= 0L) return 0L
+        return ((task.totalBytes - task.downloadedBytes).coerceAtLeast(0L)) * 1000L / task.speedBps
+    }
+
+    private fun formatEta(remainingMs: Long): String {
+        val minutes = remainingMs / 60_000L
+        return if (minutes < 60L) {
+            getString(R.string.download_eta_minutes, minutes.coerceAtLeast(1L))
+        } else {
+            getString(R.string.download_eta_hours, String.format(Locale.US, "%.1f", minutes / 60.0))
+        }
+    }
+
     private fun handleProgress(taskId: Int, title: String, startId: Int) {
         if (taskId < 0) {
             stopSelfResult(startId)
@@ -333,10 +369,12 @@ class DownloadService : Service() {
         val effectiveTitle = task.title.ifBlank { title }
         val effectiveProgress = progressOf(task)
         val effectiveStatus = task.status
-        activeTasks[taskId] = ActiveTask(effectiveTitle, effectiveProgress, effectiveStatus)
+        val effectiveSpeed = task.speedBps
+        val effectiveRemaining = remainingMsOf(task)
+        activeTasks[taskId] = ActiveTask(effectiveTitle, effectiveProgress, effectiveStatus, effectiveSpeed, effectiveRemaining)
         // 锁不在事件里直接续期：PENDING（等待闸门）同样会走这里，但它不该持锁。
         // 由 onStartCommand 末尾的 syncTransferLocks() 按「是否存在 DOWNLOADING」统一决定。
-        val notification = buildProgressNotification(effectiveTitle, effectiveProgress, effectiveStatus)
+        val notification = buildProgressNotification(effectiveTitle, effectiveProgress, effectiveStatus, effectiveSpeed, effectiveRemaining)
         // 只有「当前没有前台任务」或「前台任务已不在活动集合里」时才需要占据前台；
         // 其余情况（包括本任务就是前台任务）一律只更新通知，不必重复 startForeground。
         val needForeground = foregroundTaskId < 0 || !activeTasks.containsKey(foregroundTaskId)
@@ -374,7 +412,7 @@ class DownloadService : Service() {
             startForegroundSafely(
                 notificationId(next),
                 next,
-                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING)
+                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING, promoted.speedBps, promoted.remainingMs)
             )
             if (taskId >= 0) {
                 notificationManager.notify(notificationId(taskId), terminalNotification)
@@ -411,7 +449,7 @@ class DownloadService : Service() {
             startForegroundSafely(
                 notificationId(next),
                 next,
-                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING)
+                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING, promoted.speedBps, promoted.remainingMs)
             )
             notificationManager.notify(notificationId(taskId), notification)
         } else {
@@ -443,7 +481,7 @@ class DownloadService : Service() {
             startForegroundSafely(
                 notificationId(next),
                 next,
-                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING)
+                buildProgressNotification(promoted.title, promoted.progress, DownloadStatus.DOWNLOADING, promoted.speedBps, promoted.remainingMs)
             )
         }
         // 其余情况：前台仍是别的任务，被移除任务的通知已 cancel，无需额外处理
@@ -464,11 +502,24 @@ class DownloadService : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun buildProgressNotification(title: String, progress: Int, status: DownloadStatus? = null): Notification {
+    private fun buildProgressNotification(
+        title: String,
+        progress: Int,
+        status: DownloadStatus? = null,
+        speedBps: Long = 0L,
+        remainingMs: Long = 0L
+    ): Notification {
         val displayTitle = title.ifEmpty { getString(R.string.download_notification_downloading) }
-        // 暂停态显示「已暂停 xx%」，其余显示「下载中 xx%」
-        val contentText = when (status) {
-            DownloadStatus.PAUSED -> getString(R.string.download_notification_paused, progress.coerceIn(0, 100))
+        // 暂停态显示「已暂停 xx%」，其余显示「下载中 xx%」；速率与剩余时间仅在真实传输时出现
+        val contentText = when {
+            status == DownloadStatus.PAUSED ->
+                getString(R.string.download_notification_paused, progress.coerceIn(0, 100))
+            speedBps > 0L && remainingMs > 0L -> getString(
+                R.string.download_notification_speed_eta,
+                progress.coerceIn(0, 100),
+                formatBytes(speedBps),
+                formatEta(remainingMs)
+            )
             else -> getString(R.string.download_notification_progress, progress.coerceIn(0, 100))
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)

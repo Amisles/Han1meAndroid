@@ -466,6 +466,10 @@
     <string name="download_notification_failed">ダウンロード失敗</string>
     <string name="download_notification_progress">ダウンロード中 %1$d%%</string>
     <string name="download_notification_paused">一時停止中 %1$d%%</string>
+    <string name="download_notification_speed_eta">ダウンロード中 %1$d%% · %2$s/s · 残り %3$s</string>
+    <string name="download_eta_minutes">%1$d分</string>
+    <string name="download_eta_hours">%1$s時間</string>
+    <string name="download_speed_eta">%1$s/s · 残り %2$s</string>
     <string name="notification_action_pause_all">すべて一時停止</string>
     <string name="notification_action_resume">再開</string>
     <string name="notification_action_cancel">ダウンロードをキャンセル</string>

@@ -12,7 +12,9 @@ internal data class ProgressUpdate(
     val taskId: Int,
     val title: String,
     val progress: Int,
-    val status: DownloadStatus
+    val status: DownloadStatus,
+    val speedBps: Long = 0L,
+    val remainingMs: Long = 0L
 )
 
 /**

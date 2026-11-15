@@ -22,6 +22,9 @@ internal const val EXTRA_TASK_ID = "extra_task_id"
 internal const val EXTRA_TITLE = "extra_title"
 internal const val EXTRA_PROGRESS = "extra_progress"
 internal const val EXTRA_STATUS = "extra_status"
+// 下载速率（字节/秒）与预计剩余毫秒数；DownloadService 侧同名常量手工保持一致
+internal const val EXTRA_SPEED_BPS = "extra_speed_bps"
+internal const val EXTRA_REMAINING_MS = "extra_remaining_ms"
 // 完成事件携带的成品文件路径；DownloadService 侧同名常量手工保持一致
 internal const val EXTRA_FILE_PATH = "extra_file_path"
 internal const val MAX_REQUESTS_PER_HOST = 16
@@ -59,6 +62,8 @@ internal const val EVICTION_BACKOFF_MAX_MS = 4000L   // 退避上限
 internal const val EVICTION_BACKOFF_STAGGER_MS = 150L// 按块序号错峰，避免数块同时重连
 internal const val REPORT_INTERVAL_MS = 500L         // 进度上报周期
 internal const val ZERO_PROGRESS_TRIGGER_MS = 30000L // 整任务零进度看门狗触发阈值
+// 速率采样间隔下限：更近的两次快照沿用上次均值，避免同毫秒连续更新放大瞬时速率
+internal const val SPEED_MIN_SAMPLE_MS = 500L
 // 诊断开关：仅 debug 包启用。诊断日志约 0.5 行/秒且会写入应用日志文件，
 // release 常开会持续占用主线程 IO、增加耗电，并让日志更快触及轮转上限。
 internal val DIAG_ENABLED = BuildConfig.DEBUG

@@ -46,6 +46,7 @@ import app.amisles.hanime.domain.model.DownloadErrorCode
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import coil3.compose.AsyncImage
+import java.util.Locale
 
 /**
  * 下载条目的交互回调。
@@ -211,8 +212,18 @@ internal fun DownloadTaskItem(
                             .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
                     )
                 }
+                val statusText = if (task.speedBps > 0L && task.totalBytes > 0L) {
+                    val remainingMs = (task.totalBytes - task.downloadedBytes).coerceAtLeast(0L) * 1000L / task.speedBps
+                    stringResource(
+                        R.string.download_speed_eta,
+                        formatBytes(task.speedBps),
+                        formatEtaText(remainingMs)
+                    )
+                } else {
+                    stringResource(R.string.download_downloading)
+                }
                 Text(
-                    text = stringResource(R.string.download_downloading),
+                    text = statusText,
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 3.dp)
@@ -353,6 +364,16 @@ internal fun DownloadTaskItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun formatEtaText(remainingMs: Long): String {
+    val minutes = remainingMs / 60_000L
+    return if (minutes < 60L) {
+        stringResource(R.string.download_eta_minutes, minutes.coerceAtLeast(1L))
+    } else {
+        stringResource(R.string.download_eta_hours, String.format(Locale.US, "%.1f", minutes / 60.0))
     }
 }
 

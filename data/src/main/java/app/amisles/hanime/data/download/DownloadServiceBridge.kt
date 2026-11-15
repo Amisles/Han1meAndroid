@@ -14,7 +14,9 @@ internal class DownloadServiceBridge(
         progress: Int,
         status: DownloadStatus,
         taskId: Int,
-        filePath: String = ""
+        filePath: String = "",
+        speedBps: Long = 0L,
+        remainingMs: Long = 0L
     ) {
         val intent = Intent().apply {
             setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
@@ -22,6 +24,8 @@ internal class DownloadServiceBridge(
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_PROGRESS, progress)
             putExtra(EXTRA_STATUS, status.name)
+            putExtra(EXTRA_SPEED_BPS, speedBps)
+            putExtra(EXTRA_REMAINING_MS, remainingMs)
             if (filePath.isNotBlank()) putExtra(EXTRA_FILE_PATH, filePath)
         }
         when (status) {

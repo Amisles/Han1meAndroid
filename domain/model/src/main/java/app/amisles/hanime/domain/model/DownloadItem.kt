@@ -21,7 +21,9 @@ data class DownloadTask(
     // 所属视频 id，去重 / 状态判定以 videoId 为准
     val videoId: String = "",
     // 失败原因的 DownloadErrorCode 名称，由界面本地化；旧版本写入的文案无法识别时原样展示
-    val errorMessage: String = ""
+    val errorMessage: String = "",
+    // 瞬时下载速率（字节/秒），仅内存态：不落库、不参与持久化映射，非 DOWNLOADING 时恒为 0
+    val speedBps: Long = 0
 )
 
 enum class DownloadStatus {
