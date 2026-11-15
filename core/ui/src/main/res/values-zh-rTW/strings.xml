@@ -1145,7 +1145,7 @@
     <string name="permission_open_settings">去系統設定</string>
     <string name="download_permission_media_action">找回舊下載</string>
     <string name="error_network_unavailable">網路不可用，請檢查網路連線後重試</string>
-    <string name="error_network_timeout">連線逾時，站點可能較慢，請重試</string>
+    <string name="error_network_timeout">連線逾時，該站點可能無法直接存取，可嘗試更換官網網址或檢查網路</string>
     <string name="error_network_tls">安全連線失敗，請檢查網路環境或更換鏡像站</string>
     <string name="error_network_generic">網路請求失敗，請稍後重試</string>
     <string name="cd_downloaded">已下載</string>
