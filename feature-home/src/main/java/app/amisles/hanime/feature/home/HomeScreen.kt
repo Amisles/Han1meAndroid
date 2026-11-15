@@ -73,6 +73,7 @@ import app.amisles.hanime.core.ui.components.Header
 import app.amisles.hanime.core.ui.components.HintBanner
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.ThumbnailPrefetcher
+import app.amisles.hanime.core.ui.util.ErrorKind
 import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
@@ -244,7 +245,8 @@ fun HomeScreen(
     onProfileClick: (() -> Unit)? = null,
     onComicClick: (() -> Unit)? = null,
     onVideoLongClick: (HanimeVideo) -> Unit = {},
-    onOpenWatchStats: () -> Unit = {}
+    onOpenWatchStats: () -> Unit = {},
+    onOpenSiteSettings: () -> Unit = {}
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -256,6 +258,7 @@ fun HomeScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val errorKind by viewModel.errorKind.collectAsStateWithLifecycle()
     val challengeHost by viewModel.challengeHost.collectAsStateWithLifecycle()
     val siteUrl by LocalAppPreferences.current.baseUrlFlow.collectAsStateWithLifecycle()
     // 换站后回到首页必须重拉：LaunchedEffect 在页面重新进入组合时同样会重跑，是否真的换站由 VM 判定
@@ -276,6 +279,7 @@ fun HomeScreen(
         isLoading = isLoading,
         isRefreshing = isRefreshing,
         error = error,
+        errorKind = errorKind,
         challengeHost = challengeHost,
         siteUrl = siteUrl,
         onRefresh = { viewModel.loadHomeData() },
@@ -293,7 +297,8 @@ fun HomeScreen(
         onConsumeWatchLater = { item -> viewModel.consumeWatchLater(item) },
         onRemoveWatchLater = { id -> viewModel.removeWatchLater(id) },
         onDismissWeeklyReport = { viewModel.dismissWeeklyReport() },
-        onOpenWatchStats = onOpenWatchStats
+        onOpenWatchStats = onOpenWatchStats,
+        onOpenSiteSettings = onOpenSiteSettings
     )
 }
 
@@ -308,6 +313,7 @@ fun HomeScreenContent(
     isLoading: Boolean,
     isRefreshing: Boolean = false,
     error: String? = null,
+    errorKind: ErrorKind? = null,
     challengeHost: String? = null,
     siteUrl: String? = null,
     onRefresh: () -> Unit = {},
@@ -325,7 +331,8 @@ fun HomeScreenContent(
     onConsumeWatchLater: (WatchLaterVideo) -> Unit = {},
     onRemoveWatchLater: (String) -> Unit = {},
     onDismissWeeklyReport: () -> Unit = {},
-    onOpenWatchStats: () -> Unit = {}
+    onOpenWatchStats: () -> Unit = {},
+    onOpenSiteSettings: () -> Unit = {}
 ) {
     val listState = rememberLazyStaggeredGridState()
     val scope = rememberCoroutineScope()
@@ -338,6 +345,7 @@ fun HomeScreenContent(
 
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
     val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }
+    val suggestSiteChange = errorKind != null && errorKind != ErrorKind.UNKNOWN
     val columns = remember(sizeInfo, cfg, twoColumnSections) {
         homeSectionColumns(cfg, sizeInfo, twoColumnSections).coerceAtLeast(1)
     }
@@ -507,7 +515,13 @@ fun HomeScreenContent(
                         .fillMaxWidth()
                         .heightIn(min = (sizeInfo.heightDp * 0.6f).dp),
                     actionLabel = challengeHost?.let { stringResource(R.string.error_action_verify) },
-                    onAction = challengeHost?.let { host -> { CloudflareChallenge.request(host) } }
+                    onAction = challengeHost?.let { host -> { CloudflareChallenge.request(host) } },
+                    secondaryActionLabel = if (suggestSiteChange) {
+                        stringResource(R.string.error_action_change_site)
+                    } else {
+                        null
+                    },
+                    onSecondaryAction = if (suggestSiteChange) onOpenSiteSettings else null
                 )
             }
         } else {

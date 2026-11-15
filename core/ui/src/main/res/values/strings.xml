@@ -826,6 +826,7 @@
     <!-- Error -->
     <string name="error_load_failed">加载失败，请检查网络后重试</string>
         <string name="error_action_verify">去完成人机验证</string>
+    <string name="error_action_change_site">更换官网网址</string>
     <string name="error_comment_parse_failed">评论已发表，但页面解析失败</string>
     <string name="error_reply_parse_failed">回复已发表，但页面解析失败</string>
     <string name="error_user_id_missing">无法确认登录用户，请重新登录后再试</string>

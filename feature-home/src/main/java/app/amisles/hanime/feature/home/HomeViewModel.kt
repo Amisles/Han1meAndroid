@@ -15,6 +15,7 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.ErrorKind
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.core.common.util.AppSnackbar
 import app.amisles.hanime.data.remote.CloudflareChallengeException
@@ -153,6 +154,9 @@ class HomeViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _errorKind = MutableStateFlow<ErrorKind?>(null)
+    val errorKind: StateFlow<ErrorKind?> = _errorKind.asStateFlow()
+
     /** 非 null 表示本次失败由 Cloudflare 人机校验拦截，错误视图据此提供一键验证入口。 */
     private val _challengeHost = MutableStateFlow<String?>(null)
     val challengeHost: StateFlow<String?> = _challengeHost.asStateFlow()
@@ -188,6 +192,7 @@ class HomeViewModel @Inject constructor(
             _banner.value = null
         }
         _error.value = null
+        _errorKind.value = null
         _challengeHost.value = null
 
         loadJob?.cancel()
@@ -227,6 +232,7 @@ class HomeViewModel @Inject constructor(
             repository.getHomeDataStream()
                 .catch { e ->
                     streamFailed = true
+                    _errorKind.value = ErrorMapper.kindOf(e)
                     if (e is CloudflareChallengeException) _challengeHost.value = e.host
                     _error.value = ErrorMapper.message(
                         context,
@@ -264,6 +270,7 @@ class HomeViewModel @Inject constructor(
                         }
                         is HomeDataEvent.Error -> {
                             val cause = event.exception
+                            _errorKind.value = ErrorMapper.kindOf(cause)
                             if (cause is CloudflareChallengeException) {
                                 _challengeHost.value = cause.host
                             }

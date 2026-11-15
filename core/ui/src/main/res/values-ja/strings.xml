@@ -522,6 +522,7 @@
     <string name="subscriptions_empty">購読動画はまだありません</string>
     <string name="subscriptions_load_failed">購読の読み込みに失敗しました</string>
     <string name="error_action_verify">認証を完了する</string>
+    <string name="error_action_change_site">サイト URL を変更</string>
     <string name="error_comment_parse_failed">コメントは投稿されましたが、ページを解析できませんでした</string>
     <string name="error_reply_parse_failed">返信は投稿されましたが、ページを解析できませんでした</string>
     <string name="error_user_id_missing">ログインユーザーを確認できません。再度ログインしてください</string>

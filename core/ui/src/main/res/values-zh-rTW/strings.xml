@@ -795,6 +795,7 @@
     <string name="playlist_videos">影片列表</string>
     <string name="error_load_failed">載入失敗，請檢查網路後重試</string>
         <string name="error_action_verify">去完成人機驗證</string>
+    <string name="error_action_change_site">更換官網網址</string>
     <string name="error_comment_parse_failed">留言已發表，但頁面解析失敗</string>
     <string name="error_reply_parse_failed">回覆已發表，但頁面解析失敗</string>
     <string name="error_user_id_missing">無法確認登入使用者，請重新登入後再試</string>

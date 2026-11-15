@@ -795,6 +795,7 @@
     <string name="playlist_videos">Video List</string>
     <string name="error_load_failed">Load failed, please check your network and retry</string>
         <string name="error_action_verify">Verify now</string>
+    <string name="error_action_change_site">Change site URL</string>
     <string name="error_comment_parse_failed">Comment posted, but the page could not be parsed</string>
     <string name="error_reply_parse_failed">Reply posted, but the page could not be parsed</string>
     <string name="error_user_id_missing">Signed-in user could not be confirmed. Please sign in again</string>

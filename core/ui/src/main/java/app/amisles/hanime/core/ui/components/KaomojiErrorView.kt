@@ -3,6 +3,7 @@ package app.amisles.hanime.core.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -27,7 +28,9 @@ fun KaomojiErrorView(
     onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
-    onAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null,
+    secondaryActionLabel: String? = null,
+    onSecondaryAction: (() -> Unit)? = null
 ) {
     val displayMessage = message ?: stringResource(R.string.error_load_failed)
     Column(
@@ -48,19 +51,37 @@ fun KaomojiErrorView(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 20.dp)
         )
-        if (onRetry != null) {
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                )
+        if (onRetry != null || (secondaryActionLabel != null && onSecondaryAction != null)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(R.string.common_retry),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                if (onRetry != null) {
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(R.string.common_retry),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                if (secondaryActionLabel != null && onSecondaryAction != null) {
+                    Text(
+                        text = secondaryActionLabel,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .clickable { onSecondaryAction() }
+                            .padding(horizontal = 4.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
         if (actionLabel != null && onAction != null) {
