@@ -1207,4 +1207,13 @@
     <string name="onboarding_action_retry">重試</string>
     <string name="onboarding_privacy_hint">可在設定中開啟隱私模式，通知欄磁磚可一鍵隱藏內容</string>
     <string name="onboarding_done">開始使用</string>
+
+    <!-- Relative Time -->
+    <string name="time_just_now">剛剛</string>
+    <string name="time_minutes_ago">%1$d 分鐘前</string>
+    <string name="time_hours_ago">%1$d 小時前</string>
+    <string name="time_days_ago">%1$d 天前</string>
+    <string name="time_weeks_ago">%1$d 週前</string>
+    <string name="time_months_ago">%1$d 個月前</string>
+    <string name="time_years_ago">%1$d 年前</string>
 </resources>

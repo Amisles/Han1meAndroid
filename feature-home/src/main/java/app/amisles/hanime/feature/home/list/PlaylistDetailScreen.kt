@@ -46,6 +46,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
+import app.amisles.hanime.core.ui.components.localizedPublishTime
 import coil3.compose.AsyncImage
 
 private val ROW_THUMB_WIDTH = 120.dp
@@ -264,7 +265,7 @@ private fun PlaylistVideoItem(
             )
             if (video.publishTime.isNotEmpty()) {
                 Text(
-                    text = video.publishTime,
+                    text = localizedPublishTime(video.publishTime),
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)

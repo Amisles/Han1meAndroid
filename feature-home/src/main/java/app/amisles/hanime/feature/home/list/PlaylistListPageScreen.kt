@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.core.ui.R as CoreR
+import app.amisles.hanime.core.ui.components.localizedPublishTime
 import app.amisles.hanime.core.ui.theme.surfaceEdge
 
 private val ROW_THUMB_WIDTH = 130.dp
@@ -165,7 +166,7 @@ private fun PlaylistListItem(
                 )
                 if (playlist.publishTime.isNotEmpty()) {
                     Text(
-                        text = " · ${playlist.publishTime}",
+                        text = " · " + localizedPublishTime(playlist.publishTime),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

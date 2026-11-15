@@ -1242,4 +1242,13 @@
     <string name="onboarding_action_retry">重试</string>
     <string name="onboarding_privacy_hint">可在设置中开启隐私模式，通知栏磁贴可一键隐藏内容</string>
     <string name="onboarding_done">开始使用</string>
+
+    <!-- Relative Time -->
+    <string name="time_just_now">刚刚</string>
+    <string name="time_minutes_ago">%1$d 分钟前</string>
+    <string name="time_hours_ago">%1$d 小时前</string>
+    <string name="time_days_ago">%1$d 天前</string>
+    <string name="time_weeks_ago">%1$d 周前</string>
+    <string name="time_months_ago">%1$d 个月前</string>
+    <string name="time_years_ago">%1$d 年前</string>
 </resources>

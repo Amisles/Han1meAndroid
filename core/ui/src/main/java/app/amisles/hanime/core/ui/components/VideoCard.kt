@@ -122,7 +122,7 @@ fun VideoCard(
                     )
                     if (card.showPublishTime && video.publishTime.isNotEmpty()) {
                         Text(
-                            text = " • ${video.publishTime}",
+                            text = " • " + localizedPublishTime(video.publishTime),
                             fontSize = cfg.cardMetaFontSize,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -273,7 +273,7 @@ fun VideoListItem(
                 // 卡片行的「作者 • 时间」拼接格式不适用于这里（首页 / 搜索 / 订阅等列表共用本组件）
                 if (showTime) {
                     Text(
-                        text = video.publishTime,
+                        text = localizedPublishTime(video.publishTime),
                         fontSize = cfg.listMetaFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

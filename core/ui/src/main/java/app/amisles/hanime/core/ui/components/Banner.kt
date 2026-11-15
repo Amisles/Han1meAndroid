@@ -129,7 +129,8 @@ fun Banner(
             )
 
             Text(
-                text = "${bannerData.author} • ${bannerData.viewCount} • ${bannerData.publishTime}",
+                text = "${bannerData.author} • ${bannerData.viewCount} • " +
+                    localizedPublishTime(bannerData.publishTime),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 10.dp)

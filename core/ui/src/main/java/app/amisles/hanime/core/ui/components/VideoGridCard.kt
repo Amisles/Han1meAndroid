@@ -125,7 +125,7 @@ fun VideoGridCard(
                 // 与 VideoCard 一致：作者后接「• 时间」，同处一行，不新增行高
                 if (card.showPublishTime && video.publishTime.isNotEmpty()) {
                     Text(
-                        text = "• ${video.publishTime}",
+                        text = "• " + localizedPublishTime(video.publishTime),
                         fontSize = cfg.gridMetaFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

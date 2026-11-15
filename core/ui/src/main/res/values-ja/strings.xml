@@ -1207,4 +1207,13 @@
     <string name="onboarding_action_retry">再試行</string>
     <string name="onboarding_privacy_hint">設定でプライバシーモードを有効にできます。クイック設定タイルで即座に非表示にできます</string>
     <string name="onboarding_done">始める</string>
+
+    <!-- Relative Time -->
+    <string name="time_just_now">たった今</string>
+    <string name="time_minutes_ago">%1$d分前</string>
+    <string name="time_hours_ago">%1$d時間前</string>
+    <string name="time_days_ago">%1$d日前</string>
+    <string name="time_weeks_ago">%1$d週間前</string>
+    <string name="time_months_ago">%1$dか月前</string>
+    <string name="time_years_ago">%1$d年前</string>
 </resources>

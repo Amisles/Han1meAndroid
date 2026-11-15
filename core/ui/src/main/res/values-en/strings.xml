@@ -1207,4 +1207,13 @@
     <string name="onboarding_action_retry">Retry</string>
     <string name="onboarding_privacy_hint">You can enable privacy mode in Settings; the quick-settings tile hides content instantly</string>
     <string name="onboarding_done">Get started</string>
+
+    <!-- Relative Time -->
+    <string name="time_just_now">just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_hours_ago">%1$d hr ago</string>
+    <string name="time_days_ago">%1$d d ago</string>
+    <string name="time_weeks_ago">%1$d wk ago</string>
+    <string name="time_months_ago">%1$d mo ago</string>
+    <string name="time_years_ago">%1$d yr ago</string>
 </resources>
