@@ -68,6 +68,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -98,12 +99,6 @@ import kotlin.math.abs
 
 // ABR 升档前需连续稳定的 STATE_READY 次数
 private const val STABLE_TICKS_FOR_UPGRADE = 4
-
-// 视频缩放模式：SCALE_TO_FIT
-private const val VIDEO_SCALING_MODE_SCALE_TO_FIT = 1
-
-// 视频缩放模式：SCALE_TO_FIT_WITH_CROPPING（裁切填满，留给裁切模式）
-private const val VIDEO_SCALING_MODE_SCALE_TO_FIT_CROPPING = 4
 
 // 睡眠定时进入倒计时提示的窗口：最后这段时间才逐秒刷新
 private const val SLEEP_COUNTDOWN_WINDOW_MS = 30_000L
@@ -532,9 +527,9 @@ fun VideoPlayer(
     // 画面比例：适应与拉伸都要求解码器不裁切（拉伸由视图缩放实现），只有裁切模式才铺满容器
     LaunchedEffect(playerResizeMode) {
         exoPlayer.videoScalingMode = if (playerResizeMode == PlayerResizeMode.CROP) {
-            VIDEO_SCALING_MODE_SCALE_TO_FIT_CROPPING
+            C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
         } else {
-            VIDEO_SCALING_MODE_SCALE_TO_FIT
+            C.VIDEO_SCALING_MODE_SCALE_TO_FIT
         }
     }
 
