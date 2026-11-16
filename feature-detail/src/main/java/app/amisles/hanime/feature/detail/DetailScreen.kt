@@ -589,7 +589,7 @@ fun DetailScreen(
             }
         }
     } else {
-        ResponsiveContent {
+        ResponsiveContent(fullBleed = isPlayerFullscreen) {
             LazyColumn(
                 state = activeListState,
                 modifier = Modifier

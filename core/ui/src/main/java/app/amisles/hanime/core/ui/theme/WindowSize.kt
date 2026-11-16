@@ -97,14 +97,19 @@ fun ProvideWindowSizeInfo(content: @Composable () -> Unit) {
     }
 }
 
-/** 响应式内容容器：按 [WindowSizeInfo.contentMaxWidth] 限宽并水平居中，解决大屏内容被过度拉伸；Compact 下等价于整宽。 */
+/**
+ * 响应式内容容器：按 [WindowSizeInfo.contentMaxWidth] 限宽并水平居中，解决大屏内容被过度拉伸；Compact 下等价于整宽。
+ *
+ * @param fullBleed 为 true 时跳过 [WindowSizeInfo.contentMaxWidth] 限宽，内容铺满整块容器；全屏播放这类必须整屏显示的场景使用。
+ */
 @Composable
 fun ResponsiveContent(
     modifier: Modifier = Modifier,
+    fullBleed: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val sizeInfo = currentWindowSizeInfo()
-    val maxWidth = sizeInfo.contentMaxWidth
+    val maxWidth = if (fullBleed) Dp.Unspecified else sizeInfo.contentMaxWidth
     Box(
         modifier = modifier
             .fillMaxSize()
