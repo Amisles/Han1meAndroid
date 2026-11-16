@@ -923,7 +923,7 @@
     <string name="player_unlock">解锁</string>
     <string name="cd_lock_orientation">锁定屏幕方向</string>
     <string name="cd_unlock_orientation">恢复自动旋转</string>
-    <string name="player_unlock_hint">长按解锁</string>
+    <string name="player_unlock_hint">点按锁图标解锁</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->

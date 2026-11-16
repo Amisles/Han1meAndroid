@@ -889,7 +889,7 @@
     <string name="player_unlock">解鎖</string>
     <string name="cd_lock_orientation">鎖定螢幕方向</string>
     <string name="cd_unlock_orientation">恢復自動旋轉</string>
-    <string name="player_unlock_hint">長按解鎖</string>
+    <string name="player_unlock_hint">點按鎖圖示解鎖</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->

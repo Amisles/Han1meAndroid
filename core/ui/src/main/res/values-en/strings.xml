@@ -889,7 +889,7 @@
     <string name="player_unlock">Unlock</string>
     <string name="cd_lock_orientation">Lock screen orientation</string>
     <string name="cd_unlock_orientation">Resume auto-rotate</string>
-    <string name="player_unlock_hint">Long-press to unlock</string>
+    <string name="player_unlock_hint">Tap the lock icon to unlock</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->

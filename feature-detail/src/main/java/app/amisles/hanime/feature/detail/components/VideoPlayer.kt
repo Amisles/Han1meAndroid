@@ -717,6 +717,7 @@ fun VideoPlayer(
             showQualityMenu = false
             showMoreMenu = false
             setLongPressBoost(false)
+            gestureHint = context.getString(R.string.player_unlock_hint)
         }
     }
 
@@ -1063,8 +1064,10 @@ fun VideoPlayer(
 
         if (isLocked && isFullscreen && !isInPip) {
             PlayerLockBadge(
-                onHint = { gestureHint = context.getString(R.string.player_unlock_hint) },
                 onUnlock = {
+                    // 与其它控件一致：标记这一击落在控件上，外层手势才会跳过「切换控件显隐」，
+                    // 否则同一击会被当成空白点击，刚显示出来的控件立刻又被收回。
+                    markControlTap()
                     isLocked = false
                     isControlsVisible = true
                 },

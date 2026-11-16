@@ -76,8 +76,20 @@ internal fun Modifier.playerGestures(
                 var longPressJob: Job? = null
                 while (true) {
                     val event = awaitPointerEvent()
-                    // 锁定后画面不接受任何手势；仍要消费事件，否则下滑会滚动下层列表
+                    // 锁定后画面不接受任何手势；仍要消费事件，否则下滑会滚动下层列表。
+                    // 抬起事件同样落进本分支：不收尾长按加速定时器，它到期后会凭空把倍速改掉，
+                    // 而锁定后不再有抬起事件，没有任何机会恢复。
                     if (isLocked()) {
+                        if (event.changes.none { it.pressed }) {
+                            longPressJob?.cancel()
+                            longPressJob = null
+                            if (longPressFired) {
+                                longPressFired = false
+                                setLongPressBoost(false)
+                                gestureHintState.value = null
+                            }
+                            break
+                        }
                         event.changes.forEach { it.consume() }
                         continue
                     }
@@ -199,7 +211,7 @@ internal fun Modifier.playerGestures(
                             // 直到手指抬起 —— 见下方 dragMode 为 null 的分支。
                             longPressJob = gestureScope.launch {
                                 delay(LONG_PRESS_BOOST_DELAY_MS)
-                                if (!menuOpen() && !longPressFired && !isZoom && dragMode == null) {
+                                if (!isLocked() && !menuOpen() && !longPressFired && !isZoom && dragMode == null) {
                                     longPressFired = true
                                     setLongPressBoost(true)
                                     showSpeedMenuState.value = false
