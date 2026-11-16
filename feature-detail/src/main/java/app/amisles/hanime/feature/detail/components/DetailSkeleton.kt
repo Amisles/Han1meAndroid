@@ -119,7 +119,7 @@ internal fun DetailSkeletonScreen() {
     }
 }
 
-/** 平板分栏骨架屏：左侧 3/4 视频区占位（垂直居中），右侧 1/4 详情占位。 */
+/** 平板分栏骨架屏：左侧视频区占位（垂直居中），右侧详情占位。 */
 @Composable
 internal fun TabletDetailSkeleton() {
     val transition = rememberInfiniteTransition(label = "tablet-detail-skeleton-shimmer")
@@ -156,7 +156,7 @@ internal fun TabletDetailSkeleton() {
         }
         LazyColumn(
             modifier = Modifier
-                .weight(1f)
+                .weight(1.25f)
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.background)
         ) {

@@ -577,11 +577,11 @@ fun DetailScreen(
                     }
                 }
 
-                // 右侧：其余组件（可滚动）；大屏下比播放器列宽 10%，给简介与评论区留出可读行宽
+                // 右侧：其余组件（可滚动）
                 LazyColumn(
                     state = activeListState,
                     modifier = Modifier
-                        .weight(1.1f)
+                        .weight(1.25f)
                         .fillMaxHeight()
                 ) {
                     videoDetail?.let { detailRestItems(it, restState, restActions) }
