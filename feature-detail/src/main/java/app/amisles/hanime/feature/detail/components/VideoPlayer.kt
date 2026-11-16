@@ -10,6 +10,7 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.util.Rational
 import android.view.OrientationEventListener
+import android.view.Surface
 import android.view.WindowManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -675,10 +676,15 @@ fun VideoPlayer(
     }
 
     fun toggleOrientationPin() {
-        pinnedOrientation = if (pinnedOrientation == null) {
-            deviceTilt?.landscapeOrientation ?: ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
+        pinnedOrientation = if (pinnedOrientation != null) {
             null
+        } else {
+            val display = activity?.display
+            pinnedLandscapeOrientation(
+                tilt = deviceTilt,
+                displayRotation = display?.rotation ?: Surface.ROTATION_0,
+                naturalLandscape = display?.mode?.let { it.physicalWidth > it.physicalHeight } == true
+            )
         }
     }
 

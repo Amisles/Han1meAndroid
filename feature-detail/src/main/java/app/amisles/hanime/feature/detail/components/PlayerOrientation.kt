@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.detail.components
 
 import android.content.pm.ActivityInfo
+import android.view.Surface
 
 /** 设备物理朝向，用于全屏时锁到正确的横屏一侧（角度→方向常量勿写反，否则全屏持续上下颠倒）。 */
 internal enum class DeviceTilt(val landscapeOrientation: Int?) {
@@ -32,3 +33,18 @@ internal val Int.isLandscapeOrientation: Boolean
         || this == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
         || this == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         || this == ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+
+// 钉住必须是固定的一侧：物理朝向不可用时按显示旋转换算，回退成 SENSOR_LANDSCAPE 等于没钉住。
+internal fun pinnedLandscapeOrientation(
+    tilt: DeviceTilt?,
+    displayRotation: Int,
+    naturalLandscape: Boolean
+): Int = tilt?.landscapeOrientation ?: when {
+    naturalLandscape -> if (displayRotation == Surface.ROTATION_180) {
+        ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+    } else {
+        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    }
+    displayRotation == Surface.ROTATION_270 -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+    else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+}

@@ -35,6 +35,9 @@ internal fun PlayerFullscreenEffect(
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 val target = pinnedOrientation ?: deviceTilt?.landscapeOrientation
                 if (target != null) {
+                    // 平板这类大屏上系统会忽略方向锁；清单里的
+                    // PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY 对当前 targetSdk 同样失效，
+                    // 加它并不能让锁定生效。
                     try { activity.requestedOrientation = target } catch (_: Exception) {}
                 } else if (!activity.requestedOrientation.isLandscapeOrientation) {
                     // 朝向未知或设备竖持（不存在「正确的一侧」）：交给系统的横屏传感器选一个

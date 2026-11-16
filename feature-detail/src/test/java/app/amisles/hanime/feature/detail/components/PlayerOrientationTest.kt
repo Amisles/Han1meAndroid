@@ -1,6 +1,8 @@
 package app.amisles.hanime.feature.detail.components
 
+import android.view.Surface
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -53,6 +55,43 @@ class PlayerOrientationTest {
         assertEquals(TOP_TO_RIGHT_ORIENTATION, classifyDeviceTilt(90)?.landscapeOrientation)
         assertEquals(TOP_TO_LEFT_ORIENTATION, classifyDeviceTilt(270)?.landscapeOrientation)
     }
+
+    @Test
+    fun pinnedOrientationPrefersLandscapeTilt() {
+        assertEquals(TOP_TO_LEFT_ORIENTATION, pin(DeviceTilt.TOP_TO_LEFT, Surface.ROTATION_0))
+        assertEquals(TOP_TO_RIGHT_ORIENTATION, pin(DeviceTilt.TOP_TO_RIGHT, Surface.ROTATION_0))
+    }
+
+    @Test
+    fun pinnedOrientationFallsBackToDisplayRotation() {
+        assertEquals(TOP_TO_LEFT_ORIENTATION, pin(null, Surface.ROTATION_90))
+        assertEquals(TOP_TO_RIGHT_ORIENTATION, pin(null, Surface.ROTATION_270))
+        assertEquals(TOP_TO_LEFT_ORIENTATION, pin(DeviceTilt.PORTRAIT, Surface.ROTATION_90))
+        assertEquals(TOP_TO_RIGHT_ORIENTATION, pin(DeviceTilt.PORTRAIT, Surface.ROTATION_270))
+    }
+
+    @Test
+    fun pinnedOrientationHandlesNaturalLandscapeScreen() {
+        assertEquals(TOP_TO_LEFT_ORIENTATION, pin(null, Surface.ROTATION_0, naturalLandscape = true))
+        assertEquals(TOP_TO_RIGHT_ORIENTATION, pin(null, Surface.ROTATION_180, naturalLandscape = true))
+    }
+
+    @Test
+    fun pinnedOrientationNeverResolvesToSensorMode() {
+        val sensorLandscape = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        val rotations = listOf(Surface.ROTATION_0, Surface.ROTATION_90, Surface.ROTATION_180, Surface.ROTATION_270)
+        val tilts = listOf(null, DeviceTilt.PORTRAIT, DeviceTilt.TOP_TO_LEFT, DeviceTilt.TOP_TO_RIGHT)
+        rotations.forEach { rotation ->
+            tilts.forEach { tilt ->
+                listOf(true, false).forEach { natural ->
+                    assertNotEquals(sensorLandscape, pinnedLandscapeOrientation(tilt, rotation, natural))
+                }
+            }
+        }
+    }
+
+    private fun pin(tilt: DeviceTilt?, rotation: Int, naturalLandscape: Boolean = false): Int =
+        pinnedLandscapeOrientation(tilt, rotation, naturalLandscape)
 
     private companion object {
         val TOP_TO_RIGHT_ORIENTATION = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
