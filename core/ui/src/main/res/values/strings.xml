@@ -931,11 +931,10 @@
     <string name="player_related_collapse">收起推荐列表</string>
     <string name="player_layout_edit">编辑播放器</string>
     <string name="player_layout_title">播放器布局</string>
-    <string name="player_layout_done">完成</string>
+    <string name="player_layout_cancel">取消</string>
+    <string name="player_layout_done">完成编辑</string>
     <string name="player_layout_reset">恢复默认</string>
-    <string name="player_layout_section_controls">控件显示</string>
-    <string name="player_layout_section_menu">更多菜单</string>
-    <string name="player_layout_section_tap">点按区域</string>
+    <string name="player_layout_edit_hint">因视频属性不同，部分功能可能不会展示在屏幕上</string>
     <string name="player_layout_show_nav_buttons">返回与首页按钮</string>
     <string name="player_layout_show_center_play">画面中央播放按钮</string>
     <string name="player_layout_show_rewind">快退按钮</string>

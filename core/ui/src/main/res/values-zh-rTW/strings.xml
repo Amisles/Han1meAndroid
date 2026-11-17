@@ -897,11 +897,10 @@
     <string name="player_related_collapse">收合推薦列表</string>
     <string name="player_layout_edit">編輯播放器</string>
     <string name="player_layout_title">播放器版面</string>
-    <string name="player_layout_done">完成</string>
+    <string name="player_layout_cancel">取消</string>
+    <string name="player_layout_done">完成編輯</string>
     <string name="player_layout_reset">恢復預設</string>
-    <string name="player_layout_section_controls">控制項顯示</string>
-    <string name="player_layout_section_menu">更多選單</string>
-    <string name="player_layout_section_tap">點按區域</string>
+    <string name="player_layout_edit_hint">因影片屬性不同，部分功能可能不會顯示在螢幕上</string>
     <string name="player_layout_show_nav_buttons">返回與首頁按鈕</string>
     <string name="player_layout_show_center_play">畫面中央播放按鈕</string>
     <string name="player_layout_show_rewind">快退按鈕</string>

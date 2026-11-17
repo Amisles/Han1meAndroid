@@ -897,11 +897,10 @@
     <string name="player_related_collapse">おすすめを閉じる</string>
     <string name="player_layout_edit">プレイヤーを編集</string>
     <string name="player_layout_title">プレイヤーレイアウト</string>
-    <string name="player_layout_done">完了</string>
+    <string name="player_layout_cancel">キャンセル</string>
+    <string name="player_layout_done">編集を完了</string>
     <string name="player_layout_reset">デフォルトに戻す</string>
-    <string name="player_layout_section_controls">コントロール表示</string>
-    <string name="player_layout_section_menu">その他メニュー</string>
-    <string name="player_layout_section_tap">タップ領域</string>
+    <string name="player_layout_edit_hint">動画の仕様により一部の機能が表示されない場合があります</string>
     <string name="player_layout_show_nav_buttons">戻るとホームのボタン</string>
     <string name="player_layout_show_center_play">中央の再生ボタン</string>
     <string name="player_layout_show_rewind">巻き戻しボタン</string>

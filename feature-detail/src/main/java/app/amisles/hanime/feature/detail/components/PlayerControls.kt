@@ -74,6 +74,8 @@ internal fun BoxScope.PlayerControls(
     onPipChange: (Boolean) -> Unit,
     exoPlayer: ExoPlayer,
     layout: PlayerLayout,
+    editing: Boolean,
+    onToggleControl: (PlayerControlId) -> Unit,
     isFullscreen: Boolean,
     isInPip: Boolean,
     autoPlayNext: Boolean,
@@ -163,208 +165,279 @@ internal fun BoxScope.PlayerControls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        if (layout.showRewindButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onSeekBackward()
-                },
-                modifier = Modifier.size(30.dp)
+        if (editing || layout.showRewindButton) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showRewindButton,
+                label = stringResource(R.string.player_layout_show_rewind),
+                onToggle = { onToggleControl(PlayerControlId.REWIND) }
             ) {
-                Icon(
-                    imageVector = Icons.Default.FastRewind,
-                    contentDescription = stringResource(R.string.cd_rewind_15s),
-                    tint = Color.White,
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onSeekBackward()
+                    },
                     modifier = Modifier.size(30.dp)
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FastRewind,
+                        contentDescription = stringResource(R.string.cd_rewind_15s),
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
         }
 
-        if (layout.showPlayButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onTogglePlayPause()
-                },
-                modifier = Modifier.size(30.dp)
+        if (editing || layout.showPlayButton) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showPlayButton,
+                label = stringResource(R.string.player_layout_show_play),
+                onToggle = { onToggleControl(PlayerControlId.PLAY) }
             ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
-                    tint = Color.White,
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onTogglePlayPause()
+                    },
                     modifier = Modifier.size(30.dp)
-                )
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
         }
 
-        if (layout.showForwardButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onSeekForward()
-                },
-                modifier = Modifier.size(30.dp)
+        if (editing || layout.showForwardButton) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showForwardButton,
+                label = stringResource(R.string.player_layout_show_forward),
+                onToggle = { onToggleControl(PlayerControlId.FORWARD) }
             ) {
-                Icon(
-                    imageVector = Icons.Default.FastForward,
-                    contentDescription = stringResource(R.string.cd_forward_15s),
-                    tint = Color.White,
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onSeekForward()
+                    },
                     modifier = Modifier.size(30.dp)
-                )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FastForward,
+                        contentDescription = stringResource(R.string.cd_forward_15s),
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
         }
 
-        if (layout.showProgressBar) {
-            PlaybackProgressBar(
-                exoPlayer = exoPlayer,
-                onSeekInteract = { onMarkControlTap() },
-                onSeekPreview = onSeekPreview,
-                showTimeLabels = layout.showTimeLabels,
+        if (editing || layout.showProgressBar) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showProgressBar,
+                label = stringResource(R.string.player_layout_show_progress),
+                onToggle = { onToggleControl(PlayerControlId.PROGRESS) },
                 modifier = Modifier.weight(1f)
-            )
+            ) {
+                PlaybackProgressBar(
+                    exoPlayer = exoPlayer,
+                    onSeekInteract = { onMarkControlTap() },
+                    onSeekPreview = onSeekPreview,
+                    showTimeLabels = layout.showTimeLabels,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         } else {
             // 进度条隐藏后仍要让右侧控件贴边，否则整排按钮会挤在左侧
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        if (layout.showVolumeButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onToggleMute()
-                },
-                modifier = Modifier.size(30.dp)
+        if (editing || layout.showVolumeButton) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showVolumeButton,
+                label = stringResource(R.string.player_layout_show_volume),
+                onToggle = { onToggleControl(PlayerControlId.VOLUME) }
             ) {
-                Icon(
-                    imageVector = if (isMuted || volume == 0f) Icons.AutoMirrored.Filled.VolumeMute
-                    else if (volume < 0.5f) Icons.AutoMirrored.Filled.VolumeDown
-                    else Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = stringResource(R.string.cd_volume),
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-        }
-
-        if (layout.showSpeedButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onShowSpeedMenuChange(!showSpeedMenu)
-                    onShowQualityMenuChange(false)
-                    onShowMoreMenuChange(false)
-                },
-                modifier = Modifier
-                    .size(24.dp)
-                    .onGloballyPositioned { coords ->
-                        val newBounds = Rect(
-                            left = coords.positionInRoot().x,
-                            top = coords.positionInRoot().y,
-                            right = coords.positionInRoot().x + coords.size.width,
-                            bottom = coords.positionInRoot().y + coords.size.height
-                        )
-                        if (speedBtnBounds != newBounds) onSpeedBoundsChange(newBounds)
-                    }
-            ) {
-                Text(
-                    text = "${effectiveSpeed}x",
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        if (sortedSources.isNotEmpty() && layout.showQualityButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onShowQualityMenuChange(!showQualityMenu)
-                    onShowSpeedMenuChange(false)
-                    onShowMoreMenuChange(false)
-                },
-                modifier = Modifier
-                    .size(36.dp)
-                    .onGloballyPositioned { coords ->
-                        val newBounds = Rect(
-                            left = coords.positionInRoot().x,
-                            top = coords.positionInRoot().y,
-                            right = coords.positionInRoot().x + coords.size.width,
-                            bottom = coords.positionInRoot().y + coords.size.height
-                        )
-                        if (qualityBtnBounds != newBounds) onQualityBoundsChange(newBounds)
-                    }
-            ) {
-                Text(
-                    text = currentResolution.ifEmpty { stringResource(R.string.cd_quality) },
-                    color = Color.White,
-                    fontSize = 11.sp
-                )
-            }
-        }
-
-        if (isFullscreen) {
-            if (layout.showLockButton) {
                 IconButton(
                     onClick = {
                         onMarkControlTap()
-                        onLock()
+                        onToggleMute()
                     },
                     modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = stringResource(R.string.player_lock),
+                        imageVector = if (isMuted || volume == 0f) Icons.AutoMirrored.Filled.VolumeMute
+                        else if (volume < 0.5f) Icons.AutoMirrored.Filled.VolumeDown
+                        else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = stringResource(R.string.cd_volume),
                         tint = Color.White,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }
-            if (layout.showOrientationButton) {
+        }
+
+        if (editing || layout.showSpeedButton) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showSpeedButton,
+                label = stringResource(R.string.player_layout_show_speed),
+                onToggle = { onToggleControl(PlayerControlId.SPEED) }
+            ) {
                 IconButton(
                     onClick = {
                         onMarkControlTap()
-                        onToggleOrientationPin()
+                        onShowSpeedMenuChange(!showSpeedMenu)
+                        onShowQualityMenuChange(false)
+                        onShowMoreMenuChange(false)
                     },
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .onGloballyPositioned { coords ->
+                            val newBounds = Rect(
+                                left = coords.positionInRoot().x,
+                                top = coords.positionInRoot().y,
+                                right = coords.positionInRoot().x + coords.size.width,
+                                bottom = coords.positionInRoot().y + coords.size.height
+                            )
+                            if (speedBtnBounds != newBounds) onSpeedBoundsChange(newBounds)
+                        }
                 ) {
-                    Icon(
-                        imageVector = if (isOrientationPinned) {
-                            Icons.Default.ScreenLockRotation
-                        } else {
-                            Icons.Default.ScreenRotation
+                    Text(
+                        text = "${effectiveSpeed}x",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+
+        if (editing || (sortedSources.isNotEmpty() && layout.showQualityButton)) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showQualityButton,
+                label = stringResource(R.string.player_layout_show_quality),
+                onToggle = { onToggleControl(PlayerControlId.QUALITY) }
+            ) {
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onShowQualityMenuChange(!showQualityMenu)
+                        onShowSpeedMenuChange(false)
+                        onShowMoreMenuChange(false)
+                    },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .onGloballyPositioned { coords ->
+                            val newBounds = Rect(
+                                left = coords.positionInRoot().x,
+                                top = coords.positionInRoot().y,
+                                right = coords.positionInRoot().x + coords.size.width,
+                                bottom = coords.positionInRoot().y + coords.size.height
+                            )
+                            if (qualityBtnBounds != newBounds) onQualityBoundsChange(newBounds)
+                        }
+                ) {
+                    Text(
+                        text = currentResolution.ifEmpty { stringResource(R.string.cd_quality) },
+                        color = Color.White,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        if (isFullscreen || editing) {
+            if (editing || layout.showLockButton) {
+                PlayerEditFrame(
+                    editing = editing,
+                    checked = layout.showLockButton,
+                    label = stringResource(R.string.player_layout_show_lock),
+                    onToggle = { onToggleControl(PlayerControlId.LOCK) }
+                ) {
+                    IconButton(
+                        onClick = {
+                            onMarkControlTap()
+                            onLock()
                         },
-                        contentDescription = stringResource(
-                            if (isOrientationPinned) R.string.cd_unlock_orientation else R.string.cd_lock_orientation
-                        ),
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = stringResource(R.string.player_lock),
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+            }
+            if (editing || layout.showOrientationButton) {
+                PlayerEditFrame(
+                    editing = editing,
+                    checked = layout.showOrientationButton,
+                    label = stringResource(R.string.player_layout_show_orientation),
+                    onToggle = { onToggleControl(PlayerControlId.ORIENTATION) }
+                ) {
+                    IconButton(
+                        onClick = {
+                            onMarkControlTap()
+                            onToggleOrientationPin()
+                        },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isOrientationPinned) {
+                                Icons.Default.ScreenLockRotation
+                            } else {
+                                Icons.Default.ScreenRotation
+                            },
+                            contentDescription = stringResource(
+                                if (isOrientationPinned) R.string.cd_unlock_orientation else R.string.cd_lock_orientation
+                            ),
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (editing || layout.showFullscreenButton) {
+            PlayerEditFrame(
+                editing = editing,
+                checked = layout.showFullscreenButton,
+                label = stringResource(R.string.player_layout_show_fullscreen),
+                onToggle = { onToggleControl(PlayerControlId.FULLSCREEN) }
+            ) {
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onToggleFullscreen()
+                    },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        contentDescription = if (isFullscreen)
+                            stringResource(R.string.cd_exit_fullscreen)
+                        else
+                            stringResource(R.string.cd_fullscreen),
                         tint = Color.White,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }
         }
 
-        if (layout.showFullscreenButton) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onToggleFullscreen()
-                },
-                modifier = Modifier.size(30.dp)
-            ) {
-                Icon(
-                    imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                    contentDescription = if (isFullscreen)
-                        stringResource(R.string.cd_exit_fullscreen)
-                    else
-                        stringResource(R.string.cd_fullscreen),
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-        }
-
-        // 更多：点击弹出下拉框，内含连播与循环播放开关
-        Box {
+        // 编辑态不渲染「更多」：菜单里的开关在编辑面板里都有对应项，弹出菜单只会挡住选框
+        if (!editing) Box {
             IconButton(
                 onClick = {
                     onMarkControlTap()

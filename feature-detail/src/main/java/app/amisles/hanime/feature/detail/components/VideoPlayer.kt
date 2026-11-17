@@ -13,6 +13,7 @@ import android.util.Rational
 import android.view.OrientationEventListener
 import android.view.Surface
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -95,6 +96,7 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.VideoSource
+import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
@@ -253,7 +255,10 @@ fun VideoPlayer(
     var showQualityMenu by showQualityMenuState
     val showMoreMenuState = remember { mutableStateOf(false) }
     var showMoreMenu by showMoreMenuState
-    var showLayoutEditor by remember { mutableStateOf(false) }
+    // 编辑态一律渲染草稿：取消直接丢弃，完成才写回偏好
+    var layoutEditing by remember { mutableStateOf(false) }
+    var layoutDraft by remember { mutableStateOf(playerLayout) }
+    val activeLayout = if (layoutEditing) layoutDraft else playerLayout
     var showRelatedPanel by remember { mutableStateOf(false) }
     var isSwitchingQuality by remember { mutableStateOf(false) }
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
@@ -327,7 +332,7 @@ fun VideoPlayer(
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
     val menuOpenRef = rememberUpdatedState(
-        showSpeedMenu || showQualityMenu || showLayoutEditor || showRelatedPanel
+        showSpeedMenu || showQualityMenu || layoutEditing || showRelatedPanel
     )
     // 长按加速倍率同样要给手势闭包一个实时快照：播放器实例跨集复用，
     // 直接读参数会把首次组合时的倍率一直用下去
@@ -582,21 +587,23 @@ fun VideoPlayer(
         showSpeedMenu,
         showQualityMenu,
         showMoreMenu,
-        showLayoutEditor,
+        layoutEditing,
         showRelatedPanel,
         controlsActivityRef.value
     ) {
         if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu &&
-            !showMoreMenu && !showLayoutEditor && !showRelatedPanel
+            !showMoreMenu && !layoutEditing && !showRelatedPanel
         ) {
             delay(3500L)
             if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu &&
-                !showLayoutEditor && !showRelatedPanel
+                !layoutEditing && !showRelatedPanel
             ) {
                 isControlsVisible = false
             }
         }
     }
+
+    BackHandler(enabled = layoutEditing) { layoutEditing = false }
 
     LaunchedEffect(showRelatedPanel) {
         if (!showRelatedPanel) return@LaunchedEffect
@@ -858,13 +865,13 @@ fun VideoPlayer(
     }
 
     // 进度预览取帧：拖动期间保留上一帧，避免每换一个位置都先闪成无图再补图
-    LaunchedEffect(seekPreview, currentSourceUrl, playerLayout.showSeekPreview) {
+    LaunchedEffect(seekPreview, currentSourceUrl, activeLayout.showSeekPreview) {
         val target = seekPreview
         if (target == null) {
             previewFrame = null
             return@LaunchedEffect
         }
-        if (!playerLayout.showSeekPreview) {
+        if (!activeLayout.showSeekPreview) {
             previewFrame = null
             return@LaunchedEffect
         }
@@ -928,7 +935,7 @@ fun VideoPlayer(
                 setLongPressBoost = { setLongPressBoost(it) },
                 setLongPressBoostSpeed = { updateLongPressBoostSpeed(it) },
                 doubleTapSeekEnabled = { doubleTapSeekEnabled },
-                playerLayout = { playerLayout }
+                playerLayout = { activeLayout }
             )
     ) {
         // 拉伸模式先在视图层把「适应后」的画面按容器比例放大；裁切交给 PlayerView 自己的 zoom，
@@ -1088,7 +1095,7 @@ fun VideoPlayer(
         }
 
         // 控件隐藏时，底部显示一条仅用于展示进度的简易进度条
-        if (!isControlsVisible && !isInPip && !showRelatedPanel && playerLayout.showMiniProgress) {
+        if (!isControlsVisible && !isInPip && !showRelatedPanel && activeLayout.showMiniProgress) {
             MiniPlaybackProgress(
                 exoPlayer = exoPlayer,
                 modifier = Modifier
@@ -1098,8 +1105,8 @@ fun VideoPlayer(
         }
 
         // 双指放大后几乎无法精确捏回原比例，给一个只在缩放态出现的还原出口
-        if (playerLayout.showResetZoom && isControlsVisible && !isInPip && !showRelatedPanel &&
-            abs(videoZoom - 1f) > ZOOM_EPSILON
+        if (activeLayout.showResetZoom && isControlsVisible && !isInPip && !showRelatedPanel &&
+            !layoutEditing && abs(videoZoom - 1f) > ZOOM_EPSILON
         ) {
             ResetZoomButton(
                 onClick = {
@@ -1113,21 +1120,30 @@ fun VideoPlayer(
         }
 
         // ── 控件 UI（可见时）──────────────────────────────────────────────────
-        if (isControlsVisible && !isInPip && !showRelatedPanel) {
-            if (showNavButtons && playerLayout.showNavButtons) {
-                PlayerNavButtons(
-                    onBackClick = onBackClick,
-                    onHomeClick = onNavigateHome,
-                    tint = Color.White,
-                    onControlTap = { markControlTap() },
+        if ((isControlsVisible || layoutEditing) && !isInPip && !showRelatedPanel) {
+            if (layoutEditing || (showNavButtons && activeLayout.showNavButtons)) {
+                PlayerEditFrame(
+                    editing = layoutEditing,
+                    checked = activeLayout.showNavButtons,
+                    label = stringResource(R.string.player_layout_show_nav_buttons),
+                    onToggle = { layoutDraft = layoutDraft.withToggled(PlayerControlId.NAV_BUTTONS) },
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(start = 4.dp, top = 4.dp)
-                )
+                ) {
+                    PlayerNavButtons(
+                        onBackClick = onBackClick,
+                        onHomeClick = onNavigateHome,
+                        tint = Color.White,
+                        onControlTap = { markControlTap() }
+                    )
+                }
             }
             PlayerControls(
                 exoPlayer = exoPlayer,
-                layout = playerLayout,
+                layout = activeLayout,
+                editing = layoutEditing,
+                onToggleControl = { layoutDraft = layoutDraft.withToggled(it) },
                 isFullscreen = isFullscreen,
                 isInPip = isInPip,
                 autoPlayNext = autoPlayNext,
@@ -1177,13 +1193,19 @@ fun VideoPlayer(
                 onBuildPipParams = { buildPipParams() },
                 onEditLayout = {
                     markControlTap()
-                    showLayoutEditor = true
+                    layoutDraft = playerLayout
+                    layoutEditing = true
+                    isLocked = false
+                    isControlsVisible = true
+                    showRelatedPanel = false
+                    // 编辑面板需要横向空间与完整的控件带：竖屏播放器只有一条窄带，进去也没法点
+                    if (!isFullscreen) onFullscreenToggle(true)
                 }
             )
         }
 
         val previewPosition = seekPreview
-        if (previewPosition != null && !isInPip && !showRelatedPanel && playerLayout.showSeekPreview) {
+        if (previewPosition != null && !isInPip && !showRelatedPanel && activeLayout.showSeekPreview) {
             SeekPreviewOverlay(
                 frame = previewFrame,
                 text = "${formatTime(previewPosition)} / ${formatTime(exoPlayer.duration)}",
@@ -1206,8 +1228,8 @@ fun VideoPlayer(
             )
         }
 
-        if (isFullscreen && !isInPip && !showLayoutEditor && relatedVideos.isNotEmpty() &&
-            playerLayout.showRelatedList
+        if (isFullscreen && !isInPip && !layoutEditing && relatedVideos.isNotEmpty() &&
+            activeLayout.showRelatedList
         ) {
             if (showRelatedPanel) {
                 // 空白处点击收回：遮罩铺满整块画面，卡片与收起按钮自行消费点击
@@ -1230,6 +1252,35 @@ fun VideoPlayer(
                 video = relatedVideos.first(),
                 visible = !showRelatedPanel,
                 onClick = { showRelatedPanel = true }
+            )
+        }
+
+        if (layoutEditing) {
+            PlayerLayoutEditTitle(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 6.dp)
+            )
+            PlayerLayoutEditPanel(
+                layout = layoutDraft,
+                onToggle = { layoutDraft = layoutDraft.withToggled(it) },
+                onCycleTapAction = { layoutDraft = layoutDraft.withNextTapAction(it) },
+                onSideZonePercentChange = { layoutDraft = layoutDraft.copy(sideZonePercent = it) },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = (-12).dp)
+                    .padding(horizontal = 12.dp)
+            )
+            PlayerLayoutEditBar(
+                onReset = { layoutDraft = PlayerLayout.DEFAULT },
+                onCancel = { layoutEditing = false },
+                onFinish = {
+                    appPrefs.setPlayerLayout(layoutDraft)
+                    layoutEditing = false
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 56.dp)
             )
         }
 
@@ -1284,14 +1335,6 @@ fun VideoPlayer(
                 }
             }
         }
-    }
-
-    if (showLayoutEditor) {
-        PlayerLayoutEditor(
-            layout = playerLayout,
-            onLayoutChange = { appPrefs.setPlayerLayout(it) },
-            onDismiss = { showLayoutEditor = false }
-        )
     }
 }
 

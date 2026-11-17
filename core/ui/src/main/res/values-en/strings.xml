@@ -897,11 +897,10 @@
     <string name="player_related_collapse">Collapse recommendations</string>
     <string name="player_layout_edit">Edit player</string>
     <string name="player_layout_title">Player layout</string>
-    <string name="player_layout_done">Done</string>
+    <string name="player_layout_cancel">Cancel</string>
+    <string name="player_layout_done">Finish editing</string>
     <string name="player_layout_reset">Restore defaults</string>
-    <string name="player_layout_section_controls">Controls</string>
-    <string name="player_layout_section_menu">More menu</string>
-    <string name="player_layout_section_tap">Tap zones</string>
+    <string name="player_layout_edit_hint">Some controls may not appear depending on the video</string>
     <string name="player_layout_show_nav_buttons">Back and home buttons</string>
     <string name="player_layout_show_center_play">Center play button</string>
     <string name="player_layout_show_rewind">Rewind button</string>

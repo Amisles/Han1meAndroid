@@ -3,286 +3,433 @@ package app.amisles.hanime.feature.detail.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.LinearScale
+import androidx.compose.material.icons.outlined.PictureInPictureAlt
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.PlaylistPlay
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.ZoomOutMap
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.components.HanimeSwitch
+import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerTapAction
 
-/**
- * 播放器布局编辑器：控件显隐、更多菜单项、点按分区动作与分区宽度。
- *
- * 改动即时落盘（[onLayoutChange] 直接写偏好），播放器在对话框后面按新布局重绘，
- * 因此不需要「保存」这一步；关掉对话框就是当前生效的布局。
- */
+internal fun Modifier.playerEditDashedBorder(
+    color: Color = Color.White.copy(alpha = 0.55f),
+    cornerRadius: Dp = 5.dp,
+    strokeWidth: Dp = 1.dp
+): Modifier = this.drawBehind {
+    val stroke = Stroke(
+        width = strokeWidth.toPx(),
+        pathEffect = PathEffect.dashPathEffect(
+            intervals = floatArrayOf(4.dp.toPx(), 3.dp.toPx())
+        )
+    )
+    drawRoundRect(
+        color = color,
+        cornerRadius = CornerRadius(cornerRadius.toPx()),
+        style = stroke
+    )
+}
+
 @Composable
-internal fun PlayerLayoutEditor(
-    layout: PlayerLayout,
-    onLayoutChange: (PlayerLayout) -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 24.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 3.dp
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 20.dp, end = 8.dp, top = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_layout_title),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+internal fun PlayerEditBadge(checked: Boolean, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(13.dp)
+            .clip(CircleShape)
+            .background(if (checked) HanimePrimary else Color.Black.copy(alpha = 0.55f))
+            .then(
+                Modifier.drawBehind {
+                    drawCircle(
+                        color = Color.White.copy(alpha = if (checked) 0.9f else 0.55f),
+                        radius = size.minDimension / 2f - 0.5.dp.toPx(),
+                        style = Stroke(width = 1.dp.toPx())
                     )
-                    TextButton(onClick = { onLayoutChange(PlayerLayout.DEFAULT) }) {
-                        Text(text = stringResource(R.string.player_layout_reset), fontSize = 13.sp)
-                    }
-                    TextButton(onClick = onDismiss) {
-                        Text(text = stringResource(R.string.player_layout_done), fontSize = 13.sp)
-                    }
                 }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                ) {
-                    EditorSection(title = stringResource(R.string.player_layout_section_controls)) {
-                        EditorSwitch(stringResource(R.string.player_layout_show_nav_buttons), layout.showNavButtons) {
-                            onLayoutChange(layout.copy(showNavButtons = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_center_play), layout.showCenterPlayButton) {
-                            onLayoutChange(layout.copy(showCenterPlayButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_rewind), layout.showRewindButton) {
-                            onLayoutChange(layout.copy(showRewindButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_play), layout.showPlayButton) {
-                            onLayoutChange(layout.copy(showPlayButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_forward), layout.showForwardButton) {
-                            onLayoutChange(layout.copy(showForwardButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_progress), layout.showProgressBar) {
-                            onLayoutChange(layout.copy(showProgressBar = it))
-                        }
-                        EditorSwitch(
-                            label = stringResource(R.string.player_layout_show_time),
-                            checked = layout.showTimeLabels,
-                            enabled = layout.showProgressBar
-                        ) {
-                            onLayoutChange(layout.copy(showTimeLabels = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_mini_progress), layout.showMiniProgress) {
-                            onLayoutChange(layout.copy(showMiniProgress = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_seek_preview), layout.showSeekPreview) {
-                            onLayoutChange(layout.copy(showSeekPreview = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_volume), layout.showVolumeButton) {
-                            onLayoutChange(layout.copy(showVolumeButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_speed), layout.showSpeedButton) {
-                            onLayoutChange(layout.copy(showSpeedButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_quality), layout.showQualityButton) {
-                            onLayoutChange(layout.copy(showQualityButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_lock), layout.showLockButton) {
-                            onLayoutChange(layout.copy(showLockButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_orientation), layout.showOrientationButton) {
-                            onLayoutChange(layout.copy(showOrientationButton = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_fullscreen), layout.showFullscreenButton) {
-                            onLayoutChange(layout.copy(showFullscreenButton = it))
-                        }
-                    }
-
-                    EditorSection(title = stringResource(R.string.player_layout_section_menu)) {
-                        EditorSwitch(stringResource(R.string.player_layout_show_sleep_timer), layout.showSleepTimer) {
-                            onLayoutChange(layout.copy(showSleepTimer = it))
-                        }
-                        EditorSwitch(stringResource(R.string.player_layout_show_pip), layout.showPipEntry) {
-                            onLayoutChange(layout.copy(showPipEntry = it))
-                        }
-                    }
-
-                    EditorSection(title = stringResource(R.string.player_layout_section_tap)) {
-                        EditorAction(
-                            label = stringResource(R.string.player_layout_tap_left),
-                            selected = layout.tapLeft
-                        ) { onLayoutChange(layout.copy(tapLeft = it)) }
-                        EditorAction(
-                            label = stringResource(R.string.player_layout_tap_center),
-                            selected = layout.tapCenter
-                        ) { onLayoutChange(layout.copy(tapCenter = it)) }
-                        EditorAction(
-                            label = stringResource(R.string.player_layout_tap_right),
-                            selected = layout.tapRight
-                        ) { onLayoutChange(layout.copy(tapRight = it)) }
-
-                        Column(modifier = Modifier.padding(top = 10.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = stringResource(R.string.player_layout_side_zone),
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = stringResource(
-                                        R.string.player_layout_side_zone_value,
-                                        layout.sideZonePercent
-                                    ),
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                            Slider(
-                                value = layout.sideZonePercent.toFloat(),
-                                onValueChange = { value ->
-                                    onLayoutChange(
-                                        layout.copy(sideZonePercent = value.toInt())
-                                    )
-                                },
-                                valueRange = PlayerLayout.MIN_SIDE_ZONE_PERCENT.toFloat()..
-                                    PlayerLayout.MAX_SIDE_ZONE_PERCENT.toFloat(),
-                                steps = PlayerLayout.MAX_SIDE_ZONE_PERCENT -
-                                    PlayerLayout.MIN_SIDE_ZONE_PERCENT - 1
-                            )
-                        }
-                    }
-                }
-            }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(9.dp)
+            )
         }
     }
 }
 
+/**
+ * 编辑态控件外壳：虚线选框 + 右上角勾选角标，并盖一层透明点击层。
+ *
+ * 点击层必须压在控件上方：控件自身的 onClick 会先于外层拿到事件，不挡住就会出现
+ * 「点一下既执行了播放/暂停，又切换了显隐」。
+ */
 @Composable
-private fun EditorSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Text(
-        text = title,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-    )
-    Column(content = content)
-}
-
-@Composable
-private fun EditorSwitch(
-    label: String,
+internal fun PlayerEditFrame(
+    editing: Boolean,
     checked: Boolean,
-    enabled: Boolean = true,
-    onCheckedChange: (Boolean) -> Unit
+    label: String,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
+    if (!editing) {
+        // modifier 里带着调用方的对齐 / 权重，非编辑态也必须套上，否则控件会掉到父容器的左上角
+        Box(modifier = modifier) { content() }
+        return
+    }
+    Box(
+        modifier = modifier
+            .padding(1.dp)
+            .playerEditDashedBorder()
+            .padding(2.dp)
     ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.weight(1f)
+        content()
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClickLabel = label
+                ) { onToggle() }
         )
-        HanimeSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        PlayerEditBadge(
+            checked = checked,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 5.dp, y = (-5).dp)
+        )
     }
 }
 
 @Composable
-private fun EditorAction(
-    label: String,
-    selected: PlayerTapAction,
-    onSelect: (PlayerTapAction) -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurface
+internal fun PlayerLayoutEditTitle(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.Black.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Tune,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(14.dp)
         )
+        Text(
+            text = stringResource(R.string.player_layout_title),
+            color = Color.White,
+            fontSize = 12.sp
+        )
+    }
+}
+
+@Composable
+internal fun PlayerLayoutEditPanel(
+    layout: PlayerLayout,
+    onToggle: (PlayerControlId) -> Unit,
+    onCycleTapAction: (PlayerTapZoneSlot) -> Unit,
+    onSideZonePercentChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .widthIn(max = 660.dp)
+            .heightIn(max = 200.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.Black.copy(alpha = 0.62f))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        FEATURE_TILES.chunked(FEATURE_TILE_COLUMNS).forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = if (index == 0) 0.dp else 6.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.forEach { tile ->
+                    PlayerEditTile(
+                        icon = tile.icon,
+                        label = stringResource(tile.labelRes),
+                        checked = layout.isShown(tile.id)
+                    ) { onToggle(tile.id) }
+                }
+            }
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(top = 6.dp)
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PlayerTapAction.entries.forEach { action ->
-                val active = action == selected
-                Text(
-                    text = stringResource(tapActionLabel(action)),
-                    fontSize = 12.sp,
-                    color = if (active) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (active) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            }
-                        )
-                        .clickable { onSelect(action) }
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                )
+            PlayerTapZoneSlot.entries.forEach { slot ->
+                PlayerTapZoneTile(
+                    title = stringResource(slot.titleRes()),
+                    action = layout.tapActionOf(slot)
+                ) { onCycleTapAction(slot) }
             }
         }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.player_layout_side_zone),
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 10.sp
+            )
+            Slider(
+                value = layout.sideZonePercent.toFloat(),
+                onValueChange = { onSideZonePercentChange(it.toInt()) },
+                valueRange = PlayerLayout.MIN_SIDE_ZONE_PERCENT.toFloat()..
+                    PlayerLayout.MAX_SIDE_ZONE_PERCENT.toFloat(),
+                steps = PlayerLayout.MAX_SIDE_ZONE_PERCENT -
+                    PlayerLayout.MIN_SIDE_ZONE_PERCENT - 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+                    .height(24.dp)
+            )
+            Text(
+                text = stringResource(
+                    R.string.player_layout_side_zone_value,
+                    layout.sideZonePercent
+                ),
+                color = HanimePrimary,
+                fontSize = 10.sp
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.player_layout_edit_hint),
+            color = Color.White.copy(alpha = 0.45f),
+            fontSize = 9.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }
 
-private fun tapActionLabel(action: PlayerTapAction): Int = when (action) {
+@Composable
+internal fun PlayerLayoutEditBar(
+    onReset: () -> Unit,
+    onCancel: () -> Unit,
+    onFinish: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlayerEditAction(
+            text = stringResource(R.string.player_layout_reset),
+            primary = false,
+            onClick = onReset
+        )
+        PlayerEditAction(
+            text = stringResource(R.string.player_layout_cancel),
+            primary = false,
+            onClick = onCancel
+        )
+        PlayerEditAction(
+            text = stringResource(R.string.player_layout_done),
+            primary = true,
+            onClick = onFinish
+        )
+    }
+}
+
+@Composable
+private fun PlayerEditAction(text: String, primary: Boolean, onClick: () -> Unit) {
+    Text(
+        text = text,
+        color = if (primary) Color.White else Color.White.copy(alpha = 0.85f),
+        fontSize = 12.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (primary) HanimePrimary else Color.Black.copy(alpha = 0.6f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 7.dp)
+    )
+}
+
+@Composable
+private fun PlayerEditTile(
+    icon: ImageVector,
+    label: String,
+    checked: Boolean,
+    onClick: () -> Unit
+) {
+    Box {
+        Column(
+            modifier = Modifier
+                .width(96.dp)
+                .height(40.dp)
+                .playerEditDashedBorder()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 4.dp, vertical = 3.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                text = label,
+                color = Color.White,
+                fontSize = 9.sp,
+                lineHeight = 10.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        PlayerEditBadge(
+            checked = checked,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 4.dp, y = (-4).dp)
+        )
+    }
+}
+
+@Composable
+private fun PlayerTapZoneTile(
+    title: String,
+    action: PlayerTapAction,
+    onClick: () -> Unit
+) {
+    Box {
+        Column(
+            modifier = Modifier
+                .width(96.dp)
+                .height(40.dp)
+                .playerEditDashedBorder()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 4.dp, vertical = 3.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = stringResource(tapActionLabelRes(action)),
+                color = Color.White,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        PlayerEditBadge(
+            checked = action != PlayerTapAction.NONE,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 4.dp, y = (-4).dp)
+        )
+    }
+}
+
+private const val FEATURE_TILE_COLUMNS = 4
+
+private class FeatureTile(
+    val id: PlayerControlId,
+    val icon: ImageVector,
+    val labelRes: Int
+)
+
+private val FEATURE_TILES = listOf(
+    FeatureTile(
+        PlayerControlId.CENTER_PLAY,
+        Icons.Outlined.PlayCircleOutline,
+        R.string.player_layout_show_center_play
+    ),
+    FeatureTile(
+        PlayerControlId.RESET_ZOOM,
+        Icons.Outlined.ZoomOutMap,
+        R.string.player_layout_show_reset_zoom
+    ),
+    FeatureTile(PlayerControlId.TIME_LABELS, Icons.Outlined.Schedule, R.string.player_layout_show_time),
+    FeatureTile(PlayerControlId.SEEK_PREVIEW, Icons.Outlined.Image, R.string.player_layout_show_seek_preview),
+    FeatureTile(PlayerControlId.MINI_PROGRESS, Icons.Outlined.LinearScale, R.string.player_layout_show_mini_progress),
+    FeatureTile(PlayerControlId.SLEEP_TIMER, Icons.Outlined.Bedtime, R.string.player_layout_show_sleep_timer),
+    FeatureTile(PlayerControlId.PIP, Icons.Outlined.PictureInPictureAlt, R.string.player_layout_show_pip),
+    FeatureTile(PlayerControlId.RELATED_LIST, Icons.Outlined.PlaylistPlay, R.string.player_layout_show_related_list)
+)
+
+private fun PlayerTapZoneSlot.titleRes(): Int = when (this) {
+    PlayerTapZoneSlot.LEFT -> R.string.player_layout_tap_left
+    PlayerTapZoneSlot.CENTER -> R.string.player_layout_tap_center
+    PlayerTapZoneSlot.RIGHT -> R.string.player_layout_tap_right
+}
+
+private fun tapActionLabelRes(action: PlayerTapAction): Int = when (action) {
     PlayerTapAction.REWIND -> R.string.player_layout_action_rewind
     PlayerTapAction.PLAY_PAUSE -> R.string.player_layout_action_play
     PlayerTapAction.FORWARD -> R.string.player_layout_action_forward
