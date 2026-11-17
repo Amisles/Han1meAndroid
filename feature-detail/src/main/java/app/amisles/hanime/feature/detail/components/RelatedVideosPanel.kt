@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -49,10 +50,10 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.domain.model.HanimeVideo
 
-internal val RELATED_CARD_WIDTH = 190.dp
-internal val RELATED_CARD_HEIGHT = 107.dp
+internal val RELATED_CARD_WIDTH = 176.dp
+internal val RELATED_CARD_HEIGHT = 99.dp
 
-internal val RELATED_PEEK_WIDTH = (RELATED_CARD_WIDTH.value * 0.4f).dp
+internal val RELATED_PEEK_WIDTH = (RELATED_CARD_WIDTH.value * 0.28f).dp
 
 internal val RELATED_PANEL_HEIGHT = RELATED_CARD_HEIGHT + 46.dp
 
@@ -97,6 +98,7 @@ internal fun BoxScope.RelatedPullPane(
             modifier = Modifier
                 .height(RELATED_CARD_HEIGHT)
                 .width(RELATED_PEEK_WIDTH)
+                .clipToBounds()
         ) {
             Box(
                 modifier = Modifier
