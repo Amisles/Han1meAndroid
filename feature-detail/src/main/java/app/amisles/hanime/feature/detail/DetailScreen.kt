@@ -173,7 +173,6 @@ fun DetailScreen(
         ThumbnailPrefetcher.prefetch(context, urls)
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
-    // 当前视频 id 的可观察镜像：换片后播放器据此复位逐片状态
     val switchedVideoId by viewModel.videoSwitched.collectAsStateWithLifecycle()
     val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
@@ -420,6 +419,15 @@ fun DetailScreen(
         )
         if (result == SnackbarResult.ActionPerformed) {
             exoPlayer?.seekTo(0L)
+        }
+    }
+
+    // 换片失败时旧内容还在台面上：错误页只在「没有任何内容」时出现，这里补一条提示，
+    // 否则用户点了一条推荐后看起来什么都没发生
+    val switchFailure = error
+    LaunchedEffect(switchFailure, videoDetail) {
+        if (switchFailure != null && videoDetail != null) {
+            snackbarHostState.showSnackbar(message = switchFailure, duration = SnackbarDuration.Short)
         }
     }
 

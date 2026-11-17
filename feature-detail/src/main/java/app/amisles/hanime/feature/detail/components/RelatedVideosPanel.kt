@@ -61,7 +61,6 @@ private const val RELATED_DRAG_TRAVEL_RATIO = 0.45f
 
 internal const val RELATED_OPEN_THRESHOLD = 0.35f
 
-/** 收起态的拉出条：左边是可点的拉出按钮，右边只露出首条推荐缩略图的一部分。 */
 @Composable
 internal fun BoxScope.RelatedPullPane(
     video: HanimeVideo,
