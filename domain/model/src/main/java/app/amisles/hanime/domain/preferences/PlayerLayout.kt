@@ -38,6 +38,7 @@ data class PlayerLayout(
     val showProgressBar: Boolean = true,
     val showMiniProgress: Boolean = true,
     val showSeekPreview: Boolean = true,
+    val showResetZoom: Boolean = true,
     val showSleepTimer: Boolean = true,
     val showPipEntry: Boolean = true,
     val tapLeft: PlayerTapAction = PlayerTapAction.REWIND,

@@ -892,6 +892,7 @@
     <string name="player_unlock_hint">ロックアイコンをタップして解除</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
+    <string name="player_reset_zoom">表示を戻す</string>
     <string name="player_layout_edit">プレイヤーを編集</string>
     <string name="player_layout_title">プレイヤーレイアウト</string>
     <string name="player_layout_done">完了</string>
@@ -908,6 +909,7 @@
     <string name="player_layout_show_time">時間表示</string>
     <string name="player_layout_show_mini_progress">コントロール非表示時の下部バー</string>
     <string name="player_layout_show_seek_preview">シーク時のプレビュー画像</string>
+    <string name="player_layout_show_reset_zoom">ズーム解除ボタン</string>
     <string name="player_layout_show_volume">音量ボタン</string>
     <string name="player_layout_show_speed">再生速度ボタン</string>
     <string name="player_layout_show_quality">画質ボタン</string>

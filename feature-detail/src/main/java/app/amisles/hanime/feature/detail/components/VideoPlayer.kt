@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -112,6 +113,11 @@ private const val SLEEP_COUNTDOWN_WINDOW_MS = 30_000L
 
 // 进度预览的取帧去抖：拖动过程中位置每帧都在变，等手指停稳再取，避免把取帧请求排成一队
 private const val SEEK_PREVIEW_DEBOUNCE_MS = 80L
+
+private const val ZOOM_EPSILON = 0.01f
+
+// 缩放还原按钮相对画面中心的下移量：贴住中心会压住暂停按钮，再往下会撞到底部控件
+private val RESET_ZOOM_OFFSET = 46.dp
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 主组件：VideoPlayer
@@ -1066,6 +1072,21 @@ fun VideoPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
+            )
+        }
+
+        // 双指放大后几乎无法精确捏回原比例，给一个只在缩放态出现的还原出口
+        if (playerLayout.showResetZoom && isControlsVisible && !isInPip &&
+            abs(videoZoom - 1f) > ZOOM_EPSILON
+        ) {
+            ResetZoomButton(
+                onClick = {
+                    markControlTap()
+                    videoZoom = 1f
+                },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = RESET_ZOOM_OFFSET)
             )
         }
 

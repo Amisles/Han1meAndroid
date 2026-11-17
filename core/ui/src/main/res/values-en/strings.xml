@@ -892,6 +892,7 @@
     <string name="player_unlock_hint">Tap the lock icon to unlock</string>
     <string name="player_brightness">Brightness: %d%%</string>
     <string name="player_volume">Volume: %d%%</string>
+    <string name="player_reset_zoom">Reset view</string>
     <string name="player_layout_edit">Edit player</string>
     <string name="player_layout_title">Player layout</string>
     <string name="player_layout_done">Done</string>
@@ -908,6 +909,7 @@
     <string name="player_layout_show_time">Time labels</string>
     <string name="player_layout_show_mini_progress">Bottom bar while controls are hidden</string>
     <string name="player_layout_show_seek_preview">Frame preview while dragging</string>
+    <string name="player_layout_show_reset_zoom">Reset-zoom button</string>
     <string name="player_layout_show_volume">Volume button</string>
     <string name="player_layout_show_speed">Speed button</string>
     <string name="player_layout_show_quality">Quality button</string>

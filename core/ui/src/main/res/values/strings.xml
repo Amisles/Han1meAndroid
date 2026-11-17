@@ -926,6 +926,7 @@
     <string name="player_unlock_hint">点按锁图标解锁</string>
     <string name="player_brightness">亮度: %d%%</string>
     <string name="player_volume">音量: %d%%</string>
+    <string name="player_reset_zoom">还原画面</string>
     <string name="player_layout_edit">编辑播放器</string>
     <string name="player_layout_title">播放器布局</string>
     <string name="player_layout_done">完成</string>
@@ -942,6 +943,7 @@
     <string name="player_layout_show_time">时间文本</string>
     <string name="player_layout_show_mini_progress">收起控件时的底部进度条</string>
     <string name="player_layout_show_seek_preview">拖拽进度时的画面预览</string>
+    <string name="player_layout_show_reset_zoom">缩放还原按钮</string>
     <string name="player_layout_show_volume">音量按钮</string>
     <string name="player_layout_show_speed">倍速按钮</string>
     <string name="player_layout_show_quality">画质按钮</string>
