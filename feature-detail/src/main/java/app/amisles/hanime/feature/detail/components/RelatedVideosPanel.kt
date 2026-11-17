@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -54,10 +55,9 @@ import app.amisles.hanime.domain.model.HanimeVideo
 internal val RELATED_CARD_WIDTH = 168.dp
 internal val RELATED_CARD_HEIGHT = 95.dp
 
-// 收起时只露出缩略图宽度的五分之一，既是入口也保留画面主体
 internal val RELATED_PEEK_WIDTH = (RELATED_CARD_WIDTH.value / 5f).dp
 
-internal val RELATED_PANEL_HEIGHT = RELATED_CARD_HEIGHT + 40.dp
+internal val RELATED_PANEL_HEIGHT = RELATED_CARD_HEIGHT + 46.dp
 
 @Composable
 internal fun BoxScope.RelatedPeek(
@@ -82,7 +82,7 @@ internal fun BoxScope.RelatedPeek(
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(RELATED_CARD_WIDTH)
+                    .requiredWidth(RELATED_CARD_WIDTH)
             ) {
                 RelatedThumbnail(video = video, modifier = Modifier.fillMaxSize())
             }
@@ -159,7 +159,7 @@ internal fun BoxScope.RelatedPanel(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(items = videos, key = { it.videoUrl.ifEmpty { it.id } }) { video ->
+                    items(items = videos) { video ->
                         RelatedVideoCard(video = video, onClick = { onVideoClick(video) })
                     }
                 }

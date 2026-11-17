@@ -3,7 +3,6 @@ package app.amisles.hanime.feature.detail.components
 import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerTapAction
 
-/** 可在播放器内直接编辑的控件与功能项。 */
 internal enum class PlayerControlId {
     NAV_BUTTONS,
     CENTER_PLAY,
@@ -70,7 +69,6 @@ internal fun PlayerLayout.withToggled(id: PlayerControlId): PlayerLayout = when 
     PlayerControlId.RELATED_LIST -> copy(showRelatedList = !showRelatedList)
 }
 
-/** 播放器横向三段的可编辑点按槽位。 */
 internal enum class PlayerTapZoneSlot { LEFT, CENTER, RIGHT }
 
 internal fun PlayerLayout.tapActionOf(slot: PlayerTapZoneSlot): PlayerTapAction = when (slot) {

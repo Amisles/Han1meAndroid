@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.preferences.PlayerLayout
@@ -183,7 +184,7 @@ internal fun PlayerLayoutEditPanel(
     Column(
         modifier = modifier
             .widthIn(max = 660.dp)
-            .heightIn(max = 200.dp)
+            .heightIn(max = 210.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Color.Black.copy(alpha = 0.62f))
             .verticalScroll(rememberScrollState())
@@ -236,7 +237,7 @@ internal fun PlayerLayoutEditPanel(
             )
             Slider(
                 value = layout.sideZonePercent.toFloat(),
-                onValueChange = { onSideZonePercentChange(it.toInt()) },
+                onValueChange = { onSideZonePercentChange(it.roundToInt()) },
                 valueRange = PlayerLayout.MIN_SIDE_ZONE_PERCENT.toFloat()..
                     PlayerLayout.MAX_SIDE_ZONE_PERCENT.toFloat(),
                 steps = PlayerLayout.MAX_SIDE_ZONE_PERCENT -
@@ -321,7 +322,7 @@ private fun PlayerEditTile(
         Column(
             modifier = Modifier
                 .width(96.dp)
-                .height(40.dp)
+                .height(44.dp)
                 .playerEditDashedBorder()
                 .clickable(onClick = onClick)
                 .padding(horizontal = 4.dp, vertical = 3.dp),
@@ -364,7 +365,7 @@ private fun PlayerTapZoneTile(
         Column(
             modifier = Modifier
                 .width(96.dp)
-                .height(40.dp)
+                .height(44.dp)
                 .playerEditDashedBorder()
                 .clickable(onClick = onClick)
                 .padding(horizontal = 4.dp, vertical = 3.dp),
