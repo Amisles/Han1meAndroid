@@ -141,9 +141,6 @@ internal enum class TapZone { LEFT, CENTER, RIGHT }
  *
  * 左右对称、中间吃掉剩余宽度，因此 [sidePercent] 必须被约束在
  * [PlayerLayout.MAX_SIDE_ZONE_PERCENT] 以内，否则右侧分区会压到左侧上去。
- *
- * @param x 触点 x（播放器局部坐标）
- * @param playerWidth 播放器宽度；<= 0 时无法分区，按中间处理
  */
 internal fun tapZoneOf(x: Float, playerWidth: Float, sidePercent: Int): TapZone {
     if (playerWidth <= 0f) return TapZone.CENTER

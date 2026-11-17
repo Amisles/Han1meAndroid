@@ -161,9 +161,10 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    // 退出全屏时恢复的屏幕方向：不能回落竖屏，否则平板退出全屏后会被钉在竖屏且不再跟随旋转
+    // 退出全屏时恢复的屏幕方向：播放器自己下发的方向锁（全屏锁横屏 / 页面锁竖屏）不能当快照，
+    // 否则平板这类设备离场后会被钉在竖屏且不再跟随旋转
     val initialOrientation = remember(activity) {
-        activity?.requestedOrientation?.takeUnless { it.isLandscapeOrientation }
+        activity?.requestedOrientation?.takeUnless { it.isPlayerOrientationLock }
             ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
     val initialBarsBehavior = remember(activity) {
@@ -752,6 +753,8 @@ fun VideoPlayer(
             showSpeedMenu = false
             showQualityMenu = false
             showMoreMenu = false
+            // 手势中途上锁时不再有抬起事件，不清理会让预览图一直挂在画面中央
+            seekPreview = null
             setLongPressBoost(false)
             gestureHint = context.getString(R.string.player_unlock_hint)
         }
@@ -1137,7 +1140,6 @@ fun VideoPlayer(
             )
         }
 
-        // 画面上方叠预览图、下方叠时间：拖动手势与拖动进度条都落到这一处
         val previewPosition = seekPreview
         if (previewPosition != null && !isInPip && playerLayout.showSeekPreview) {
             SeekPreviewOverlay(

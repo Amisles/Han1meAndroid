@@ -37,6 +37,7 @@ internal object PlayerFramePreview {
     private const val BUCKET_MS = 1_000L
     private const val CACHE_SIZE = 16
     private const val MAX_WIDTH_PX = 320
+    private const val HLS_SUFFIX = ".m3u8"
 
     private val cache = object : LinkedHashMap<Long, Bitmap>(CACHE_SIZE, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Bitmap>?): Boolean =
@@ -50,6 +51,8 @@ internal object PlayerFramePreview {
     @Synchronized
     fun frameAt(source: String, positionMs: Long, referer: String): Bitmap? {
         if (source.isBlank() || positionMs < 0L) return null
+        // HLS 清单不是可直接解码的媒体文件：retriever 只会在超时后返回 null，先拦掉省一次白等
+        if (source.contains(HLS_SUFFIX, ignoreCase = true)) return null
         if (source == failedSource) return null
         val bucket = positionMs / BUCKET_MS
         cache[bucket]?.let { return it }
@@ -123,7 +126,6 @@ internal object PlayerFramePreview {
     }
 }
 
-/** 目标位置的画面预览：画面在上、时间在下，与拖动手势的中心提示同一位置。 */
 @Composable
 internal fun SeekPreviewOverlay(
     frame: ImageBitmap?,

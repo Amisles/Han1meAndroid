@@ -259,7 +259,6 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     private val _playerLayoutFlow = MutableStateFlow(PlayerLayout.DEFAULT)
     override val playerLayoutFlow: StateFlow<PlayerLayout> = _playerLayoutFlow.asStateFlow()
 
-
     // 下载存储路径：空串表示由 resolveDownloadDir() 解析默认目录（公共 Download/Hanime）
     private val _downloadStoragePathFlow = MutableStateFlow("")
     override val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
