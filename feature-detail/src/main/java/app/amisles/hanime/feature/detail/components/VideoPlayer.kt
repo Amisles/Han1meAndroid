@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -260,7 +261,11 @@ fun VideoPlayer(
     // 编辑态一律渲染草稿：取消直接丢弃，完成才写回偏好
     var layoutEditing by remember { mutableStateOf(false) }
     var layoutDraft by remember { mutableStateOf(playerLayout) }
-    val activeLayout = if (layoutEditing) layoutDraft else playerLayout
+    // 必须是 State：手势的 pointerInput 只保留首次组合的 lambda，普通 val 会被固化成首帧布局，
+    // 表现为「区域怎么改都还是默认三等分」
+    val activeLayout by remember {
+        derivedStateOf { if (layoutEditing) layoutDraft else playerLayout }
+    }
     // 推荐面板用 0..1 的进度驱动：手指左滑时跟随手指，点击/松手时由动画补齐
     var relatedPanelOpen by remember { mutableStateOf(false) }
     var relatedDragProgress by remember { mutableStateOf<Float?>(null) }
@@ -953,7 +958,7 @@ fun VideoPlayer(
     isControlsVisible = { isControlsVisible },
     onControlsVisibleChange = { isControlsVisible = it },
     controlsActivityRef = controlsActivityRef,
-    longPressBoostSpeed = { longPressBoostSpeed },
+    longPressBoostSpeed = { longPressBoostSpeedRef.value },
     volumeState = volumeState,
                 isInPip = { isInPip },
                 playerWidth = { playerWidth },
