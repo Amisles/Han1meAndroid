@@ -39,6 +39,8 @@ data class BackupSettings(
     val downloadRateLimit: Int? = null,
     val subscriptionReminder: Boolean? = null,
     val downloadStoragePath: String? = null,
+    /** 播放器布局原文，由调用方按 PlayerLayoutCodec 解析。 */
+    val playerLayout: String? = null,
     val searchLayoutMode: String? = null
 )
 

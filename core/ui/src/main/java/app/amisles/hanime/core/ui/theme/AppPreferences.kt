@@ -6,6 +6,7 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutModes
+import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
@@ -46,6 +47,7 @@ interface AppPreferences {
     val autoRotateFullscreenFlow: StateFlow<Boolean>
     val orientationPinnedFlow: StateFlow<Boolean>
     val playerResizeModeFlow: StateFlow<PlayerResizeMode>
+    val playerLayoutFlow: StateFlow<PlayerLayout>
     val baseUrlFlow: StateFlow<String>
     val privacyModeFlow: StateFlow<Boolean>
     val subscriptionsHideWatchedFlow: StateFlow<Boolean>
@@ -73,6 +75,7 @@ interface AppPreferences {
     fun setAutoQuality(enabled: Boolean)
     fun setOrientationPinned(pinned: Boolean)
     fun setPlayerResizeMode(mode: PlayerResizeMode)
+    fun setPlayerLayout(layout: PlayerLayout)
     fun setSubscriptionsHideWatched(enabled: Boolean)
 
     /**

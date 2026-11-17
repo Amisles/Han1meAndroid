@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.detail.components
 
+import app.amisles.hanime.domain.preferences.PlayerLayout
+import app.amisles.hanime.domain.preferences.PlayerTapAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -307,5 +309,39 @@ class PlayerGestureMathTest {
     fun `left-right wiggle measures net displacement from down point`() {
         // 以按下点为基准量净位移：先左后右回到原处，漂移互相抵消
         assertEquals(true, math.isSlightSeekDrift(currentX = 100f, downX = 100f))
+    }
+
+    // ── 点按分区 ────────────────────────────────────────────────────────────
+
+    @Test
+    fun `default layout maps thirds to rewind play and forward`() {
+        val layout = PlayerLayout.DEFAULT
+        assertEquals(PlayerTapAction.REWIND, layout.tapActionAt(x = 100f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.PLAY_PAUSE, layout.tapActionAt(x = 450f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.FORWARD, layout.tapActionAt(x = 800f, playerWidth = 900f))
+    }
+
+    @Test
+    fun `narrow side zones widen the center zone`() {
+        val layout = PlayerLayout.DEFAULT.copy(sideZonePercent = 15)
+        assertEquals(PlayerTapAction.REWIND, layout.tapActionAt(x = 100f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.PLAY_PAUSE, layout.tapActionAt(x = 200f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.PLAY_PAUSE, layout.tapActionAt(x = 700f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.FORWARD, layout.tapActionAt(x = 800f, playerWidth = 900f))
+    }
+
+    @Test
+    fun `zone can be reassigned or turned off`() {
+        val swapped = PlayerLayout.DEFAULT.copy(
+            tapLeft = PlayerTapAction.FORWARD,
+            tapCenter = PlayerTapAction.NONE
+        )
+        assertEquals(PlayerTapAction.FORWARD, swapped.tapActionAt(x = 100f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.NONE, swapped.tapActionAt(x = 450f, playerWidth = 900f))
+    }
+
+    @Test
+    fun `unknown player width falls back to center zone`() {
+        assertEquals(TapZone.CENTER, tapZoneOf(x = 10f, playerWidth = 0f, sidePercent = 33))
     }
 }

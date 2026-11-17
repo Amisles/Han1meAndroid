@@ -194,6 +194,7 @@ fun VideoPlayer(
     val orientationPinned by appPrefs.orientationPinnedFlow.collectAsStateWithLifecycle()
 
     val playerResizeMode by appPrefs.playerResizeModeFlow.collectAsStateWithLifecycle()
+    val playerLayout by appPrefs.playerLayoutFlow.collectAsStateWithLifecycle()
     // 睡眠定时与播放锁都是会话级状态：不落盘，避免下次打开莫名停住或锁住
     var sleepTimer by remember { mutableStateOf(PlayerSleepTimer()) }
     var isLocked by rememberSaveable { mutableStateOf(false) }
@@ -241,6 +242,7 @@ fun VideoPlayer(
     var showQualityMenu by showQualityMenuState
     val showMoreMenuState = remember { mutableStateOf(false) }
     var showMoreMenu by showMoreMenuState
+    var showLayoutEditor by remember { mutableStateOf(false) }
     var isSwitchingQuality by remember { mutableStateOf(false) }
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
@@ -312,7 +314,7 @@ fun VideoPlayer(
     val sleepAfterEpisodeRef = rememberUpdatedState(sleepTimer.afterEpisode)
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
-    val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu)
+    val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu || showLayoutEditor)
     // 长按加速倍率同样要给手势闭包一个实时快照：播放器实例跨集复用，
     // 直接读参数会把首次组合时的倍率一直用下去
     val longPressBoostSpeedRef = rememberUpdatedState(longPressBoostSpeed)
@@ -566,11 +568,14 @@ fun VideoPlayer(
         showSpeedMenu,
         showQualityMenu,
         showMoreMenu,
+        showLayoutEditor,
         controlsActivityRef.value
     ) {
-        if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu && !showMoreMenu) {
+        if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu &&
+            !showMoreMenu && !showLayoutEditor
+        ) {
             delay(3500L)
-            if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu) {
+            if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu && !showLayoutEditor) {
                 isControlsVisible = false
             }
         }
@@ -823,9 +828,13 @@ fun VideoPlayer(
     }
 
     // 进度预览取帧：拖动期间保留上一帧，避免每换一个位置都先闪成无图再补图
-    LaunchedEffect(seekPreview, currentSourceUrl) {
+    LaunchedEffect(seekPreview, currentSourceUrl, playerLayout.showSeekPreview) {
         val target = seekPreview
         if (target == null) {
+            previewFrame = null
+            return@LaunchedEffect
+        }
+        if (!playerLayout.showSeekPreview) {
             previewFrame = null
             return@LaunchedEffect
         }
@@ -888,7 +897,8 @@ fun VideoPlayer(
                 setBrightness = { setBrightness(it) },
                 setLongPressBoost = { setLongPressBoost(it) },
                 setLongPressBoostSpeed = { updateLongPressBoostSpeed(it) },
-                doubleTapSeekEnabled = { doubleTapSeekEnabled }
+                doubleTapSeekEnabled = { doubleTapSeekEnabled },
+                playerLayout = { playerLayout }
             )
     ) {
         // 拉伸模式先在视图层把「适应后」的画面按容器比例放大；裁切交给 PlayerView 自己的 zoom，
@@ -1048,7 +1058,7 @@ fun VideoPlayer(
         }
 
         // 控件隐藏时，底部显示一条仅用于展示进度的简易进度条
-        if (!isControlsVisible && !isInPip) {
+        if (!isControlsVisible && !isInPip && playerLayout.showMiniProgress) {
             MiniPlaybackProgress(
                 exoPlayer = exoPlayer,
                 modifier = Modifier
@@ -1059,7 +1069,7 @@ fun VideoPlayer(
 
         // ── 控件 UI（可见时）──────────────────────────────────────────────────
         if (isControlsVisible && !isInPip) {
-            if (showNavButtons) {
+            if (showNavButtons && playerLayout.showNavButtons) {
                 PlayerNavButtons(
                     onBackClick = onBackClick,
                     onHomeClick = onNavigateHome,
@@ -1072,6 +1082,7 @@ fun VideoPlayer(
             }
             PlayerControls(
                 exoPlayer = exoPlayer,
+                layout = playerLayout,
                 isFullscreen = isFullscreen,
                 isInPip = isInPip,
                 autoPlayNext = autoPlayNext,
@@ -1118,13 +1129,17 @@ fun VideoPlayer(
                 onToggleOrientationPin = { toggleOrientationPin() },
                 onSleepTimerChange = { sleepTimer = it },
                 onResizeModeChange = { appPrefs.setPlayerResizeMode(it) },
-                onBuildPipParams = { buildPipParams() }
+                onBuildPipParams = { buildPipParams() },
+                onEditLayout = {
+                    markControlTap()
+                    showLayoutEditor = true
+                }
             )
         }
 
         // 画面上方叠预览图、下方叠时间：拖动手势与拖动进度条都落到这一处
         val previewPosition = seekPreview
-        if (previewPosition != null && !isInPip) {
+        if (previewPosition != null && !isInPip && playerLayout.showSeekPreview) {
             SeekPreviewOverlay(
                 frame = previewFrame,
                 text = "${formatTime(previewPosition)} / ${formatTime(exoPlayer.duration)}",
@@ -1198,6 +1213,14 @@ fun VideoPlayer(
                 }
             }
         }
+    }
+
+    if (showLayoutEditor) {
+        PlayerLayoutEditor(
+            layout = playerLayout,
+            onLayoutChange = { appPrefs.setPlayerLayout(it) },
+            onDismiss = { showLayoutEditor = false }
+        )
     }
 }
 

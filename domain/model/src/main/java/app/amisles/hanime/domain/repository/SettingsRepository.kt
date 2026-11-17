@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutModes
+import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -112,6 +113,11 @@ interface SettingsRepository {
     val playerResizeMode: PlayerResizeMode
     val playerResizeModeFlow: StateFlow<PlayerResizeMode>
     fun setPlayerResizeMode(mode: PlayerResizeMode)
+
+    /** 播放器布局自定义：各控件显隐、点击分区动作与分区宽度。 */
+    val playerLayout: PlayerLayout
+    val playerLayoutFlow: StateFlow<PlayerLayout>
+    fun setPlayerLayout(layout: PlayerLayout)
 
     // ── 下载 ────────────────────────────────────────────────────────────────
     val maxDownloadConcurrent: Int

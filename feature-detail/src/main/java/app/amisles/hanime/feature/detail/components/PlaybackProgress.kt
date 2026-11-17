@@ -42,6 +42,7 @@ internal val MINI_PROGRESS_HEIGHT = 3.dp
  *
  * @param onSeekInteract 用户点击 / 拖动时回调，外层据此判定触摸落在控件上、不切换控件显隐。
  * @param onSeekPreview 拖动中的目标位置（毫秒），结束时回调 null；外层据此展示画面预览。
+ * @param showTimeLabels 是否绘制两端的当前时间与总时长。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +50,8 @@ internal fun PlaybackProgressBar(
     exoPlayer: ExoPlayer,
     modifier: Modifier = Modifier,
     onSeekInteract: () -> Unit = {},
-    onSeekPreview: (Long?) -> Unit = {}
+    onSeekPreview: (Long?) -> Unit = {},
+    showTimeLabels: Boolean = true
 ) {
     var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var duration by remember { mutableLongStateOf(exoPlayer.duration) }
@@ -73,15 +75,17 @@ internal fun PlaybackProgressBar(
             .fillMaxWidth()
             .height(30.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopStart)
-                .offset(y = (-14).dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = formatTime(currentPosition), color = Color.White, fontSize = 11.sp)
-            Text(text = formatTime(duration), color = Color.White, fontSize = 11.sp)
+        if (showTimeLabels) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+                    .offset(y = (-14).dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = formatTime(currentPosition), color = Color.White, fontSize = 11.sp)
+                Text(text = formatTime(duration), color = Color.White, fontSize = 11.sp)
+            }
         }
         Slider(
             value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,

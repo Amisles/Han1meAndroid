@@ -9,6 +9,8 @@ import androidx.compose.ui.unit.Density
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.CoroutineScope
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.domain.preferences.PlayerLayout
+import app.amisles.hanime.domain.preferences.PlayerTapAction
 import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -50,7 +52,8 @@ internal fun Modifier.playerGestures(
     setBrightness: (Float) -> Unit,
     setLongPressBoost: (Boolean) -> Unit,
     setLongPressBoostSpeed: (Float) -> Unit,
-    doubleTapSeekEnabled: () -> Boolean
+    doubleTapSeekEnabled: () -> Boolean,
+    playerLayout: () -> PlayerLayout
 ): Modifier = this
     .pointerInput(Unit) {
         // 阈值按屏幕密度换算成像素：固定 8px 在高密度屏上只有约 3dp，远低于系统 touch slop，
@@ -119,23 +122,19 @@ internal fun Modifier.playerGestures(
                                     // 第二击落在控件上：控件已自行处理，手势不再叠加分区动作
                                     isControlTapState.value = false
                                 } else if (!isInPip()) {
-                                    // 双击分区：播放器三等分，左快退 / 右快进 / 中间播放暂停
-                                    val width = playerWidth()
-                                    when {
-                                        downX < width / 3f -> {
-                                            // 关闭双击快进时：既不跳转也不切换控制栏，否则连点会让显隐抖动
-                                            if (doubleTapSeekEnabled()) {
-                                                seekBackward()
-                                                gestureHintState.value = context.getString(R.string.player_rewind_15s)
-                                            }
+                                    // 双击分区：动作与分区宽度由播放器布局决定
+                                    when (playerLayout().tapActionAt(downX, playerWidth())) {
+                                        // 关闭双击快进时：既不跳转也不切换控制栏，否则连点会让显隐抖动
+                                        PlayerTapAction.REWIND -> if (doubleTapSeekEnabled()) {
+                                            seekBackward()
+                                            gestureHintState.value = context.getString(R.string.player_rewind_15s)
                                         }
-                                        downX > width * 2f / 3f -> {
-                                            if (doubleTapSeekEnabled()) {
-                                                seekForward()
-                                                gestureHintState.value = context.getString(R.string.player_forward_15s)
-                                            }
+                                        PlayerTapAction.FORWARD -> if (doubleTapSeekEnabled()) {
+                                            seekForward()
+                                            gestureHintState.value = context.getString(R.string.player_forward_15s)
                                         }
-                                        else -> togglePlayPause()
+                                        PlayerTapAction.PLAY_PAUSE -> togglePlayPause()
+                                        PlayerTapAction.NONE -> Unit
                                     }
                                 }
                             } else {

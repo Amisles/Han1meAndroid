@@ -2,6 +2,7 @@ package app.amisles.hanime.ui.theme
 
 import app.amisles.hanime.core.ui.theme.AppPreferences
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 
@@ -31,6 +32,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val autoRotateFullscreenFlow = Preferences.autoRotateFullscreenFlow
     override val orientationPinnedFlow = Preferences.orientationPinnedFlow
     override val playerResizeModeFlow = Preferences.playerResizeModeFlow
+    override val playerLayoutFlow = Preferences.playerLayoutFlow
     override val baseUrlFlow = Preferences.baseUrlFlow
     override val privacyModeFlow = Preferences.privacyModeFlow
     override val subscriptionsHideWatchedFlow = Preferences.subscriptionsHideWatchedFlow
@@ -52,6 +54,7 @@ object PreferencesAppPreferences : AppPreferences {
     override fun setAutoQuality(enabled: Boolean) = Preferences.setAutoQuality(enabled)
     override fun setOrientationPinned(pinned: Boolean) = Preferences.setOrientationPinned(pinned)
     override fun setPlayerResizeMode(mode: PlayerResizeMode) = Preferences.setPlayerResizeMode(mode)
+    override fun setPlayerLayout(layout: PlayerLayout) = Preferences.setPlayerLayout(layout)
     override fun setPrivacyMode(enabled: Boolean) = Preferences.setPrivacyMode(enabled)
     override fun setSubscriptionsHideWatched(enabled: Boolean) =
         Preferences.setSubscriptionsHideWatched(enabled)

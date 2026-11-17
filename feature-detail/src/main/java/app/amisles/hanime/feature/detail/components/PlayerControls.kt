@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.HanimeSwitch
 import app.amisles.hanime.core.ui.theme.HanimePrimary
+import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -71,6 +73,7 @@ import androidx.compose.runtime.Composable
 internal fun BoxScope.PlayerControls(
     onPipChange: (Boolean) -> Unit,
     exoPlayer: ExoPlayer,
+    layout: PlayerLayout,
     isFullscreen: Boolean,
     isInPip: Boolean,
     autoPlayNext: Boolean,
@@ -116,7 +119,8 @@ internal fun BoxScope.PlayerControls(
     onToggleOrientationPin: () -> Unit = {},
     onSleepTimerChange: (PlayerSleepTimer) -> Unit,
     onResizeModeChange: (PlayerResizeMode) -> Unit,
-    onBuildPipParams: () -> PictureInPictureParams
+    onBuildPipParams: () -> PictureInPictureParams,
+    onEditLayout: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -133,7 +137,7 @@ internal fun BoxScope.PlayerControls(
             )
     )
 
-    if (!isPlaying && !isBuffering && isReady && playbackError == null) {
+    if (layout.showCenterPlayButton && !isPlaying && !isBuffering && isReady && playbackError == null) {
         IconButton(
             onClick = {
                 onMarkControlTap()
@@ -159,102 +163,118 @@ internal fun BoxScope.PlayerControls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        IconButton(
-            onClick = {
-                onMarkControlTap()
-                onSeekBackward()
-            },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.FastRewind,
-                contentDescription = stringResource(R.string.cd_rewind_15s),
-                tint = Color.White,
+        if (layout.showRewindButton) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onSeekBackward()
+                },
                 modifier = Modifier.size(30.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FastRewind,
+                    contentDescription = stringResource(R.string.cd_rewind_15s),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
         }
 
-        IconButton(
-            onClick = {
-                onMarkControlTap()
-                onTogglePlayPause()
-            },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
-                tint = Color.White,
+        if (layout.showPlayButton) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onTogglePlayPause()
+                },
                 modifier = Modifier.size(30.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) stringResource(R.string.cd_pause) else stringResource(R.string.cd_play),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
         }
 
-        IconButton(
-            onClick = {
-                onMarkControlTap()
-                onSeekForward()
-            },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.FastForward,
-                contentDescription = stringResource(R.string.cd_forward_15s),
-                tint = Color.White,
+        if (layout.showForwardButton) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onSeekForward()
+                },
                 modifier = Modifier.size(30.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FastForward,
+                    contentDescription = stringResource(R.string.cd_forward_15s),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
         }
 
-        PlaybackProgressBar(
-            exoPlayer = exoPlayer,
-            onSeekInteract = { onMarkControlTap() },
-            onSeekPreview = onSeekPreview,
-            modifier = Modifier.weight(1f)
-        )
+        if (layout.showProgressBar) {
+            PlaybackProgressBar(
+                exoPlayer = exoPlayer,
+                onSeekInteract = { onMarkControlTap() },
+                onSeekPreview = onSeekPreview,
+                showTimeLabels = layout.showTimeLabels,
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            // 进度条隐藏后仍要让右侧控件贴边，否则整排按钮会挤在左侧
+            Spacer(modifier = Modifier.weight(1f))
+        }
 
-        IconButton(
-            onClick = {
-                onMarkControlTap()
-                onToggleMute()
-            },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = if (isMuted || volume == 0f) Icons.AutoMirrored.Filled.VolumeMute
-                else if (volume < 0.5f) Icons.AutoMirrored.Filled.VolumeDown
-                else Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = stringResource(R.string.cd_volume),
-                tint = Color.White,
+        if (layout.showVolumeButton) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onToggleMute()
+                },
                 modifier = Modifier.size(30.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = if (isMuted || volume == 0f) Icons.AutoMirrored.Filled.VolumeMute
+                    else if (volume < 0.5f) Icons.AutoMirrored.Filled.VolumeDown
+                    else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = stringResource(R.string.cd_volume),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
         }
 
-        IconButton(
-            onClick = {
-                onMarkControlTap()
-                onShowSpeedMenuChange(!showSpeedMenu)
-                onShowQualityMenuChange(false)
-                onShowMoreMenuChange(false)
-            },
-            modifier = Modifier
-                .size(24.dp)
-                .onGloballyPositioned { coords ->
-                    val newBounds = Rect(
-                        left = coords.positionInRoot().x,
-                        top = coords.positionInRoot().y,
-                        right = coords.positionInRoot().x + coords.size.width,
-                        bottom = coords.positionInRoot().y + coords.size.height
-                    )
-                    if (speedBtnBounds != newBounds) onSpeedBoundsChange(newBounds)
-                }
-        ) {
-            Text(
-                text = "${effectiveSpeed}x",
-                color = Color.White,
-                fontSize = 12.sp
-            )
+        if (layout.showSpeedButton) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onShowSpeedMenuChange(!showSpeedMenu)
+                    onShowQualityMenuChange(false)
+                    onShowMoreMenuChange(false)
+                },
+                modifier = Modifier
+                    .size(24.dp)
+                    .onGloballyPositioned { coords ->
+                        val newBounds = Rect(
+                            left = coords.positionInRoot().x,
+                            top = coords.positionInRoot().y,
+                            right = coords.positionInRoot().x + coords.size.width,
+                            bottom = coords.positionInRoot().y + coords.size.height
+                        )
+                        if (speedBtnBounds != newBounds) onSpeedBoundsChange(newBounds)
+                    }
+            ) {
+                Text(
+                    text = "${effectiveSpeed}x",
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+            }
         }
 
-        if (sortedSources.isNotEmpty()) {
+        if (sortedSources.isNotEmpty() && layout.showQualityButton) {
             IconButton(
                 onClick = {
                     onMarkControlTap()
@@ -283,58 +303,64 @@ internal fun BoxScope.PlayerControls(
         }
 
         if (isFullscreen) {
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onLock()
-                },
-                modifier = Modifier.size(30.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = stringResource(R.string.player_lock),
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-            IconButton(
-                onClick = {
-                    onMarkControlTap()
-                    onToggleOrientationPin()
-                },
-                modifier = Modifier.size(30.dp)
-            ) {
-                Icon(
-                    imageVector = if (isOrientationPinned) {
-                        Icons.Default.ScreenLockRotation
-                    } else {
-                        Icons.Default.ScreenRotation
+            if (layout.showLockButton) {
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onLock()
                     },
-                    contentDescription = stringResource(
-                        if (isOrientationPinned) R.string.cd_unlock_orientation else R.string.cd_lock_orientation
-                    ),
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp)
-                )
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = stringResource(R.string.player_lock),
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+            if (layout.showOrientationButton) {
+                IconButton(
+                    onClick = {
+                        onMarkControlTap()
+                        onToggleOrientationPin()
+                    },
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isOrientationPinned) {
+                            Icons.Default.ScreenLockRotation
+                        } else {
+                            Icons.Default.ScreenRotation
+                        },
+                        contentDescription = stringResource(
+                            if (isOrientationPinned) R.string.cd_unlock_orientation else R.string.cd_lock_orientation
+                        ),
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
 
-        IconButton(
-            onClick = {
-                onMarkControlTap()
-                onToggleFullscreen()
-            },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                contentDescription = if (isFullscreen)
-                    stringResource(R.string.cd_exit_fullscreen)
-                else
-                    stringResource(R.string.cd_fullscreen),
-                tint = Color.White,
+        if (layout.showFullscreenButton) {
+            IconButton(
+                onClick = {
+                    onMarkControlTap()
+                    onToggleFullscreen()
+                },
                 modifier = Modifier.size(30.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                    contentDescription = if (isFullscreen)
+                        stringResource(R.string.cd_exit_fullscreen)
+                    else
+                        stringResource(R.string.cd_fullscreen),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
         }
 
         // 更多：点击弹出下拉框，内含连播与循环播放开关
@@ -414,15 +440,35 @@ internal fun BoxScope.PlayerControls(
                     }
                 )
 
-                SleepTimerMenu(
-                    timer = sleepTimer,
-                    onChange = {
-                        onSleepTimerChange(it)
+                if (layout.showSleepTimer) {
+                    SleepTimerMenu(
+                        timer = sleepTimer,
+                        onChange = {
+                            onSleepTimerChange(it)
+                            onShowMoreMenuChange(false)
+                        }
+                    )
+                }
+
+                // 布局编辑器入口是「更多」菜单的常驻项：它若也能被隐藏，用户就再也改不回布局
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.player_layout_edit),
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    onClick = {
                         onShowMoreMenuChange(false)
-                    }
+                        onEditLayout()
+                    },
+                    modifier = Modifier.height(40.dp)
                 )
 
-                if (isFullscreen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (isFullscreen && layout.showPipEntry && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     DropdownMenuItem(
                         text = {
                             Text(

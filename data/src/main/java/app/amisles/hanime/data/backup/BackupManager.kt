@@ -13,6 +13,7 @@ import app.amisles.hanime.data.local.entity.SearchHistoryEntity
 import app.amisles.hanime.data.local.entity.toTask
 import app.amisles.hanime.data.local.entity.toDomain
 import app.amisles.hanime.data.local.entity.toEntity
+import app.amisles.hanime.data.preferences.PlayerLayoutCodec
 import app.amisles.hanime.domain.model.BackupConflictPolicy
 import app.amisles.hanime.domain.model.BackupContents
 import app.amisles.hanime.domain.model.BackupError
@@ -244,7 +245,8 @@ class BackupManager @Inject constructor(
         downloadRateLimit = settings.downloadRateLimit,
         subscriptionReminder = settings.subscriptionReminder,
         downloadStoragePath = settings.downloadStoragePathFlow.value,
-        searchLayoutMode = settings.searchLayoutMode?.name
+        searchLayoutMode = settings.searchLayoutMode?.name,
+        playerLayout = PlayerLayoutCodec.encode(settings.playerLayout)
     )
 
     private fun applySettings(s: BackupSettings) {
@@ -270,6 +272,7 @@ class BackupManager @Inject constructor(
             SearchLayoutMode.entries.firstOrNull { it.name == name }
                 ?.let { settings.setSearchLayoutMode(it) }
         }
+        s.playerLayout?.let { settings.setPlayerLayout(PlayerLayoutCodec.decode(it)) }
     }
 
     private fun zip(files: Map<String, String>): ByteArray {
@@ -415,6 +418,7 @@ class BackupManager @Inject constructor(
         s.subscriptionReminder?.let { put("subscriptionReminder", it) }
         s.downloadStoragePath?.let { put("downloadStoragePath", it) }
         s.searchLayoutMode?.let { put("searchLayoutMode", it) }
+        s.playerLayout?.let { put("playerLayout", it) }
     }
 
     private fun parseSettings(o: JSONObject) = BackupSettings(
@@ -434,7 +438,8 @@ class BackupManager @Inject constructor(
         downloadRateLimit = o.intOrNull("downloadRateLimit"),
         subscriptionReminder = o.booleanOrNull("subscriptionReminder"),
         downloadStoragePath = o.stringOrNull("downloadStoragePath"),
-        searchLayoutMode = o.stringOrNull("searchLayoutMode")
+        searchLayoutMode = o.stringOrNull("searchLayoutMode"),
+        playerLayout = o.stringOrNull("playerLayout")
     )
 
     private fun parseFavorites(raw: String?): List<FavoriteVideo> = parseArray(raw) { o ->

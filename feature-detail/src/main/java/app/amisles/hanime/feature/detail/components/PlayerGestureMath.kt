@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.detail.components
 
+import app.amisles.hanime.domain.preferences.PlayerLayout
+import app.amisles.hanime.domain.preferences.PlayerTapAction
 import kotlin.math.roundToInt
 
 /**
@@ -130,6 +132,36 @@ internal class PlayerGestureMath(private val slopPx: Float) {
         private const val BOOST_SPEED_SPAN = MAX_BOOST_SPEED - MIN_BOOST_SPEED
     }
 }
+
+/** 播放器横向三段的落点分区。 */
+internal enum class TapZone { LEFT, CENTER, RIGHT }
+
+/**
+ * 按用户设置的左右分区宽度判定落点属于哪一段。
+ *
+ * 左右对称、中间吃掉剩余宽度，因此 [sidePercent] 必须被约束在
+ * [PlayerLayout.MAX_SIDE_ZONE_PERCENT] 以内，否则右侧分区会压到左侧上去。
+ *
+ * @param x 触点 x（播放器局部坐标）
+ * @param playerWidth 播放器宽度；<= 0 时无法分区，按中间处理
+ */
+internal fun tapZoneOf(x: Float, playerWidth: Float, sidePercent: Int): TapZone {
+    if (playerWidth <= 0f) return TapZone.CENTER
+    val side = playerWidth * sidePercent / 100f
+    return when {
+        x < side -> TapZone.LEFT
+        x > playerWidth - side -> TapZone.RIGHT
+        else -> TapZone.CENTER
+    }
+}
+
+/** 该落点对应的双击动作。 */
+internal fun PlayerLayout.tapActionAt(x: Float, playerWidth: Float): PlayerTapAction =
+    when (tapZoneOf(x, playerWidth, sideZonePercent)) {
+        TapZone.LEFT -> tapLeft
+        TapZone.CENTER -> tapCenter
+        TapZone.RIGHT -> tapRight
+    }
 
 private fun absF(v: Float): Float = if (v < 0f) -v else v
 
