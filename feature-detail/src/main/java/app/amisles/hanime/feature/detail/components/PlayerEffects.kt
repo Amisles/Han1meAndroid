@@ -23,9 +23,10 @@ internal fun PlayerFullscreenEffect(
     deviceTilt: DeviceTilt?,
     initialOrientation: Int,
     initialBarsBehavior: Int,
-    pinnedOrientation: Int? = null
+    pinnedOrientation: Int? = null,
+    portraitLock: Boolean = false
 ) {
-    LaunchedEffect(isFullscreen, activity, deviceTilt, pinnedOrientation) {
+    LaunchedEffect(isFullscreen, activity, deviceTilt, pinnedOrientation, portraitLock) {
         if (activity != null) {
             val window = activity.window
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -49,7 +50,15 @@ internal fun PlayerFullscreenEffect(
             } else {
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
                 insetsController.systemBarsBehavior = initialBarsBehavior
-                try { activity.requestedOrientation = initialOrientation } catch (_: Exception) {}
+                // 锁竖屏时页面不跟随旋转：横转只体现为播放器全屏，避免整页先转横再被播放器覆盖
+                val restore = if (portraitLock) {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                } else {
+                    initialOrientation
+                }
+                if (activity.requestedOrientation != restore) {
+                    try { activity.requestedOrientation = restore } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -112,7 +121,8 @@ internal fun PlayerOrientationWatcher(
                     candidateSince = now
                     return
                 }
-                if (now - candidateSince < FLIP_DEBOUNCE_MS) return
+                val requiredDelay = if (landscape) ENTER_FULLSCREEN_DELAY_MS else EXIT_FULLSCREEN_DELAY_MS
+                if (now - candidateSince < requiredDelay) return
                 candidateLandscape = null
                 if (!landscape && previous != null) {
                     portraitStreak++

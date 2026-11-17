@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.net.Uri
 import android.util.Rational
 import android.view.OrientationEventListener
@@ -57,6 +58,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -727,7 +729,21 @@ fun VideoPlayer(
     // 具体一侧，而非丢一个 SENSOR_LANDSCAPE 让系统猜——系统「自动旋转」关闭时其方向传感器停用，
     // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧再翻回来（表现为点全屏瞬间画面上下颠倒再转正）。
     // 只有朝向未确定或设备本就竖持时才回退 SENSOR_LANDSCAPE。
-    PlayerFullscreenEffect(isFullscreen, activity, deviceTilt, initialOrientation, initialBarsBehavior, pinnedOrientation)
+    //
+    // 非全屏时页面钉在竖屏：不钉的话窗口会先随旋转重排成横屏，几百毫秒后才被播放器全屏覆盖，
+    // 表现为「整页转横 → 播放器再全屏」的两段过渡。窗口当前已是横屏时不钉（退出全屏仍横持的场景），
+    // 由下一次转回竖屏再接管。
+    val portraitLock = autoFullscreenEnabled && autoRotateFullscreen && !isInPip &&
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    PlayerFullscreenEffect(
+        isFullscreen = isFullscreen,
+        activity = activity,
+        deviceTilt = deviceTilt,
+        initialOrientation = initialOrientation,
+        initialBarsBehavior = initialBarsBehavior,
+        pinnedOrientation = pinnedOrientation,
+        portraitLock = portraitLock
+    )
 
     // ── 横屏自动全屏 ─────────────────────────────────────────────────────────
     // 设备由竖转横时自动进入全屏，由横转竖时自动退出；平板分栏、或用户在设置里关掉

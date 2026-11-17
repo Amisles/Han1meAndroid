@@ -25,7 +25,11 @@ internal fun classifyDeviceTilt(orientation: Int): DeviceTilt? = when (orientati
     else -> null
 }
 
-internal const val FLIP_DEBOUNCE_MS = 600L
+// 进入全屏的确认窗口。页面此时仍锁在竖屏，等待只表现为迟滞，故取短值。
+internal const val ENTER_FULLSCREEN_DELAY_MS = 250L
+
+// 退出全屏的确认窗口。左右横置互翻必然途经竖屏，窗口过短会被误判为「已转回竖屏」而反复退出。
+internal const val EXIT_FULLSCREEN_DELAY_MS = 600L
 
 /** 是否为「锁定横屏」方向常量；全屏是本应用唯一锁方向处，快照到这些值不能作为退出全屏的恢复目标。 */
 internal val Int.isLandscapeOrientation: Boolean
