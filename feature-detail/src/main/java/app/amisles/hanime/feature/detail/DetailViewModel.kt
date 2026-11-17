@@ -56,9 +56,6 @@ class DetailViewModel @Inject constructor(
     private val _savedPosition = MutableStateFlow(0L)
     val savedPosition: StateFlow<Long> = _savedPosition.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -125,7 +122,6 @@ class DetailViewModel @Inject constructor(
 
     fun loadVideoDetail(videoUrl: String) {
         AppLogger.d("DetailViewModel", "loadVideoDetail called, url: ${videoUrl.redactUrlForLog()}")
-        _isLoading.value = true
         _error.value = null
 
         currentVideoId = extractVideoId(videoUrl)
@@ -147,11 +143,8 @@ class DetailViewModel @Inject constructor(
         // 取消上一次未完成的详情请求（快速重进页面时去重）
         detailLoadJob?.cancel()
         detailLoadJob = viewModelScope.launch {
-            var mainArrived = false
             content.getVideoDetailStream(videoUrl)
                 .catch { e ->
-                    // 仅当主信息尚未到达时才关闭骨架屏，避免尾部异常把已渲染内容误判为失败
-                    if (!mainArrived) _isLoading.value = false
                     _error.value = ErrorMapper.message(
                         context,
                         e,
@@ -167,9 +160,6 @@ class DetailViewModel @Inject constructor(
                                 "Got video detail main info: ${detail.title}, sources: ${detail.videoSources.size}"
                             )
                             _videoDetail.value = detail
-                            // 主信息到齐即可关闭骨架屏，播放器区先渲染；相关视频/播放列表随后渐进补全
-                            _isLoading.value = false
-                            mainArrived = true
 
                             // 登录用户 ID：以订阅表单的 subscribe-user-id 优先，缺失时回退 currentUserId
                             val resolvedUserId = detail.subscribeUserId.ifBlank { detail.currentUserId }
@@ -223,7 +213,6 @@ class DetailViewModel @Inject constructor(
                                 event.exception,
                                 context.getString(R.string.error_load_detail_failed)
                             )
-                            _isLoading.value = false
                         }
                     }
                 }
