@@ -17,6 +17,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -67,6 +68,12 @@ internal fun PlaybackProgressBar(
             }
             delay(if (exoPlayer.isPlaying) 500 else 1000)
         }
+    }
+
+    // 控件自动隐藏会把进度条整个移出组合，此时收不到 onValueChangeFinished，
+    // 预览图会一直挂在画面中央，故离场时清一次
+    DisposableEffect(Unit) {
+        onDispose { onSeekPreview(null) }
     }
 
     Box(
