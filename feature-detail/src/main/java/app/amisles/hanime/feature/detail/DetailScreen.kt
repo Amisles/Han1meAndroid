@@ -475,7 +475,7 @@ fun DetailScreen(
         }
     }
 
-    // 「其余组件」的状态与回调包，供 detailRestItems 使用
+    // 「其余组件」的状态与回调包：手机单列与平板右栏两套内容列表共用
     val restState = DetailRestState(
         selectedTab = selectedTab,
         showDescription = showDescription,

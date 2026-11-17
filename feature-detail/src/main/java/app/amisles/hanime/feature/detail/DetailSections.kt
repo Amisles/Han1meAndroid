@@ -120,19 +120,7 @@ internal fun LazyListScope.detailRestItems(
         DetailTabBlock(detail = detail, state = state, actions = actions)
     }
     detailRelatedItems(detail, state, actions)
-    item(key = "detail_swipe_spacer") {
-        val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .detailTabSwipe(
-                    currentTab = state.selectedTab,
-                    thresholdPx = thresholdPx,
-                    onSelectTab = actions.onTabSelected
-                )
-        )
-    }
+    detailSwipeSpacer(state, actions)
 }
 
 /** 手机单列：Tab 条已固定在播放器下方，这里只放会随滚动移动的内容。 */
@@ -156,6 +144,11 @@ internal fun LazyListScope.detailRestContentItems(
         }
     }
     detailRelatedItems(detail, state, actions)
+    detailSwipeSpacer(state, actions)
+}
+
+/** 列表末尾的空白：内容不满一屏时仍能在列表区域左右滑动切换 Tab。 */
+private fun LazyListScope.detailSwipeSpacer(state: DetailRestState, actions: DetailRestActions) {
     item(key = "detail_swipe_spacer") {
         val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
         Spacer(
