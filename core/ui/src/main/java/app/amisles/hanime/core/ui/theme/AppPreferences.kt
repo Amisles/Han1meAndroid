@@ -44,6 +44,7 @@ interface AppPreferences {
     val doubleTapSeekFlow: StateFlow<Boolean>
     val autoQualityFlow: StateFlow<Boolean>
     val autoRotateFullscreenFlow: StateFlow<Boolean>
+    val orientationPinnedFlow: StateFlow<Boolean>
     val playerResizeModeFlow: StateFlow<PlayerResizeMode>
     val baseUrlFlow: StateFlow<String>
     val privacyModeFlow: StateFlow<Boolean>
@@ -70,6 +71,7 @@ interface AppPreferences {
     fun setDoubleTapSeek(enabled: Boolean)
     fun setPrivacyMode(enabled: Boolean)
     fun setAutoQuality(enabled: Boolean)
+    fun setOrientationPinned(pinned: Boolean)
     fun setPlayerResizeMode(mode: PlayerResizeMode)
     fun setSubscriptionsHideWatched(enabled: Boolean)
 

@@ -29,6 +29,7 @@ object PreferencesAppPreferences : AppPreferences {
     override val doubleTapSeekFlow = Preferences.doubleTapSeekFlow
     override val autoQualityFlow = Preferences.autoQualityFlow
     override val autoRotateFullscreenFlow = Preferences.autoRotateFullscreenFlow
+    override val orientationPinnedFlow = Preferences.orientationPinnedFlow
     override val playerResizeModeFlow = Preferences.playerResizeModeFlow
     override val baseUrlFlow = Preferences.baseUrlFlow
     override val privacyModeFlow = Preferences.privacyModeFlow
@@ -49,6 +50,7 @@ object PreferencesAppPreferences : AppPreferences {
     override fun setLongPressBoostSpeed(speed: Float) = Preferences.setLongPressBoostSpeed(speed)
     override fun setDoubleTapSeek(enabled: Boolean) = Preferences.setDoubleTapSeek(enabled)
     override fun setAutoQuality(enabled: Boolean) = Preferences.setAutoQuality(enabled)
+    override fun setOrientationPinned(pinned: Boolean) = Preferences.setOrientationPinned(pinned)
     override fun setPlayerResizeMode(mode: PlayerResizeMode) = Preferences.setPlayerResizeMode(mode)
     override fun setPrivacyMode(enabled: Boolean) = Preferences.setPrivacyMode(enabled)
     override fun setSubscriptionsHideWatched(enabled: Boolean) =

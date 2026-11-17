@@ -98,6 +98,16 @@ interface SettingsRepository {
     val autoRotateFullscreenFlow: StateFlow<Boolean>
     fun setAutoRotateFullscreen(enabled: Boolean)
 
+    /**
+     * 全屏时是否钉住屏幕方向。
+     *
+     * 落盘而不只留在播放器实例内：切集与换视频都会重建播放器，若只在实例内保留，
+     * 用户每看一集都要重新点一次「锁定屏幕方向」。
+     */
+    val orientationPinned: Boolean
+    val orientationPinnedFlow: StateFlow<Boolean>
+    fun setOrientationPinned(pinned: Boolean)
+
     /** 播放器画面比例；裁切与拉伸都会改变画面形状，默认适应。 */
     val playerResizeMode: PlayerResizeMode
     val playerResizeModeFlow: StateFlow<PlayerResizeMode>

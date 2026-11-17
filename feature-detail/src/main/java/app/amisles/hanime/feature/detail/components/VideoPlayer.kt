@@ -184,6 +184,7 @@ fun VideoPlayer(
     // 旋转自动全屏：设置项是总开关，调用方仍可按布局单独关闭
     val appPrefs = LocalAppPreferences.current
     val autoRotateFullscreen by appPrefs.autoRotateFullscreenFlow.collectAsStateWithLifecycle()
+    val orientationPinned by appPrefs.orientationPinnedFlow.collectAsStateWithLifecycle()
 
     val playerResizeMode by appPrefs.playerResizeModeFlow.collectAsStateWithLifecycle()
     // 睡眠定时与播放锁都是会话级状态：不落盘，避免下次打开莫名停住或锁住
@@ -677,17 +678,20 @@ fun VideoPlayer(
         onFullscreenToggle(!isFullscreen)
     }
 
+    fun currentLandscapeOrientation(): Int {
+        val display = activity?.display
+        return pinnedLandscapeOrientation(
+            tilt = deviceTilt,
+            displayRotation = display?.rotation ?: Surface.ROTATION_0,
+            naturalLandscape = display?.mode?.let { it.physicalWidth > it.physicalHeight } == true
+        )
+    }
+
     fun toggleOrientationPin() {
-        pinnedOrientation = if (pinnedOrientation != null) {
-            null
-        } else {
-            val display = activity?.display
-            pinnedLandscapeOrientation(
-                tilt = deviceTilt,
-                displayRotation = display?.rotation ?: Surface.ROTATION_0,
-                naturalLandscape = display?.mode?.let { it.physicalWidth > it.physicalHeight } == true
-            )
-        }
+        val next = if (pinnedOrientation != null) null else currentLandscapeOrientation()
+        pinnedOrientation = next
+        // 落盘的是「要不要钉住」而非某一侧：换视频后设备朝向可能不同，还原时按当时的朝向重新取边
+        appPrefs.setOrientationPinned(next != null)
     }
 
     /**
@@ -705,6 +709,20 @@ fun VideoPlayer(
             Rational(16, 9)
         }
         return PictureInPictureParams.Builder().setAspectRatio(ratio).build()
+    }
+
+    // 方向钉住是跨视频保留的用户选择：进入全屏时按当时的物理朝向还原，否则切集后每集都要重新点一次。
+    // 只在设备确实横置时钉：竖持时无法判断用户会朝哪一侧看，此时按显示旋转换算是错的边。
+    LaunchedEffect(isFullscreen, orientationPinned, deviceTilt) {
+        if (!isFullscreen) return@LaunchedEffect
+        if (!orientationPinned) {
+            pinnedOrientation = null
+            return@LaunchedEffect
+        }
+        val tilt = deviceTilt
+        if (pinnedOrientation == null && tilt != null && tilt.isLandscape) {
+            tilt.landscapeOrientation?.let { pinnedOrientation = it }
+        }
     }
 
     // 锁定即收起全部控件（锁图标是唯一出口）；退出全屏必须自动解锁，否则回到竖屏播放器再也点不动
