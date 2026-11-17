@@ -1299,21 +1299,24 @@ fun VideoPlayer(
                     onRelatedVideoClick(it)
                 }
             )
-            RelatedPullPane(
-                video = relatedVideos.first(),
-                progress = relatedProgress,
-                playerWidth = { playerWidth },
-                onOpen = { relatedPanelOpen = true },
-                onDragBy = { delta ->
-                    relatedDragProgress = ((relatedDragProgress ?: relatedSettled) + delta)
-                        .coerceIn(0f, 1f)
-                },
-                onDragFinished = {
-                    val target = relatedDragProgress ?: 0f
-                    relatedDragProgress = null
-                    relatedPanelOpen = target >= RELATED_OPEN_THRESHOLD
-                }
-            )
+            // 与其他控件同显隐：控件收起时拉出条一并隐藏，避免它常驻画面
+            if (isControlsVisible) {
+                RelatedPullPane(
+                    video = relatedVideos.first(),
+                    progress = relatedProgress,
+                    playerWidth = { playerWidth },
+                    onOpen = { relatedPanelOpen = true },
+                    onDragBy = { delta ->
+                        relatedDragProgress = ((relatedDragProgress ?: relatedSettled) + delta)
+                            .coerceIn(0f, 1f)
+                    },
+                    onDragFinished = {
+                        val target = relatedDragProgress ?: 0f
+                        relatedDragProgress = null
+                        relatedPanelOpen = target >= RELATED_OPEN_THRESHOLD
+                    }
+                )
+            }
         }
 
         if (layoutEditing) {
