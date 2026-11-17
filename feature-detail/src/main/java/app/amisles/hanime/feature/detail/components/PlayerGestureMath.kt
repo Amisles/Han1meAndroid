@@ -133,7 +133,6 @@ internal class PlayerGestureMath(private val slopPx: Float) {
     }
 }
 
-/** 播放器横向三段的落点分区。 */
 internal enum class TapZone { LEFT, CENTER, RIGHT }
 
 /**
@@ -152,7 +151,6 @@ internal fun tapZoneOf(x: Float, playerWidth: Float, sidePercent: Int): TapZone 
     }
 }
 
-/** 该落点对应的双击动作。 */
 internal fun PlayerLayout.tapActionAt(x: Float, playerWidth: Float): PlayerTapAction =
     when (tapZoneOf(x, playerWidth, sideZonePercent)) {
         TapZone.LEFT -> tapLeft

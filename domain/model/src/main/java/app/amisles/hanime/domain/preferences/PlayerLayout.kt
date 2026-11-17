@@ -1,6 +1,5 @@
 package app.amisles.hanime.domain.preferences
 
-/** 点击播放器分区时执行的动作。 */
 enum class PlayerTapAction {
     REWIND,
     PLAY_PAUSE,

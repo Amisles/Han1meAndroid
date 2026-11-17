@@ -72,7 +72,6 @@ internal object PlayerFramePreview {
         return scaled
     }
 
-    /** 播放器离场时整体释放：retriever 持有网络连接与解码器，缓存里的位图也无保留价值。 */
     @Synchronized
     fun release() {
         runCatching { retriever?.release() }

@@ -727,8 +727,8 @@ fun VideoPlayer(
         return PictureInPictureParams.Builder().setAspectRatio(ratio).build()
     }
 
-    // 方向钉住是跨视频保留的用户选择：进入全屏时按当时的物理朝向还原，否则切集后每集都要重新点一次。
-    // 只在设备确实横置时钉：竖持时无法判断用户会朝哪一侧看，此时按显示旋转换算是错的边。
+    // 方向钉住是跨视频保留的用户选择：进入全屏时按当时朝向还原，否则切集后每集都要重新点一次。
+    // 只在设备确实横置时钉：竖持时按显示旋转换算会选错边，与「记住上一次」的预期相反。
     LaunchedEffect(isFullscreen, orientationPinned, deviceTilt) {
         if (!isFullscreen) return@LaunchedEffect
         if (!orientationPinned) {
@@ -766,9 +766,8 @@ fun VideoPlayer(
     // 只给 SENSOR_LANDSCAPE 会先落到默认横屏侧再翻回来（表现为点全屏瞬间画面上下颠倒再转正）。
     // 只有朝向未确定或设备本就竖持时才回退 SENSOR_LANDSCAPE。
     //
-    // 非全屏时页面钉在竖屏：不钉的话窗口会先随旋转重排成横屏，几百毫秒后才被播放器全屏覆盖，
-    // 表现为「整页转横 → 播放器再全屏」的两段过渡。窗口当前已是横屏时不钉（退出全屏仍横持的场景），
-    // 由下一次转回竖屏再接管。
+    // 非全屏时页面钉在竖屏：不钉的话窗口会先随旋转重排成横屏，之后才被播放器全屏覆盖，
+    // 表现为「整页转横 → 播放器再全屏」的两段过渡。窗口已是横屏时不钉（退出全屏仍横持的场景）。
     val portraitLock = autoFullscreenEnabled && autoRotateFullscreen && !isInPip &&
         LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     PlayerFullscreenEffect(
