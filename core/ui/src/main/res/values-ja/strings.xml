@@ -927,8 +927,7 @@
     <string name="player_layout_action_play">再生・一時停止</string>
     <string name="player_layout_action_forward">15 秒進む</string>
     <string name="player_layout_action_none">なし</string>
-    <string name="player_layout_side_zone">左右領域の幅</string>
-    <string name="player_layout_side_zone_value">%1$d%%</string>
+    <string name="player_layout_zone_hint">点線の境界をドラッグして範囲を調整、領域をタップで動作を切替</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
     <string name="favorite_batch_count">%1$d 件のお気に入り</string>
     <string name="login_tab_password">メールアドレス</string>

@@ -927,8 +927,7 @@
     <string name="player_layout_action_play">Play / pause</string>
     <string name="player_layout_action_forward">Forward 15s</string>
     <string name="player_layout_action_none">Disabled</string>
-    <string name="player_layout_side_zone">Side zone width</string>
-    <string name="player_layout_side_zone_value">%1$d%%</string>
+    <string name="player_layout_zone_hint">Drag the dashed dividers to resize a zone, tap a zone to change its action</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
     <string name="favorite_batch_count">%1$d favorites</string>
     <string name="login_tab_password">Email</string>

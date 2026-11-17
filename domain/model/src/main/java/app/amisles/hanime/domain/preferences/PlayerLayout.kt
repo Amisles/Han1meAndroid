@@ -45,18 +45,34 @@ data class PlayerLayout(
     val tapLeft: PlayerTapAction = PlayerTapAction.REWIND,
     val tapCenter: PlayerTapAction = PlayerTapAction.PLAY_PAUSE,
     val tapRight: PlayerTapAction = PlayerTapAction.FORWARD,
-    val sideZonePercent: Int = DEFAULT_SIDE_ZONE_PERCENT
+    val leftZonePercent: Int = DEFAULT_SIDE_ZONE_PERCENT,
+    val rightZonePercent: Int = DEFAULT_SIDE_ZONE_PERCENT
 ) {
     companion object {
-        const val MIN_SIDE_ZONE_PERCENT = 15
-        const val MAX_SIDE_ZONE_PERCENT = 45
+        const val MIN_SIDE_ZONE_PERCENT = 10
+        const val MAX_SIDE_ZONE_PERCENT = 60
+        const val MIN_CENTER_ZONE_PERCENT = 20
         const val DEFAULT_SIDE_ZONE_PERCENT = 33
 
         val DEFAULT = PlayerLayout()
 
-        fun sanitize(layout: PlayerLayout): PlayerLayout = layout.copy(
-            sideZonePercent = layout.sideZonePercent
+        /**
+         * 两侧分区各自限幅，并保证中间分区不被挤没：两者之和超过上限时优先保住左侧，右侧退让。
+         *
+         * 越界数据可能来自旧版本配置或跨版本备份，不夹住会让某一侧分区的点击判断覆盖到另一侧。
+         */
+        fun sanitize(layout: PlayerLayout): PlayerLayout {
+            val left = layout.leftZonePercent
                 .coerceIn(MIN_SIDE_ZONE_PERCENT, MAX_SIDE_ZONE_PERCENT)
-        )
+            val right = layout.rightZonePercent
+                .coerceIn(MIN_SIDE_ZONE_PERCENT, MAX_SIDE_ZONE_PERCENT)
+            val maxSides = 100 - MIN_CENTER_ZONE_PERCENT
+            val safeRight = if (left + right <= maxSides) {
+                right
+            } else {
+                (maxSides - left).coerceAtLeast(MIN_SIDE_ZONE_PERCENT)
+            }
+            return layout.copy(leftZonePercent = left, rightZonePercent = safeRight)
+        }
     }
 }

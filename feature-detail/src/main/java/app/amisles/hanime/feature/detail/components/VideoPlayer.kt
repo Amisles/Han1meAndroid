@@ -1314,7 +1314,12 @@ fun VideoPlayer(
                 layout = layoutDraft,
                 onToggle = { layoutDraft = layoutDraft.withToggled(it) },
                 onCycleTapAction = { layoutDraft = layoutDraft.withNextTapAction(it) },
-                onSideZonePercentChange = { layoutDraft = layoutDraft.copy(sideZonePercent = it) },
+                onLeftZonePercentChange = {
+                    layoutDraft = PlayerLayout.sanitize(layoutDraft.copy(leftZonePercent = it))
+                },
+                onRightZonePercentChange = {
+                    layoutDraft = PlayerLayout.sanitize(layoutDraft.copy(rightZonePercent = it))
+                },
                 modifier = Modifier
                     .align(Alignment.Center)
                     .offset(y = (-12).dp)

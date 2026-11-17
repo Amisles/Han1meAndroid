@@ -37,7 +37,8 @@ class PlayerLayoutCodecTest {
             tapLeft = PlayerTapAction.FORWARD,
             tapCenter = PlayerTapAction.NONE,
             tapRight = PlayerTapAction.PLAY_PAUSE,
-            sideZonePercent = 20
+            leftZonePercent = 20,
+            rightZonePercent = 35
         )
         assertEquals(layout, PlayerLayoutCodec.decode(PlayerLayoutCodec.encode(layout)))
     }
@@ -62,8 +63,19 @@ class PlayerLayoutCodecTest {
     }
 
     @Test
-    fun `out of range side zone is clamped`() {
-        val decoded = PlayerLayoutCodec.decode("v=1;sideZonePercent=90")
-        assertEquals(PlayerLayout.MAX_SIDE_ZONE_PERCENT, decoded.sideZonePercent)
+    fun `out of range zones are clamped and the center stays usable`() {
+        val decoded = PlayerLayoutCodec.decode("v=1;leftZonePercent=90;rightZonePercent=90")
+        assertEquals(PlayerLayout.MAX_SIDE_ZONE_PERCENT, decoded.leftZonePercent)
+        assertEquals(
+            100 - PlayerLayout.MIN_CENTER_ZONE_PERCENT - PlayerLayout.MAX_SIDE_ZONE_PERCENT,
+            decoded.rightZonePercent
+        )
+    }
+
+    @Test
+    fun `legacy symmetric side zone applies to both sides`() {
+        val decoded = PlayerLayoutCodec.decode("v=1;sideZonePercent=20")
+        assertEquals(20, decoded.leftZonePercent)
+        assertEquals(20, decoded.rightZonePercent)
     }
 }

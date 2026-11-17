@@ -323,7 +323,7 @@ class PlayerGestureMathTest {
 
     @Test
     fun `narrow side zones widen the center zone`() {
-        val layout = PlayerLayout.DEFAULT.copy(sideZonePercent = 15)
+        val layout = PlayerLayout.DEFAULT.copy(leftZonePercent = 15, rightZonePercent = 15)
         assertEquals(PlayerTapAction.REWIND, layout.tapActionAt(x = 100f, playerWidth = 900f))
         assertEquals(PlayerTapAction.PLAY_PAUSE, layout.tapActionAt(x = 200f, playerWidth = 900f))
         assertEquals(PlayerTapAction.PLAY_PAUSE, layout.tapActionAt(x = 700f, playerWidth = 900f))
@@ -341,7 +341,15 @@ class PlayerGestureMathTest {
     }
 
     @Test
+    fun `zones can be asymmetric`() {
+        val layout = PlayerLayout.DEFAULT.copy(leftZonePercent = 50, rightZonePercent = 10)
+        assertEquals(PlayerTapAction.REWIND, layout.tapActionAt(x = 400f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.PLAY_PAUSE, layout.tapActionAt(x = 500f, playerWidth = 900f))
+        assertEquals(PlayerTapAction.FORWARD, layout.tapActionAt(x = 850f, playerWidth = 900f))
+    }
+
+    @Test
     fun `unknown player width falls back to center zone`() {
-        assertEquals(TapZone.CENTER, tapZoneOf(x = 10f, playerWidth = 0f, sidePercent = 33))
+        assertEquals(TapZone.CENTER, tapZoneOf(x = 10f, playerWidth = 0f, leftPercent = 33, rightPercent = 33))
     }
 }

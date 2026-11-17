@@ -40,7 +40,8 @@ internal object PlayerLayoutCodec {
             "tapLeft" to layout.tapLeft.name,
             "tapCenter" to layout.tapCenter.name,
             "tapRight" to layout.tapRight.name,
-            "sideZonePercent" to layout.sideZonePercent.toString()
+            "leftZonePercent" to layout.leftZonePercent.toString(),
+            "rightZonePercent" to layout.rightZonePercent.toString()
         )
         return fields.joinToString(PAIR_SEPARATOR) { (key, value) -> "$key$KEY_SEPARATOR$value" }
     }
@@ -77,7 +78,13 @@ internal object PlayerLayoutCodec {
                 tapLeft = PlayerTapAction.fromNameOrNull(pairs["tapLeft"]) ?: fallback.tapLeft,
                 tapCenter = PlayerTapAction.fromNameOrNull(pairs["tapCenter"]) ?: fallback.tapCenter,
                 tapRight = PlayerTapAction.fromNameOrNull(pairs["tapRight"]) ?: fallback.tapRight,
-                sideZonePercent = pairs["sideZonePercent"]?.toIntOrNull() ?: fallback.sideZonePercent
+                // 旧版本只有一个对称的 sideZonePercent，缺新键时两侧都取它
+                leftZonePercent = pairs["leftZonePercent"]?.toIntOrNull()
+                    ?: pairs["sideZonePercent"]?.toIntOrNull()
+                    ?: fallback.leftZonePercent,
+                rightZonePercent = pairs["rightZonePercent"]?.toIntOrNull()
+                    ?: pairs["sideZonePercent"]?.toIntOrNull()
+                    ?: fallback.rightZonePercent
             )
         )
     }

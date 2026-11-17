@@ -961,8 +961,7 @@
     <string name="player_layout_action_play">播放暂停</string>
     <string name="player_layout_action_forward">快进 15 秒</string>
     <string name="player_layout_action_none">不响应</string>
-    <string name="player_layout_side_zone">左右区域宽度</string>
-    <string name="player_layout_side_zone_value">%1$d%%</string>
+    <string name="player_layout_zone_hint">拖动虚线分界调整区域范围，点击分区切换动作</string>
     <!-- 硬编码中文抽取：收藏 / 登录 / 账户 / 诊断 -->
     <string name="favorite_batch_count">%1$d 个收藏</string>
     <string name="login_tab_password">账号密码</string>

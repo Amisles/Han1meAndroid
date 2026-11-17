@@ -2,12 +2,17 @@ package app.amisles.hanime.feature.detail.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -32,10 +37,12 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ZoomOutMap
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,14 +52,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import app.amisles.hanime.core.ui.R
+import androidx.compose.ui.input.pointer.pointerInput
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerTapAction
@@ -178,7 +189,8 @@ internal fun PlayerLayoutEditPanel(
     layout: PlayerLayout,
     onToggle: (PlayerControlId) -> Unit,
     onCycleTapAction: (PlayerTapZoneSlot) -> Unit,
-    onSideZonePercentChange: (Int) -> Unit,
+    onLeftZonePercentChange: (Int) -> Unit,
+    onRightZonePercentChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -209,53 +221,21 @@ internal fun PlayerLayoutEditPanel(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            PlayerTapZoneSlot.entries.forEach { slot ->
-                PlayerTapZoneTile(
-                    title = stringResource(slot.titleRes()),
-                    action = layout.tapActionOf(slot)
-                ) { onCycleTapAction(slot) }
-            }
-        }
+        TapZoneBar(
+            layout = layout,
+            onCycle = onCycleTapAction,
+            onLeftPercentChange = onLeftZonePercentChange,
+            onRightPercentChange = onRightZonePercentChange,
+            modifier = Modifier.padding(top = 8.dp)
+        )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.player_layout_side_zone),
-                color = Color.White.copy(alpha = 0.75f),
-                fontSize = 10.sp
-            )
-            Slider(
-                value = layout.sideZonePercent.toFloat(),
-                onValueChange = { onSideZonePercentChange(it.roundToInt()) },
-                valueRange = PlayerLayout.MIN_SIDE_ZONE_PERCENT.toFloat()..
-                    PlayerLayout.MAX_SIDE_ZONE_PERCENT.toFloat(),
-                steps = PlayerLayout.MAX_SIDE_ZONE_PERCENT -
-                    PlayerLayout.MIN_SIDE_ZONE_PERCENT - 1,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-                    .height(24.dp)
-            )
-            Text(
-                text = stringResource(
-                    R.string.player_layout_side_zone_value,
-                    layout.sideZonePercent
-                ),
-                color = HanimePrimary,
-                fontSize = 10.sp
-            )
-        }
+        Text(
+            text = stringResource(R.string.player_layout_zone_hint),
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 9.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 5.dp)
+        )
 
         Text(
             text = stringResource(R.string.player_layout_edit_hint),
@@ -355,47 +335,174 @@ private fun PlayerEditTile(
     }
 }
 
+/**
+ * 点按区域的可视化编辑条：三段宽度就是播放器上真实的点击范围，两条虚线分界可直接拖动。
+ *
+ * 用示意图代替「左右区域宽度 33%」这类数字：百分比本身不解释自己在播放器上对应哪一段，
+ * 拖一次分界线就知道边界落在画面哪里。
+ */
 @Composable
-private fun PlayerTapZoneTile(
-    title: String,
-    action: PlayerTapAction,
-    onClick: () -> Unit
+private fun TapZoneBar(
+    layout: PlayerLayout,
+    onCycle: (PlayerTapZoneSlot) -> Unit,
+    onLeftPercentChange: (Int) -> Unit,
+    onRightPercentChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Box {
-        Column(
-            modifier = Modifier
-                .width(96.dp)
-                .height(44.dp)
-                .playerEditDashedBorder()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 4.dp, vertical = 3.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = title,
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+    var barWidth by remember { mutableStateOf(0f) }
+    val centerPercent = (100 - layout.leftZonePercent - layout.rightZonePercent).coerceAtLeast(1)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .onSizeChanged { barWidth = it.width.toFloat() }
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            TapZoneSegment(
+                title = stringResource(R.string.player_layout_tap_left),
+                action = layout.tapLeft,
+                weight = layout.leftZonePercent.toFloat(),
+                modifier = Modifier.fillMaxHeight()
+            ) { onCycle(PlayerTapZoneSlot.LEFT) }
+            TapZoneSegment(
+                title = stringResource(R.string.player_layout_tap_center),
+                action = layout.tapCenter,
+                weight = centerPercent.toFloat(),
+                modifier = Modifier.fillMaxHeight()
+            ) { onCycle(PlayerTapZoneSlot.CENTER) }
+            TapZoneSegment(
+                title = stringResource(R.string.player_layout_tap_right),
+                action = layout.tapRight,
+                weight = layout.rightZonePercent.toFloat(),
+                modifier = Modifier.fillMaxHeight()
+            ) { onCycle(PlayerTapZoneSlot.RIGHT) }
+        }
+        if (barWidth > 0f) {
+            val minSide = PlayerLayout.MIN_SIDE_ZONE_PERCENT.toFloat()
+            val maxSides = 100f - PlayerLayout.MIN_CENTER_ZONE_PERCENT
+            ZoneHandle(
+                barWidth = barWidth,
+                boundaryPercent = layout.leftZonePercent.toFloat(),
+                minPercent = minSide,
+                maxPercent = (maxSides - layout.rightZonePercent.toFloat()).coerceAtLeast(minSide),
+                onBoundaryChange = { onLeftPercentChange(it.roundToInt()) }
             )
-            Text(
-                text = stringResource(tapActionLabelRes(action)),
-                color = Color.White,
-                fontSize = 10.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp)
+            ZoneHandle(
+                barWidth = barWidth,
+                boundaryPercent = (100 - layout.rightZonePercent).toFloat(),
+                minPercent = (layout.leftZonePercent + PlayerLayout.MIN_CENTER_ZONE_PERCENT)
+                    .toFloat()
+                    .coerceAtMost(100f - minSide),
+                maxPercent = 100f - minSide,
+                onBoundaryChange = { onRightPercentChange((100f - it).roundToInt()) }
             )
         }
-        PlayerEditBadge(
-            checked = action != PlayerTapAction.NONE,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 4.dp, y = (-4).dp)
+    }
+}
+
+@Composable
+private fun RowScope.TapZoneSegment(
+    title: String,
+    action: PlayerTapAction,
+    weight: Float,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .weight(weight.coerceAtLeast(1f))
+            .padding(horizontal = 1.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(
+                if (action == PlayerTapAction.NONE) {
+                    Color.White.copy(alpha = 0.06f)
+                } else {
+                    HanimePrimary.copy(alpha = 0.16f)
+                }
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = title,
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 9.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = stringResource(tapActionLabelRes(action)),
+            color = if (action == PlayerTapAction.NONE) {
+                Color.White.copy(alpha = 0.5f)
+            } else {
+                Color.White
+            },
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp)
         )
     }
 }
+
+@Composable
+private fun BoxScope.ZoneHandle(
+    barWidth: Float,
+    boundaryPercent: Float,
+    minPercent: Float,
+    maxPercent: Float,
+    onBoundaryChange: (Float) -> Unit
+) {
+    val density = LocalDensity.current
+    val handleWidthPx = with(density) { HANDLE_WIDTH.toPx() }
+    var dragBase by remember { mutableStateOf<Float?>(null) }
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    (barWidth * boundaryPercent / 100f - handleWidthPx / 2f).roundToInt(),
+                    0
+                )
+            }
+            .width(HANDLE_WIDTH)
+            .fillMaxHeight()
+            .pointerInput(barWidth, minPercent, maxPercent) {
+                detectHorizontalDragGestures(
+                    onDragStart = { dragBase = boundaryPercent },
+                    onDragEnd = { dragBase = null },
+                    onDragCancel = { dragBase = null },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        if (barWidth > 0f) {
+                            val base = dragBase ?: boundaryPercent
+                            val next = (base + dragAmount / barWidth * 100f)
+                                .coerceIn(minPercent, maxPercent)
+                            dragBase = next
+                            onBoundaryChange(next)
+                        }
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .fillMaxHeight()
+                .background(Color.White.copy(alpha = 0.85f))
+        )
+        Box(
+            modifier = Modifier
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(HanimePrimary)
+        )
+    }
+}
+
+private val HANDLE_WIDTH = 26.dp
 
 private const val FEATURE_TILE_COLUMNS = 4
 

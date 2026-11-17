@@ -136,23 +136,29 @@ internal class PlayerGestureMath(private val slopPx: Float) {
 internal enum class TapZone { LEFT, CENTER, RIGHT }
 
 /**
- * 按用户设置的左右分区宽度判定落点属于哪一段。
+ * 按用户拖出来的两条分界线判定落点属于哪一段。
  *
- * 左右对称、中间吃掉剩余宽度，因此 [sidePercent] 必须被约束在
- * [PlayerLayout.MAX_SIDE_ZONE_PERCENT] 以内，否则右侧分区会压到左侧上去。
+ * 两侧百分比之和必须被约束在 [PlayerLayout.MAX_SIDE_ZONE_PERCENT] 之类的上限内，
+ * 否则右界会跑到左界左边，中间分区被挤成零宽。
  */
-internal fun tapZoneOf(x: Float, playerWidth: Float, sidePercent: Int): TapZone {
+internal fun tapZoneOf(
+    x: Float,
+    playerWidth: Float,
+    leftPercent: Int,
+    rightPercent: Int
+): TapZone {
     if (playerWidth <= 0f) return TapZone.CENTER
-    val side = playerWidth * sidePercent / 100f
+    val leftEdge = playerWidth * leftPercent / 100f
+    val rightEdge = playerWidth * (100 - rightPercent) / 100f
     return when {
-        x < side -> TapZone.LEFT
-        x > playerWidth - side -> TapZone.RIGHT
+        x < leftEdge -> TapZone.LEFT
+        x > rightEdge -> TapZone.RIGHT
         else -> TapZone.CENTER
     }
 }
 
 internal fun PlayerLayout.tapActionAt(x: Float, playerWidth: Float): PlayerTapAction =
-    when (tapZoneOf(x, playerWidth, sideZonePercent)) {
+    when (tapZoneOf(x, playerWidth, leftZonePercent, rightZonePercent)) {
         TapZone.LEFT -> tapLeft
         TapZone.CENTER -> tapCenter
         TapZone.RIGHT -> tapRight
