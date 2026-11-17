@@ -112,7 +112,6 @@ fun DetailScreen(
     // 评论域独立 VM。用 key 区分，避免与其它页面的 CommentViewModel 冲突。
     val commentVm: CommentViewModel = hiltViewModel(key = "comment")
     val videoDetail by viewModel.videoDetail.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     // 评论域的调用上下文：csrfToken 与 videoId 都来自视频域，按需构造后传给评论 VM。
     val commentCtx: () -> CommentContext = {
@@ -552,7 +551,8 @@ fun DetailScreen(
     )
 
     if (useTabletUI) {
-        if (isLoading && videoDetail == null) {
+        // 首帧到首次数据之间（detail 为空且还没有错误）一律走骨架，避免「暂无视频」在加载期闪出来
+        if (videoDetail == null && error == null) {
             // 平板加载骨架
             TabletDetailSkeleton()
         } else {
@@ -622,66 +622,11 @@ fun DetailScreen(
                     .then(if (isPlayerFullscreen) Modifier.background(Color.Black) else Modifier)
                     .testTag("detail_screen")
             ) {
-                // 播放器固定在页面顶部：滚动只发生在下方内容区，播放器不会随内容移出屏幕
-                Box(
-                    modifier = if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
-                ) {
-                    val detail = videoDetail
-                    val player = exoPlayer
-                    if (detail == null || detail.defaultSourceUrl.isEmpty()) {
-                        if (!isPlayerFullscreen) {
-                            VideoUnavailableHint(
-                                hasError = error != null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(225.dp)
-                                    .background(Color.Black)
-                            )
-                        }
-                    } else if (player == null) {
-                        if (!isPlayerFullscreen) {
-                            // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(225.dp)
-                                    .background(Color.Black)
-                            )
-                        }
-                    } else {
-                        val fullscreenScale by animateFloatAsState(
-                            targetValue = if (isPlayerFullscreen) 1f else 0.97f,
-                            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                            label = "fullscreen_scale"
-                        )
-                        DetailVideoPlayer(
-                            exoPlayer = player,
-                            detail = detail,
-                            initialPositionMs = initialSeekMs,
-                            onInitialSeekApplied = { resumeSeekMs = it },
-                            isFullscreen = isPlayerFullscreen,
-                            onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                            onPlaybackEnded = { handlePlaybackEnded() },
-                            autoPlayNext = autoPlayNext,
-                            onSourceError = { viewModel.refreshVideoSources() },
-                            onBackClick = onBackClick,
-                            onNavigateHome = onNavigateHome,
-                            onRelatedVideoClick = openRelatedInPlace,
-                            mediaId = switchedVideoId,
-                            showNavButtons = !isPlayerFullscreen,
-                            modifier = (if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier)
-                                .graphicsLayer {
-                                    scaleX = fullscreenScale
-                                    scaleY = fullscreenScale
-                                }
-                        )
-                    }
-                }
-
-                if (!isPlayerFullscreen) {
-                    val currentDetail = videoDetail
-                    // 已有内容时不退回骨架屏：换片期间撤掉播放器会把 ExoPlayer 一起释放（全屏随之中断）
-                    if (isLoading && currentDetail == null) {
+                val currentDetail = videoDetail
+                // 首帧到首次数据之间（detail 为空且还没有错误）只渲染骨架：
+                // 此时渲染播放器占位会显示「暂无视频」，与实际加载状态不符
+                if (!isPlayerFullscreen && currentDetail == null) {
+                    if (error == null) {
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -689,14 +634,73 @@ fun DetailScreen(
                         ) {
                             DetailSkeletonScreen()
                         }
-                    } else if (error != null && currentDetail == null) {
+                    } else {
                         Box(modifier = Modifier.weight(1f)) {
                             KaomojiErrorView(
                                 message = error,
                                 onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
                             )
                         }
-                    } else if (currentDetail != null) {
+                    }
+                } else {
+                    // 播放器固定在页面顶部：滚动只发生在下方内容区，播放器不会随内容移出屏幕
+                    Box(
+                        modifier = if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+                    ) {
+                        val detail = currentDetail
+                        val player = exoPlayer
+                        if (detail == null || detail.defaultSourceUrl.isEmpty()) {
+                            if (!isPlayerFullscreen) {
+                                VideoUnavailableHint(
+                                    hasError = error != null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(225.dp)
+                                        .background(Color.Black)
+                                )
+                            }
+                        } else if (player == null) {
+                            if (!isPlayerFullscreen) {
+                                // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(225.dp)
+                                        .background(Color.Black)
+                                )
+                            }
+                        } else {
+                            val fullscreenScale by animateFloatAsState(
+                                targetValue = if (isPlayerFullscreen) 1f else 0.97f,
+                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                label = "fullscreen_scale"
+                            )
+                            DetailVideoPlayer(
+                                exoPlayer = player,
+                                detail = detail,
+                                initialPositionMs = initialSeekMs,
+                                onInitialSeekApplied = { resumeSeekMs = it },
+                                isFullscreen = isPlayerFullscreen,
+                                onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                                onPlaybackEnded = { handlePlaybackEnded() },
+                                autoPlayNext = autoPlayNext,
+                                onSourceError = { viewModel.refreshVideoSources() },
+                                onBackClick = onBackClick,
+                                onNavigateHome = onNavigateHome,
+                                onRelatedVideoClick = openRelatedInPlace,
+                                mediaId = switchedVideoId,
+                                showNavButtons = !isPlayerFullscreen,
+                                modifier = (if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier)
+                                    .graphicsLayer {
+                                        scaleX = fullscreenScale
+                                        scaleY = fullscreenScale
+                                    }
+                            )
+                        }
+                    }
+
+                    // 已有内容时不退回骨架屏：换片期间撤掉播放器会把 ExoPlayer 一起释放（全屏随之中断）
+                    if (!isPlayerFullscreen && currentDetail != null) {
                         // 「简介 / 评论」按钮同样固定，只有下方内容区滚动
                         DetailTabBar(
                             selectedTab = selectedTab,
