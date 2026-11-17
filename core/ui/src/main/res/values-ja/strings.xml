@@ -1140,6 +1140,8 @@
     <string name="watch_stats_minutes">%1$d 分</string>
     <string name="watch_stats_hours">%1$d 時間 %2$d 分</string>
     <string name="settings_watch_stats">視聴統計</string>
+    <string name="settings_video_detail_cache_limit">詳細ページのキャッシュ上限</string>
+    <string name="settings_video_detail_cache_limit_value">%1$d 件</string>
     <string name="share_link_unrecognized">共有内容に動画リンクが見つかりませんでした</string>
     <string name="player_error_network">ネットワーク接続に失敗しました。確認して再試行してください</string>
     <string name="player_error_expired">動画リンクが無効です。別の画質をお試しください</string>

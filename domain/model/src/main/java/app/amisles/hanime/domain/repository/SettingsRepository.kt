@@ -119,6 +119,11 @@ interface SettingsRepository {
     val playerLayoutFlow: StateFlow<PlayerLayout>
     fun setPlayerLayout(layout: PlayerLayout)
 
+    /** 视频详情页常驻缓存的条目上限；超出后按最久未被打开的条目淘汰。 */
+    val videoDetailCacheLimit: Int
+    val videoDetailCacheLimitFlow: StateFlow<Int>
+    fun setVideoDetailCacheLimit(limit: Int)
+
     // ── 下载 ────────────────────────────────────────────────────────────────
     val maxDownloadConcurrent: Int
     val maxDownloadConcurrentFlow: StateFlow<Int>
@@ -204,6 +209,11 @@ interface SettingsRepository {
 
     companion object {
         const val DEFAULT_BASE_URL = "https://hanime1.me"
+
+        /** 详情页缓存默认保留条数；设置页的选项都落在这个区间内。 */
+        const val DEFAULT_VIDEO_DETAIL_CACHE_LIMIT = 1000
+        const val MIN_VIDEO_DETAIL_CACHE_LIMIT = 100
+        const val MAX_VIDEO_DETAIL_CACHE_LIMIT = 2000
 
         const val LANGUAGE_ZH_CN = "zh-CN"
         const val LANGUAGE_ZH_TW = "zh-TW"

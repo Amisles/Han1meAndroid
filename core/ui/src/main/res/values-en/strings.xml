@@ -1140,6 +1140,8 @@
     <string name="watch_stats_minutes">%1$d min</string>
     <string name="watch_stats_hours">%1$d h %2$d min</string>
     <string name="settings_watch_stats">Watch stats</string>
+    <string name="settings_video_detail_cache_limit">Detail cache limit</string>
+    <string name="settings_video_detail_cache_limit_value">%1$d items</string>
     <string name="share_link_unrecognized">Could not find a video link in the shared content</string>
     <string name="player_error_network">Network connection failed. Check your network and retry</string>
     <string name="player_error_expired">The video link has expired. Try another quality</string>

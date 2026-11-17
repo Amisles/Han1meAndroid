@@ -74,6 +74,7 @@ object Preferences : SettingsRepository, SessionRepository {
     private const val SP_ORIENTATION_PINNED = "player_orientation_pinned"
     private const val SP_PLAYER_RESIZE_MODE = "player_resize_mode"
     private const val SP_PLAYER_LAYOUT = "player_layout"
+    private const val SP_VIDEO_DETAIL_CACHE_LIMIT = "video_detail_cache_limit"
     private const val SP_PLAYLIST_CSRF_TOKEN = "playlist_csrf_token"
     private const val SP_PLAYLIST_MIGRATION_DONE = "playlist_migration_done"
     private const val SP_DOWNLOAD_STORAGE_PATH = "download_storage_path"
@@ -259,6 +260,10 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     private val _playerLayoutFlow = MutableStateFlow(PlayerLayout.DEFAULT)
     override val playerLayoutFlow: StateFlow<PlayerLayout> = _playerLayoutFlow.asStateFlow()
 
+    private val _videoDetailCacheLimitFlow =
+        MutableStateFlow(SettingsRepository.DEFAULT_VIDEO_DETAIL_CACHE_LIMIT)
+    override val videoDetailCacheLimitFlow: StateFlow<Int> = _videoDetailCacheLimitFlow.asStateFlow()
+
     // 下载存储路径：空串表示由 resolveDownloadDir() 解析默认目录（公共 Download/Hanime）
     private val _downloadStoragePathFlow = MutableStateFlow("")
     override val downloadStoragePathFlow: StateFlow<String> = _downloadStoragePathFlow.asStateFlow()
@@ -416,6 +421,13 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
             PlayerResizeMode.fromNameOrNull(readString(SP_PLAYER_RESIZE_MODE, null)) ?: PlayerResizeMode.FIT
         _orientationPinnedFlow.value = readBoolean(SP_ORIENTATION_PINNED, false)
         _playerLayoutFlow.value = PlayerLayoutCodec.decode(readString(SP_PLAYER_LAYOUT, null))
+        _videoDetailCacheLimitFlow.value = readInt(
+            SP_VIDEO_DETAIL_CACHE_LIMIT,
+            SettingsRepository.DEFAULT_VIDEO_DETAIL_CACHE_LIMIT
+        ).coerceIn(
+            SettingsRepository.MIN_VIDEO_DETAIL_CACHE_LIMIT,
+            SettingsRepository.MAX_VIDEO_DETAIL_CACHE_LIMIT
+        )
         _downloadStoragePathFlow.value = readString(SP_DOWNLOAD_STORAGE_PATH, "").orEmpty()
         // 未保存过 / 无法识别时保持 null，交由界面按宽度档位取默认值
         _searchLayoutModeFlow.value = SearchLayoutMode.fromNameOrNull(readString(SP_SEARCH_LAYOUT_MODE, null))
@@ -651,6 +663,7 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     override val playerResizeMode: PlayerResizeMode get() = _playerResizeModeFlow.value
     override val orientationPinned: Boolean get() = _orientationPinnedFlow.value
     override val playerLayout: PlayerLayout get() = _playerLayoutFlow.value
+    override val videoDetailCacheLimit: Int get() = _videoDetailCacheLimitFlow.value
     override val searchLayoutMode: SearchLayoutMode? get() = _searchLayoutModeFlow.value
 
     override val pageLayoutModes: PageLayoutModes get() = _pageLayoutModesFlow.value
@@ -945,6 +958,15 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         val safe = PlayerLayout.sanitize(layout)
         sp.edit { putString(SP_PLAYER_LAYOUT, PlayerLayoutCodec.encode(safe)) }
         _playerLayoutFlow.value = safe
+    }
+
+    override fun setVideoDetailCacheLimit(limit: Int) {
+        val safe = limit.coerceIn(
+            SettingsRepository.MIN_VIDEO_DETAIL_CACHE_LIMIT,
+            SettingsRepository.MAX_VIDEO_DETAIL_CACHE_LIMIT
+        )
+        sp.edit { putInt(SP_VIDEO_DETAIL_CACHE_LIMIT, safe) }
+        _videoDetailCacheLimitFlow.value = safe
     }
 
     /** 画质偏好（分辨率字符串，如 "1080p"；空串表示跟随默认/最高）。 */

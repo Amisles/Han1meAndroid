@@ -242,6 +242,7 @@ class BackupManager @Inject constructor(
         autoQuality = settings.autoQuality,
         autoRotateFullscreen = settings.autoRotateFullscreen,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
+        videoDetailCacheLimit = settings.videoDetailCacheLimit,
         downloadRateLimit = settings.downloadRateLimit,
         subscriptionReminder = settings.subscriptionReminder,
         downloadStoragePath = settings.downloadStoragePathFlow.value,
@@ -265,6 +266,7 @@ class BackupManager @Inject constructor(
         s.autoQuality?.let { settings.setAutoQuality(it) }
         s.autoRotateFullscreen?.let { settings.setAutoRotateFullscreen(it) }
         s.maxDownloadConcurrent?.let { settings.setMaxDownloadConcurrent(it) }
+        s.videoDetailCacheLimit?.let { settings.setVideoDetailCacheLimit(it) }
         s.downloadRateLimit?.let { settings.setDownloadRateLimit(it) }
         s.subscriptionReminder?.let { settings.setSubscriptionReminder(it) }
         s.downloadStoragePath?.let { settings.downloadStoragePath = it }
@@ -414,6 +416,7 @@ class BackupManager @Inject constructor(
         s.autoQuality?.let { put("autoQuality", it) }
         s.autoRotateFullscreen?.let { put("autoRotateFullscreen", it) }
         s.maxDownloadConcurrent?.let { put("maxDownloadConcurrent", it) }
+        s.videoDetailCacheLimit?.let { put("videoDetailCacheLimit", it) }
         s.downloadRateLimit?.let { put("downloadRateLimit", it) }
         s.subscriptionReminder?.let { put("subscriptionReminder", it) }
         s.downloadStoragePath?.let { put("downloadStoragePath", it) }
@@ -435,6 +438,7 @@ class BackupManager @Inject constructor(
         autoQuality = o.booleanOrNull("autoQuality"),
         autoRotateFullscreen = o.booleanOrNull("autoRotateFullscreen"),
         maxDownloadConcurrent = o.intOrNull("maxDownloadConcurrent"),
+        videoDetailCacheLimit = o.intOrNull("videoDetailCacheLimit"),
         downloadRateLimit = o.intOrNull("downloadRateLimit"),
         subscriptionReminder = o.booleanOrNull("subscriptionReminder"),
         downloadStoragePath = o.stringOrNull("downloadStoragePath"),

@@ -1,6 +1,6 @@
 package app.amisles.hanime.data.repository
 
-import app.amisles.hanime.data.cache.VideoDetailCache
+import app.amisles.hanime.data.cache.VideoDetailStore
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.DownloadPageParser
@@ -41,7 +41,7 @@ class ContentRepositoryImpl @Inject constructor(
     private val searchPageParser: SearchPageParser,
     private val watchPageParser: WatchPageParser,
     private val downloadPageParser: DownloadPageParser,
-    private val videoDetailCache: VideoDetailCache
+    private val videoDetailStore: VideoDetailStore
 ) : ContentRepository {
 
     override suspend fun getHomeData(): AppResult<HomePageData> {
@@ -120,7 +120,11 @@ class ContentRepositoryImpl @Inject constructor(
                 ?: return AppResult.error(DomainError.DETAIL_PARSE_FAILED)
             // 单次解析拿到的也是最新结果：写回缓存，避免刷新的播放地址被上一次的旧缓存顶掉
             if (detail.title.isNotBlank()) {
-                videoDetailCache.put(videoDetailCacheKey(videoUrl), detail)
+                videoDetailStore.put(
+                    videoDetailCacheKey(videoUrl),
+                    detail,
+                    Preferences.videoDetailCacheLimit
+                )
             }
             AppResult.success(detail)
         } catch (e: CancellationException) {
@@ -133,18 +137,18 @@ class ContentRepositoryImpl @Inject constructor(
 
 
     /**
-     * 流式加载视频详情：先查进程内缓存，命中时一次 emit 主信息（相关视频与播放列表已在缓存内）；
-     * 未命中才在 IO 调度器上取回整页 HTML 交给流式解析，按「主信息 → 播放列表 → 相关视频」顺序
-     * emit [VideoDetailEvent]，全部事件到齐后把解析结果写入缓存供下次进入直接复用。
-     * 网络或解析失败统一转换为 [VideoDetailEvent.Error] 事件。
+     * 流式加载视频详情。
+     *
+     * 命中常驻缓存时先整块下发缓存内容（详情页立刻可用），随后仍会静默发起一次网络请求：
+     * 解析完成后与缓存做差异比较，内容确实变了才再下发一次主信息，并把新结果写回缓存。
+     * 无缓存时保持「主信息 → 播放列表 → 相关视频」的渐进下发，首屏不必等整页解析。
      */
     override fun getVideoDetailStream(videoUrl: String): Flow<VideoDetailEvent> = flow {
         val cacheKey = videoDetailCacheKey(videoUrl)
-        val cached = videoDetailCache.get(cacheKey)
+        val cached = videoDetailStore.get(cacheKey)
         if (cached != null) {
             AppLogger.log("ContentRepositoryImpl", "Video detail cache hit: ${cached.title}")
             emit(VideoDetailEvent.MainInfo(cached))
-            return@flow
         }
         try {
             val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
@@ -168,20 +172,26 @@ class ContentRepositoryImpl @Inject constructor(
                     }
                     is VideoDetailEvent.Error -> failed = true
                 }
-                emit(event)
+                // 已有缓存时不逐块下发：流式的主信息不含相关视频与播放列表，
+                // 直接发出去会先把界面上现有的列表清空再补回，等于白闪一下
+                if (cached == null) emit(event)
             }
             val parsed = mainInfo
             if (!failed && parsed != null && playlistParsed && relatedParsed && parsed.title.isNotBlank()) {
-                videoDetailCache.put(
-                    cacheKey,
-                    parsed.copy(playlist = playlist, relatedVideos = relatedVideos)
-                )
+                val fresh = parsed.copy(playlist = playlist, relatedVideos = relatedVideos)
+                if (cached != null) {
+                    val merged = mergeRefreshedVideoDetail(cached, fresh)
+                    if (merged != cached) emit(VideoDetailEvent.MainInfo(merged))
+                }
+                // 新直链只落盘：界面上的播放器仍在用缓存里的直链，换成新签名会让它重载并回到片头
+                videoDetailStore.put(cacheKey, fresh, Preferences.videoDetailCacheLimit)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             AppLogger.logError("ContentRepositoryImpl", "Error in getVideoDetailStream: ${e.message}", e)
-            emit(VideoDetailEvent.Error(e.message.orEmpty(), e))
+            // 命中缓存时后台刷新失败保持静默：用户手上已有完整内容，不该被一次刷新失败打断
+            if (cached == null) emit(VideoDetailEvent.Error(e.message.orEmpty(), e))
         }
     }.flowOn(Dispatchers.IO)
 
@@ -232,5 +242,25 @@ class ContentRepositoryImpl @Inject constructor(
 
     override suspend fun getUserVideoList(authorId: String, page: Int): UserVideoListResult? =
         networkService.fetchUserVideoList(authorId, page)
-
 }
+
+/**
+ * 把刷新结果合并到界面上正在展示的那份详情。
+ *
+ * 每次抓页面拿到的直链都带新的时效签名：原样下发会让正在播放的播放器重新加载、进度归零。
+ * 分辨率集合没变时保留缓存里的直链，新直链只写进缓存供下次打开使用；
+ * 直链真过期导致播放失败时，由详情页播放失败后的换源链路单独刷新。
+ */
+internal fun mergeRefreshedVideoDetail(cached: VideoDetail, fresh: VideoDetail): VideoDetail {
+    val sameQualities = fresh.videoSources.map { it.resolution to it.size } ==
+        cached.videoSources.map { it.resolution to it.size }
+    return if (sameQualities) {
+        fresh.copy(
+            videoSources = cached.videoSources,
+            defaultSourceUrl = cached.defaultSourceUrl
+        )
+    } else {
+        fresh
+    }
+}
+

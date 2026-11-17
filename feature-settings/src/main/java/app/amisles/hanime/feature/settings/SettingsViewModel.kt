@@ -4,7 +4,7 @@ import android.app.Application
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.cache.VideoDetailCache
+import app.amisles.hanime.data.cache.VideoDetailStore
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
@@ -45,7 +45,8 @@ data class SettingsUiState(
     val autoQuality: Boolean = true,
     val autoRotateFullscreen: Boolean = true,
     val autoPlayRelated: Boolean = false,
-    val watchStatsEnabled: Boolean = true
+    val watchStatsEnabled: Boolean = true,
+    val videoDetailCacheLimit: Int = SettingsRepository.DEFAULT_VIDEO_DETAIL_CACHE_LIMIT
 ) {
     val isDefaultBaseUrl: Boolean get() = baseUrl == SettingsRepository.DEFAULT_BASE_URL
 
@@ -68,7 +69,7 @@ class SettingsViewModel @Inject constructor(
     private val app: Application,
     private val settings: SettingsRepository,
     private val session: SessionRepository,
-    private val videoDetailCache: VideoDetailCache
+    private val videoDetailStore: VideoDetailStore
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -116,6 +117,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(downloadChargingOnly = enabled)
     }.combine(settings.downloadNightOnlyFlow) { state, enabled ->
         state.copy(downloadNightOnly = enabled)
+    }.combine(settings.videoDetailCacheLimitFlow) { state, limit ->
+        state.copy(videoDetailCacheLimit = limit)
     }.combine(settings.dynamicColorFlow) { state, enabled ->
         state.copy(dynamicColor = enabled)
     }.combine(settings.privacyModeFlow) { state, enabled ->
@@ -146,7 +149,8 @@ class SettingsViewModel @Inject constructor(
         doubleTapSeek = settings.doubleTapSeek,
         autoQuality = settings.autoQuality,
         autoRotateFullscreen = settings.autoRotateFullscreen,
-        autoPlayRelated = settings.autoPlayRelated
+        autoPlayRelated = settings.autoPlayRelated,
+        videoDetailCacheLimit = settings.videoDetailCacheLimit
     )
 
     /**
@@ -201,6 +205,12 @@ class SettingsViewModel @Inject constructor(
 
     fun setMaxDownloadConcurrent(count: Int) {
         settings.setMaxDownloadConcurrent(count)
+    }
+
+    fun setVideoDetailCacheLimit(limit: Int) {
+        settings.setVideoDetailCacheLimit(limit)
+        // 调小上限后立刻按新上限淘汰，不必等下一次写入详情缓存时才收拢
+        viewModelScope.launch { videoDetailStore.trimTo(limit) }
     }
 
     fun setDownloadRateLimit(megabytesPerSecond: Int) {
@@ -285,8 +295,8 @@ class SettingsViewModel @Inject constructor(
     /** 清除应用缓存；删除在 IO 调度器上执行，完成后通过 [events] 发送成功/失败 Toast。 */
     fun clearAppCache() {
         viewModelScope.launch {
-            // 详情解析缓存驻留内存，与缓存目录是两套存储：不在这里一并丢弃，清缓存后进入详情页仍会命中旧解析结果
-            videoDetailCache.clear()
+            // 详情解析缓存落在 filesDir，与缓存目录是两套存储：不在这里一并丢弃，清缓存后进入详情页仍会命中旧解析结果
+            videoDetailStore.clear()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val cacheDir = app.cacheDir

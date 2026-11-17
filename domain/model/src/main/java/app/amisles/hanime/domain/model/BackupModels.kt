@@ -36,6 +36,7 @@ data class BackupSettings(
     val autoQuality: Boolean? = null,
     val autoRotateFullscreen: Boolean? = null,
     val maxDownloadConcurrent: Int? = null,
+    val videoDetailCacheLimit: Int? = null,
     val downloadRateLimit: Int? = null,
     val subscriptionReminder: Boolean? = null,
     val downloadStoragePath: String? = null,

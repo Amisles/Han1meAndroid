@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material3.AlertDialog
@@ -449,6 +450,7 @@ fun SettingsScreen(
 
     var showStoragePathDialog by remember { mutableStateOf(false) }
     var longPressMenuExpanded by remember { mutableStateOf(false) }
+    var detailCacheLimitMenuExpanded by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -471,6 +473,9 @@ fun SettingsScreen(
         ThemeMode.DARK to stringResource(R.string.settings_theme_dark)
     )
     val longPressSpeedOptions = listOf(1.5f, 2f, 2.5f, 3f).map { it to "${it}×" }
+    val cacheLimitOptions = listOf(100, 200, 500, 1000, 2000).map {
+        it to stringResource(R.string.settings_video_detail_cache_limit_value, it)
+    }
 
     Column(
         modifier = Modifier
@@ -586,6 +591,20 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_auto_play_related_summary),
                     checked = uiState.autoPlayRelated,
                     onCheckedChange = { enabled -> viewModel.setAutoPlayRelated(enabled) }
+                )
+                SettingsGroupDivider()
+                SettingsDropdownRow(
+                    icon = Icons.Outlined.Storage,
+                    title = stringResource(R.string.settings_video_detail_cache_limit),
+                    selectedLabel = stringResource(
+                        R.string.settings_video_detail_cache_limit_value,
+                        uiState.videoDetailCacheLimit
+                    ),
+                    expanded = detailCacheLimitMenuExpanded,
+                    onExpandedChange = { detailCacheLimitMenuExpanded = it },
+                    options = cacheLimitOptions,
+                    selectedValue = uiState.videoDetailCacheLimit,
+                    onSelect = { viewModel.setVideoDetailCacheLimit(it) }
                 )
             }
 

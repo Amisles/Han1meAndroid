@@ -1140,6 +1140,8 @@
     <string name="watch_stats_minutes">%1$d 分鐘</string>
     <string name="watch_stats_hours">%1$d 小時 %2$d 分</string>
     <string name="settings_watch_stats">觀看統計</string>
+    <string name="settings_video_detail_cache_limit">詳情頁快取上限</string>
+    <string name="settings_video_detail_cache_limit_value">%1$d 筆</string>
     <string name="share_link_unrecognized">未能識別連結中的影片位址</string>
     <string name="player_error_network">網路連線失敗，請檢查網路後重試</string>
     <string name="player_error_expired">影片位址已失效，可切換其他畫質</string>
