@@ -259,7 +259,16 @@ fun VideoPlayer(
     var layoutEditing by remember { mutableStateOf(false) }
     var layoutDraft by remember { mutableStateOf(playerLayout) }
     val activeLayout = if (layoutEditing) layoutDraft else playerLayout
-    var showRelatedPanel by remember { mutableStateOf(false) }
+    // 推荐面板用 0..1 的进度驱动：手指左滑时跟随手指，点击/松手时由动画补齐
+    var relatedPanelOpen by remember { mutableStateOf(false) }
+    var relatedDragProgress by remember { mutableStateOf<Float?>(null) }
+    val relatedSettled by animateFloatAsState(
+        targetValue = if (relatedPanelOpen) 1f else 0f,
+        animationSpec = tween(260),
+        label = "relatedPanelProgress"
+    )
+    val relatedProgress = relatedDragProgress ?: relatedSettled
+    val relatedActive = relatedProgress > 0.02f
     var isSwitchingQuality by remember { mutableStateOf(false) }
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
@@ -332,7 +341,7 @@ fun VideoPlayer(
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
     val menuOpenRef = rememberUpdatedState(
-        showSpeedMenu || showQualityMenu || layoutEditing || showRelatedPanel
+        showSpeedMenu || showQualityMenu || layoutEditing || relatedActive
     )
     // 长按加速倍率同样要给手势闭包一个实时快照：播放器实例跨集复用，
     // 直接读参数会把首次组合时的倍率一直用下去
@@ -588,15 +597,15 @@ fun VideoPlayer(
         showQualityMenu,
         showMoreMenu,
         layoutEditing,
-        showRelatedPanel,
+        relatedActive,
         controlsActivityRef.value
     ) {
         if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu &&
-            !showMoreMenu && !layoutEditing && !showRelatedPanel
+            !showMoreMenu && !layoutEditing && !relatedActive
         ) {
             delay(3500L)
             if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu &&
-                !layoutEditing && !showRelatedPanel
+                !layoutEditing && !relatedActive
             ) {
                 isControlsVisible = false
             }
@@ -605,8 +614,8 @@ fun VideoPlayer(
 
     BackHandler(enabled = layoutEditing) { layoutEditing = false }
 
-    LaunchedEffect(showRelatedPanel) {
-        if (!showRelatedPanel) return@LaunchedEffect
+    LaunchedEffect(relatedPanelOpen) {
+        if (!relatedPanelOpen) return@LaunchedEffect
         isControlsVisible = false
         showSpeedMenu = false
         showQualityMenu = false
@@ -614,7 +623,10 @@ fun VideoPlayer(
     }
 
     LaunchedEffect(isFullscreen) {
-        if (!isFullscreen) showRelatedPanel = false
+        if (!isFullscreen) {
+            relatedPanelOpen = false
+            relatedDragProgress = null
+        }
     }
 
     // 切换视频时重置海报占位显示状态（posterUrl 变化即新视频）
@@ -1095,7 +1107,7 @@ fun VideoPlayer(
         }
 
         // 控件隐藏时，底部显示一条仅用于展示进度的简易进度条
-        if (!isControlsVisible && !isInPip && !showRelatedPanel && activeLayout.showMiniProgress) {
+        if (!isControlsVisible && !isInPip && !relatedActive && activeLayout.showMiniProgress) {
             MiniPlaybackProgress(
                 exoPlayer = exoPlayer,
                 modifier = Modifier
@@ -1105,7 +1117,7 @@ fun VideoPlayer(
         }
 
         // 双指放大后几乎无法精确捏回原比例，给一个只在缩放态出现的还原出口
-        if (activeLayout.showResetZoom && isControlsVisible && !isInPip && !showRelatedPanel &&
+        if (activeLayout.showResetZoom && isControlsVisible && !isInPip && !relatedActive &&
             !layoutEditing && abs(videoZoom - 1f) > ZOOM_EPSILON
         ) {
             ResetZoomButton(
@@ -1120,7 +1132,7 @@ fun VideoPlayer(
         }
 
         // ── 控件 UI（可见时）──────────────────────────────────────────────────
-        if ((isControlsVisible || layoutEditing) && !isInPip && !showRelatedPanel) {
+        if ((isControlsVisible || layoutEditing) && !isInPip && !relatedActive) {
             if (layoutEditing || (showNavButtons && activeLayout.showNavButtons)) {
                 PlayerEditFrame(
                     editing = layoutEditing,
@@ -1197,7 +1209,7 @@ fun VideoPlayer(
                     layoutEditing = true
                     isLocked = false
                     isControlsVisible = true
-                    showRelatedPanel = false
+                    relatedPanelOpen = false
                     // 编辑面板需要横向空间与完整的控件带：竖屏播放器只有一条窄带，进去也没法点
                     if (!isFullscreen) onFullscreenToggle(true)
                 }
@@ -1205,7 +1217,7 @@ fun VideoPlayer(
         }
 
         val previewPosition = seekPreview
-        if (previewPosition != null && !isInPip && !showRelatedPanel && activeLayout.showSeekPreview) {
+        if (previewPosition != null && !isInPip && !relatedActive && activeLayout.showSeekPreview) {
             SeekPreviewOverlay(
                 frame = previewFrame,
                 text = "${formatTime(previewPosition)} / ${formatTime(exoPlayer.duration)}",
@@ -1213,7 +1225,7 @@ fun VideoPlayer(
             )
         }
 
-        if (isLocked && isFullscreen && !isInPip && !showRelatedPanel) {
+        if (isLocked && isFullscreen && !isInPip && !relatedActive) {
             PlayerLockBadge(
                 onUnlock = {
                     // 与其它控件一致：标记这一击落在控件上，外层手势才会跳过「切换控件显隐」，
@@ -1231,27 +1243,42 @@ fun VideoPlayer(
         if (isFullscreen && !isInPip && !layoutEditing && relatedVideos.isNotEmpty() &&
             activeLayout.showRelatedList
         ) {
-            if (showRelatedPanel) {
+            if (relatedProgress > 0.02f) {
                 // 空白处点击收回：遮罩铺满整块画面，卡片与收起按钮自行消费点击
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .graphicsLayer { alpha = relatedProgress }
+                        .background(Color.Black.copy(alpha = 0.3f))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { showRelatedPanel = false }
+                        ) { relatedPanelOpen = false }
                 )
             }
             RelatedPanel(
                 videos = relatedVideos,
-                visible = showRelatedPanel,
-                onCollapse = { showRelatedPanel = false },
-                onVideoClick = onRelatedVideoClick
+                progress = relatedProgress,
+                onCollapse = { relatedPanelOpen = false },
+                onVideoClick = {
+                    relatedPanelOpen = false
+                    onRelatedVideoClick(it)
+                }
             )
-            RelatedPeek(
+            RelatedPullPane(
                 video = relatedVideos.first(),
-                visible = !showRelatedPanel,
-                onClick = { showRelatedPanel = true }
+                progress = relatedProgress,
+                playerWidth = { playerWidth },
+                onOpen = { relatedPanelOpen = true },
+                onDragBy = { delta ->
+                    relatedDragProgress = ((relatedDragProgress ?: relatedSettled) + delta)
+                        .coerceIn(0f, 1f)
+                },
+                onDragFinished = {
+                    val target = relatedDragProgress ?: 0f
+                    relatedDragProgress = null
+                    relatedPanelOpen = target >= RELATED_OPEN_THRESHOLD
+                }
             )
         }
 

@@ -73,12 +73,18 @@ internal fun Modifier.playerGestures(
                 var downY = 0f
                 var moved = false
                 var initialized = false
+                // 本段手势是否已被子控件接管（进度条拖动、推荐拉出条左滑等）：
+                // 子控件在同一事件上先消费，画面手势整段让位，否则按住左滑会先被当成拖动进度
+                var gestureTakenOver = false
                 // 长按加速是否已触发：一旦触发，本段手势的滑动只调倍率，直到手指抬起
                 var longPressFired = false
                 // 长按加速定时器：按下启动 1s 延时协程，松手/缩放/成段拖动即取消，避免点击误触发加速
                 var longPressJob: Job? = null
                 while (true) {
                     val event = awaitPointerEvent()
+                    if (event.changes.isNotEmpty() && event.changes.all { it.isConsumed }) {
+                        gestureTakenOver = true
+                    }
                     // 锁定后画面不接受任何手势；仍要消费事件，否则下滑会滚动下层列表。
                     // 抬起事件同样落进本分支：不收尾长按加速定时器，它到期后会凭空把倍速改掉，
                     // 而锁定后不再有抬起事件，没有任何机会恢复。
@@ -113,7 +119,7 @@ internal fun Modifier.playerGestures(
                         longPressJob?.cancel()
                         // 浮层打开期间不处理点击：滑动浮层时父级未判定拖动，moved 仍为 false，
                         // 松手会被当成空白点击而隐藏控件，浮层随之关闭
-                        if (!moved && !isZoom && !menuOpen()) {
+                        if (!moved && !isZoom && !menuOpen() && !gestureTakenOver) {
                             // 视为一次点击
                             val now = System.currentTimeMillis()
                             if (now - lastTapTimeState.value < 300L) {
@@ -195,6 +201,7 @@ internal fun Modifier.playerGestures(
                             lastY = y
                             initialized = true
                             longPressFired = false
+                            gestureTakenOver = false
                             // 兜底复位：上一段手势若被系统接管（返回手势、权限弹窗）而没收到抬起事件，
                             // 加速会一直挂着。正常按下时该调用是空操作。
                             setLongPressBoost(false)
@@ -225,8 +232,8 @@ internal fun Modifier.playerGestures(
                             }
                             continue
                         }
-                        if (menuOpen()) {
-                            // 浮层打开期间不判定拖动：滑动应由浮层自身消费
+                        if (menuOpen() || gestureTakenOver) {
+                            // 浮层或子控件接管期间不判定拖动：滑动应由它们自己消费
                             lastX = x
                             lastY = y
                             continue
