@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -73,6 +75,7 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
+import app.amisles.hanime.feature.detail.components.DetailTabBar
 import app.amisles.hanime.feature.detail.components.DetailVideoPlayer
 import app.amisles.hanime.feature.detail.components.formatTime
 import app.amisles.hanime.feature.detail.components.TabletDetailSkeleton
@@ -612,81 +615,100 @@ fun DetailScreen(
         }
     } else {
         ResponsiveContent(fullBleed = isPlayerFullscreen) {
-            LazyColumn(
-                state = activeListState,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(if (!isPlayerFullscreen) Modifier.statusBarsPadding() else Modifier)
                     .then(if (isPlayerFullscreen) Modifier.background(Color.Black) else Modifier)
                     .testTag("detail_screen")
             ) {
-                // 已有内容时不退回骨架屏：换片期间撤掉播放器会把 ExoPlayer 一起释放（全屏随之中断）
-                if (isLoading && videoDetail == null) {
-                    item(key = "detail_skeleton") {
-                        DetailSkeletonScreen()
-                    }
-                } else if (error != null && videoDetail == null) {
-                    item(key = "detail_error") {
-                        KaomojiErrorView(
-                            message = error,
-                            onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
+                // 播放器固定在页面顶部：滚动只发生在下方内容区，播放器不会随内容移出屏幕
+                Box(
+                    modifier = if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+                ) {
+                    val detail = videoDetail
+                    val player = exoPlayer
+                    if (detail == null || detail.defaultSourceUrl.isEmpty()) {
+                        if (!isPlayerFullscreen) {
+                            VideoUnavailableHint(
+                                hasError = error != null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(225.dp)
+                                    .background(Color.Black)
+                            )
+                        }
+                    } else if (player == null) {
+                        if (!isPlayerFullscreen) {
+                            // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(225.dp)
+                                    .background(Color.Black)
+                            )
+                        }
+                    } else {
+                        val fullscreenScale by animateFloatAsState(
+                            targetValue = if (isPlayerFullscreen) 1f else 0.97f,
+                            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                            label = "fullscreen_scale"
+                        )
+                        DetailVideoPlayer(
+                            exoPlayer = player,
+                            detail = detail,
+                            initialPositionMs = initialSeekMs,
+                            onInitialSeekApplied = { resumeSeekMs = it },
+                            isFullscreen = isPlayerFullscreen,
+                            onFullscreenToggle = { full -> isPlayerFullscreen = full },
+                            onPlaybackEnded = { handlePlaybackEnded() },
+                            autoPlayNext = autoPlayNext,
+                            onSourceError = { viewModel.refreshVideoSources() },
+                            onBackClick = onBackClick,
+                            onNavigateHome = onNavigateHome,
+                            onRelatedVideoClick = openRelatedInPlace,
+                            mediaId = switchedVideoId,
+                            showNavButtons = !isPlayerFullscreen,
+                            modifier = (if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier)
+                                .graphicsLayer {
+                                    scaleX = fullscreenScale
+                                    scaleY = fullscreenScale
+                                }
                         )
                     }
-                } else {
+                }
 
-                    item(key = "video_player") {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            val detail = videoDetail
-                            val player = exoPlayer
-                            if (detail == null || detail.defaultSourceUrl.isEmpty()) {
-                                VideoUnavailableHint(
-                                    hasError = error != null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(225.dp)
-                                        .background(Color.Black)
-                                )
-                            } else if (player == null) {
-                                // 播放器仍在后台构建：黑底占位与正式播放器同高，避免布局跳动
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(225.dp)
-                                        .background(Color.Black)
-                                )
-                            } else {
-                                val fullscreenScale by animateFloatAsState(
-                                    targetValue = if (isPlayerFullscreen) 1f else 0.97f,
-                                    animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                                    label = "fullscreen_scale"
-                                )
-                                DetailVideoPlayer(
-                                    exoPlayer = player,
-                                    detail = detail,
-                                    initialPositionMs = initialSeekMs,
-                                    onInitialSeekApplied = { resumeSeekMs = it },
-                                    isFullscreen = isPlayerFullscreen,
-                                    onFullscreenToggle = { full -> isPlayerFullscreen = full },
-                                    onPlaybackEnded = { handlePlaybackEnded() },
-                                    autoPlayNext = autoPlayNext,
-                                    onSourceError = { viewModel.refreshVideoSources() },
-                                    onBackClick = onBackClick,
-                                    onNavigateHome = onNavigateHome,
-                                    onRelatedVideoClick = openRelatedInPlace,
-                                    mediaId = switchedVideoId,
-                                    showNavButtons = !isPlayerFullscreen,
-                                    modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
-                                        .graphicsLayer {
-                                            scaleX = fullscreenScale
-                                            scaleY = fullscreenScale
-                                        }
-                                )
-                            }
+                if (!isPlayerFullscreen) {
+                    val currentDetail = videoDetail
+                    // 已有内容时不退回骨架屏：换片期间撤掉播放器会把 ExoPlayer 一起释放（全屏随之中断）
+                    if (isLoading && currentDetail == null) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            DetailSkeletonScreen()
+                        }
+                    } else if (error != null && currentDetail == null) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            KaomojiErrorView(
+                                message = error,
+                                onRetry = { videoUrl?.let { viewModel.loadVideoDetail(it) } }
+                            )
+                        }
+                    } else if (currentDetail != null) {
+                        // 「简介 / 评论」按钮同样固定，只有下方内容区滚动
+                        DetailTabBar(
+                            selectedTab = selectedTab,
+                            onTabSelected = selectTab
+                        )
+                        LazyColumn(
+                            state = activeListState,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            detailRestContentItems(currentDetail, restState, restActions)
                         }
                     }
-
-                    videoDetail?.takeIf { !isPlayerFullscreen }?.let { detailRestItems(it, restState, restActions) }
-
                 }
             }
         }

@@ -109,7 +109,7 @@ internal data class DetailRestActions(
     val onVideoLongClick: (HanimeVideo) -> Unit
 )
 
-/** 详情页「其余组件」：手机单列与平板右栏共用的 LazyColumn 内容。 */
+/** 详情页「其余组件」：Tab 条 + 内容 + 推荐，供平板右栏整块滚动使用。 */
 internal fun LazyListScope.detailRestItems(
     detail: VideoDetail,
     state: DetailRestState,
@@ -119,7 +119,63 @@ internal fun LazyListScope.detailRestItems(
     item(key = "detail_tab_block") {
         DetailTabBlock(detail = detail, state = state, actions = actions)
     }
+    detailRelatedItems(detail, state, actions)
+    item(key = "detail_swipe_spacer") {
+        val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .detailTabSwipe(
+                    currentTab = state.selectedTab,
+                    thresholdPx = thresholdPx,
+                    onSelectTab = actions.onTabSelected
+                )
+        )
+    }
+}
 
+/** 手机单列：Tab 条已固定在播放器下方，这里只放会随滚动移动的内容。 */
+internal fun LazyListScope.detailRestContentItems(
+    detail: VideoDetail,
+    state: DetailRestState,
+    actions: DetailRestActions
+) {
+    item(key = "detail_tab_content") {
+        val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .detailTabSwipe(
+                    currentTab = state.selectedTab,
+                    thresholdPx = thresholdPx,
+                    onSelectTab = actions.onTabSelected
+                )
+        ) {
+            DetailTabContent(detail = detail, state = state, actions = actions)
+        }
+    }
+    detailRelatedItems(detail, state, actions)
+    item(key = "detail_swipe_spacer") {
+        val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .detailTabSwipe(
+                    currentTab = state.selectedTab,
+                    thresholdPx = thresholdPx,
+                    onSelectTab = actions.onTabSelected
+                )
+        )
+    }
+}
+
+private fun LazyListScope.detailRelatedItems(
+    detail: VideoDetail,
+    state: DetailRestState,
+    actions: DetailRestActions
+) {
     if (state.selectedTab == 0) {
         val related = detail.relatedVideos.distinctBy { it.id }
         if (state.relatedGrid) {
@@ -150,20 +206,6 @@ internal fun LazyListScope.detailRestItems(
                 )
             }
         }
-    }
-
-    item {
-        val thresholdPx = with(LocalDensity.current) { DetailTabSwipeThreshold.toPx() }
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .detailTabSwipe(
-                    currentTab = state.selectedTab,
-                    thresholdPx = thresholdPx,
-                    onSelectTab = actions.onTabSelected
-                )
-        )
     }
 }
 
@@ -247,7 +289,18 @@ internal fun DetailTabBlock(
             selectedTab = state.selectedTab,
             onTabSelected = actions.onTabSelected
         )
+        DetailTabContent(detail = detail, state = state, actions = actions)
+    }
+}
 
+/** Tab 条下方的内容区（简介 / 评论）；左右滑动切页由调用方施加。 */
+@Composable
+internal fun DetailTabContent(
+    detail: VideoDetail,
+    state: DetailRestState,
+    actions: DetailRestActions
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         AnimatedContent(
             targetState = state.selectedTab,
             transitionSpec = {
