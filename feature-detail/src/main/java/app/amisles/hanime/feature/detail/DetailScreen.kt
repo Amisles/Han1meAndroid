@@ -572,6 +572,7 @@ fun DetailScreen(
                             onSourceError = { viewModel.refreshVideoSources() },
                             onBackClick = onBackClick,
                             onNavigateHome = onNavigateHome,
+                            onRelatedVideoClick = onVideoClick,
                             modifier = Modifier
                         )
                     }
@@ -649,6 +650,7 @@ fun DetailScreen(
                                     onSourceError = { viewModel.refreshVideoSources() },
                                     onBackClick = onBackClick,
                                     onNavigateHome = onNavigateHome,
+                                    onRelatedVideoClick = onVideoClick,
                                     showNavButtons = !isPlayerFullscreen,
                                     modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
                                         .graphicsLayer {

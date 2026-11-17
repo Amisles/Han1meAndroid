@@ -93,6 +93,7 @@ import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import coil3.compose.AsyncImage
@@ -163,7 +164,10 @@ fun VideoPlayer(
     // 播放器左上角返回 / 回到首页入口；与其它控件同显隐，全屏时由调用方关闭
     onBackClick: () -> Unit = {},
     onNavigateHome: () -> Unit = {},
-    showNavButtons: Boolean = true
+    showNavButtons: Boolean = true,
+    // 全屏右侧推荐列表的数据与点击回调；直接复用详情页推荐区的条目
+    relatedVideos: List<HanimeVideo> = emptyList(),
+    onRelatedVideoClick: (HanimeVideo) -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -250,6 +254,7 @@ fun VideoPlayer(
     val showMoreMenuState = remember { mutableStateOf(false) }
     var showMoreMenu by showMoreMenuState
     var showLayoutEditor by remember { mutableStateOf(false) }
+    var showRelatedPanel by remember { mutableStateOf(false) }
     var isSwitchingQuality by remember { mutableStateOf(false) }
     var currentSourceUrl by remember { mutableStateOf(initialSourceUrl) }
     var speedBtnBounds by remember { mutableStateOf(Rect.Zero) }
@@ -321,7 +326,9 @@ fun VideoPlayer(
     val sleepAfterEpisodeRef = rememberUpdatedState(sleepTimer.afterEpisode)
     val initialPositionMsRef = rememberUpdatedState(initialPositionMs)
     // 浮层开关的实时快照：pointerInput 的闭包在首次组合时捕获，直接读状态会永远是旧值
-    val menuOpenRef = rememberUpdatedState(showSpeedMenu || showQualityMenu || showLayoutEditor)
+    val menuOpenRef = rememberUpdatedState(
+        showSpeedMenu || showQualityMenu || showLayoutEditor || showRelatedPanel
+    )
     // 长按加速倍率同样要给手势闭包一个实时快照：播放器实例跨集复用，
     // 直接读参数会把首次组合时的倍率一直用下去
     val longPressBoostSpeedRef = rememberUpdatedState(longPressBoostSpeed)
@@ -576,16 +583,31 @@ fun VideoPlayer(
         showQualityMenu,
         showMoreMenu,
         showLayoutEditor,
+        showRelatedPanel,
         controlsActivityRef.value
     ) {
         if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu &&
-            !showMoreMenu && !showLayoutEditor
+            !showMoreMenu && !showLayoutEditor && !showRelatedPanel
         ) {
             delay(3500L)
-            if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu && !showLayoutEditor) {
+            if (isPlaying && !showSpeedMenu && !showQualityMenu && !showMoreMenu &&
+                !showLayoutEditor && !showRelatedPanel
+            ) {
                 isControlsVisible = false
             }
         }
+    }
+
+    LaunchedEffect(showRelatedPanel) {
+        if (!showRelatedPanel) return@LaunchedEffect
+        isControlsVisible = false
+        showSpeedMenu = false
+        showQualityMenu = false
+        showMoreMenu = false
+    }
+
+    LaunchedEffect(isFullscreen) {
+        if (!isFullscreen) showRelatedPanel = false
     }
 
     // 切换视频时重置海报占位显示状态（posterUrl 变化即新视频）
@@ -1066,7 +1088,7 @@ fun VideoPlayer(
         }
 
         // 控件隐藏时，底部显示一条仅用于展示进度的简易进度条
-        if (!isControlsVisible && !isInPip && playerLayout.showMiniProgress) {
+        if (!isControlsVisible && !isInPip && !showRelatedPanel && playerLayout.showMiniProgress) {
             MiniPlaybackProgress(
                 exoPlayer = exoPlayer,
                 modifier = Modifier
@@ -1076,7 +1098,7 @@ fun VideoPlayer(
         }
 
         // 双指放大后几乎无法精确捏回原比例，给一个只在缩放态出现的还原出口
-        if (playerLayout.showResetZoom && isControlsVisible && !isInPip &&
+        if (playerLayout.showResetZoom && isControlsVisible && !isInPip && !showRelatedPanel &&
             abs(videoZoom - 1f) > ZOOM_EPSILON
         ) {
             ResetZoomButton(
@@ -1091,7 +1113,7 @@ fun VideoPlayer(
         }
 
         // ── 控件 UI（可见时）──────────────────────────────────────────────────
-        if (isControlsVisible && !isInPip) {
+        if (isControlsVisible && !isInPip && !showRelatedPanel) {
             if (showNavButtons && playerLayout.showNavButtons) {
                 PlayerNavButtons(
                     onBackClick = onBackClick,
@@ -1161,7 +1183,7 @@ fun VideoPlayer(
         }
 
         val previewPosition = seekPreview
-        if (previewPosition != null && !isInPip && playerLayout.showSeekPreview) {
+        if (previewPosition != null && !isInPip && !showRelatedPanel && playerLayout.showSeekPreview) {
             SeekPreviewOverlay(
                 frame = previewFrame,
                 text = "${formatTime(previewPosition)} / ${formatTime(exoPlayer.duration)}",
@@ -1169,7 +1191,7 @@ fun VideoPlayer(
             )
         }
 
-        if (isLocked && isFullscreen && !isInPip) {
+        if (isLocked && isFullscreen && !isInPip && !showRelatedPanel) {
             PlayerLockBadge(
                 onUnlock = {
                     // 与其它控件一致：标记这一击落在控件上，外层手势才会跳过「切换控件显隐」，
@@ -1181,6 +1203,33 @@ fun VideoPlayer(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = 12.dp)
+            )
+        }
+
+        if (isFullscreen && !isInPip && !showLayoutEditor && relatedVideos.isNotEmpty() &&
+            playerLayout.showRelatedList
+        ) {
+            if (showRelatedPanel) {
+                // 空白处点击收回：遮罩铺满整块画面，卡片与收起按钮自行消费点击
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { showRelatedPanel = false }
+                )
+            }
+            RelatedPanel(
+                videos = relatedVideos,
+                visible = showRelatedPanel,
+                onCollapse = { showRelatedPanel = false },
+                onVideoClick = onRelatedVideoClick
+            )
+            RelatedPeek(
+                video = relatedVideos.first(),
+                visible = !showRelatedPanel,
+                onClick = { showRelatedPanel = true }
             )
         }
 

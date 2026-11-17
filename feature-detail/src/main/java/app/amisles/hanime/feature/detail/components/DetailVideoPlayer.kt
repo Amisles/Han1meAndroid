@@ -48,6 +48,7 @@ internal fun DetailVideoPlayer(
     onSourceError: () -> Unit = {},
     onBackClick: () -> Unit = {},
     onNavigateHome: () -> Unit = {},
+    onRelatedVideoClick: (String) -> Unit = {},
     showNavButtons: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -86,6 +87,8 @@ internal fun DetailVideoPlayer(
         onBackClick = onBackClick,
         onNavigateHome = onNavigateHome,
         showNavButtons = showNavButtons,
+        relatedVideos = detail.relatedVideos,
+        onRelatedVideoClick = { onRelatedVideoClick(it.videoUrl) },
         modifier = modifier
     )
 }
