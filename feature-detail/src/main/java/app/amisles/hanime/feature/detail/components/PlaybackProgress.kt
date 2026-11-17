@@ -41,13 +41,15 @@ internal val MINI_PROGRESS_HEIGHT = 3.dp
  * 进度轮询下沉到本组合内部，仅重排自身、不触发外层 VideoPlayer 重排。
  *
  * @param onSeekInteract 用户点击 / 拖动时回调，外层据此判定触摸落在控件上、不切换控件显隐。
+ * @param onSeekPreview 拖动中的目标位置（毫秒），结束时回调 null；外层据此展示画面预览。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlaybackProgressBar(
     exoPlayer: ExoPlayer,
     modifier: Modifier = Modifier,
-    onSeekInteract: () -> Unit = {}
+    onSeekInteract: () -> Unit = {},
+    onSeekPreview: (Long?) -> Unit = {}
 ) {
     var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var duration by remember { mutableLongStateOf(exoPlayer.duration) }
@@ -87,10 +89,12 @@ internal fun PlaybackProgressBar(
                 isDragging = true
                 currentPosition = (value * duration).toLong()
                 onSeekInteract()
+                onSeekPreview(currentPosition)
             },
             onValueChangeFinished = {
                 isDragging = false
                 exoPlayer.seekTo(currentPosition)
+                onSeekPreview(null)
             },
             modifier = Modifier
                 .fillMaxWidth()

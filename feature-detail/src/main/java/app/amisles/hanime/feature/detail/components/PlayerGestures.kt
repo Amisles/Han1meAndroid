@@ -36,7 +36,7 @@ internal fun Modifier.playerGestures(
     gestureScope: CoroutineScope,
     gestureHintState: MutableState<String?>,
     lastTapTimeState: MutableLongState,
-    seekPreviewState: MutableLongState,
+    seekPreviewState: MutableState<Long?>,
     brightnessState: MutableFloatState,
     videoZoomState: MutableFloatState,
     isControlTapState: MutableState<Boolean>,
@@ -153,7 +153,8 @@ internal fun Modifier.playerGestures(
                             }
                         }
                         if (dragMode == DragMode.SEEK) {
-                            exoPlayer.seekTo(seekPreviewState.value)
+                            seekPreviewState.value?.let { exoPlayer.seekTo(it) }
+                            seekPreviewState.value = null
                         }
                         if (dragMode != null || isZoom) {
                             gestureHintState.value = null
@@ -270,17 +271,13 @@ internal fun Modifier.playerGestures(
                         } else {
                             when (dragMode) {
                                 DragMode.SEEK -> {
-                                    val dur = exoPlayer.duration
                                     seekPreviewState.value = gestureMath.seekTarget(
                                         startPosition = seekStartPos,
                                         startX = startX,
                                         currentX = x,
                                         playerWidth = playerWidth(),
-                                        duration = dur
+                                        duration = exoPlayer.duration
                                     )
-                                    if (dur > 0) {
-                                        gestureHintState.value = "${formatTime(seekPreviewState.value)} / ${formatTime(dur)}"
-                                    }
                                 }
                                 DragMode.BRIGHTNESS -> {
                                     if (playerHeight() > 0f) {

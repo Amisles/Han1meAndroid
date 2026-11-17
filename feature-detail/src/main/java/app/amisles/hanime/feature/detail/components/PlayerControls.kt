@@ -103,6 +103,7 @@ internal fun BoxScope.PlayerControls(
     onSpeedBoundsChange: (Rect) -> Unit,
     onQualityBoundsChange: (Rect) -> Unit,
     onMarkControlTap: () -> Unit,
+    onSeekPreview: (Long?) -> Unit,
     onTogglePlayPause: () -> Unit,
     onSeekBackward: () -> Unit,
     onSeekForward: () -> Unit,
@@ -206,6 +207,7 @@ internal fun BoxScope.PlayerControls(
         PlaybackProgressBar(
             exoPlayer = exoPlayer,
             onSeekInteract = { onMarkControlTap() },
+            onSeekPreview = onSeekPreview,
             modifier = Modifier.weight(1f)
         )
 

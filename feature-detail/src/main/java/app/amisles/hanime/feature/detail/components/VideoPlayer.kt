@@ -53,6 +53,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -93,7 +95,9 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,6 +109,9 @@ private const val STABLE_TICKS_FOR_UPGRADE = 4
 
 // 睡眠定时进入倒计时提示的窗口：最后这段时间才逐秒刷新
 private const val SLEEP_COUNTDOWN_WINDOW_MS = 30_000L
+
+// 进度预览的取帧去抖：拖动过程中位置每帧都在变，等手指停稳再取，避免把取帧请求排成一队
+private const val SEEK_PREVIEW_DEBOUNCE_MS = 80L
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 主组件：VideoPlayer
@@ -248,8 +255,10 @@ fun VideoPlayer(
     var showGestureIntro by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.playerGestureIntroShown) }
     val lastTapTimeState = remember { mutableLongStateOf(0L) }
     var lastTapTime by lastTapTimeState
-    val seekPreviewState = remember { mutableLongStateOf(0L) }
+    // 进度预览的目标位置：null = 未在拖动。滑动手势与进度条共用这一个来源
+    val seekPreviewState = remember { mutableStateOf<Long?>(null) }
     var seekPreview by seekPreviewState
+    var previewFrame by remember { mutableStateOf<ImageBitmap?>(null) }
     val brightnessState =     remember {
         val initial = activity?.window?.attributes?.screenBrightness ?: -1f
         mutableFloatStateOf(if (initial < 0f) 0.5f else initial)
@@ -577,6 +586,7 @@ fun VideoPlayer(
             // 先解绑播放服务（会话随之释放），调用方随后才释放播放器
             PlaybackSessionBridge.unbind(exoPlayer)
             exoPlayer.removeListener(listener)
+            PlayerFramePreview.release()
         }
     }
 
@@ -810,6 +820,20 @@ fun VideoPlayer(
         delay(3_500L)
         Preferences.markPlayerGestureIntroShown()
         showGestureIntro = false
+    }
+
+    // 进度预览取帧：拖动期间保留上一帧，避免每换一个位置都先闪成无图再补图
+    LaunchedEffect(seekPreview, currentSourceUrl) {
+        val target = seekPreview
+        if (target == null) {
+            previewFrame = null
+            return@LaunchedEffect
+        }
+        delay(SEEK_PREVIEW_DEBOUNCE_MS)
+        val bitmap = withContext(Dispatchers.IO) {
+            PlayerFramePreview.frameAt(currentSourceUrl, target, appPrefs.antiHotlinkReferer)
+        }
+        previewFrame = bitmap?.asImageBitmap()
     }
 
     // ── 播放器容器与统一手势 ─────────────────────────────────────────────────
@@ -1079,6 +1103,7 @@ fun VideoPlayer(
                 onSpeedBoundsChange = { speedBtnBounds = it },
                 onQualityBoundsChange = { qualityBtnBounds = it },
                 onMarkControlTap = { markControlTap() },
+                onSeekPreview = { seekPreview = it },
                 onTogglePlayPause = { togglePlayPause() },
                 onSeekBackward = { seekBackward() },
                 onSeekForward = { seekForward() },
@@ -1094,6 +1119,16 @@ fun VideoPlayer(
                 onSleepTimerChange = { sleepTimer = it },
                 onResizeModeChange = { appPrefs.setPlayerResizeMode(it) },
                 onBuildPipParams = { buildPipParams() }
+            )
+        }
+
+        // 画面上方叠预览图、下方叠时间：拖动手势与拖动进度条都落到这一处
+        val previewPosition = seekPreview
+        if (previewPosition != null && !isInPip) {
+            SeekPreviewOverlay(
+                frame = previewFrame,
+                text = "${formatTime(previewPosition)} / ${formatTime(exoPlayer.duration)}",
+                modifier = Modifier.align(Alignment.Center)
             )
         }
 
