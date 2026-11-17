@@ -71,10 +71,13 @@ private data class ProfileMenuItem(
 private fun StatItem(
     count: String,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Column(
-        modifier = modifier.padding(vertical = 16.dp),
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -238,17 +241,20 @@ fun ProfileScreen(
                 StatItem(
                     count = watchCount.toString(),
                     label = stringResource(R.string.profile_stat_watch),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = { onNavigate("history") }
                 )
                 StatItem(
                     count = favoriteCount.toString(),
                     label = stringResource(R.string.profile_stat_favorite),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = { onNavigate(if (isLogin) "cloudFavorite" else "favorite") }
                 )
                 StatItem(
                     count = downloadCount.toString(),
                     label = stringResource(R.string.profile_stat_download),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = { onNavigate("download") }
                 )
             }
         }
