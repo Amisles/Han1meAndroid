@@ -52,10 +52,10 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.domain.model.HanimeVideo
 
-internal val RELATED_CARD_WIDTH = 168.dp
-internal val RELATED_CARD_HEIGHT = 95.dp
+internal val RELATED_CARD_WIDTH = 190.dp
+internal val RELATED_CARD_HEIGHT = 107.dp
 
-internal val RELATED_PEEK_WIDTH = (RELATED_CARD_WIDTH.value / 5f).dp
+internal val RELATED_PEEK_WIDTH = (RELATED_CARD_WIDTH.value * 0.4f).dp
 
 internal val RELATED_PANEL_HEIGHT = RELATED_CARD_HEIGHT + 46.dp
 
