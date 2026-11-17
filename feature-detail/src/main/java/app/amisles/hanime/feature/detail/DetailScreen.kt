@@ -39,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -174,6 +173,8 @@ fun DetailScreen(
         ThumbnailPrefetcher.prefetch(context, urls)
     }
     val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
+    // 当前视频 id 的可观察镜像：换片后播放器据此复位逐片状态
+    val switchedVideoId by viewModel.videoSwitched.collectAsStateWithLifecycle()
     val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
     val favoriteActive = if (isLogin) cloudSavedTargets.isNotEmpty() else isFavorite
@@ -245,12 +246,13 @@ fun DetailScreen(
 
     // 续播点在播放器构建期间并行读取，避免「先 await 播放器、再 await 数据库」串行两次 IO，
     // 把首帧起播往后推。读取结果是 State，VideoPlayer 在首帧就绪时再消费。
-    val savedSeekMs by produceState(0L, viewModel.videoId) {
-        value = if (viewModel.videoId.isNotEmpty()) {
-            viewModel.getSavedPlaybackPosition(viewModel.videoId)
-        } else {
-            0L
-        }
+    //
+    // 换片（推荐列表直接换视频）时必须先清零：同一个页面不重建 VM，旧值留着会让新视频跳到上一部的进度。
+    var savedSeekMs by remember { mutableStateOf(0L) }
+    LaunchedEffect(switchedVideoId) {
+        savedSeekMs = 0L
+        val id = viewModel.videoId
+        if (id.isNotEmpty()) savedSeekMs = viewModel.getSavedPlaybackPosition(id)
     }
 
     LaunchedEffect(Unit) {
@@ -306,6 +308,16 @@ fun DetailScreen(
             )
             player.prepare()
         }
+    }
+
+    // 推荐列表换片：不出页面、不退出全屏，播放器留在原地直接换到新视频，详情页内容静默跟随。
+    // 用户退出全屏时看到的就是新视频的详情页，返回栈也仍停在同一个详情页上。
+    val openRelatedInPlace: (String) -> Unit = { url ->
+        exoPlayer?.let { player ->
+            val position = player.currentPosition
+            if (position > 0) viewModel.savePlaybackProgress(position, player.duration)
+        }
+        viewModel.loadVideoDetail(url)
     }
 
     // 播放结束处理：保存进度；若开启连播则给出可撤销的下一集预告
@@ -529,7 +541,7 @@ fun DetailScreen(
     )
 
     if (useTabletUI) {
-        if (isLoading) {
+        if (isLoading && videoDetail == null) {
             // 平板加载骨架
             TabletDetailSkeleton()
         } else {
@@ -572,7 +584,8 @@ fun DetailScreen(
                             onSourceError = { viewModel.refreshVideoSources() },
                             onBackClick = onBackClick,
                             onNavigateHome = onNavigateHome,
-                            onRelatedVideoClick = onVideoClick,
+                            onRelatedVideoClick = openRelatedInPlace,
+                            mediaId = switchedVideoId,
                             modifier = Modifier
                         )
                     }
@@ -599,7 +612,8 @@ fun DetailScreen(
                     .then(if (isPlayerFullscreen) Modifier.background(Color.Black) else Modifier)
                     .testTag("detail_screen")
             ) {
-                if (isLoading) {
+                // 已有内容时不退回骨架屏：换片期间撤掉播放器会把 ExoPlayer 一起释放（全屏随之中断）
+                if (isLoading && videoDetail == null) {
                     item(key = "detail_skeleton") {
                         DetailSkeletonScreen()
                     }
@@ -650,7 +664,8 @@ fun DetailScreen(
                                     onSourceError = { viewModel.refreshVideoSources() },
                                     onBackClick = onBackClick,
                                     onNavigateHome = onNavigateHome,
-                                    onRelatedVideoClick = onVideoClick,
+                                    onRelatedVideoClick = openRelatedInPlace,
+                                    mediaId = switchedVideoId,
                                     showNavButtons = !isPlayerFullscreen,
                                     modifier = (if (isPlayerFullscreen) Modifier.fillParentMaxSize() else Modifier)
                                         .graphicsLayer {

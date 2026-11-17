@@ -176,6 +176,7 @@ fun LocalPlayerScreen(
                     mediaTitle = playbackState.title.ifBlank {
                         File(filePath.orEmpty()).nameWithoutExtension
                     },
+                    mediaId = filePath.orEmpty(),
                     onBackClick = onBackClick,
                     onNavigateHome = onNavigateHome,
                     showNavButtons = !isPlayerFullscreen,

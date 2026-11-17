@@ -49,6 +49,7 @@ internal fun DetailVideoPlayer(
     onBackClick: () -> Unit = {},
     onNavigateHome: () -> Unit = {},
     onRelatedVideoClick: (String) -> Unit = {},
+    mediaId: String = "",
     showNavButtons: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -89,6 +90,7 @@ internal fun DetailVideoPlayer(
         showNavButtons = showNavButtons,
         relatedVideos = detail.relatedVideos,
         onRelatedVideoClick = { onRelatedVideoClick(it.videoUrl) },
+        mediaId = mediaId,
         modifier = modifier
     )
 }

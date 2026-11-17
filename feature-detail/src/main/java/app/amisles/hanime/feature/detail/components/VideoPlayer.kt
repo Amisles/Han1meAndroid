@@ -169,7 +169,9 @@ fun VideoPlayer(
     showNavButtons: Boolean = true,
     // 全屏右侧推荐列表的数据与点击回调；直接复用详情页推荐区的条目
     relatedVideos: List<HanimeVideo> = emptyList(),
-    onRelatedVideoClick: (HanimeVideo) -> Unit = {}
+    onRelatedVideoClick: (HanimeVideo) -> Unit = {},
+    // 当前媒体标识。同一实例内换片（推荐列表直接换视频）时据此复位逐片状态
+    mediaId: String = ""
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -586,6 +588,26 @@ fun VideoPlayer(
         sleepTimer = PlayerSleepTimer()
         isControlsVisible = true
         gestureHint = context.getString(R.string.player_sleep_paused)
+    }
+
+    // 同一个播放器换片：逐片状态必须回初值，否则上一部的错误态、手动锁画质、续播标记会被带进新视频
+    LaunchedEffect(mediaId) {
+        currentSourceUrl = initialSourceUrl
+        playbackError = null
+        isReady = false
+        isSwitchingQuality = false
+        manualQualityOverride = false
+        autoSwitched = false
+        rebufferCount = 0
+        stableTicks = 0
+        autoErrorRetryUsed = false
+        sourceRefreshRequested = false
+        initialSeekAppliedRef.value = false
+        lastPlaybackState = Player.STATE_IDLE
+        seekPreview = null
+        previewFrame = null
+        relatedDragProgress = null
+        relatedPanelOpen = false
     }
 
     // 控件自动隐藏：播放中且未开菜单 / 画中画时，空闲 3.5s 后隐藏；手势 / 暂停 / 开菜单时重置计时
