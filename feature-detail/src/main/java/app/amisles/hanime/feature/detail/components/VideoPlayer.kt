@@ -590,6 +590,13 @@ fun VideoPlayer(
         gestureHint = context.getString(R.string.player_sleep_paused)
     }
 
+    // 换片后父级会把新视频的直链传进来：本源标记必须跟上，否则清晰度菜单、预览取帧都还指着上一部
+    LaunchedEffect(initialSourceUrl) {
+        if (initialSourceUrl.isNotBlank() && currentSourceUrl != initialSourceUrl) {
+            currentSourceUrl = initialSourceUrl
+        }
+    }
+
     // 同一个播放器换片：逐片状态必须回初值，否则上一部的错误态、手动锁画质、续播标记会被带进新视频
     LaunchedEffect(mediaId) {
         currentSourceUrl = initialSourceUrl

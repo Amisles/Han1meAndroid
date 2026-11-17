@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -458,6 +459,8 @@ private fun BoxScope.ZoneHandle(
     val density = LocalDensity.current
     val handleWidthPx = with(density) { HANDLE_WIDTH.toPx() }
     var dragBase by remember { mutableStateOf<Float?>(null) }
+    // 手势块按 barWidth/上下限缓存，只有边界值会单独变化：用最新值兜住，否则下一次拖动会从旧边界起算
+    val currentBoundary by rememberUpdatedState(boundaryPercent)
     Box(
         modifier = Modifier
             .offset {
@@ -470,13 +473,13 @@ private fun BoxScope.ZoneHandle(
             .fillMaxHeight()
             .pointerInput(barWidth, minPercent, maxPercent) {
                 detectHorizontalDragGestures(
-                    onDragStart = { dragBase = boundaryPercent },
+                    onDragStart = { dragBase = currentBoundary },
                     onDragEnd = { dragBase = null },
                     onDragCancel = { dragBase = null },
                     onHorizontalDrag = { change, dragAmount ->
                         change.consume()
                         if (barWidth > 0f) {
-                            val base = dragBase ?: boundaryPercent
+                            val base = dragBase ?: currentBoundary
                             val next = (base + dragAmount / barWidth * 100f)
                                 .coerceIn(minPercent, maxPercent)
                             dragBase = next
@@ -530,12 +533,6 @@ private val FEATURE_TILES = listOf(
     FeatureTile(PlayerControlId.PIP, Icons.Outlined.PictureInPictureAlt, R.string.player_layout_show_pip),
     FeatureTile(PlayerControlId.RELATED_LIST, Icons.Outlined.PlaylistPlay, R.string.player_layout_show_related_list)
 )
-
-private fun PlayerTapZoneSlot.titleRes(): Int = when (this) {
-    PlayerTapZoneSlot.LEFT -> R.string.player_layout_tap_left
-    PlayerTapZoneSlot.CENTER -> R.string.player_layout_tap_center
-    PlayerTapZoneSlot.RIGHT -> R.string.player_layout_tap_right
-}
 
 private fun tapActionLabelRes(action: PlayerTapAction): Int = when (action) {
     PlayerTapAction.REWIND -> R.string.player_layout_action_rewind
