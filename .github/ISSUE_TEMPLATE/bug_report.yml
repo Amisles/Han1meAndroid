@@ -24,7 +24,7 @@ body:
     attributes:
       label: 应用版本
       description: 设置 → 关于我们 可查看 versionName 与 versionCode
-      placeholder: 1.6.0 (versionCode 13)
+      placeholder: 1.8.0 (versionCode 21)
     validations:
       required: true
 
