@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.dp
 /** 长按触发加速的时长：短于它只会当作点击或滑动，避免误触把倍速改掉。 */
 private const val LONG_PRESS_BOOST_DELAY_MS = 1000L
 
+/** 双击判定的时间窗口。单击动作要等窗口结束再执行，否则每次双击快进都会顺带切换控制栏。 */
+private const val DOUBLE_TAP_WINDOW_MS = 300L
+
 internal fun Modifier.playerGestures(
     onControlsVisibleChange: (Boolean) -> Unit,
     isControlsVisible: () -> Boolean,
@@ -59,6 +62,7 @@ internal fun Modifier.playerGestures(
         // 阈值按屏幕密度换算成像素：固定 8px 在高密度屏上只有约 3dp，远低于系统 touch slop，
         // 轻微抖动即可决定方向，表现为上下滑却触发快进。
         val gestureMath = PlayerGestureMath(with(density) { PlayerGestureMath.SLOP_DP.dp.toPx() })
+        var pendingSingleTap: Job? = null
         while (true) {
             awaitPointerEventScope {
                 var pointerCount = 0
@@ -122,7 +126,9 @@ internal fun Modifier.playerGestures(
                         if (!moved && !isZoom && !menuOpen() && !gestureTakenOver) {
                             // 视为一次点击
                             val now = System.currentTimeMillis()
-                            if (now - lastTapTimeState.value < 300L) {
+                            if (now - lastTapTimeState.value < DOUBLE_TAP_WINDOW_MS) {
+                                pendingSingleTap?.cancel()
+                                pendingSingleTap = null
                                 lastTapTimeState.value = 0L
                                 if (isControlTapState.value) {
                                     // 第二击落在控件上：控件已自行处理，手势不再叠加分区动作
@@ -143,13 +149,17 @@ internal fun Modifier.playerGestures(
                                         PlayerTapAction.NONE -> Unit
                                     }
                                 }
+                            } else if (isControlTapState.value) {
+                                // 单击落在控件上：交由控件自身处理，手势不切换控制栏显隐、不关菜单
+                                isControlTapState.value = false
+                                lastTapTimeState.value = 0L
+                                pendingSingleTap?.cancel()
+                                pendingSingleTap = null
                             } else {
                                 lastTapTimeState.value = now
-                                if (isControlTapState.value) {
-                                    // 单击落在控件上：交由控件自身处理，手势不切换控制栏显隐、不关菜单
-                                    isControlTapState.value = false
-                                    lastTapTimeState.value = 0L
-                                } else {
+                                pendingSingleTap?.cancel()
+                                pendingSingleTap = gestureScope.launch {
+                                    delay(DOUBLE_TAP_WINDOW_MS)
                                     onControlsVisibleChange(!isControlsVisible())
                                     showSpeedMenuState.value = false
                                     showQualityMenuState.value = false
@@ -208,6 +218,8 @@ internal fun Modifier.playerGestures(
                             // 每段手势开始必须清零：gestureMath 跨手势复用，
                             // 残留的累计位移会让本次方向判定沿用上一次手势的结果
                             gestureMath.reset()
+                            pendingSingleTap?.cancel()
+                            pendingSingleTap = null
                             // 每次手势开始都清空「落在控件上」标记：控件 onClick 要到抬起才置位，
                             // 若上次手势残留该标记会吞掉下一次空白点击
                             isControlTapState.value = false
@@ -296,7 +308,7 @@ internal fun Modifier.playerGestures(
                                 DragMode.VOLUME -> {
                                     if (playerHeight() > 0f) {
                                         val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight())
-                                        volumeState.value = (volumeState.value + delta).coerceIn(0f, 1f)
+                                        volumeState.value = ((if (isMutedState.value) 0f else volumeState.value) + delta).coerceIn(0f, 1f)
                                         exoPlayer.volume = volumeState.value
                                         isMutedState.value = volumeState.value == 0f
                                         gestureHintState.value = context.getString(R.string.player_volume, (volumeState.value * 100).toInt())

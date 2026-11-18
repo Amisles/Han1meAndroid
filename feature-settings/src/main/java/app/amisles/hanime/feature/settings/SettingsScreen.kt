@@ -110,6 +110,9 @@ private fun languageOptionRes(): List<Pair<String, Int>> = listOf(
     SettingsRepository.LANGUAGE_JA to R.string.settings_language_ja
 )
 
+private fun speedLabel(speed: Float): String =
+    if (speed == speed.toInt().toFloat()) "${speed.toInt()}×" else "${speed}×"
+
 @Composable
 private fun <T> SettingsDropdownRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -472,7 +475,7 @@ fun SettingsScreen(
         ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
         ThemeMode.DARK to stringResource(R.string.settings_theme_dark)
     )
-    val longPressSpeedOptions = listOf(1.5f, 2f, 2.5f, 3f).map { it to "${it}×" }
+    val longPressSpeedOptions = listOf(1.5f, 2f, 2.5f, 3f).map { it to speedLabel(it) }
     val cacheLimitOptions = listOf(100, 200, 500, 1000, 2000).map {
         it to stringResource(R.string.settings_video_detail_cache_limit_value, it)
     }
@@ -553,7 +556,7 @@ fun SettingsScreen(
                 SettingsDropdownRow(
                     icon = Icons.Outlined.Speed,
                     title = stringResource(R.string.settings_long_press_speed),
-                    selectedLabel = "${uiState.longPressBoostSpeed}×",
+                    selectedLabel = speedLabel(uiState.longPressBoostSpeed),
                     expanded = longPressMenuExpanded,
                     onExpandedChange = { longPressMenuExpanded = it },
                     options = longPressSpeedOptions,

@@ -12,6 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemGestures
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
@@ -161,7 +167,17 @@ internal fun BoxScope.PlayerControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .align(Alignment.BottomCenter),
+            .align(Alignment.BottomCenter)
+            .then(
+                if (isFullscreen) {
+                    Modifier
+                        .windowInsetsPadding(WindowInsets.systemGestures.only(WindowInsetsSides.Bottom))
+                        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
@@ -299,7 +315,7 @@ internal fun BoxScope.PlayerControls(
                         onShowMoreMenuChange(false)
                     },
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(30.dp)
                         .onGloballyPositioned { coords ->
                             val newBounds = Rect(
                                 left = coords.positionInRoot().x,
@@ -554,8 +570,9 @@ internal fun BoxScope.PlayerControls(
                         },
                         onClick = {
                             onShowMoreMenuChange(false)
-                            activity?.enterPictureInPictureMode(onBuildPipParams())
-                            onPipChange(true)
+                            if (activity?.enterPictureInPictureMode(onBuildPipParams()) == true) {
+                                onPipChange(true)
+                            }
                         },
                         modifier = Modifier.height(40.dp)
                     )

@@ -96,15 +96,19 @@ internal fun PlaybackProgressBar(
         Slider(
             value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
             onValueChange = { value ->
-                isDragging = true
-                currentPosition = (value * duration).toLong()
-                onSeekInteract()
-                onSeekPreview(currentPosition)
+                if (duration > 0L) {
+                    isDragging = true
+                    currentPosition = (value * duration).toLong()
+                    onSeekInteract()
+                    onSeekPreview(currentPosition)
+                }
             },
             onValueChangeFinished = {
-                isDragging = false
-                exoPlayer.seekTo(currentPosition)
-                onSeekPreview(null)
+                if (duration > 0L) {
+                    isDragging = false
+                    exoPlayer.seekTo(currentPosition)
+                    onSeekPreview(null)
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()

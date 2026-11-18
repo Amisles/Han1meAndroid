@@ -2,8 +2,10 @@ package app.amisles.hanime.feature.detail.components
 
 import android.app.Activity
 import android.app.PictureInPictureParams
+import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Build
+import android.os.PowerManager
 import android.view.OrientationEventListener
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -157,10 +159,12 @@ internal fun PlayerPipEffect(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    if (isFullscreenRef.value && isPlayingRef.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                        && act.isInPictureInPictureMode != true) {
-                        act.enterPictureInPictureMode(buildPipParams())
-                        onPipChange(true)
+                    if (isFullscreenRef.value && isPlayingRef.value &&
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                        act.isInPictureInPictureMode != true &&
+                        act.isScreenInteractive()
+                    ) {
+                        if (act.enterPictureInPictureMode(buildPipParams())) onPipChange(true)
                     }
                 }
                 Lifecycle.Event.ON_RESUME -> {
@@ -173,3 +177,6 @@ internal fun PlayerPipEffect(
         onDispose { owner.lifecycle.removeObserver(observer) }
     }
 }
+
+private fun Activity.isScreenInteractive(): Boolean =
+    (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true

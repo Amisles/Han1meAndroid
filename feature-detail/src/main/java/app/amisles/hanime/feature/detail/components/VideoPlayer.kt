@@ -294,9 +294,12 @@ fun VideoPlayer(
     val seekPreviewState = remember { mutableStateOf<Long?>(null) }
     var seekPreview by seekPreviewState
     var previewFrame by remember { mutableStateOf<ImageBitmap?>(null) }
-    val brightnessState =     remember {
-        val initial = activity?.window?.attributes?.screenBrightness ?: -1f
-        mutableFloatStateOf(if (initial < 0f) 0.5f else initial)
+    val originalBrightness = remember(activity) {
+        activity?.window?.attributes?.screenBrightness
+            ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+    }
+    val brightnessState = remember(originalBrightness) {
+        mutableFloatStateOf(if (originalBrightness < 0f) 0.5f else originalBrightness)
     }
     var brightness by brightnessState
     val videoZoomState = remember { mutableFloatStateOf(1f) }
@@ -342,6 +345,9 @@ fun VideoPlayer(
     val onSourceErrorRef = rememberUpdatedState(onSourceError)
     // 用 ref 持有最新值，避免 Player.Listener 闭包捕获到陈旧 lambda / 画质列表
     val sourcesRef = rememberUpdatedState(sortedSources)
+    val mediaTitleRef = rememberUpdatedState(mediaTitle)
+    val mediaArtistRef = rememberUpdatedState(mediaArtist)
+    val posterUrlRef = rememberUpdatedState(posterUrl)
     val onPlaybackEndedRef = rememberUpdatedState(onPlaybackEnded)
     val isLoopPlaybackRef = rememberUpdatedState(isLoopPlayback)
     val sleepAfterEpisodeRef = rememberUpdatedState(sleepTimer.afterEpisode)
@@ -353,6 +359,7 @@ fun VideoPlayer(
     // 长按加速倍率同样要给手势闭包一个实时快照：播放器实例跨集复用，
     // 直接读参数会把首次组合时的倍率一直用下去
     val longPressBoostSpeedRef = rememberUpdatedState(longPressBoostSpeed)
+    val doubleTapSeekEnabledRef = rememberUpdatedState(doubleTapSeekEnabled)
     // 续播标记跟随播放器实例（一次实例 = 一部视频），不能以 initialSourceUrl 为键：
     // 画质切换会经「偏好回写 → 父级重组 → initialSourceUrl 变化」把标记复位，
     // 之后任意一次缓冲恢复（BUFFERING→READY）都会把位置跳回续播点，吞掉用户当前进度
@@ -364,19 +371,22 @@ fun VideoPlayer(
      * 换源与重试必须复用同一构造，否则通知会退回「未知曲目」。
      */
     fun buildMediaItem(url: String): MediaItem {
+        val title = mediaTitleRef.value
+        val artist = mediaArtistRef.value
+        val artwork = posterUrlRef.value
         val metadata = MediaMetadata.Builder()
-            .setTitle(mediaTitle)
-            .setArtist(mediaArtist)
-            .apply { if (posterUrl.isNotBlank()) setArtworkUri(Uri.parse(posterUrl)) }
+            .setTitle(title)
+            .setArtist(artist)
+            .apply { if (artwork.isNotBlank()) setArtworkUri(Uri.parse(artwork)) }
             .build()
-        val mimeType = sortedSources.firstOrNull { it.url == url }?.normalizedMimeType.orEmpty()
+        val mimeType = sourcesRef.value.firstOrNull { it.url == url }?.normalizedMimeType.orEmpty()
         val builder = MediaItem.Builder().setUri(url).setMediaMetadata(metadata)
         if (mimeType.isNotEmpty()) builder.setMimeType(mimeType)
         return builder.build()
     }
 
     fun switchQuality(source: VideoSource, userInitiated: Boolean = false) {
-        if (source.url == currentSourceUrl || isSwitchingQuality) {
+        if (source.url == currentSourceUrl || (isSwitchingQuality && !userInitiated)) {
             showQualityMenu = false
             return
         }
@@ -435,8 +445,8 @@ fun VideoPlayer(
                             if (rebufferCount >= 2) {
                                 val sources = sourcesRef.value
                                 val idx = sources.indexOfFirst { it.url == currentSourceUrl }
-                                if (idx > 0 && !isSwitchingQuality) {
-                                    switchQuality(sources[idx - 1]) // 降一档
+                                if (idx in 0 until sources.lastIndex && !isSwitchingQuality) {
+                                    switchQuality(sources[idx + 1]) // 降一档
                                     rebufferCount = 0
                                     autoSwitched = true
                                     stableTicks = 0
@@ -466,8 +476,8 @@ fun VideoPlayer(
                             stableTicks++
                             val sources = sourcesRef.value
                             val idx = sources.indexOfFirst { it.url == currentSourceUrl }
-                            if (stableTicks >= STABLE_TICKS_FOR_UPGRADE && idx in 0 until sources.lastIndex) {
-                                switchQuality(sources[idx + 1])
+                            if (stableTicks >= STABLE_TICKS_FOR_UPGRADE && idx > 0) {
+                                switchQuality(sources[idx - 1])
                                 autoSwitched = false
                                 stableTicks = 0
                             }
@@ -524,11 +534,11 @@ fun VideoPlayer(
                 val linkBroken = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE
-                if (linkBroken && !autoErrorRetryUsed && index > 0) {
+                if (linkBroken && !autoErrorRetryUsed && index in 0 until sources.lastIndex) {
                     autoErrorRetryUsed = true
                     playbackError = null
                     gestureHint = context.getString(R.string.player_quality_fallback)
-                    switchQuality(sources[index - 1])
+                    switchQuality(sources[index + 1])
                     exoPlayer.playWhenReady = true
                     return
                 }
@@ -684,6 +694,11 @@ fun VideoPlayer(
                 val controller = WindowCompat.getInsetsController(w, w.decorView)
                 controller.show(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior = initialBarsBehavior
+                val attrs = w.attributes
+                if (abs(attrs.screenBrightness - originalBrightness) > 0.001f) {
+                    attrs.screenBrightness = originalBrightness
+                    w.attributes = attrs
+                }
             }
             if (activity?.requestedOrientation != initialOrientation) {
                 try { activity?.requestedOrientation = initialOrientation } catch (_: Exception) {}
@@ -980,7 +995,7 @@ fun VideoPlayer(
                 setBrightness = { setBrightness(it) },
                 setLongPressBoost = { setLongPressBoost(it) },
                 setLongPressBoostSpeed = { updateLongPressBoostSpeed(it) },
-                doubleTapSeekEnabled = { doubleTapSeekEnabled },
+                doubleTapSeekEnabled = { doubleTapSeekEnabledRef.value },
                 playerLayout = { activeLayout }
             )
     ) {
@@ -1195,7 +1210,10 @@ fun VideoPlayer(
                 autoPlayNext = autoPlayNext,
                 onAutoPlayNextChanged = onAutoPlayNextChanged,
                 isLoopPlayback = isLoopPlayback,
-                onLoopPlaybackChanged = onLoopPlaybackChanged,
+                onLoopPlaybackChanged = { enabled ->
+                    onLoopPlaybackChanged(enabled)
+                    if (enabled && sleepTimer.afterEpisode) sleepTimer = PlayerSleepTimer()
+                },
                 isPlaying = isPlaying,
                 isBuffering = isBuffering,
                 isReady = isReady,
@@ -1234,7 +1252,10 @@ fun VideoPlayer(
                 onLock = { isLocked = true },
                 isOrientationPinned = pinnedOrientation != null,
                 onToggleOrientationPin = { toggleOrientationPin() },
-                onSleepTimerChange = { sleepTimer = it },
+                onSleepTimerChange = { timer ->
+                    sleepTimer = timer
+                    if (timer.afterEpisode && isLoopPlayback) onLoopPlaybackChanged(false)
+                },
                 onResizeModeChange = { appPrefs.setPlayerResizeMode(it) },
                 onBuildPipParams = { buildPipParams() },
                 onEditLayout = {

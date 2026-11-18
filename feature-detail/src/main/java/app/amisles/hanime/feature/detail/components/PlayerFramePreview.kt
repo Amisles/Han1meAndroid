@@ -30,13 +30,14 @@ import java.util.LinkedHashMap
  * 几十个目标位置，每帧都新建 retriever 要把整段索引重读一遍，表现为拖动手感变粘。
  *
  * 直链必须带上与播放器一致的 User-Agent 与防盗链 Referer，否则 CDN 直接回 403、取帧恒为空。
- * 某个源取帧失败后本次播放不再重试：网络逐帧失败会把每一次拖动都变成一次超时等待。
+ * 连续取帧失败达到上限后才放弃该源：单次超时不该葬送整次播放的预览，而每次拖动都重试又会把拖动变成一次超时等待。
  */
 internal object PlayerFramePreview {
 
     private const val BUCKET_MS = 1_000L
     private const val CACHE_SIZE = 16
     private const val MAX_WIDTH_PX = 320
+    private const val MAX_FRAME_FAILURES = 3
     private const val HLS_SUFFIX = ".m3u8"
 
     private val cache = object : LinkedHashMap<Long, Bitmap>(CACHE_SIZE, 0.75f, true) {
@@ -47,6 +48,7 @@ internal object PlayerFramePreview {
     private var retriever: MediaMetadataRetriever? = null
     private var retrieverSource = ""
     private var failedSource = ""
+    private var consecutiveFailures = 0
 
     @Synchronized
     fun frameAt(source: String, positionMs: Long, referer: String): Bitmap? {
@@ -64,9 +66,10 @@ internal object PlayerFramePreview {
             )
         }.getOrNull()
         if (frame == null) {
-            failedSource = source
+            if (++consecutiveFailures >= MAX_FRAME_FAILURES) failedSource = source
             return null
         }
+        consecutiveFailures = 0
         val scaled = scaleDown(frame)
         cache[bucket] = scaled
         return scaled
@@ -78,6 +81,7 @@ internal object PlayerFramePreview {
         retriever = null
         retrieverSource = ""
         failedSource = ""
+        consecutiveFailures = 0
         cache.clear()
     }
 
@@ -88,6 +92,7 @@ internal object PlayerFramePreview {
         retrieverSource = ""
         cache.clear()
         failedSource = ""
+        consecutiveFailures = 0
         val created = MediaMetadataRetriever()
         val opened = runCatching {
             if (source.startsWith("http://", ignoreCase = true) ||
