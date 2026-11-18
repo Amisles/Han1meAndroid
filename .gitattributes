@@ -1,0 +1,2 @@
+# 解析器夹具的字节就是被测输入：换行转换会改变输入，因此禁止 EOL 归一化。
+data/src/test/resources/fixtures/*.html -text

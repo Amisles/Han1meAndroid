@@ -3,16 +3,12 @@ package app.amisles.hanime.data.parser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class ComicPageRealHtmlTest {
 
     @Test
     fun parsesRealComicsPage() {
-        val file = File("../docs/comics.html")
-        if (!file.exists()) return
-        val html = file.readText()
-        val page = ComicPageParser().parse(html, "https://hanimeone.me")
+        val page = ComicPageParser().parse(Fixtures.html("comic-list.html"), "https://hanimeone.me")
         println("sections=" + page.sections.size + " current=" + page.currentPage + " total=" + page.totalPages)
         page.sections.forEach { s -> println("  [" + s.title + "] " + s.items.size) }
         assertTrue(page.sections.isNotEmpty())

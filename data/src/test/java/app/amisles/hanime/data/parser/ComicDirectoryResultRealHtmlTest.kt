@@ -3,7 +3,6 @@ package app.amisles.hanime.data.parser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class ComicDirectoryResultRealHtmlTest {
 
@@ -12,9 +11,7 @@ class ComicDirectoryResultRealHtmlTest {
 
     @Test
     fun parsesRealTagResultPage() {
-        val file = File("../docs/漫画标签搜索.html")
-        if (!file.exists()) return
-        val result = parser.parse(file.readText(), baseUrl)
+        val result = parser.parse(Fixtures.html("comic-tag-result.html"), baseUrl)
         println("tag items=" + result.items.size + " page=" + result.currentPage + "/" + result.totalPages)
         assertTrue(result.items.size >= 30)
         assertEquals(1, result.currentPage)
@@ -25,9 +22,7 @@ class ComicDirectoryResultRealHtmlTest {
 
     @Test
     fun parsesRealArtistResultPage() {
-        val file = File("../docs/漫画作者搜索.html")
-        if (!file.exists()) return
-        val result = parser.parse(file.readText(), baseUrl)
+        val result = parser.parse(Fixtures.html("comic-artist-result.html"), baseUrl)
         println("artist items=" + result.items.size + " page=" + result.currentPage + "/" + result.totalPages)
         assertTrue(result.items.size >= 30)
         assertTrue(result.hasNextPage)

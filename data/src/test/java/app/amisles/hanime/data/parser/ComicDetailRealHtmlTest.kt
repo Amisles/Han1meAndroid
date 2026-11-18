@@ -5,20 +5,14 @@ import app.amisles.hanime.domain.model.ComicDetail
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class ComicDetailRealHtmlTest {
 
     private val baseUrl = "https://hanimeone.me"
 
-    private fun load(name: String): String? {
-        val file = File("../docs/" + name)
-        return if (file.exists()) file.readText() else null
-    }
-
     @Test
     fun parsesRealComicDetailPage() {
-        val html = load("漫画详情.html") ?: return
+        val html = Fixtures.html("comic-detail.html")
         val detail: ComicDetail = ComicDetailParser().parse(html, baseUrl, "166210")
 
         println("title=" + detail.title)
@@ -51,7 +45,7 @@ class ComicDetailRealHtmlTest {
 
     @Test
     fun parsesRealComicReaderPage() {
-        val html = load("浏览页面.html") ?: return
+        val html = Fixtures.html("comic-reader.html")
         val chapter: ComicChapter = ComicReaderParser().parse(html, baseUrl, "166210")
 
         println("pageCount=" + chapter.pageCount)
