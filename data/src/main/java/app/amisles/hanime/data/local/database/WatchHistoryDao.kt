@@ -84,6 +84,9 @@ interface WatchHistoryDao {
 
     @Query("SELECT COUNT(*) FROM watch_history")
     suspend fun getWatchHistoryCount(): Int
+
+    @Query("SELECT COUNT(*) FROM watch_history")
+    fun observeWatchHistoryCount(): Flow<Int>
 }
 
 data class WatchProgressRow(

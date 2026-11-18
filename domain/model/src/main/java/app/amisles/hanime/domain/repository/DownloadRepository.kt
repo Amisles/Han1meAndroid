@@ -4,6 +4,7 @@ import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -49,6 +50,7 @@ interface DownloadRepository {
     fun retryAllFailed()
 
     suspend fun getCompletedDownloadCount(): Int
+    fun getCompletedDownloadCountFlow(): Flow<Int>
 
     /** 存储面板数据：目录、已用 / 剩余空间、孤儿位图统计。 */
     suspend fun getStorageInfo(): DownloadStorageInfo

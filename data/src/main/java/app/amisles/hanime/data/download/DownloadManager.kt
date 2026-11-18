@@ -16,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.StateFlow
@@ -1711,6 +1712,8 @@ class DownloadManager @Inject constructor(
             }
             .sortedByDescending { it.id }
     }
+
+    override fun getCompletedDownloadCountFlow(): Flow<Int> = downloadDao.observeCompletedCount()
 
     override suspend fun getCompletedDownloadCount(): Int {
         return try {

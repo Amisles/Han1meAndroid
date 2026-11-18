@@ -123,9 +123,8 @@ fun ProfileScreen(
         }
     }
 
-    // 进入组合即加载计数；抽屉每次打开都会重新进入组合，从而刷新统计。
+    // 统计由库表实时派生，这里只补一次本地尚缺的昵称（已有则不发请求）。
     LaunchedEffect(Unit) {
-        profileViewModel.loadCounts()
         profileViewModel.refreshAccountName()
     }
 

@@ -246,6 +246,11 @@ internal fun Modifier.playerGestures(
                         }
                         if (menuOpen() || gestureTakenOver) {
                             // 浮层或子控件接管期间不判定拖动：滑动应由它们自己消费
+                            if (dragMode == DragMode.SEEK) {
+                                // 已开始的横滑预览要一并撤销，否则松手仍会按预览位置跳转
+                                seekPreviewState.value = null
+                                dragMode = null
+                            }
                             lastX = x
                             lastY = y
                             continue
@@ -281,7 +286,8 @@ internal fun Modifier.playerGestures(
                                         showSpeedMenuState.value = false
                                         showQualityMenuState.value = false
                                         seekStartPos = exoPlayer.currentPosition
-                                        seekPreviewState.value = seekStartPos
+                                        // 只有横滑进度才取帧预览：亮度 / 音量走中央提示条，一并出图会把当前读数盖住
+                                        if (mode == DragMode.SEEK) seekPreviewState.value = seekStartPos
                                         dragMode = mode
                                     }
                                 }

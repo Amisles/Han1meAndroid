@@ -25,6 +25,7 @@ interface LibraryRepository {
     suspend fun getAllFavorites(): List<FavoriteVideo>
     suspend fun getFavoriteCount(): Int
     fun getFavoriteIdsFlow(): Flow<List<String>>
+    fun getFavoriteCountFlow(): Flow<Int>
 
     // ── 收藏分组 ────────────────────────────────────────────────────────────
     fun getAllFavoriteGroupsFlow(): Flow<List<FavoriteGroup>>
@@ -66,6 +67,7 @@ interface LibraryRepository {
     suspend fun removeWatchHistories(videoIds: List<String>): Boolean
     suspend fun clearWatchHistory(): Boolean
     suspend fun getWatchHistoryCount(): Int
+    fun getWatchHistoryCountFlow(): Flow<Int>
 
     // ── 搜索历史 ────────────────────────────────────────────────────────────
     fun getSearchHistory(): Flow<List<String>>

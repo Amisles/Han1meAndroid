@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import app.amisles.hanime.data.local.entity.DownloadEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DownloadDao {
@@ -27,6 +28,9 @@ interface DownloadDao {
 
     @Query("SELECT COUNT(*) FROM download_tasks WHERE status = 'COMPLETED'")
     suspend fun getCompletedCount(): Int
+
+    @Query("SELECT COUNT(*) FROM download_tasks WHERE status = 'COMPLETED'")
+    fun observeCompletedCount(): Flow<Int>
 
     @Query("SELECT MAX(id) FROM download_tasks")
     suspend fun getMaxId(): Int?

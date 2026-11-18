@@ -2,6 +2,8 @@ package app.amisles.hanime.feature.detail.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +76,7 @@ internal fun BoxScope.RelatedPullPane(
     Row(
         modifier = Modifier
             .align(Alignment.CenterEnd)
+            .claimPointerStream()
             .graphicsLayerTransform(progress)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -107,6 +110,20 @@ internal fun BoxScope.RelatedPullPane(
             ) {
                 RelatedThumbnail(video = video, modifier = Modifier.fillMaxSize())
             }
+        }
+    }
+}
+
+// 拉出条叠在播放器手势层之上：不在这里把整段触摸标记为已消费，外层会把左滑判成拖动进度，
+// 松手时按预览位置跳转（表现为拉不出面板、视频反而后退）。放在手势链最外层才不影响
+// 同节点内层的点击与横向拖动 —— 内层先拿到事件，标记消费不会截断它们。
+private fun Modifier.claimPointerStream(): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        while (true) {
+            val event = awaitPointerEvent()
+            event.changes.forEach { it.consume() }
+            if (event.changes.none { it.pressed }) break
         }
     }
 }

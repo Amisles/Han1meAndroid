@@ -10,11 +10,10 @@ import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.core.common.util.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,14 +31,19 @@ class ProfileViewModel @Inject constructor(
 
     val watchStatsEnabled: StateFlow<Boolean> = settings.watchStatsEnabledFlow
 
-    private val _watchCount = MutableStateFlow(0)
-    val watchCount: StateFlow<Int> = _watchCount.asStateFlow()
+    // 三项统计都从库表实时派生：抽屉内容首次展开后常驻组合，一次性查询会把统计冻在那一刻，
+    // 只有重启应用才会变（个人页每次重新进入组合，所以看起来是好的）。
+    val watchCount: StateFlow<Int> = library.getWatchHistoryCountFlow()
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    private val _favoriteCount = MutableStateFlow(0)
-    val favoriteCount: StateFlow<Int> = _favoriteCount.asStateFlow()
+    val favoriteCount: StateFlow<Int> = library.getFavoriteCountFlow()
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    private val _downloadCount = MutableStateFlow(0)
-    val downloadCount: StateFlow<Int> = _downloadCount.asStateFlow()
+    val downloadCount: StateFlow<Int> = downloads.getCompletedDownloadCountFlow()
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** 登录用户的昵称；未登录或尚未取到时为空串，由界面回退到通用文案。 */
     val displayName: StateFlow<String> = combine(
@@ -101,28 +105,6 @@ class ProfileViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Preferences 未初始化等异常不应让登出流程崩溃
                 AppLogger.e("ProfileViewModel", "登出失败: ${e.message}", e)
-            }
-        }
-    }
-
-    fun loadCounts() {
-        AppLogger.d("ProfileViewModel", "loadCounts called")
-        viewModelScope.launch {
-            try {
-                _watchCount.value = withContext(Dispatchers.IO) {
-                    library.getWatchHistoryCount()
-                }
-                _favoriteCount.value = withContext(Dispatchers.IO) {
-                    library.getFavoriteCount()
-                }
-                _downloadCount.value = withContext(Dispatchers.IO) {
-                    downloads.getCompletedDownloadCount()
-                }
-                AppLogger.d("ProfileViewModel", "Counts loaded: watch=${_watchCount.value}, fav=${_favoriteCount.value}, dl=${_downloadCount.value}")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("ProfileViewModel", "Error loading counts: ${e.message}", e)
             }
         }
     }

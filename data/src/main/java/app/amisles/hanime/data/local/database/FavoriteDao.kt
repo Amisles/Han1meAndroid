@@ -34,6 +34,9 @@ interface FavoriteDao {
     @Query("SELECT COUNT(*) FROM favorites")
     suspend fun getFavoriteCount(): Int
 
+    @Query("SELECT COUNT(*) FROM favorites")
+    fun observeFavoriteCount(): Flow<Int>
+
     /** 移动收藏到分组；[groupId] 为空串表示移回「未分组」。 */
     @Query("UPDATE favorites SET group_id = :groupId WHERE id = :videoId")
     suspend fun setFavoriteGroup(videoId: String, groupId: String)

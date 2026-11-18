@@ -122,6 +122,9 @@ class LibraryRepositoryImpl @Inject constructor(
     }
 
 
+    override fun getFavoriteCountFlow(): Flow<Int> = favoriteDao.observeFavoriteCount()
+
+
     override fun getAllFavoriteGroupsFlow(): Flow<List<FavoriteGroup>> =
         favoriteGroupDao.getAllGroups().map { list -> list.map { it.toDomain() } }
 
@@ -294,6 +297,9 @@ class LibraryRepositoryImpl @Inject constructor(
             0
         }
     }
+
+    override fun getWatchHistoryCountFlow(): Flow<Int> = watchHistoryDao.observeWatchHistoryCount()
+
 
     /** 搜索历史关键词（按时间倒序，最多 20 条）。只暴露字符串，避免持久化实体泄漏到上层。 */
     override fun getSearchHistory(): Flow<List<String>> {
