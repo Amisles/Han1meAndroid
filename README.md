@@ -63,6 +63,7 @@
 - **账号体系**：账号登录与 Cookie 管理（EncryptedSharedPreferences 加密存储）、账户资料编辑（修改昵称与邮箱）
 - **社区互动**：视频评论区（评论列表、回复展开、点赞数显示）、作者主页浏览（作品统计、视频分区、播放列表分区）、一键订阅作者并接入官方订阅内容页
 - **播放列表**：公开播放列表浏览、批量加入下载
+- **漫画**：漫画站首页分区浏览、标签 / 作者目录与排序、漫画详情与阅读器（单页 / 连续模式、双指缩放、阅读记录）
 - **个性化**：多语言切换（简体中文 / 繁體中文 / English / 日本語，热切换即时生效）、主题模式切换（浅色 / 深色 / 跟随系统，Material Design 3 动态配色）
 - **界面定制**：全局字号、缩略图宽高比与圆角、列表缩略图宽度、栅格列数与目标列宽、图片解码质量档（省流 / 标准 / 高清）、首页每区显示条数；首页分区级布局（列表 / 网格 / 横滑）与顺序调整；四档预设方案；配置以文本导入导出
 - **网络诊断**：检测当前镜像站的 DNS、连接、证书、镜像与登录状态
@@ -84,7 +85,7 @@
 | Hilt 导航 | Hilt Navigation Compose | 1.4.0 |
 | 生命周期 | Lifecycle + ViewModel Compose | 2.11.0 |
 | 协程 | Kotlin Coroutines / Flow / StateFlow | 随 Kotlin 发布 |
-| 网络请求 | OkHttp | 5.5.0 |
+| 网络请求 | OkHttp | 5.5.1 |
 | HTML 解析 | Jsoup | 1.23.2 |
 | 图片加载 | Coil 3 (OkHttp 网络栈) | 3.6.3 |
 | 视频播放 | Media3 ExoPlayer（HLS 扩展 + Session） | 1.11.1 |
@@ -105,14 +106,16 @@ hanime/
 |-- app/                        # 主应用模块
 |   |-- HanimeApplication.kt    # @HiltAndroidApp 入口，LocaleHelper 多语言包装
 |   |-- MainActivity.kt         # @AndroidEntryPoint，NavHost 导航，Edge-to-Edge 沉浸式
-|   |-- service/                # DownloadService（前台下载通知）
+|   |-- ImageHttpClient.kt      # 图片请求专用 OkHttpClient（UA 与防盗链 Referer）
+|   |-- ShareReceiverActivity.kt # 分享文本与 hanime:// 深链入口
+|   |-- navigation/             # 路由常量、NavHost、导航栏与状态栏可见性
+|   |-- service/                # DownloadService（前台下载）、PrivacyTileService（快捷设置磁贴）
 |   |-- app/work/               # SubscriptionReminderWorker（订阅更新检查）
 |   |-- ui/
 |   |   |-- theme/              # HanimeTheme（MD3 色板、Typography、状态层点击反馈）
-|   |   |-- components/         # BottomNav（透明触摸拦截器）
-|   |   |-- screens/            # 通用 Screen（播放列表、视频列表页）
-|   |   |-- viewmodel/          # 共享 ViewModel
-|   |   `-- CloudflareChallengeDialog.kt  # 人机校验弹窗
+|   |   |-- components/         # BottomNav / NavRail / 播放器快捷操作宿主
+|   |   |-- onboarding/         # 首次启动引导页
+|   |   `-- viewmodel/          # 共享 ViewModel
 |   `-- res/                    # 应用级资源（图标、通知渠道、FileProvider）
 |
 |-- core/                       # 基础能力层（纯 Android Library，无业务逻辑）
@@ -121,29 +124,35 @@ hanime/
 |                               #   （UiConfig / UiConfigStore / UiPreset / HomeSectionConfig）、
 |                               #   响应式窗口信息、共享组件（卡片 / 缩略图 / 设置分组 …）
 |
-|-- data/                       # 数据层（单一数据源）
-|   |-- backup/                 # BackupManager（zip 导出导入、冲突策略、自动快照）
+|-- data/                       # 数据层（网络 + 解析 + 持久化，单一数据源）
+|   |-- backup/                 # BackupManager（zip 导出导入、冲突策略、自动快照、校验和）
+|   |-- cache/                  # 首页快照、详情页、漫画目录的内存与磁盘缓存
 |   |-- cookie/                 # HCookieJar（ConcurrentHashMap 线程安全 + 过期清理）
-|   |-- di/                     # DatabaseModule（Hilt 提供 Room DB/DAO）
-|   |-- download/               # DownloadManager（多线程分块下载 + 并发门控 + 断点续传位图 + 限速令牌桶 + 存储统计）
-|   |-- local/                  # Room 数据库：AppDatabase、DAO、Entity、Migration
-|   |-- parser/                 # 多个专用 HTML 解析器（首页 / 搜索 / 详情 / 下载 / 播放列表 / 作者 / 订阅 / 评论 / 账户 …）
+|   |-- di/                     # Hilt 模块：数据库 / 偏好 / 缓存 / 仓储绑定 / 播放清单 / 订阅
+|   |-- download/               # DownloadManager（分块并行 + 并发门控 + 断点续传位图 + 限速 + 存储统计）
+|   |-- local/                  # Room：FavoriteDatabase（v10，1→10 共 9 段迁移）、11 个 DAO、Entity
+|   |-- parser/                 # 专用 HTML 解析器（首页 / 搜索 / 详情 / 漫画 / 下载 / 播放清单 / 作者 / 订阅 / 评论 / 账户）
+|   |-- playlist/               # 站点播放清单同步与离线补发队列
 |   |-- preferences/            # Preferences（SharedPreferences + StateFlow 封装）
-|   |-- remote/                 # NetworkService（OkHttp + Hilt 单例 + HCookieJar）、CloudflareChallenge
-|   |-- repository/             # HanimeRepository（协程 IO 线程调度 + 结果封装）
+|   |-- remote/                 # NetworkService（OkHttp + Hilt 单例 + HCookieJar）、Cloudflare 校验
+|   |-- repository/             # *RepositoryImpl：实现 domain:model 里的仓储契约
 |   |-- stats/                  # StatsManager（观看统计计算）
-|   `-- subscription/           # 订阅更新检测与 WorkManager 调度
+|   |-- subscription/           # 订阅更新检测与 WorkManager 调度
+|   `-- update/                 # GitHub Releases 版本检查与更新包签名校验
 |
 |-- domain/
-|   `-- model/                  # 领域模型：纯 data class，无任何 Android 依赖
+|   `-- model/                  # 纯 Kotlin：领域模型 + 仓储契约（domain.repository 包），无 Android 依赖
 |
-`-- feature/                    # 功能模块（每个模块独立 Screen + ViewModel）
-    |-- home/                   # 首页（多区块 + 下拉刷新 + 继续观看 + 分区级布局与顺序）
-    |-- search/                 # 搜索（关键词/分类/排序 + 筛选 + 历史 + 输入建议）
-    |-- detail/                 # 视频详情 + ExoPlayer 播放（全屏/倍速/下载/收藏/媒体会话）
-    |-- download/               # 下载管理（批量选择/断点续传/限速/存储面板）
-    |-- profile/                # 个人中心、登录、收藏分组、观看历史、订阅、观看统计
-    `-- settings/               # 设置页、界面定制、网络诊断、备份恢复、关于、作者主页
+|-- feature-*                   # 功能模块，每个模块独立 Screen + ViewModel
+|   |-- home/                   # 首页（多区块 + 下拉刷新 + 继续观看 + 分区级布局与顺序）
+|   |-- search/                 # 搜索（关键词/分类/排序 + 筛选 + 历史 + 输入建议）
+|   |-- detail/                 # 视频详情 + ExoPlayer 播放（全屏/倍速/下载/收藏/媒体会话）
+|   |-- download/               # 下载管理（批量选择/断点续传/限速/存储面板）
+|   |-- profile/                # 个人中心、登录、收藏分组、观看历史、订阅、观看统计
+|   |-- comic/                  # 漫画首页、标签 / 作者目录、漫画详情与阅读器
+|   `-- settings/               # 设置页、界面定制、网络诊断、备份恢复、关于、作者主页
+|
+`-- baselineprofile/            # Baseline Profile 生成与 Macrobenchmark（启动、首页滚动、详情打开）
 ```
 ## 架构设计
 
@@ -160,7 +169,7 @@ View (Compose) --> ViewModel (StateFlow) --> Repository --> NetworkService / Dat
 
 ### 模块化
 
-项目拆分为 11 个 Gradle 模块，依赖方向单向流动：
+项目拆分为 13 个 Gradle 模块，依赖方向单向流动；`feature-*` 之间互不依赖，需要复用的部分下沉到 `core:*`：
 
 ```
 feature-* --> core:ui --> core:common
@@ -187,14 +196,26 @@ feature-* --> core:ui --> core:common
 ./gradlew assembleRelease
 
 # 运行单元测试
-./gradlew test
+./gradlew testDebugUnitTest
 ```
+
+### 测试
+
+```bash
+./gradlew testDebugUnitTest                             # 全部模块
+./gradlew :data:testDebugUnitTest --tests "*Parser*"    # 只跑解析层
+```
+
+单元测试位于各模块的 `src/test`。解析层的回归用例读取 `data/src/test/resources/fixtures/` 下的真实页面快照（说明见该目录的 `README.md`），不依赖网络与本机其他目录，clone 后即可复现。站点改版时用新抓取的页面覆盖同名文件，用例会在断言处失败并指出差异。
 
 ---
 
 ## 贡献与支持
 
 欢迎参与本项目！无论是反馈 Bug、建议功能，还是提交代码，都能让 HanimeAndroid 变得更好。
+
+- 提交代码前请先读 [CONTRIBUTING.md](CONTRIBUTING.md)：模块依赖方向、文案四语言同步、测试夹具规则与提交约定都在里面。
+- 版本变化见 [CHANGELOG.md](CHANGELOG.md)；参与讨论请遵守 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
 
 ### 反馈问题（Issue）
 
@@ -251,3 +272,5 @@ feature-* --> core:ui --> core:common
 ## 免责声明
 
 本项目仅供学习和研究用途，不存储任何视频内容，所有内容均来自第三方网站。使用者需自行承担使用风险，作者不对任何因使用本软件造成的直接或间接损失负责。请遵守当地法律法规。
+
+应用不接入任何第三方广告、统计或崩溃上报 SDK：收藏、历史、设置与观看统计只写在本机，账号 Cookie 通过 `EncryptedSharedPreferences` 加密保存，日志只写入应用私有目录。唯一的外部请求是查询 GitHub Releases 检查更新。

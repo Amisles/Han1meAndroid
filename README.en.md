@@ -57,6 +57,7 @@
 - **Account**: login with encrypted cookie storage (EncryptedSharedPreferences), profile editing (nickname, email)
 - **Community**: video comments with threaded replies and like counts, author pages (stats, videos, playlists), one-tap subscribe
 - **Playlists**: browse public playlists, add a whole playlist to the download queue
+- **Comics**: comic home feed, tag / artist directories with sorting, comic detail and reader (paged or continuous mode, pinch to zoom, reading history)
 - **Personalization**: four languages (简体中文 / 繁體中文 / English / 日本語) with instant switching, light / dark / system theme, Material 3 dynamic color
 - **UI customization**: global font scale, thumbnail aspect ratio and corner radius, list thumbnail width, grid columns and target column width, image decode quality, items per home section; per-section layout (list / grid / horizontal) and ordering; four presets; configuration import and export as text
 - **Network diagnostics**: DNS, connectivity, certificate, mirror and login state checks
@@ -78,7 +79,7 @@
 | Hilt navigation | Hilt Navigation Compose | 1.4.0 |
 | Lifecycle | Lifecycle + ViewModel Compose | 2.11.0 |
 | Coroutines | Kotlin Coroutines / Flow / StateFlow | via Kotlin |
-| Networking | OkHttp | 5.5.0 |
+| Networking | OkHttp | 5.5.1 |
 | HTML parsing | Jsoup | 1.23.2 |
 | Images | Coil 3 (OkHttp network stack) | 3.6.3 |
 | Video | Media3 ExoPlayer (with HLS) | 1.11.1 |
@@ -98,11 +99,14 @@ hanime/
 |-- app/                        # Application module
 |   |-- HanimeApplication.kt    # @HiltAndroidApp entry, LocaleHelper wrapping
 |   |-- MainActivity.kt         # @AndroidEntryPoint, NavHost, edge-to-edge
-|   |-- service/                # DownloadService (foreground download notification)
+|   |-- ImageHttpClient.kt      # Dedicated OkHttpClient for images (UA, hotlink referer)
+|   |-- ShareReceiverActivity.kt # Share-text and hanime:// deep link entry
+|   |-- navigation/             # Route constants, NavHost, system bar visibility
+|   |-- service/                # DownloadService (foreground), PrivacyTileService (QS tile)
 |   |-- ui/
 |   |   |-- theme/              # HanimeTheme (MD3 color scheme, typography, press feedback)
-|   |   |-- components/         # BottomNav (transparent touch interceptor)
-|   |   |-- screens/            # Shared screens (playlist, video list)
+|   |   |-- components/         # BottomNav / NavRail / quick-actions host
+|   |   |-- onboarding/         # First-run onboarding
 |   |   `-- viewmodel/          # Shared ViewModels
 |   `-- res/                    # App resources (icons, notification channel, FileProvider)
 |
@@ -112,26 +116,33 @@ hanime/
 |                               #   (UiConfig / UiConfigStore / UiPreset / HomeSectionConfig),
 |                               #   window info, shared components (cards, thumbnails, settings groups)
 |
-|-- data/                       # Data layer (single source of truth)
+|-- data/                       # Data layer (network, parsing, persistence)
+|   |-- backup/                 # BackupManager (zip export/import, conflict policy, snapshots, checksums)
+|   |-- cache/                  # In-memory and on-disk caches for home, detail and comic data
 |   |-- cookie/                 # HCookieJar (thread-safe, expiry cleanup)
-|   |-- di/                     # DatabaseModule (Room DB/DAO via Hilt)
-|   |-- download/               # DownloadManager (chunked multi-connection, gating, bitmap resume, connection rebuild)
-|   |-- local/                  # Room database: AppDatabase, DAOs, entities, migrations
-|   |-- parser/                 # HTML parsers (home / search / detail / download / playlist / author / subscription / comment / account)
+|   |-- di/                     # Hilt modules: database / preferences / cache / repository bindings
+|   |-- download/               # DownloadManager (chunked parallel, gating, bitmap resume, rate limit)
+|   |-- local/                  # Room: FavoriteDatabase (v10, 9 migrations), 11 DAOs, entities
+|   |-- parser/                 # HTML parsers (home / search / detail / comic / download / playlist / author / subscription / comment / account)
+|   |-- playlist/               # Site playlist sync with offline outbox
 |   |-- preferences/            # Preferences (SharedPreferences + StateFlow)
-|   |-- remote/                 # NetworkService (OkHttp + Hilt singleton + HCookieJar)
-|   `-- repository/             # HanimeRepository (coroutine IO dispatch, result wrapping)
+|   |-- remote/                 # NetworkService (OkHttp + Hilt singleton + HCookieJar), Cloudflare challenge
+|   |-- repository/             # *RepositoryImpl classes implementing the domain contracts
+|   `-- update/                 # GitHub Releases version check with APK signature verification
 |
 |-- domain/
-|   `-- model/                  # Domain models: plain data classes, no Android dependencies
+|   `-- model/                  # Pure Kotlin: domain models + repository contracts, no Android dependencies
 |
-`-- feature/                    # Feature modules (Screen + ViewModel each)
-    |-- home/                   # Home feed
-    |-- search/                 # Search and filters
-    |-- detail/                 # Video detail + ExoPlayer
-    |-- download/               # Download manager and batch selection
-    |-- profile/                # Profile, login, favorites, history, subscriptions
-    `-- settings/               # Settings, customization, diagnostics, about, author page
+|-- feature-*                   # Feature modules, each with its own screen and ViewModel
+|   |-- home/                   # Home feed
+|   |-- search/                 # Search and filters
+|   |-- detail/                 # Video detail + ExoPlayer
+|   |-- download/               # Download manager and batch selection
+|   |-- profile/                # Profile, login, favorites, history, subscriptions
+|   |-- comic/                  # Comic home, tag / artist directories, detail and reader
+|   `-- settings/               # Settings, customization, diagnostics, about, author page
+|
+`-- baselineprofile/            # Baseline Profile generation and Macrobenchmarks
 ```
 
 ## Architecture
@@ -149,7 +160,7 @@ View (Compose) --> ViewModel (StateFlow) --> Repository --> NetworkService / Dat
 
 ### Modularization
 
-The project is split into 11 Gradle modules with one-way dependencies:
+The project is split into 13 Gradle modules with one-way dependencies; `feature-*` modules never depend on each other:
 
 ```
 feature-* --> core:ui --> core:common
@@ -176,14 +187,26 @@ feature-* --> core:ui --> core:common
 ./gradlew assembleRelease
 
 # Unit tests
-./gradlew test
+./gradlew testDebugUnitTest
 ```
+
+### Tests
+
+```bash
+./gradlew testDebugUnitTest                             # all modules
+./gradlew :data:testDebugUnitTest --tests "*Parser*"    # parser layer only
+```
+
+Unit tests live in each module's `src/test`. Parser regression tests read real page captures from `data/src/test/resources/fixtures/` (see the `README.md` in that directory) through the classpath, so they need neither network access nor files outside the repository and behave the same on a fresh clone. When the site changes, re-capture the page over the existing file and let the assertions point at the difference.
 
 ---
 
 ## Contributing and support
 
 Feedback, feature suggestions and pull requests are all welcome.
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before sending code: module dependency direction, four-locale strings, fixture rules and commit conventions are documented there.
+- Version history lives in [CHANGELOG.md](CHANGELOG.md); participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ### Reporting issues
 
@@ -240,3 +263,5 @@ Built with these open source projects:
 ## Disclaimer
 
 This project is for learning and research only. It does not host any video content; all content comes from third-party websites. Use it at your own risk. The author is not liable for any direct or indirect loss caused by using this software. Please comply with local laws and regulations.
+
+The app bundles no third-party analytics, advertising or crash-reporting SDK: favorites, history, settings and watch statistics stay on the device, account cookies are stored through `EncryptedSharedPreferences`, and logs are written to the app-private directory only. The single outbound request outside the site itself is the GitHub Releases update check.
