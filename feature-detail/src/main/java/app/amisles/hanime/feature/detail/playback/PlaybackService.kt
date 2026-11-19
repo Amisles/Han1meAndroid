@@ -11,6 +11,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.amisles.hanime.core.ui.R
 import com.google.common.util.concurrent.Futures
@@ -131,7 +132,7 @@ class PlaybackService : MediaSessionService() {
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 else -> return Futures.immediateFuture(
-                    SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
+                    SessionResult(SessionError.ERROR_NOT_SUPPORTED)
                 )
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

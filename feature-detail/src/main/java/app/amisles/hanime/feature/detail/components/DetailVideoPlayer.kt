@@ -59,13 +59,13 @@ internal fun DetailVideoPlayer(
     val longPressSpeed by appPrefs.longPressBoostSpeedFlow.collectAsStateWithLifecycle()
     val doubleTapSeek by appPrefs.doubleTapSeekFlow.collectAsStateWithLifecycle()
     val autoQuality by appPrefs.autoQualityFlow.collectAsStateWithLifecycle()
+    val preferredQuality by appPrefs.preferredQualityFlow.collectAsStateWithLifecycle()
 
     VideoPlayer(
         exoPlayer = exoPlayer,
         posterUrl = detail.posterUrl,
         videoSources = detail.videoSources,
-        // 读 StateFlow 缓存值：避免每次重组都对加密存储做一次同步解密
-        initialSourceUrl = pickInitialSourceUrl(detail, appPrefs.preferredQualityFlow.value),
+        initialSourceUrl = pickInitialSourceUrl(detail, preferredQuality),
         initialPositionMs = initialPositionMs,
         onInitialSeekApplied = onInitialSeekApplied,
         isFullscreen = isFullscreen,

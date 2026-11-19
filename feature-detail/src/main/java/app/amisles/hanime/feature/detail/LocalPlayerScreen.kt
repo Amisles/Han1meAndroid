@@ -64,6 +64,8 @@ fun LocalPlayerScreen(
     val playbackState by viewModel.state.collectAsStateWithLifecycle()
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
     val loopPlayback by appPrefs.loopPlaybackFlow.collectAsStateWithLifecycle()
+    val longPressBoostSpeed by appPrefs.longPressBoostSpeedFlow.collectAsStateWithLifecycle()
+    val doubleTapSeek by appPrefs.doubleTapSeekFlow.collectAsStateWithLifecycle()
     val sizeInfo = currentWindowSizeInfo()
     var isPlayerFullscreen by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -171,8 +173,8 @@ fun LocalPlayerScreen(
                     onLoopPlaybackChanged = { appPrefs.setLoopPlayback(it) },
                     onDisablePrivacyMode = { appPrefs.setPrivacyMode(false) },
                     autoFullscreenEnabled = !sizeInfo.isTablet,
-                    longPressBoostSpeed = appPrefs.longPressBoostSpeedFlow.value,
-                    doubleTapSeekEnabled = appPrefs.doubleTapSeekFlow.value,
+                    longPressBoostSpeed = longPressBoostSpeed,
+                    doubleTapSeekEnabled = doubleTapSeek,
                     mediaTitle = playbackState.title.ifBlank {
                         File(filePath.orEmpty()).nameWithoutExtension
                     },

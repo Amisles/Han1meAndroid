@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application>
         <!-- 播放前台服务：会话由系统媒体组件连接，故 exported=true 并声明 MediaSessionService action -->
         <service
