@@ -17,7 +17,6 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.webkit.CookieManager
 import androidx.core.content.edit
-import app.amisles.hanime.data.cookie.CookieString
 import app.amisles.hanime.data.cookie.HCookieJar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -152,10 +151,10 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     // 登录态 Cookie 的来源域名。历史版本只存 Cookie 不存域名，启动时按 baseUrl 推断一次。
     @Volatile
     private var _loginCookieDomain: String = ""
-    override val loginCookieFlow: StateFlow<CookieString> = _loginCookieFlow.asStateFlow()
+    override val loginCookieFlow: StateFlow<SessionCookie> = _loginCookieFlow.asStateFlow()
 
     private val _cloudFlareCookieFlow = MutableStateFlow(SessionCookie(""))
-    val cloudFlareCookieFlow: StateFlow<CookieString> = _cloudFlareCookieFlow.asStateFlow()
+    val cloudFlareCookieFlow: StateFlow<SessionCookie> = _cloudFlareCookieFlow.asStateFlow()
 
     /** 人机校验 Cookie 自己的来源域名；与登录态解耦，未登录的用户也要能带上它。 */
     @Volatile
