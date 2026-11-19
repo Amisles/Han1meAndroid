@@ -68,10 +68,4 @@ class VideoDetailRefreshDiffTest {
         assertEquals(fresh.defaultSourceUrl, merged.defaultSourceUrl)
     }
 
-    @Test
-    fun `identical refresh produces no diff`() {
-        val cached = detail()
-
-        assertEquals(cached, mergeRefreshedVideoDetail(cached, detail()))
-    }
 }

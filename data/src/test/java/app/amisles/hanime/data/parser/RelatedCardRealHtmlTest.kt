@@ -18,8 +18,10 @@ class RelatedCardRealHtmlTest {
     fun `non-hentai related cards are landscape`() {
         val videos = parse("video-detail-nonhentai.html")
 
-        assertTrue(videos.isNotEmpty())
+        assertEquals(59, videos.size)
+        assertEquals("143526", videos.first().id)
         assertTrue("非里番详情页不应出现竖版卡片", videos.none { it.isPortraitCover })
+        assertTrue(videos.all { it.thumbnailUrl.contains("/image/thumbnail/") })
     }
 
     @Test

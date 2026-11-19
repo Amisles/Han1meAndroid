@@ -3,6 +3,7 @@ package app.amisles.hanime.data.parser
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -46,13 +47,19 @@ class PlaylistSaveResponseParserTest {
         assertEquals("token_new", created.csrfToken)
     }
 
-    @Test(expected = IOException::class)
+    @Test
     fun `create response without checkbox throws`() {
-        parser.parseCreatedPlaylist("""{"csrf_token":"t"}""")
+        val error = assertThrows(IOException::class.java) {
+            parser.parseCreatedPlaylist("""{"csrf_token":"t"}""")
+        }
+
+        assertTrue(error.message.orEmpty().contains("未返回新清单"))
     }
 
-    @Test(expected = IOException::class)
+    @Test
     fun `invalid json throws`() {
-        parser.parseSave("not json")
+        val error = assertThrows(IOException::class.java) { parser.parseSave("not json") }
+
+        assertTrue(error.message.orEmpty().contains("不是合法 JSON"))
     }
 }

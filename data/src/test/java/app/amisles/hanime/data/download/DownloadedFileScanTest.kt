@@ -49,9 +49,16 @@ class DownloadedFileScanTest {
     }
 
     @Test
-    fun `directory probe distinguishes missing from denied`() {
+    fun `directory probe reports missing denied and readable`() {
         assertEquals(DirectoryAccess.MISSING, probeAccess(File(temp.root, "absent")))
+        assertEquals(DirectoryAccess.DENIED, probeAccess(unreadableDir()))
         assertEquals(DirectoryAccess.READABLE, probeAccess(temp.root))
+    }
+
+    private fun unreadableDir(): File = object : File(temp.root, "denied") {
+        override fun exists() = true
+        override fun isDirectory() = true
+        override fun canRead() = false
     }
 
     @Test

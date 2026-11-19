@@ -9,6 +9,7 @@ import app.amisles.hanime.domain.model.VideoSaveOptions
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -159,9 +160,13 @@ class PlaylistSyncEngineTest {
         assertEquals("server_token", remote.lastToken)
     }
 
-    @Test(expected = IllegalStateException::class)
+    @Test
     fun `createAndSave requires a csrf token`() {
-        kotlinx.coroutines.runBlocking { engine.createAndSave("u1", "409004", "test2", "") }
+        val error = assertThrows(IllegalStateException::class.java) {
+            kotlinx.coroutines.runBlocking { engine.createAndSave("u1", "409004", "test2", "") }
+        }
+
+        assertTrue(error.message.orEmpty().contains("缺少 CSRF Token"))
     }
 
     @Test

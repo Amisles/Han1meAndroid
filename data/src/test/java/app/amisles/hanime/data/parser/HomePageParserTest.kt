@@ -64,7 +64,7 @@ class HomePageParserTest {
     }
 
     @Test
-    fun `parse falls back to flat video list when no horizontal-row-title`() {
+    fun `parse synthesizes two sections when the page has no section titles`() {
         val html = """
             <html><body>
                 <div class="video-item-container">
@@ -87,6 +87,26 @@ class HomePageParserTest {
         assertEquals("最新上传", data.sections[1].title)
         assertEquals(2, data.sections[0].videos.size)
         assertEquals(0, data.sections[1].videos.size)
+    }
+
+    @Test
+    fun `parse splits ten untitled cards eight into the first section`() {
+        val cards = (1..10).joinToString("") { id ->
+            """
+            <div class="video-item-container">
+                <a class="video-link" href="/watch?v=$id"></a>
+                <img class="main-thumb" src="https://cdn.example.com/$id.jpg"/>
+                <div class="title">V$id</div>
+            </div>
+            """.trimIndent()
+        }
+
+        val data = parser.parse("<html><body>$cards</body></html>", baseUrl)
+
+        assertEquals(8, data.sections[0].videos.size)
+        assertEquals(listOf("1", "2"), data.sections[0].videos.take(2).map { it.id })
+        assertEquals(2, data.sections[1].videos.size)
+        assertEquals(listOf("9", "10"), data.sections[1].videos.map { it.id })
     }
 
     @Test

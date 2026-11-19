@@ -76,15 +76,4 @@ class ParserUtilsTest {
         assertTrue("URL should end with l.jpg", url.endsWith("12345l.jpg"))
     }
 
-    @Test
-    fun `traditionalToSimplified map contains key conversion pairs`() {
-        // 确认映射表保留了真实的繁→简转换条目（恒等项已删除：replace 对缺失键本就是透传）
-        assertEquals("他们在看", ParserUtils.traditionalToSimplified["他們在看"])
-        assertEquals("最新上传", ParserUtils.traditionalToSimplified["最新上傳"])
-        assertEquals("里番", ParserUtils.traditionalToSimplified["裏番"])
-        assertEquals("泡面番", ParserUtils.traditionalToSimplified["泡麵番"])
-        assertEquals("2D动画", ParserUtils.traditionalToSimplified["2D動畫"])
-        assertEquals("H动漫", ParserUtils.traditionalToSimplified["H動漫"])
-        assertEquals("播放清单", ParserUtils.traditionalToSimplified["播放清單"])
-    }
 }

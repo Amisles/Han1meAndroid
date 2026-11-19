@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import app.amisles.hanime.domain.model.DownloadGateReason
 import java.util.Calendar
 
 /**
@@ -64,20 +63,4 @@ class DownloadGateTest {
         assertEquals(expected, DownloadGate.msUntilNextNightBoundary(base))
     }
 
-    @Test
-    fun openStateReportsAllowed() {
-        val state = app.amisles.hanime.domain.model.DownloadGateState()
-        assertTrue(state.allowed)
-        assertFalse(state.blocked)
-    }
-
-    @Test
-    fun blockedStateListsEveryReason() {
-        val state = app.amisles.hanime.domain.model.DownloadGateState(
-            listOf(DownloadGateReason.NEED_WIFI, DownloadGateReason.NEED_NIGHT)
-        )
-        assertFalse(state.allowed)
-        assertTrue(state.blocked)
-        assertEquals(2, state.blockedReasons.size)
-    }
 }

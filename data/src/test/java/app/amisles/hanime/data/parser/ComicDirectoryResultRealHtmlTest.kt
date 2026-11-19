@@ -12,19 +12,25 @@ class ComicDirectoryResultRealHtmlTest {
     @Test
     fun parsesRealTagResultPage() {
         val result = parser.parse(Fixtures.html("comic-tag-result.html"), baseUrl)
-        println("tag items=" + result.items.size + " page=" + result.currentPage + "/" + result.totalPages)
-        assertTrue(result.items.size >= 30)
+
+        assertEquals(30, result.items.size)
+        assertEquals("141014", result.items[0].id)
+        assertEquals(
+            "https://t2.nhentai.net/galleries/3406989/cover.webp",
+            result.items[0].coverUrl
+        )
         assertEquals(1, result.currentPage)
-        assertTrue(result.totalPages > 1)
+        assertEquals(22, result.totalPages)
         assertTrue(result.hasNextPage)
-        assertTrue(result.items.all { it.id.isNotEmpty() && it.title.isNotBlank() && it.coverUrl.isNotBlank() })
     }
 
     @Test
     fun parsesRealArtistResultPage() {
         val result = parser.parse(Fixtures.html("comic-artist-result.html"), baseUrl)
-        println("artist items=" + result.items.size + " page=" + result.currentPage + "/" + result.totalPages)
-        assertTrue(result.items.size >= 30)
+
+        assertEquals(30, result.items.size)
+        assertEquals("145366", result.items[0].id)
+        assertEquals(6, result.totalPages)
         assertTrue(result.hasNextPage)
     }
 }
