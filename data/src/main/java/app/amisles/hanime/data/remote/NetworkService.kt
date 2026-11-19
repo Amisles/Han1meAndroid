@@ -200,6 +200,36 @@ class NetworkService @Inject constructor(
         }
     }
 
+    private suspend fun postXhrForm(
+        path: String,
+        form: FormBody,
+        csrfToken: String,
+        label: String
+    ): String = withContext(Dispatchers.IO) {
+        val baseUrl = getCurrentBaseUrl()
+        val request = Request.Builder()
+            .url(baseUrl + path)
+            .post(form)
+            .header("User-Agent", uaString)
+            .header("Accept", "application/json, text/javascript, */*; q=0.01")
+            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+            .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+            .header("Referer", baseUrl + "/")
+            .header("Origin", baseUrl)
+            .header("X-CSRF-TOKEN", csrfToken)
+            .header("X-Requested-With", "XMLHttpRequest")
+            .build()
+        AppLogger.log("NetworkService", label + " -> " + baseUrl + path)
+        client.newCall(request).execute().use { response ->
+            val code = response.code
+            AppLogger.log("NetworkService", label + " response code: " + code)
+            val body = response.body.string()
+            if (!response.isSuccessful) throw IOException(label + "失败 (HTTP " + code + ")")
+            if (body.isEmpty()) throw IOException(label + "返回空响应")
+            body
+        }
+    }
+
     suspend fun postLoginForm(
         csrfToken: String,
         email: String,
@@ -592,40 +622,15 @@ class NetworkService @Inject constructor(
         userId: String
     ): String {
         AppLogger.log("NetworkService", "postComment called, videoId: $videoId, userId: $userId")
-        return withContext(Dispatchers.IO) {
-            val baseUrl = getCurrentBaseUrl()
-            val form = FormBody.Builder()
-                .add("_token", csrfToken)
-                .add("comment-user-id", userId)
-                .add("comment-type", "video")
-                .add("comment-foreign-id", videoId)
-                .add("comment-count", commentCount.toString())
-                .add("comment-text", commentText)
-                .build()
-            val req = Request.Builder()
-                .url("$baseUrl/createComment")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .header("Referer", "$baseUrl/")
-                .header("Origin", baseUrl)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .header("X-Requested-With", "XMLHttpRequest")
-                .build()
-            AppLogger.log("NetworkService", "Posting comment to: $baseUrl/createComment")
-            client.newCall(req).execute().use { response ->
-                val code = response.code
-                AppLogger.log("NetworkService", "postComment response code: $code")
-                val body = response.body.string()
-                if (!response.isSuccessful) {
-                    throw IOException("发表评论失败 (HTTP $code)")
-                }
-                if (body.isEmpty()) throw IOException("发表评论返回空响应")
-                body
-            }
-        }
+        val form = FormBody.Builder()
+            .add("_token", csrfToken)
+            .add("comment-user-id", userId)
+            .add("comment-type", "video")
+            .add("comment-foreign-id", videoId)
+            .add("comment-count", commentCount.toString())
+            .add("comment-text", commentText)
+            .build()
+        return postXhrForm("/createComment", form, csrfToken, "发表评论")
     }
 
     /**
@@ -645,43 +650,18 @@ class NetworkService @Inject constructor(
             "NetworkService",
             "toggleCommentLike called, commentId: $commentId, userId: $commentLikeUserId, status: $currentLikeStatus"
         )
-        return withContext(Dispatchers.IO) {
-            val baseUrl = getCurrentBaseUrl()
-            val form = FormBody.Builder()
-                .add("_token", csrfToken)
-                .add("foreign_type", "comment")
-                .add("foreign_id", commentId)
-                .add("is_positive", "1")
-                .add("comment-like-user-id", commentLikeUserId)
-                .add("like-comment-status", if (currentLikeStatus == 1) "1" else "")
-                .add("comment-likes-count", likeCount.toString())
-                .add("comment-likes-sum", likeCount.toString())
-                .add("unlike-comment-status", "0")
-                .build()
-            val req = Request.Builder()
-                .url("$baseUrl/commentLike")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .header("Referer", "$baseUrl/")
-                .header("Origin", baseUrl)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .header("X-Requested-With", "XMLHttpRequest")
-                .build()
-            AppLogger.log("NetworkService", "Toggling comment like to: $baseUrl/commentLike")
-            client.newCall(req).execute().use { response ->
-                val code = response.code
-                AppLogger.log("NetworkService", "toggleCommentLike response code: $code")
-                val body = response.body.string()
-                if (!response.isSuccessful) {
-                    throw IOException("评论点赞失败 (HTTP $code)")
-                }
-                if (body.isEmpty()) throw IOException("评论点赞返回空响应")
-                body
-            }
-        }
+        val form = FormBody.Builder()
+            .add("_token", csrfToken)
+            .add("foreign_type", "comment")
+            .add("foreign_id", commentId)
+            .add("is_positive", "1")
+            .add("comment-like-user-id", commentLikeUserId)
+            .add("like-comment-status", if (currentLikeStatus == 1) "1" else "")
+            .add("comment-likes-count", likeCount.toString())
+            .add("comment-likes-sum", likeCount.toString())
+            .add("unlike-comment-status", "0")
+            .build()
+        return postXhrForm("/commentLike", form, csrfToken, "评论点赞")
     }
 
     /**
@@ -694,37 +674,12 @@ class NetworkService @Inject constructor(
         csrfToken: String
     ): String {
         AppLogger.log("NetworkService", "replyComment called, commentId: $commentId")
-        return withContext(Dispatchers.IO) {
-            val baseUrl = getCurrentBaseUrl()
-            val form = FormBody.Builder()
-                .add("_token", csrfToken)
-                .add("reply-comment-id", commentId)
-                .add("reply-comment-text", replyText)
-                .build()
-            val req = Request.Builder()
-                .url("$baseUrl/replyComment")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .header("Referer", "$baseUrl/")
-                .header("Origin", baseUrl)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .header("X-Requested-With", "XMLHttpRequest")
-                .build()
-            AppLogger.log("NetworkService", "Replying comment to: $baseUrl/replyComment")
-            client.newCall(req).execute().use { response ->
-                val code = response.code
-                AppLogger.log("NetworkService", "replyComment response code: $code")
-                val body = response.body.string()
-                if (!response.isSuccessful) {
-                    throw IOException("回复评论失败 (HTTP $code)")
-                }
-                if (body.isEmpty()) throw IOException("回复评论返回空响应")
-                body
-            }
-        }
+        val form = FormBody.Builder()
+            .add("_token", csrfToken)
+            .add("reply-comment-id", commentId)
+            .add("reply-comment-text", replyText)
+            .build()
+        return postXhrForm("/replyComment", form, csrfToken, "回复评论")
     }
 
     /**
@@ -738,40 +693,13 @@ class NetworkService @Inject constructor(
         willSubscribe: Boolean
     ): String {
         AppLogger.log("NetworkService", "toggleSubscribe called, artistId: $artistId, willSubscribe: $willSubscribe")
-        return withContext(Dispatchers.IO) {
-            val baseUrl = getCurrentBaseUrl()
-            val subscribeStatusValue = if (willSubscribe) "" else "1"
-            val form = FormBody.Builder()
-                .add("_token", csrfToken)
-                .add("subscribe-user-id", userId)
-                .add("subscribe-artist-id", artistId)
-                .add("subscribe-status", subscribeStatusValue)
-                .build()
-            val req = Request.Builder()
-                .url("$baseUrl/subscribe")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .header("Referer", "$baseUrl/")
-                .header("Origin", baseUrl)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .header("X-Requested-With", "XMLHttpRequest")
-                .build()
-            AppLogger.log("NetworkService", "Toggling subscribe to: $baseUrl/subscribe")
-            client.newCall(req).execute().use { response ->
-                val code = response.code
-                AppLogger.log("NetworkService", "toggleSubscribe response code: $code")
-                val body = response.body.string()
-                if (!response.isSuccessful) {
-                    throw IOException("订阅作者失败 (HTTP $code)")
-                }
-                // body 由 response.body.string() 返回，类型非空；空串才是「无内容」的判据
-                if (body.isEmpty()) throw IOException("订阅作者返回空响应")
-                body
-            }
-        }
+        val form = FormBody.Builder()
+            .add("_token", csrfToken)
+            .add("subscribe-user-id", userId)
+            .add("subscribe-artist-id", artistId)
+            .add("subscribe-status", if (willSubscribe) "" else "1")
+            .build()
+        return postXhrForm("/subscribe", form, csrfToken, "订阅作者")
     }
 
     suspend fun saveToPlaylist(
@@ -781,35 +709,13 @@ class NetworkService @Inject constructor(
         csrfToken: String
     ): String {
         AppLogger.log("NetworkService", "saveToPlaylist target=" + target + " saved=" + saved)
-        return withContext(Dispatchers.IO) {
-            val baseUrl = getCurrentBaseUrl()
-            val form = FormBody.Builder()
-                .add("input_id", target)
-                .add("user_id", "")
-                .add("video_id", videoId)
-                .add("is_checked", saved.toString())
-                .build()
-            val req = Request.Builder()
-                .url(baseUrl + "/save")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .header("Referer", baseUrl + "/")
-                .header("Origin", baseUrl)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .header("X-Requested-With", "XMLHttpRequest")
-                .build()
-            client.newCall(req).execute().use { response ->
-                val code = response.code
-                AppLogger.log("NetworkService", "saveToPlaylist response code: " + code)
-                val body = response.body.string()
-                if (!response.isSuccessful) throw IOException("保存到清单失败 (HTTP " + code + ")")
-                if (body.isEmpty()) throw IOException("保存到清单返回空响应")
-                body
-            }
-        }
+        val form = FormBody.Builder()
+            .add("input_id", target)
+            .add("user_id", "")
+            .add("video_id", videoId)
+            .add("is_checked", saved.toString())
+            .build()
+        return postXhrForm("/save", form, csrfToken, "保存到清单")
     }
 
     suspend fun createPlaylist(
@@ -818,35 +724,13 @@ class NetworkService @Inject constructor(
         description: String,
         csrfToken: String
     ): String {
-        return withContext(Dispatchers.IO) {
-            val baseUrl = getCurrentBaseUrl()
-            val form = FormBody.Builder()
-                .add("_token", csrfToken)
-                .add("create-playlist-video-id", videoId)
-                .add("playlist-title", title)
-                .add("playlist-description", description)
-                .build()
-            val req = Request.Builder()
-                .url(baseUrl + "/createPlaylist")
-                .post(form)
-                .header("User-Agent", uaString)
-                .header("Accept", "application/json, text/javascript, */*; q=0.01")
-                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .header("Referer", baseUrl + "/")
-                .header("Origin", baseUrl)
-                .header("X-CSRF-TOKEN", csrfToken)
-                .header("X-Requested-With", "XMLHttpRequest")
-                .build()
-            client.newCall(req).execute().use { response ->
-                val code = response.code
-                AppLogger.log("NetworkService", "createPlaylist response code: " + code)
-                val body = response.body.string()
-                if (!response.isSuccessful) throw IOException("创建清单失败 (HTTP " + code + ")")
-                if (body.isEmpty()) throw IOException("创建清单返回空响应")
-                body
-            }
-        }
+        val form = FormBody.Builder()
+            .add("_token", csrfToken)
+            .add("create-playlist-video-id", videoId)
+            .add("playlist-title", title)
+            .add("playlist-description", description)
+            .build()
+        return postXhrForm("/createPlaylist", form, csrfToken, "创建清单")
     }
 }
 
