@@ -1,211 +1,25 @@
 package app.amisles.hanime.domain.repository
 
-import app.amisles.hanime.domain.model.ComicReadMode
-import app.amisles.hanime.domain.preferences.RelatedLayoutMode
-import app.amisles.hanime.domain.preferences.PageLayoutKey
-import app.amisles.hanime.domain.preferences.PageLayoutMode
-import app.amisles.hanime.domain.preferences.PageLayoutModes
-import app.amisles.hanime.domain.preferences.PlayerLayout
-import app.amisles.hanime.domain.preferences.PlayerResizeMode
-import app.amisles.hanime.domain.preferences.SearchLayoutMode
-import app.amisles.hanime.domain.preferences.ThemeMode
-import kotlinx.coroutines.flow.StateFlow
-
 /**
- * 应用设置与站点配置。
+ * 设置的总入口：按域拆成五个窄接口，这里是它们的组合。
  *
- * 原先这些成员散落在 `data.preferences.Preferences` 这个 47 个成员的 object 上，
- * 上层（feature-* 与 app）直接 import 了具体实现。拆出来后：
- * - 界面只依赖本接口，SettingsScreen 的预览与 MockData 不再需要真实的加密存储；
- * - 「站点基址」这种会影响 Cookie 注入与防盗链 Referer 的敏感项有了明确的归属。
+ * 界面与 ViewModel 优先注入自己用得到的那一个（[PlayerSettings] / [DownloadSettings] /
+ * [SiteSettings] / [AppearanceSettings] / [ReadingSettings]）；只有设置页这种需要横跨全部域的
+ * 地方才用本接口 —— 注入它等于一次拿到全部设置项，也等于放弃接口隔离。
  *
- * 会话凭据（登录 Cookie）**不在本接口**，见 [SessionRepository]：二者的生命周期与
- * 安全要求不同 —— 设置项可以随手改，会话凭据必须与来源域名绑定、且可在登出时整体清除。
+ * 会话凭据（登录 Cookie）不在本接口，见 [SessionRepository]：二者的生命周期与安全要求不同，
+ * 设置项可以随手改，凭据必须与签发域名绑定且能在登出时整体清除。
  */
-interface SettingsRepository {
-    // ── 语言与主题 ──────────────────────────────────────────────────────────
-    val appLanguage: String
-    val appLanguageFlow: StateFlow<String>
-    fun setAppLanguage(lang: String)
-
-    val themeMode: ThemeMode
-    val themeModeFlow: StateFlow<ThemeMode>
-    fun setThemeMode(mode: ThemeMode)
-
-    val dynamicColor: Boolean
-    val dynamicColorFlow: StateFlow<Boolean>
-    fun setDynamicColor(enabled: Boolean)
-
-    /** 隐私模式：遮罩内容图片；播放器照常可用，息屏时自动暂停并遮住播放器。 */
-    val privacyMode: Boolean
-    val privacyModeFlow: StateFlow<Boolean>
-    fun setPrivacyMode(enabled: Boolean)
-
-    // ── 站点 ────────────────────────────────────────────────────────────────
-    /** 站点基址，已完成规范化（https + host，去掉路径）。 */
-    val baseUrl: String
-    val baseUrlFlow: StateFlow<String>
-
-    /**
-     * 设置站点基址。留空表示恢复默认地址。
-     *
-     * @return true 表示输入被接受（可能已规范化）；false 表示非法，原设置不变。
-     */
-    fun setBaseUrl(url: String): Boolean
-
-    /** 当前站点是否支持应用内登录（官方域名）。镜像站登录接口不可用，界面需提前拦截。 */
-    val isLoginSupported: Boolean
-    val loginSupportedFlow: StateFlow<Boolean>
-
-    // ── 播放 ────────────────────────────────────────────────────────────────
-    val playbackSpeed: Float
-    val playbackSpeedFlow: StateFlow<Float>
-    fun setPlaybackSpeed(speed: Float)
-
-    val preferredQuality: String
-    val preferredQualityFlow: StateFlow<String>
-    fun setPreferredQuality(resolution: String)
-
-    val autoPlayNext: Boolean
-    val autoPlayNextFlow: StateFlow<Boolean>
-    fun setAutoPlayNext(enabled: Boolean)
-
-    /** 无播放列表时是否继续播放相关推荐；默认关闭，否则「连播」会跳到毫不相关的视频。 */
-    val autoPlayRelated: Boolean
-    val autoPlayRelatedFlow: StateFlow<Boolean>
-    fun setAutoPlayRelated(enabled: Boolean)
-
-    val loopPlayback: Boolean
-    val loopPlaybackFlow: StateFlow<Boolean>
-    fun setLoopPlayback(enabled: Boolean)
-
-    /** 长按临时加速的目标倍速（1.5–3.0）。只影响按住期间，不写回 [playbackSpeed]。 */
-    val longPressBoostSpeed: Float
-    val longPressBoostSpeedFlow: StateFlow<Float>
-    fun setLongPressBoostSpeed(speed: Float)
-
-    /** 双击播放器左右区域快退 / 快进。 */
-    val doubleTapSeek: Boolean
-    val doubleTapSeekFlow: StateFlow<Boolean>
-    fun setDoubleTapSeek(enabled: Boolean)
-
-    /** 卡顿时自动降档、稳定后自动回升。关闭后手动选择的画质不会被自动切换覆盖。 */
-    val autoQuality: Boolean
-    val autoQualityFlow: StateFlow<Boolean>
-    fun setAutoQuality(enabled: Boolean)
-
-    /** 旋转屏幕时自动进入 / 退出全屏播放；关闭后旋转会让整个页面跟随转屏，进出全屏改用播放器按钮。 */
-    val autoRotateFullscreen: Boolean
-    val autoRotateFullscreenFlow: StateFlow<Boolean>
-    fun setAutoRotateFullscreen(enabled: Boolean)
-
-    /**
-     * 全屏时是否钉住屏幕方向。
-     *
-     * 落盘而不只留在播放器实例内：切集与换视频都会重建播放器，若只在实例内保留，
-     * 用户每看一集都要重新点一次「锁定屏幕方向」。
-     */
-    val orientationPinned: Boolean
-    val orientationPinnedFlow: StateFlow<Boolean>
-    fun setOrientationPinned(pinned: Boolean)
-
-    /** 播放器画面比例；裁切与拉伸都会改变画面形状，默认适应。 */
-    val playerResizeMode: PlayerResizeMode
-    val playerResizeModeFlow: StateFlow<PlayerResizeMode>
-    fun setPlayerResizeMode(mode: PlayerResizeMode)
-
-    /** 播放器布局自定义：各控件显隐、点击分区动作与分区宽度。 */
-    val playerLayout: PlayerLayout
-    val playerLayoutFlow: StateFlow<PlayerLayout>
-    fun setPlayerLayout(layout: PlayerLayout)
-
-    /** 视频详情页常驻缓存的条目上限；超出后按最久未被打开的条目淘汰。 */
-    val videoDetailCacheLimit: Int
-    val videoDetailCacheLimitFlow: StateFlow<Int>
-    fun setVideoDetailCacheLimit(limit: Int)
-
-    // ── 下载 ────────────────────────────────────────────────────────────────
-    val maxDownloadConcurrent: Int
-    val maxDownloadConcurrentFlow: StateFlow<Int>
-    fun setMaxDownloadConcurrent(max: Int)
-
-    /** 全局下载限速（MB/s），0 表示不限速。所有任务共享同一份带宽预算。 */
-    val downloadRateLimit: Int
-    val downloadRateLimitFlow: StateFlow<Int>
-    fun setDownloadRateLimit(megabytesPerSecond: Int)
-
-    /** 下载调度条件：仅在 Wi-Fi 下 / 仅在充电时 / 仅在夜间闲时（0–6 点）。三者可组合。 */
-    val downloadWifiOnly: Boolean
-    val downloadWifiOnlyFlow: StateFlow<Boolean>
-    fun setDownloadWifiOnly(enabled: Boolean)
-
-    val downloadChargingOnly: Boolean
-    val downloadChargingOnlyFlow: StateFlow<Boolean>
-    fun setDownloadChargingOnly(enabled: Boolean)
-
-    val downloadNightOnly: Boolean
-    val downloadNightOnlyFlow: StateFlow<Boolean>
-    fun setDownloadNightOnly(enabled: Boolean)
-
-    /** 下载队列顺序：任务 id 按执行先后排列，逗号分隔。未列出的任务排在其后。 */
-    val downloadQueueOrder: List<Int>
-    fun setDownloadQueueOrder(ids: List<Int>)
+interface SettingsRepository :
+    PlayerSettings,
+    DownloadSettings,
+    SiteSettings,
+    AppearanceSettings,
+    ReadingSettings {
 
     /** 已提示过的崩溃记录文件名；为空表示尚未提示过任何崩溃。 */
     val acknowledgedCrashFile: String
     fun setAcknowledgedCrashFile(name: String)
-
-    /** 订阅更新提醒总开关，默认关闭：定时抓页面会带来站点限流风险。 */
-    val subscriptionReminder: Boolean
-    val subscriptionReminderFlow: StateFlow<Boolean>
-    fun setSubscriptionReminder(enabled: Boolean)
-
-    /** 已通知过的订阅视频 id 快照，用于判断「哪些是新片」。 */
-    val subscriptionSeenVideoIds: Set<String>
-    fun setSubscriptionSeenVideoIds(ids: Set<String>)
-
-    /** 空串表示默认目录，由下载子系统解析。 */
-    var downloadStoragePath: String
-    val downloadStoragePathFlow: StateFlow<String>
-
-    // ── 搜索 ────────────────────────────────────────────────────────────────
-    /** null 表示用户从未显式选择过，界面按窗口宽度档位取默认值。 */
-    val searchLayoutMode: SearchLayoutMode?
-    val searchLayoutModeFlow: StateFlow<SearchLayoutMode?>
-    fun setSearchLayoutMode(mode: SearchLayoutMode)
-
-    /** 各列表页的布局记忆；搜索页缺省时回落到旧字段，均为空按宽度档位取默认。 */
-    val pageLayoutModes: PageLayoutModes
-    val pageLayoutModesFlow: StateFlow<PageLayoutModes>
-    fun setPageLayoutMode(page: PageLayoutKey, mode: PageLayoutMode)
-    fun clearPageLayoutMode(page: PageLayoutKey)
-
-    /** 漫画阅读方式；null 表示用户从未选择，阅读器按单页翻页起步。 */
-    val comicReadMode: ComicReadMode?
-    val comicReadModeFlow: StateFlow<ComicReadMode?>
-    fun setComicReadMode(mode: ComicReadMode)
-
-    /** 漫画阅读器纯黑底色。 */
-    val comicReaderBlack: Boolean
-    val comicReaderBlackFlow: StateFlow<Boolean>
-    fun setComicReaderBlack(enabled: Boolean)
-
-    /** null 表示未选择，详情页按推荐卡片形态取默认值。 */
-    val relatedLayoutMode: RelatedLayoutMode?
-    val relatedLayoutModeFlow: StateFlow<RelatedLayoutMode?>
-    fun setRelatedLayoutMode(mode: RelatedLayoutMode)
-    fun clearRelatedLayoutMode()
-
-    // ── 统计 ────────────────────────────────────────────────────────────────
-    /** 观看统计开关。关闭后不展示入口，也不做任何统计计算。 */
-    val watchStatsEnabled: Boolean
-    val watchStatsEnabledFlow: StateFlow<Boolean>
-    fun setWatchStatsEnabled(enabled: Boolean)
-
-    /** 订阅页隐藏已看完条目。 */
-    val subscriptionsHideWatched: Boolean
-    val subscriptionsHideWatchedFlow: StateFlow<Boolean>
-    fun setSubscriptionsHideWatched(enabled: Boolean)
 
     companion object {
         const val DEFAULT_BASE_URL = "https://hanime1.me"

@@ -13,7 +13,7 @@ import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.cache.HomeSnapshotCache
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
-import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.SiteSettings
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorKind
 import app.amisles.hanime.core.ui.util.ErrorMapper
@@ -40,7 +40,7 @@ class HomeViewModel @Inject constructor(
     private val repository: ContentRepository,
     private val libraryRepository: LibraryRepository,
     private val statsRepository: app.amisles.hanime.domain.repository.StatsRepository,
-    private val settings: SettingsRepository,
+    private val settings: SiteSettings,
     private val homeSnapshotCache: HomeSnapshotCache,
     @ApplicationContext private val context: Context
 ) : ViewModel() {

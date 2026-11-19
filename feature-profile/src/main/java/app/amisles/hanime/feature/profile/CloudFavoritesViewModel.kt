@@ -9,7 +9,7 @@ import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.SessionRepository
-import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.SiteSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 class CloudFavoritesViewModel @Inject constructor(
     private val content: ContentRepository,
     private val session: SessionRepository,
-    private val settings: SettingsRepository,
+    private val settings: SiteSettings,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
