@@ -89,6 +89,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.amisles.hanime.feature.detail.comment.CommentContext
+import app.amisles.hanime.feature.detail.comment.CommentEvent
 import app.amisles.hanime.feature.detail.comment.CommentViewModel
 
 
@@ -133,22 +134,7 @@ fun DetailScreen(
     val isSubscribed by viewModel.isSubscribed.collectAsStateWithLifecycle()
     val isSubscribing by viewModel.isSubscribing.collectAsStateWithLifecycle()
     val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
-    val comments by commentVm.comments.collectAsStateWithLifecycle()
-    val isLoadingComments by commentVm.isLoadingComments.collectAsStateWithLifecycle()
-    val isLoadingMoreComments by commentVm.isLoadingMoreComments.collectAsStateWithLifecycle()
-    val hasMoreComments by commentVm.hasMoreComments.collectAsStateWithLifecycle()
-    val commentsError by commentVm.commentsError.collectAsStateWithLifecycle()
-    val commentsLoaded by commentVm.commentsLoaded.collectAsStateWithLifecycle()
-    val repliesCache by commentVm.repliesCache.collectAsStateWithLifecycle()
-    val loadingReplies by commentVm.loadingReplies.collectAsStateWithLifecycle()
-    val repliesError by commentVm.repliesError.collectAsStateWithLifecycle()
-    val isPostingComment by commentVm.isPostingComment.collectAsStateWithLifecycle()
-    val postCommentError by commentVm.postCommentError.collectAsStateWithLifecycle()
-    val likingComments by commentVm.likingComments.collectAsStateWithLifecycle()
-    val commentLikeError by commentVm.commentLikeError.collectAsStateWithLifecycle()
-    val activeReplyTarget by commentVm.activeReplyTarget.collectAsStateWithLifecycle()
-    val isPostingReply by commentVm.isPostingReply.collectAsStateWithLifecycle()
-    val replyError by commentVm.replyError.collectAsStateWithLifecycle()
+    val commentState by commentVm.uiState.collectAsStateWithLifecycle()
 
     // 视频域切换视频时通知评论域复位：两个 VM 独立，同步走这条单向通道。
     // videoSwitched 是 StateFlow，带当前值，晚订阅也不会丢（此前的 SharedFlow replay=0
@@ -174,7 +160,6 @@ fun DetailScreen(
         val urls = videoDetail?.relatedVideos.orEmpty().map { it.thumbnailUrl }
         ThumbnailPrefetcher.prefetch(context, urls)
     }
-    val expandedReplies by commentVm.expandedReplies.collectAsStateWithLifecycle()
     val switchedVideoId by viewModel.videoSwitched.collectAsStateWithLifecycle()
     val isLogin by appPrefs.activeLoginStateFlow.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
@@ -433,11 +418,13 @@ fun DetailScreen(
         }
     }
 
-    // 评论点赞出错时弹出提示
-    LaunchedEffect(commentLikeError) {
-        commentLikeError?.let {
-            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
-            commentVm.clearCommentLikeError()
+    // 评论域的一次性提示（目前只有点赞失败）：由 Channel 送达，展示完即丢弃，不留状态
+    LaunchedEffect(commentVm) {
+        commentVm.events.collect { event ->
+            when (event) {
+                is CommentEvent.LikeFailed ->
+                    snackbarHostState.showSnackbar(message = event.message, duration = SnackbarDuration.Short)
+            }
         }
     }
 
@@ -469,7 +456,7 @@ fun DetailScreen(
     // 评论 tab 的懒加载判断
     val selectTab: (Int) -> Unit = { tab ->
         selectedTab = tab
-        if (tab == 1 && !commentsLoaded && !isLoadingComments) {
+        if (tab == 1 && !commentState.loaded && !commentState.isLoading) {
             commentVm.loadComments()
         }
     }
@@ -482,22 +469,8 @@ fun DetailScreen(
         isSubscribed = isSubscribed,
         isWatchLater = watchLaterActive,
         isSubscribing = isSubscribing,
-        comments = comments,
-        isLoadingComments = isLoadingComments,
-        isLoadingMoreComments = isLoadingMoreComments,
-        hasMoreComments = hasMoreComments,
-        commentsError = commentsError,
-        repliesCache = repliesCache,
-        loadingReplies = loadingReplies,
-        repliesError = repliesError,
-        expandedReplies = expandedReplies,
+        comment = commentState,
         isLogin = isLogin,
-        isPostingComment = isPostingComment,
-        postCommentError = postCommentError,
-        likingComments = likingComments,
-        activeReplyTarget = activeReplyTarget,
-        isPostingReply = isPostingReply,
-        replyError = replyError,
         relatedGrid = relatedGrid,
         relatedColumns = relatedColumns
     )

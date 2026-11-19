@@ -42,10 +42,9 @@ import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.HanimeVideo
-import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.feature.detail.comment.CommentSection
-import app.amisles.hanime.feature.detail.comment.ReplyTarget
+import app.amisles.hanime.feature.detail.comment.CommentUiState
 import app.amisles.hanime.feature.detail.components.DetailIntroSection
 import app.amisles.hanime.feature.detail.components.DetailPlaylistHeader
 import app.amisles.hanime.feature.detail.components.DetailPlaylistVideos
@@ -61,22 +60,8 @@ internal data class DetailRestState(
     val isSubscribed: Boolean,
     val isSubscribing: Boolean,
     val isWatchLater: Boolean = false,
-    val comments: List<Comment>,
-    val isLoadingComments: Boolean,
-    val isLoadingMoreComments: Boolean,
-    val hasMoreComments: Boolean,
-    val commentsError: String?,
-    val repliesCache: Map<String, List<Reply>>,
-    val loadingReplies: Set<String>,
-    val repliesError: Map<String, String?>,
-    val expandedReplies: Set<String>,
+    val comment: CommentUiState,
     val isLogin: Boolean,
-    val isPostingComment: Boolean,
-    val postCommentError: String?,
-    val likingComments: Set<String>,
-    val activeReplyTarget: ReplyTarget?,
-    val isPostingReply: Boolean,
-    val replyError: String?,
     val relatedGrid: Boolean,
     val relatedColumns: Int
 )
@@ -358,30 +343,15 @@ private fun DetailCommentsPage(
     actions: DetailRestActions
 ) {
     CommentSection(
-        comments = state.comments,
-        isLoading = state.isLoadingComments,
-        isLoadingMore = state.isLoadingMoreComments,
-        hasMore = state.hasMoreComments,
-        onLoadMore = actions.onLoadMoreComments,
-        error = state.commentsError,
-        onRetry = { actions.onLoadComments(true) },
-        repliesCache = state.repliesCache,
-        loadingReplies = state.loadingReplies,
-        repliesError = state.repliesError,
-        onLoadReplies = actions.onLoadReplies,
-        expandedReplies = state.expandedReplies,
-        onToggleExpand = actions.onToggleReplies,
+        state = state.comment,
         isLogin = state.isLogin,
-        isPostingComment = state.isPostingComment,
-        postCommentError = state.postCommentError,
+        onLoadMore = actions.onLoadMoreComments,
+        onRetry = { actions.onLoadComments(true) },
+        onLoadReplies = actions.onLoadReplies,
+        onToggleExpand = actions.onToggleReplies,
         onPostComment = actions.onPostComment,
         onClearPostError = actions.onClearPostCommentError,
         onToggleLike = actions.onToggleCommentLike,
-        likingComments = state.likingComments,
-        activeReplyCommentId = state.activeReplyTarget?.commentId,
-        replyPrefill = state.activeReplyTarget?.replyToUsername?.let { "@$it " } ?: "",
-        isPostingReply = state.isPostingReply,
-        replyError = state.replyError,
         onStartReply = actions.onStartReply,
         onSendReply = actions.onSubmitReply,
         onCancelReply = actions.onCancelReply,

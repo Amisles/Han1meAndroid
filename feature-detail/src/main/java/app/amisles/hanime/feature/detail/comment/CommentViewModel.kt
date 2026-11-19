@@ -15,10 +15,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -48,6 +52,12 @@ data class CommentContext(
  *
  * 拆分依据是"变化的理由"：评论域随站点评论接口而变，视频域随播放/详情接口而变，
  * 二者改动频率与测试关注点完全不同。
+ *
+ * ## 状态契约
+ *
+ * 对外只有 [uiState] 与 [events]：列表、加载、错误、回复、点赞都在同一个
+ * [CommentUiState] 里原子更新，界面只订阅一次；[CommentEvent] 承载「展示完即丢弃」
+ * 的一次性提示（目前只有点赞失败），不再留在状态里等界面清空。
  */
 @HiltViewModel
 class CommentViewModel @Inject constructor(
@@ -56,72 +66,23 @@ class CommentViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val _comments = MutableStateFlow<List<Comment>>(emptyList())
-    val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
+    private val _uiState = MutableStateFlow(CommentUiState())
+    val uiState: StateFlow<CommentUiState> = _uiState.asStateFlow()
 
-    private val _isLoadingComments = MutableStateFlow(false)
-    val isLoadingComments: StateFlow<Boolean> = _isLoadingComments.asStateFlow()
-
-    private val _commentsError = MutableStateFlow<String?>(null)
-    val commentsError: StateFlow<String?> = _commentsError.asStateFlow()
-
-    /** 评论是否已加载完成。用于区分「未加载」与「已加载但为空」。 */
-    private val _commentsLoaded = MutableStateFlow(false)
-    val commentsLoaded: StateFlow<Boolean> = _commentsLoaded.asStateFlow()
-
-    private val _isPostingComment = MutableStateFlow(false)
-    val isPostingComment: StateFlow<Boolean> = _isPostingComment.asStateFlow()
-
-    private val _postCommentError = MutableStateFlow<String?>(null)
-    val postCommentError: StateFlow<String?> = _postCommentError.asStateFlow()
-
-    // 最近发表的评论；目前只写入与暴露，未被订阅，列表头部追加由 _comments 直接完成
-    private val _lastPostedComment = MutableStateFlow<Comment?>(null)
-    val lastPostedComment: StateFlow<Comment?> = _lastPostedComment.asStateFlow()
-
-    // 正在切换点赞状态的评论 ID 集合（防止重复点击）
-    private val _likingComments = MutableStateFlow<Set<String>>(emptySet())
-    val likingComments: StateFlow<Set<String>> = _likingComments.asStateFlow()
-
-    private val _commentLikeError = MutableStateFlow<String?>(null)
-    val commentLikeError: StateFlow<String?> = _commentLikeError.asStateFlow()
-
-    // 回复缓存：commentId -> 回复列表
-    private val _repliesCache = MutableStateFlow<Map<String, List<Reply>>>(emptyMap())
-    val repliesCache: StateFlow<Map<String, List<Reply>>> = _repliesCache.asStateFlow()
-
-    // 正在加载回复的评论 ID 集合
-    private val _loadingReplies = MutableStateFlow<Set<String>>(emptySet())
-    val loadingReplies: StateFlow<Set<String>> = _loadingReplies.asStateFlow()
-
-    // 回复加载错误：commentId -> 错误信息
-    private val _repliesError = MutableStateFlow<Map<String, String?>>(emptyMap())
-    val repliesError: StateFlow<Map<String, String?>> = _repliesError.asStateFlow()
-
-    // 当前正在回复的目标：commentId 为父评论 ID；replyToUsername 非空表示回复某条回复
-    private val _activeReplyTarget = MutableStateFlow<ReplyTarget?>(null)
-    val activeReplyTarget: StateFlow<ReplyTarget?> = _activeReplyTarget.asStateFlow()
-
-    private val _isPostingReply = MutableStateFlow(false)
-    val isPostingReply: StateFlow<Boolean> = _isPostingReply.asStateFlow()
-
-    private val _replyError = MutableStateFlow<String?>(null)
-    val replyError: StateFlow<String?> = _replyError.asStateFlow()
-
-    // 已展开回复区的评论 ID 集合
-    private val _expandedReplies = MutableStateFlow<Set<String>>(emptySet())
-    val expandedReplies: StateFlow<Set<String>> = _expandedReplies.asStateFlow()
+    private val _events = Channel<CommentEvent>(Channel.BUFFERED)
+    val events: Flow<CommentEvent> = _events.receiveAsFlow()
 
     /** 当前评论所属的视频 ID；由 [selectVideo] 设置，用于丢弃过期响应。 */
     private var currentVideoId: String = ""
+
+    private var nextCommentPage = 2
+
+    private var loadMoreCommentsJob: Job? = null
 
     /**
      * 切换到某个视频（离开详情页时可传空串）。
      *
      * 由视频域在加载新视频前调用：清空全部评论状态。
-     *
-     * 原先这些复位散在 loadVideoDetail 里逐个赋值，一次要写 14 行，漏一个就会串数据；
-     * 收拢到本方法后视频域只需一行调用。
      *
      * **幂等**：视频域用 StateFlow 承载当前 videoId，UI 重新订阅或配置变更后重放同一个值
      * 时会再次调用本方法。若不短路，一次无意义的复位会把已经加载好的评论与展开态清空，
@@ -133,57 +94,33 @@ class CommentViewModel @Inject constructor(
             return
         }
         currentVideoId = videoId
-        _comments.value = emptyList()
-        _commentsLoaded.value = false
-        _commentsError.value = null
-        _isLoadingComments.value = false
-        _isPostingComment.value = false
-        _postCommentError.value = null
-        _lastPostedComment.value = null
-        _likingComments.value = emptySet()
-        _commentLikeError.value = null
-        _repliesCache.value = emptyMap()
-        _loadingReplies.value = emptySet()
-        _repliesError.value = emptyMap()
-        _activeReplyTarget.value = null
-        _isPostingReply.value = false
-        _replyError.value = null
-        _expandedReplies.value = emptySet()
+        nextCommentPage = 2
+        _uiState.value = CommentUiState()
     }
 
     /** 异步响应是否仍属于当前视频；切页后必须丢弃，否则旧视频的评论会写进新视频。 */
     private fun isSameVideoAsRequest(requestVideoId: String): Boolean =
         requestVideoId == currentVideoId
 
-    private val _isLoadingMoreComments = MutableStateFlow(false)
-    val isLoadingMoreComments: StateFlow<Boolean> = _isLoadingMoreComments.asStateFlow()
-
-    private val _hasMoreComments = MutableStateFlow(false)
-    val hasMoreComments: StateFlow<Boolean> = _hasMoreComments.asStateFlow()
-
-    private var nextCommentPage = 2
-
-    private var loadMoreCommentsJob: Job? = null
-
     /** 加载评论列表；已加载或加载中都不重复请求，[force] 只绕过前者。 */
     fun loadComments(force: Boolean = false) {
+        val state = _uiState.value
         if (currentVideoId.isEmpty()) return
-        if (_commentsLoaded.value && !force) {
+        if (state.loaded && !force) {
             AppLogger.d("CommentViewModel", "Comments already loaded, skip")
             return
         }
-        if (_isLoadingComments.value) {
+        if (state.isLoading) {
             AppLogger.d("CommentViewModel", "Comments already loading, skip")
             return
         }
         val requestVideoId = currentVideoId
         AppLogger.d("CommentViewModel", "loadComments called, videoId: $requestVideoId")
-        _isLoadingComments.value = true
-        _commentsError.value = null
         loadMoreCommentsJob?.cancel()
-        _isLoadingMoreComments.value = false
-        _hasMoreComments.value = false
         nextCommentPage = 2
+        _uiState.update {
+            it.copy(isLoading = true, error = null, isLoadingMore = false, hasMore = false)
+        }
 
         viewModelScope.launch {
             try {
@@ -198,18 +135,26 @@ class CommentViewModel @Inject constructor(
                 when (result) {
                     is AppResult.Success -> {
                         AppLogger.d("CommentViewModel", "Got ${result.data.size} comments")
-                        _comments.value = result.data
-                        _commentsLoaded.value = true
-                        _hasMoreComments.value = result.data.size >= COMMENTS_PAGE_SIZE
+                        _uiState.update {
+                            it.copy(
+                                comments = result.data,
+                                loaded = true,
+                                hasMore = result.data.size >= COMMENTS_PAGE_SIZE
+                            )
+                        }
                     }
                     is AppResult.Error -> {
                         AppLogger.e("CommentViewModel", "Error loading comments: ${result.message}", result.exception)
-                        _commentsError.value = ErrorMapper.message(
-                            context,
-                            result.exception,
-                            result.code,
-                            context.getString(R.string.comment_load_failed)
-                        )
+                        _uiState.update {
+                            it.copy(
+                                error = ErrorMapper.message(
+                                    context,
+                                    result.exception,
+                                    result.code,
+                                    context.getString(R.string.comment_load_failed)
+                                )
+                            )
+                        }
                     }
                     is AppResult.Loading -> {}
                 }
@@ -218,32 +163,38 @@ class CommentViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "Error loading comments: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _commentsError.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.comment_load_failed)
-                    )
+                    _uiState.update {
+                        it.copy(
+                            error = ErrorMapper.message(
+                                context,
+                                e,
+                                context.getString(R.string.comment_load_failed)
+                            )
+                        )
+                    }
                 }
             } finally {
-                if (isSameVideoAsRequest(requestVideoId)) _isLoadingComments.value = false
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
             }
         }
     }
 
     /**
-     * 追加下一页评论；最后一页（返回数不足页大小）时置 [hasMoreComments] = false。
+     * 追加下一页评论；最后一页（返回数不足页大小）时置 hasMore = false。
      * 站点 /loadComment 对越界页返回与上一页相同的数据，这里以「页数无增量」同样收口，
      * 避免越界后无限重复请求。
      */
     fun loadMoreComments() {
+        val state = _uiState.value
         if (currentVideoId.isEmpty()) return
-        if (_isLoadingComments.value || _isLoadingMoreComments.value) return
-        if (!_hasMoreComments.value) return
+        if (state.isLoading || state.isLoadingMore) return
+        if (!state.hasMore) return
         val requestVideoId = currentVideoId
         val page = nextCommentPage
         AppLogger.d("CommentViewModel", "loadMoreComments page=$page videoId=$requestVideoId")
-        _isLoadingMoreComments.value = true
-        _commentsError.value = null
+        _uiState.update { it.copy(isLoadingMore = true, error = null) }
         loadMoreCommentsJob = viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
@@ -252,22 +203,26 @@ class CommentViewModel @Inject constructor(
                 if (!isSameVideoAsRequest(requestVideoId)) return@launch
                 when (result) {
                     is AppResult.Success -> {
-                        val existing = _comments.value
+                        val existing = _uiState.value.comments
                         val merged = (existing + result.data).distinctBy { it.id }
                         if (merged.size == existing.size || result.data.size < COMMENTS_PAGE_SIZE) {
-                            _hasMoreComments.value = false
+                            _uiState.update { it.copy(hasMore = false) }
                         } else {
-                            _comments.value = merged
+                            _uiState.update { it.copy(comments = merged) }
                             nextCommentPage = page + 1
                         }
                     }
                     is AppResult.Error -> {
-                        _commentsError.value = ErrorMapper.message(
-                            context,
-                            result.exception,
-                            result.code,
-                            context.getString(R.string.comment_load_failed)
-                        )
+                        _uiState.update {
+                            it.copy(
+                                error = ErrorMapper.message(
+                                    context,
+                                    result.exception,
+                                    result.code,
+                                    context.getString(R.string.comment_load_failed)
+                                )
+                            )
+                        }
                     }
                     is AppResult.Loading -> {}
                 }
@@ -276,35 +231,41 @@ class CommentViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "loadMoreComments failed: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _commentsError.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.comment_load_failed)
-                    )
+                    _uiState.update {
+                        it.copy(
+                            error = ErrorMapper.message(
+                                context,
+                                e,
+                                context.getString(R.string.comment_load_failed)
+                            )
+                        )
+                    }
                 }
             } finally {
-                if (isSameVideoAsRequest(requestVideoId)) _isLoadingMoreComments.value = false
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _uiState.update { it.copy(isLoadingMore = false) }
+                }
             }
         }
     }
 
-    /**
-     * 加载某条评论的回复列表；已缓存则不重复请求，除非 force=true。
-     */
+    /** 加载某条评论的回复列表；已缓存则不重复请求，除非 force=true。 */
     fun loadReplies(commentId: String, force: Boolean = false) {
         if (commentId.isEmpty()) return
         val requestVideoId = currentVideoId
-        if (!force && _repliesCache.value.containsKey(commentId)) {
+        val state = _uiState.value
+        if (!force && state.replies.containsKey(commentId)) {
             AppLogger.d("CommentViewModel", "Replies for $commentId already cached, skip")
             return
         }
-        if (_loadingReplies.value.contains(commentId)) {
+        if (state.loadingReplies.contains(commentId)) {
             AppLogger.d("CommentViewModel", "Replies for $commentId is loading, skip")
             return
         }
         AppLogger.d("CommentViewModel", "loadReplies called, commentId: $commentId")
-        _loadingReplies.value = _loadingReplies.value + commentId
-        _repliesError.value = _repliesError.value - commentId
+        _uiState.update {
+            it.copy(loadingReplies = it.loadingReplies + commentId, replyErrors = it.replyErrors - commentId)
+        }
 
         viewModelScope.launch {
             try {
@@ -319,7 +280,7 @@ class CommentViewModel @Inject constructor(
                 when (result) {
                     is AppResult.Success -> {
                         AppLogger.d("CommentViewModel", "Got ${result.data.size} replies for comment $commentId")
-                        _repliesCache.value = _repliesCache.value + (commentId to result.data)
+                        _uiState.update { it.copy(replies = it.replies + (commentId to result.data)) }
                     }
                     is AppResult.Error -> {
                         AppLogger.e("CommentViewModel", "Error loading replies: ${result.message}", result.exception)
@@ -329,7 +290,7 @@ class CommentViewModel @Inject constructor(
                             result.code,
                             context.getString(R.string.comment_reply_load_failed)
                         )
-                        _repliesError.value = _repliesError.value + (commentId to replyErrorMessage)
+                        _uiState.update { it.copy(replyErrors = it.replyErrors + (commentId to replyErrorMessage)) }
                     }
                     is AppResult.Loading -> {}
                 }
@@ -338,17 +299,16 @@ class CommentViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "Error loading replies: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _repliesError.value = _repliesError.value + (
-                        commentId to ErrorMapper.message(
-                            context,
-                            e,
-                            context.getString(R.string.comment_reply_load_failed)
-                        )
-                        )
+                    val message = ErrorMapper.message(
+                        context,
+                        e,
+                        context.getString(R.string.comment_reply_load_failed)
+                    )
+                    _uiState.update { it.copy(replyErrors = it.replyErrors + (commentId to message)) }
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _loadingReplies.value = _loadingReplies.value - commentId
+                    _uiState.update { it.copy(loadingReplies = it.loadingReplies - commentId) }
                 }
             }
         }
@@ -361,31 +321,34 @@ class CommentViewModel @Inject constructor(
      */
     fun startReply(commentId: String, replyToUsername: String? = null) {
         if (session.savedUserId.isBlank()) {
-            _replyError.value = context.getString(R.string.error_login_required_reply)
+            _uiState.update { it.copy(replyError = context.getString(R.string.error_login_required_reply)) }
             return
         }
-        _activeReplyTarget.value = ReplyTarget(commentId, replyToUsername)
-        _expandedReplies.value = _expandedReplies.value + commentId
-        if (!_repliesCache.value.containsKey(commentId)) {
+        _uiState.update {
+            it.copy(
+                replyTarget = ReplyTarget(commentId, replyToUsername),
+                expandedReplies = it.expandedReplies + commentId
+            )
+        }
+        if (!_uiState.value.replies.containsKey(commentId)) {
             loadReplies(commentId)
         }
     }
 
     /** 关闭回复输入框。 */
     fun cancelReply() {
-        _activeReplyTarget.value = null
-        _replyError.value = null
+        _uiState.update { it.copy(replyTarget = null, replyError = null) }
     }
 
     /** 切换某条评论的回复区展开/收起状态；首次展开且尚未加载时拉取回复列表。 */
     fun toggleReplies(commentId: String) {
-        val expanded = _expandedReplies.value
-        _expandedReplies.value = if (expanded.contains(commentId)) {
-            expanded - commentId
-        } else {
-            expanded + commentId
+        val expanded = _uiState.value.expandedReplies
+        _uiState.update {
+            it.copy(
+                expandedReplies = if (expanded.contains(commentId)) expanded - commentId else expanded + commentId
+            )
         }
-        if (!_repliesCache.value.containsKey(commentId)) {
+        if (!_uiState.value.replies.containsKey(commentId)) {
             loadReplies(commentId)
         }
     }
@@ -397,14 +360,14 @@ class CommentViewModel @Inject constructor(
      * [ctx] 由视频域提供：csrfToken 与 videoId 都在视频域，评论域不反向依赖它。
      */
     fun submitReply(text: String, ctx: CommentContext) {
-        val target = _activeReplyTarget.value ?: return
+        val target = _uiState.value.replyTarget ?: return
         val trimmed = text.trim()
         if (trimmed.isEmpty()) {
-            _replyError.value = context.getString(R.string.error_reply_empty)
+            _uiState.update { it.copy(replyError = context.getString(R.string.error_reply_empty)) }
             return
         }
         if (ctx.csrfToken.isBlank()) {
-            _replyError.value = context.getString(R.string.error_csrf_missing)
+            _uiState.update { it.copy(replyError = context.getString(R.string.error_csrf_missing)) }
             return
         }
 
@@ -417,8 +380,7 @@ class CommentViewModel @Inject constructor(
 
         // 结果落地前校验 videoId：切页后不能把回复写进新视频的回复列表
         val requestVideoId = ctx.videoId
-        _isPostingReply.value = true
-        _replyError.value = null
+        _uiState.update { it.copy(isPostingReply = true, replyError = null) }
 
         // 构造临时回复（用户名/头像待服务端返回）
         val optimisticReply = Reply(
@@ -430,9 +392,13 @@ class CommentViewModel @Inject constructor(
             likeCount = 0,
             replyTo = target.replyToUsername
         )
-        _comments.value = CommentOptimistic.adjustReplyCount(_comments.value, target.commentId, 1)
-        _repliesCache.value = CommentOptimistic.appendReply(_repliesCache.value, target.commentId, optimisticReply)
-        _expandedReplies.value = _expandedReplies.value + target.commentId
+        _uiState.update {
+            it.copy(
+                comments = CommentOptimistic.adjustReplyCount(it.comments, target.commentId, 1),
+                replies = CommentOptimistic.appendReply(it.replies, target.commentId, optimisticReply),
+                expandedReplies = it.expandedReplies + target.commentId
+            )
+        }
 
         viewModelScope.launch {
             try {
@@ -449,23 +415,31 @@ class CommentViewModel @Inject constructor(
                     is AppResult.Success -> {
                         val newReply = result.data
                         // 用服务端返回的回复替换临时项：先剔除临时项（防 loadReplies 竞态覆盖），再追加
-                        _repliesCache.value = CommentOptimistic.replaceReply(
-                            _repliesCache.value,
-                            target.commentId,
-                            optimisticReply.id,
-                            newReply
-                        )
-                        _activeReplyTarget.value = null
+                        _uiState.update {
+                            it.copy(
+                                replies = CommentOptimistic.replaceReply(
+                                    it.replies,
+                                    target.commentId,
+                                    optimisticReply.id,
+                                    newReply
+                                ),
+                                replyTarget = null
+                            )
+                        }
                         AppLogger.d("CommentViewModel", "Reply posted for comment ${target.commentId}, replyId=${newReply.id}")
                     }
                     is AppResult.Error -> {
                         rollbackOptimisticReply(target.commentId, optimisticReply.id)
-                        _replyError.value = ErrorMapper.message(
-                            context,
-                            result.exception,
-                            result.code,
-                            context.getString(R.string.comment_post_failed)
-                        )
+                        _uiState.update {
+                            it.copy(
+                                replyError = ErrorMapper.message(
+                                    context,
+                                    result.exception,
+                                    result.code,
+                                    context.getString(R.string.comment_post_failed)
+                                )
+                            )
+                        }
                         AppLogger.e("CommentViewModel", "Error posting reply: ${result.message}", result.exception)
                     }
                     is AppResult.Loading -> {}
@@ -477,14 +451,20 @@ class CommentViewModel @Inject constructor(
                 AppLogger.e("CommentViewModel", "Error posting reply: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
                     rollbackOptimisticReply(target.commentId, optimisticReply.id)
-                    _replyError.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.comment_post_failed)
-                    )
+                    _uiState.update {
+                        it.copy(
+                            replyError = ErrorMapper.message(
+                                context,
+                                e,
+                                context.getString(R.string.comment_post_failed)
+                            )
+                        )
+                    }
                 }
             } finally {
-                if (isSameVideoAsRequest(requestVideoId)) _isPostingReply.value = false
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _uiState.update { it.copy(isPostingReply = false) }
+                }
             }
         }
     }
@@ -496,13 +476,17 @@ class CommentViewModel @Inject constructor(
      * 例如同一条评论的回复列表在此期间被重新拉取、或其它评论的点赞已乐观写入。
      */
     private fun rollbackOptimisticReply(commentId: String, optimisticId: String) {
-        _comments.value = CommentOptimistic.adjustReplyCount(_comments.value, commentId, -1)
-        _repliesCache.value = CommentOptimistic.removeReply(_repliesCache.value, commentId, optimisticId)
+        _uiState.update {
+            it.copy(
+                comments = CommentOptimistic.adjustReplyCount(it.comments, commentId, -1),
+                replies = CommentOptimistic.removeReply(it.replies, commentId, optimisticId)
+            )
+        }
     }
 
     /** 清除回复提交的错误状态。 */
     fun clearReplyError() {
-        _replyError.value = null
+        _uiState.update { it.copy(replyError = null) }
     }
 
     /**
@@ -516,22 +500,21 @@ class CommentViewModel @Inject constructor(
     fun postComment(text: String, ctx: CommentContext, onCommentCountUpdated: (Int) -> Unit = {}) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) {
-            _postCommentError.value = context.getString(R.string.error_comment_empty)
+            _uiState.update { it.copy(postError = context.getString(R.string.error_comment_empty)) }
             return
         }
         if (ctx.videoId.isEmpty()) {
-            _postCommentError.value = context.getString(R.string.error_video_info_missing)
+            _uiState.update { it.copy(postError = context.getString(R.string.error_video_info_missing)) }
             return
         }
         if (ctx.csrfToken.isBlank()) {
-            _postCommentError.value = context.getString(R.string.error_csrf_missing)
+            _uiState.update { it.copy(postError = context.getString(R.string.error_csrf_missing)) }
             return
         }
 
         // 绑定发起时的视频：既用于请求，也用于结果落地前的校验
         val requestVideoId = ctx.videoId
-        _isPostingComment.value = true
-        _postCommentError.value = null
+        _uiState.update { it.copy(isPosting = true, postError = null) }
 
         viewModelScope.launch {
             try {
@@ -552,19 +535,22 @@ class CommentViewModel @Inject constructor(
                     is AppResult.Success -> {
                         val (newComment, newCount) = result.data
                         // 新评论追加到列表头部
-                        _comments.value = listOf(newComment) + _comments.value
-                        _lastPostedComment.value = newComment
+                        _uiState.update { it.copy(comments = listOf(newComment) + it.comments) }
                         onCommentCountUpdated(newCount)
                         AppLogger.d("CommentViewModel", "Comment posted: id=${newComment.id}, newCount=$newCount")
                     }
                     is AppResult.Error -> {
                         AppLogger.e("CommentViewModel", "Error posting comment: ${result.message}", result.exception)
-                        _postCommentError.value = ErrorMapper.message(
-                            context,
-                            result.exception,
-                            result.code,
-                            context.getString(R.string.comment_post_failed)
-                        )
+                        _uiState.update {
+                            it.copy(
+                                postError = ErrorMapper.message(
+                                    context,
+                                    result.exception,
+                                    result.code,
+                                    context.getString(R.string.comment_post_failed)
+                                )
+                            )
+                        }
                     }
                     is AppResult.Loading -> {}
                 }
@@ -573,21 +559,27 @@ class CommentViewModel @Inject constructor(
             } catch (e: Exception) {
                 AppLogger.e("CommentViewModel", "Error posting comment: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _postCommentError.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.comment_post_failed)
-                    )
+                    _uiState.update {
+                        it.copy(
+                            postError = ErrorMapper.message(
+                                context,
+                                e,
+                                context.getString(R.string.comment_post_failed)
+                            )
+                        )
+                    }
                 }
             } finally {
-                if (isSameVideoAsRequest(requestVideoId)) _isPostingComment.value = false
+                if (isSameVideoAsRequest(requestVideoId)) {
+                    _uiState.update { it.copy(isPosting = false) }
+                }
             }
         }
     }
 
     /** 清除发表评论的错误状态。 */
     fun clearPostCommentError() {
-        _postCommentError.value = null
+        _uiState.update { it.copy(postError = null) }
     }
 
     /**
@@ -598,21 +590,25 @@ class CommentViewModel @Inject constructor(
      */
     fun toggleCommentLike(comment: Comment, ctx: CommentContext) {
         if (ctx.csrfToken.isBlank()) {
-            _commentLikeError.value = context.getString(R.string.error_csrf_missing)
+            _events.trySend(CommentEvent.LikeFailed(context.getString(R.string.error_csrf_missing)))
             return
         }
         if (session.savedUserId.isBlank()) {
-            _commentLikeError.value = context.getString(R.string.error_login_required_like)
+            _events.trySend(CommentEvent.LikeFailed(context.getString(R.string.error_login_required_like)))
             return
         }
         // 防止同一评论在请求未完成前被重复点击
-        if (_likingComments.value.contains(comment.id)) return
+        if (_uiState.value.likingIds.contains(comment.id)) return
 
         // 回滚按 comment.id 在新列表里定位，切页后必须放弃，否则会写坏新视频的评论
         val requestVideoId = ctx.videoId
         val optimistic = CommentOptimistic.toggleLike(comment)
-        _comments.value = _comments.value.map { if (it.id == comment.id) optimistic else it }
-        _likingComments.value = _likingComments.value + comment.id
+        _uiState.update {
+            it.copy(
+                comments = it.comments.map { current -> if (current.id == comment.id) optimistic else current },
+                likingIds = it.likingIds + comment.id
+            )
+        }
 
         viewModelScope.launch {
             try {
@@ -634,12 +630,22 @@ class CommentViewModel @Inject constructor(
                         AppLogger.d("CommentViewModel", "Comment like toggled for ${comment.id}, willLike=${optimistic.likeStatus == 1}")
                     }
                     is AppResult.Error -> {
-                        _comments.value = _comments.value.map { if (it.id == comment.id) comment else it }
-                        _commentLikeError.value = ErrorMapper.message(
-                            context,
-                            result.exception,
-                            result.code,
-                            context.getString(R.string.comment_like_failed)
+                        _uiState.update {
+                            it.copy(
+                                comments = it.comments.map { current ->
+                                    if (current.id == comment.id) comment else current
+                                }
+                            )
+                        }
+                        _events.trySend(
+                            CommentEvent.LikeFailed(
+                                ErrorMapper.message(
+                                    context,
+                                    result.exception,
+                                    result.code,
+                                    context.getString(R.string.comment_like_failed)
+                                )
+                            )
                         )
                         AppLogger.e("CommentViewModel", "Error toggling comment like: ${result.message}", result.exception)
                     }
@@ -651,24 +657,29 @@ class CommentViewModel @Inject constructor(
                 // 异常路径同样回滚乐观更新，避免界面停留在与服务端不一致的点赞态
                 AppLogger.e("CommentViewModel", "Error toggling comment like: ${e.message}", e)
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _comments.value = _comments.value.map { if (it.id == comment.id) comment else it }
-                    _commentLikeError.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.comment_like_failed)
+                    _uiState.update {
+                        it.copy(
+                            comments = it.comments.map { current ->
+                                if (current.id == comment.id) comment else current
+                            }
+                        )
+                    }
+                    _events.trySend(
+                        CommentEvent.LikeFailed(
+                            ErrorMapper.message(
+                                context,
+                                e,
+                                context.getString(R.string.comment_like_failed)
+                            )
+                        )
                     )
                 }
             } finally {
                 if (isSameVideoAsRequest(requestVideoId)) {
-                    _likingComments.value = _likingComments.value - comment.id
+                    _uiState.update { it.copy(likingIds = it.likingIds - comment.id) }
                 }
             }
         }
-    }
-
-    /** 清除评论点赞的错误状态。 */
-    fun clearCommentLikeError() {
-        _commentLikeError.value = null
     }
 
     companion object {

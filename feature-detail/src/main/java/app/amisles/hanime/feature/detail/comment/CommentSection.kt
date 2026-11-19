@@ -24,34 +24,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.domain.model.Comment
 
 /** 评论区：包含输入框、加载中、错误、空、列表五种状态。 */
 @Composable
 internal fun CommentSection(
-    comments: List<app.amisles.hanime.domain.model.Comment>,
-    isLoading: Boolean,
-    isLoadingMore: Boolean,
-    hasMore: Boolean,
-    onLoadMore: () -> Unit,
-    error: String?,
-    onRetry: () -> Unit,
-    repliesCache: Map<String, List<app.amisles.hanime.domain.model.Reply>>,
-    loadingReplies: Set<String>,
-    repliesError: Map<String, String?>,
-    onLoadReplies: (String) -> Unit,
-    expandedReplies: Set<String>,
-    onToggleExpand: (String) -> Unit,
+    state: CommentUiState,
     isLogin: Boolean,
-    isPostingComment: Boolean,
-    postCommentError: String?,
+    onLoadMore: () -> Unit,
+    onRetry: () -> Unit,
+    onLoadReplies: (String) -> Unit,
+    onToggleExpand: (String) -> Unit,
     onPostComment: (String) -> Unit,
     onClearPostError: () -> Unit,
-    onToggleLike: (app.amisles.hanime.domain.model.Comment) -> Unit,
-    likingComments: Set<String>,
-    activeReplyCommentId: String?,
-    replyPrefill: String,
-    isPostingReply: Boolean,
-    replyError: String?,
+    onToggleLike: (Comment) -> Unit,
     onStartReply: (String, String?) -> Unit,
     onSendReply: (String) -> Unit,
     onCancelReply: () -> Unit,
@@ -62,15 +48,15 @@ internal fun CommentSection(
         // 评论输入框
         CommentInputBar(
             isLogin = isLogin,
-            isPosting = isPostingComment,
-            error = postCommentError,
+            isPosting = state.isPosting,
+            error = state.postError,
             onPost = onPostComment,
             onClearError = onClearPostError,
             onNavigateToLogin = onNavigateToLogin
         )
 
         when {
-            isLoading -> {
+            state.isLoading -> {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -85,13 +71,13 @@ internal fun CommentSection(
                 }
             }
             // 仅在没有可展示内容时才整块显示错误页；已有评论时改用顶部轻量提示，避免刷新失败覆盖已加载列表
-            error != null && comments.isEmpty() -> {
+            state.error != null && state.comments.isEmpty() -> {
                 KaomojiErrorView(
-                    message = error,
+                    message = state.error,
                     onRetry = onRetry
                 )
             }
-            comments.isEmpty() -> {
+            state.comments.isEmpty() -> {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -106,10 +92,10 @@ internal fun CommentSection(
                 }
             }
             else -> {
-                if (error != null) {
-                    RefreshFailedBar(message = error, onRetry = onRetry)
+                if (state.error != null) {
+                    RefreshFailedBar(message = state.error, onRetry = onRetry)
                 }
-                comments.forEach { comment ->
+                state.comments.forEach { comment ->
                     // 显式 key 绑定评论 id：CommentItem 内部的回复输入内容是按组合位置 remember 的，
                     // 新评论插入列表头部后各条位置整体后移，输入内容会错配到别的评论上。
                     // 注：本列表嵌在外层 LazyColumn 的单个 item 内，不能改为嵌套 LazyColumn
@@ -118,21 +104,21 @@ internal fun CommentSection(
                     key(comment.id) {
                         CommentItem(
                             comment = comment,
-                            replies = repliesCache[comment.id],
-                            isLoadingReplies = loadingReplies.contains(comment.id),
-                            repliesError = repliesError[comment.id],
+                            replies = state.replies[comment.id],
+                            isLoadingReplies = state.loadingReplies.contains(comment.id),
+                            repliesError = state.replyErrors[comment.id],
                             onLoadReplies = onLoadReplies,
-                            isExpanded = expandedReplies.contains(comment.id),
+                            isExpanded = state.expandedReplies.contains(comment.id),
                             onToggleExpand = { onToggleExpand(comment.id) },
                             onToggleLike = onToggleLike,
-                            isLiking = likingComments.contains(comment.id),
+                            isLiking = state.likingIds.contains(comment.id),
                             isLogin = isLogin,
                             onNavigateToLogin = onNavigateToLogin,
                             onReply = { replyToUsername -> onStartReply(comment.id, replyToUsername) },
-                            isReplying = activeReplyCommentId == comment.id,
-                            replyPrefill = replyPrefill,
-                            isPostingReply = isPostingReply,
-                            replyError = replyError,
+                            isReplying = state.replyTarget?.commentId == comment.id,
+                            replyPrefill = state.replyPrefill,
+                            isPostingReply = state.isPostingReply,
+                            replyError = state.replyError,
                             onSendReply = onSendReply,
                             onCancelReply = onCancelReply,
                             onClearReplyError = onClearReplyError
@@ -147,9 +133,9 @@ internal fun CommentSection(
                     }
                 }
                 CommentLoadMoreFooter(
-                    isLoadingMore = isLoadingMore,
-                    hasMore = hasMore,
-                    hasError = error != null,
+                    isLoadingMore = state.isLoadingMore,
+                    hasMore = state.hasMore,
+                    hasError = state.error != null,
                     onLoadMore = onLoadMore,
                     onRetry = onRetry
                 )
