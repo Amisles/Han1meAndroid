@@ -130,11 +130,7 @@ object CrashLogger {
                     ?.trim()
                     .orEmpty(),
                 // 预览取堆栈第一行（异常类名与消息），头部字段都是 key: value 形式
-                preview = text.lineSequence()
-                    .firstOrNull { it.contains("Exception") || it.contains("Error") }
-                    ?.trim()
-                    ?.take(HEADER_DEVICE_MAX)
-                    .orEmpty()
+                preview = CrashLogText.previewOf(text)
             )
         }
     }
