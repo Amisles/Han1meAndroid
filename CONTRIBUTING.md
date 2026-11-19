@@ -84,7 +84,7 @@ CI（`.github/workflows/android-ci.yml`）在每次 PR 上跑四件事，任何�
 - `gradle/wrapper/gradle-wrapper.properties` 固定了发行包 URL 与 `distributionSha256Sum`，升级 Gradle 必须同步更新校验和。
 - 版本号只在 `gradle/version.properties` 一处，构建与发布流程都读它。
 - Release 附带 R8 映射（`mapping-vX.Y.Z.txt.gz`）与依赖清单（`dependencies-vX.Y.Z.txt`），后者可用于核对实际打进包的构件。
-- 依赖校验清单（`gradle/verification-metadata.xml`）尚未启用；启用时须覆盖完整 CI 任务集，否则后续构建会因缺少条目失败：
+- `gradle/verification-metadata.xml` 记录全部依赖构件的 sha256，校验不通过即中止构建；升级依赖后重新生成并在同一 PR 提交，且必须覆盖完整 CI 任务集，漏掉的构件会让后续构建失败：
 
 ```bash
 ./gradlew --write-verification-metadata sha256 help assembleDebug assembleRelease testDebugUnitTest lintDebug
