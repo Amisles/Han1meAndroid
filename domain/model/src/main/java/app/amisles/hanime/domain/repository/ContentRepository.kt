@@ -80,6 +80,9 @@ interface ContentRepository {
     /** 拉取作者的作品列表页（分页）。 */
     suspend fun getVideoListPage(url: String): List<HanimeVideo>
 
+    /** 人机校验后的复检：能正常取到首页即视为已通过，避免把整段网络栈暴露给界面层。 */
+    suspend fun isChallengePassed(): Boolean
+
     /** 拉取作者的播放列表清单页。 */
     suspend fun getPlaylistListPage(url: String): List<PlaylistSummary>
 

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.PlaylistSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistListPageViewModel @Inject constructor(
-    private val networkService: NetworkService,
+    private val content: ContentRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -36,7 +36,7 @@ class PlaylistListPageViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                _playlists.value = networkService.fetchPlaylistListPage(url).distinctBy { it.playlistUrl }
+                _playlists.value = content.getPlaylistListPage(url).distinctBy { it.playlistUrl }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

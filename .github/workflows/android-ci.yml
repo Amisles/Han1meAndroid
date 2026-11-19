@@ -96,7 +96,7 @@ jobs:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest :domain:model:test --stacktrace --continue
+          ./gradlew testDebugUnitTest :domain:model:test :konsist-test:test --stacktrace --continue
 
       - name: Run Android Lint
         if: ${{ !inputs.release_only }}

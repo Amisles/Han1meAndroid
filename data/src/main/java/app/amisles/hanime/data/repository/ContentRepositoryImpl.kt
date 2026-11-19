@@ -44,6 +44,9 @@ class ContentRepositoryImpl @Inject constructor(
     private val videoDetailStore: VideoDetailStore
 ) : ContentRepository {
 
+    override suspend fun isChallengePassed(): Boolean =
+        runCatching { networkService.fetchHomePageWithBaseUrl() }.isSuccess
+
     override suspend fun getHomeData(): AppResult<HomePageData> {
         return try {
             val result = networkService.fetchHomePageWithBaseUrl()

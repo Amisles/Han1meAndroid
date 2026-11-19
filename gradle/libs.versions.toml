@@ -25,10 +25,12 @@ baselineProfile = "1.5.0"
 benchmarkMacro = "1.5.0"
 uiautomator = "2.4.0"
 metrics-performance = "1.0.0-beta04"
+konsist = "0.18.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+konsist = { group = "com.lemonappdev", name = "konsist", version.ref = "konsist" }
 # 仅用于单元测试：Android 的 org.json 在 JVM 测试中是空壳，需真实实现才能验证 JSON 解析
 org-json = { group = "org.json", name = "json", version.ref = "org-json" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }

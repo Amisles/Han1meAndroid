@@ -33,4 +33,5 @@ include(":feature-profile")
 include(":feature-settings")
 include(":feature-comic")
 include(":baselineprofile")
+include(":konsist-test")
  

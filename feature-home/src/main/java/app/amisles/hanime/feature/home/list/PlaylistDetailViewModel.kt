@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.PlaylistDetail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
-    private val networkService: NetworkService,
+    private val content: ContentRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -36,7 +36,7 @@ class PlaylistDetailViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                _playlistDetail.value = networkService.fetchPlaylistDetailPage(url)
+                _playlistDetail.value = content.getPlaylistDetail(url)
                     ?.let { detail -> detail.copy(videos = detail.videos.distinctBy { it.id }) }
             } catch (e: CancellationException) {
                 throw e

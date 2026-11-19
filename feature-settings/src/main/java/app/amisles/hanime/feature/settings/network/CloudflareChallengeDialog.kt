@@ -53,7 +53,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.BrowserUserAgent
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.remote.EntryInterceptor
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +72,7 @@ private val CHALLENGE_AUXILIARY_HOSTS = listOf("cloudflare.com", "cloudflarechal
 @HiltViewModel
 class CloudflareChallengeViewModel @Inject constructor(
     private val session: SessionRepository,
-    private val network: NetworkService
+    private val content: ContentRepository
 ) : ViewModel() {
 
     suspend fun save(host: String, cookie: String): Boolean = withContext(Dispatchers.IO) {
@@ -85,7 +85,7 @@ class CloudflareChallengeViewModel @Inject constructor(
 
     /** 用后台同一套请求栈复查：只有不再被判为挑战页，才算真的过了。 */
     suspend fun verify(): Boolean = withContext(Dispatchers.IO) {
-        runCatching { network.fetchHomePageWithBaseUrl() }.isSuccess
+        content.isChallengePassed()
     }
 }
 
