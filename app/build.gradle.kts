@@ -16,6 +16,10 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val versionProperties = Properties().apply {
+    FileInputStream(rootProject.file("gradle/version.properties")).use { load(it) }
+}
+
 fun signingValue(envName: String, propName: String): String? =
     System.getenv(envName)?.takeIf { it.isNotBlank() }
         ?: (keystoreProperties[propName] as String?)?.takeIf { it.isNotBlank() }
@@ -37,8 +41,8 @@ android {
         applicationId = "app.amisles.hanime"
         minSdk = 30
         targetSdk = 37
-        versionCode = 21
-        versionName = "1.8.0"
+        versionCode = versionProperties.getProperty("versionCode").trim().toInt()
+        versionName = versionProperties.getProperty("versionName").trim()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
