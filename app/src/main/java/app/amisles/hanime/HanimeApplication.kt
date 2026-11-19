@@ -9,7 +9,6 @@ import android.os.Build
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
-import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.app.work.SubscriptionReminderWorker
 import app.amisles.hanime.data.icon.LauncherIconRepository
 import app.amisles.hanime.data.preferences.Preferences
@@ -150,8 +149,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
 
     override fun onCreate() {
         super.onCreate()
-        Preferences.init(this)
-        UiConfigStore.init(this)
+        AppSettingsInitializer.init(this)
         syncSystemAppLocale()
         applyLanguage(persistedLanguage())
         AppLogger.init(this)
