@@ -7,7 +7,7 @@
 - **缺陷**：用 [Bug 报告模板](.github/ISSUE_TEMPLATE/bug_report.yml) 提 Issue，附版本号、设备、复现步骤；崩溃请附 `filesDir/hanime_app.log` 中相关片段（贴之前删掉账号与 Cookie）。
 - **新功能**：先开 Issue 说明「要解决什么问题」，避免大改动物色方向之后才发现不接受。
 - **安全漏洞**：不要开公开 Issue，见 [SECURITY.md](SECURITY.md) 的私密报告渠道。
-- **内容与版权**：不讨论站点内容、账号代充、绕过付费等请求，这类 Issue 会被直接关闭。
+- **内容与版权**：该项目属于第三方客户端，仅用于数据展示并提供观看的平台，不生产任何内容，一切数据资源皆属于Han1me官方，所以最好不讨论站点内容，这类 Issue 会被直接关闭。
 
 ## 开发环境
 
@@ -41,14 +41,6 @@
 - `feature-*` 之间互不依赖；需要复用就下沉到 `core:ui` 或 `core:common`。
 - 业务契约（`*Repository` 接口）放在 `domain:model` 的 `app.amisles.hanime.domain.repository`，实现放在 `data/.../repository`，Hilt 绑定集中在 `data/di/RepositoryModule.kt`。
 - 视图层不直接调用 `NetworkService`；网络与解析只经过 Repository。
-
-## 代码约定
-
-- Kotlin 官方代码风格，4 空格缩进，一次只做一件事。
-- 注释只写「为什么」和约束，不复述代码；能用命名与类型表达的地方不写注释。
-- 新增用户可见文案必须同时更新 `core/ui/src/main/res/` 下的 `values`、`values-en`、`values-ja`、`values-zh-rTW` 四份 `strings.xml`，键名与条数保持一致。
-- 引入新依赖前先在 Issue 里说明理由；能复用现有库就不要新增。
-- 不提交 `keystore.properties`、`*.jks`、`*.log`、抓包文件或站点页面快照（测试夹具除外，见下）。
 
 ## 测试要求
 
@@ -89,14 +81,6 @@ CI（`.github/workflows/android-ci.yml`）在每次 PR 上跑四件事，任何�
 ```bash
 ./gradlew --write-verification-metadata sha256 help assembleDebug assembleRelease testDebugUnitTest lintDebug
 ```
-
-## 发布流程（维护者）
-
-1. 更新 `gradle/version.properties` 的 `versionCode` / `versionName`（版本号的唯一来源，构建与发布流程都读它）。
-2. 把本版说明写到 `docs/release-vX.Y.Z.md` 并提交。
-3. 打 tag 并推送：`git tag vX.Y.Z && git push origin vX.Y.Z`，tag 必须等于 `v` + `versionName`。
-4. `.github/workflows/release.yml` 会校验版本一致、验证签名、产出 APK、sha256 与 R8 映射（`mapping-vX.Y.Z.txt.gz`），并创建 GitHub Release；映射文件缺失会直接失败。
-5. 重装与升级说明见 [docs/reproducible-build.md](docs/reproducible-build.md)。
 
 ## 行为准则
 
