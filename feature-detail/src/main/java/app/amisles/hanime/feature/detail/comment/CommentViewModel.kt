@@ -128,7 +128,7 @@ class CommentViewModel @Inject constructor(
      * 表现为「旋转屏幕后评论区变空」。
      */
     fun selectVideo(videoId: String) {
-        if (videoId == currentVideoId && videoId.isNotEmpty()) {
+        if (shouldSkipCommentReset(currentVideoId, videoId)) {
             AppLogger.d("CommentViewModel", "selectVideo 收到同一视频，跳过复位: $videoId")
             return
         }

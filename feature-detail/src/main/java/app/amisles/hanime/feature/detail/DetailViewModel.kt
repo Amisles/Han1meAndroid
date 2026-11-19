@@ -117,8 +117,8 @@ class DetailViewModel @Inject constructor(
      * 评论域 currentVideoId 保持空串，loadComments() 首行直接 return，评论永远加载不出来。
      * StateFlow 自带当前值，晚订阅也能立刻拿到，从根上消除这个时序依赖。
      */
-    private val _videoSwitched = MutableStateFlow("")
-    val videoSwitched: StateFlow<String> = _videoSwitched.asStateFlow()
+    private val videoSwitch = VideoSwitchChannel()
+    val videoSwitched: StateFlow<String> = videoSwitch.videoId
 
     fun loadVideoDetail(videoUrl: String) {
         AppLogger.d("DetailViewModel", "loadVideoDetail called, url: ${videoUrl.redactUrlForLog()}")
@@ -126,7 +126,7 @@ class DetailViewModel @Inject constructor(
 
         currentVideoId = extractVideoId(videoUrl)
         currentVideoUrl = videoUrl
-        _videoSwitched.value = currentVideoId
+        videoSwitch.switchTo(currentVideoId)
 
         // 切换视频时清空本 VM 的画质、加载态与稍后观看态，使新视频可被重新加载。
         // 订阅态不在这里复位，由 MainInfo 事件按新视频的 subscribeStatus 重新推导。
