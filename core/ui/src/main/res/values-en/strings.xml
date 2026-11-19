@@ -1258,4 +1258,12 @@
     <!-- Duration -->
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
+    <string name="error_cloudflare_required">The site requires a human verification. Complete it under Settings → Human verification</string>
+    <string name="error_login_rejected">Incorrect email or password, or the site requires human verification. Try signing in via WebView</string>
+    <string name="error_login_verify_inconclusive">Could not confirm the sign-in result. Check your network and retry, or sign in via WebView</string>
+    <string name="comment_reply_failed">Failed to reply to the comment</string>
+    <string name="playlist_save_failed">Failed to save to the playlist</string>
+    <string name="playlist_create_failed">Failed to create the playlist</string>
+    <string name="playlist_response_invalid">The playlist data returned by the site could not be read</string>
+    <string name="error_author_parse_failed">Could not read the author page</string>
 </resources>

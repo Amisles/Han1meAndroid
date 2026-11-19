@@ -5,9 +5,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.IOException
 
-/** 站点要求完成 Cloudflare 人机校验。[host] 是被拦下的站点，校验只能在该域名下完成。 */
-class CloudflareChallengeException(val host: String) :
-    IOException("站点要求完成人机验证，可在「设置 → 人机验证」中手动完成")
+/**
+ * 站点要求完成 Cloudflare 人机校验。[host] 是被拦下的站点，校验只能在该域名下完成。
+ *
+ * 不携带文案：触发它的页面都会拦下这个类型去弹校验框，提示由界面按当前语言渲染。
+ */
+class CloudflareChallengeException(val host: String) : IOException()
 
 /** 一次校验请求。[id] 让同一域名再次触发时也能重新弹出。 */
 data class CloudflareChallengeRequest(val host: String, val id: Long)

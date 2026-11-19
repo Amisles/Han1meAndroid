@@ -15,6 +15,7 @@ import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.model.AccountProfile
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.domain.result.AppException
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.result.DomainError
 import app.amisles.hanime.domain.result.WebLoginVerification
@@ -315,28 +316,28 @@ class AccountRepositoryImpl @Inject constructor(
                 val msg = t.message.orEmpty()
                 when {
                     "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
-                        throw IllegalStateException("无法访问 Hanime1 官网（DNS 解析失败），请检查网络、开启代理/VPN，或改用 WebView 登录方式")
+                        throw AppException(DomainError.NETWORK_UNAVAILABLE, t)
                     t is java.net.SocketTimeoutException || "timeout" in msg ->
-                        throw IllegalStateException("连接 Hanime1 官网超时，请检查网络或改用 WebView 登录")
+                        throw AppException(DomainError.NETWORK_TIMEOUT, t)
                     "SSL" in msg || "certificate" in msg ->
-                        throw IllegalStateException("SSL 证书校验失败，请检查网络代理或改用 WebView 登录")
+                        throw AppException(DomainError.NETWORK_TLS, t)
                     else ->
-                        throw IllegalStateException("访问登录页失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
+                        throw AppException(DomainError.LOGIN_FAILED, t)
                 }
             }
             val csrf = LoginParser.parseCsrfToken(page.html)
-                ?: throw IllegalStateException("无法获取 CSRF Token，请切换到 WebView 或手动 Cookie 登录")
+                ?: throw AppException(DomainError.CSRF_MISSING)
             val result = try {
                 networkService.postLoginForm(csrf, email, password)
             } catch (t: IOException) {
                 val msg = t.message.orEmpty()
                 when {
                     "resolve" in msg || "UnknownHost" in msg || "DNS" in msg ->
-                        throw IllegalStateException("无法访问 Hanime1 官网（DNS 解析失败），请检查网络、开启代理/VPN，或改用 WebView 登录方式")
+                        throw AppException(DomainError.NETWORK_UNAVAILABLE, t)
                     t is java.net.SocketTimeoutException || "timeout" in msg ->
-                        throw IllegalStateException("提交登录超时，请检查网络或改用 WebView 登录")
+                        throw AppException(DomainError.NETWORK_TIMEOUT, t)
                     else ->
-                        throw IllegalStateException("提交登录失败：${t.message?.take(80) ?: "未知错误"}，请改用 WebView 登录")
+                        throw AppException(DomainError.LOGIN_FAILED, t)
                 }
             }
             val responseCookie = result.setCookies
@@ -355,22 +356,22 @@ class AccountRepositoryImpl @Inject constructor(
             val isRedirect = result.code in 300..399
             val hasSession = containsSession(sessionCookie)
             if (result.code == 503) {
-                throw IllegalStateException("触发了 Cloudflare 校验，请切换到 WebView 登录")
+                throw AppException(DomainError.CLOUDFLARE_REQUIRED)
             }
             if (result.code in 400..599) {
-                throw IllegalStateException("提交登录失败（HTTP ${result.code}），请改用 WebView 登录")
+                throw AppException(DomainError.LOGIN_FAILED)
             }
             // 登录失败同样是 302：站点会把请求退回 /login 并在页面上给出表单错误。
             // 只按状态码判定成功，密码错误、人机校验拦截都会被存成登录态。
             if (isRedirect && result.location.orEmpty().contains("/login")) {
-                throw IllegalStateException("邮箱或密码不正确，或站点要求人机校验，请改用 WebView 登录")
+                throw AppException(DomainError.LOGIN_REJECTED)
             }
             if (result.code in 200..299 && result.body != null) {
                 val errorMsg = LoginParser.parseLoginFailed(result.body)
-                if (errorMsg != null) throw IllegalStateException(errorMsg)
+                if (errorMsg != null) throw AppException(DomainError.LOGIN_REJECTED)
             }
             if (!isRedirect && !hasSession) {
-                throw IllegalStateException("登录失败：请检查邮箱或密码，或切换到 WebView 登录")
+                throw AppException(DomainError.LOGIN_FAILED)
             }
             // 站点认不认这份会话才是登录成功的唯一判据：只凭 302 + Set-Cookie 落盘，
             // 界面会显示已登录，而所有需要身份的功能都返回失败（游客会话被当成了登录态）。
@@ -380,10 +381,10 @@ class AccountRepositoryImpl @Inject constructor(
                     Preferences.saveLogin(sessionCookie, verification.userId, sourceDomain)
 
                 WebLoginVerification.NotLoggedIn ->
-                    throw IllegalStateException("登录未成功：站点仍把当前会话当作游客，请检查邮箱与密码，或改用 WebView 登录")
+                    throw AppException(DomainError.LOGIN_REJECTED)
 
                 WebLoginVerification.Inconclusive ->
-                    throw IllegalStateException("无法确认登录结果（会话校验请求失败），请检查网络后重试，或改用 WebView 登录")
+                    throw AppException(DomainError.LOGIN_VERIFY_INCONCLUSIVE)
             }
             sessionCookie
         }.fold(

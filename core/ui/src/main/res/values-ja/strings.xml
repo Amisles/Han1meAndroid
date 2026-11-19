@@ -1258,4 +1258,12 @@
     <!-- Duration -->
     <string name="duration_hours_minutes">%1$d時間 %2$d分</string>
     <string name="duration_minutes">%1$d分</string>
+    <string name="error_cloudflare_required">サイトの人間確認が必要です。「設定 → 人間確認」から完了してください</string>
+    <string name="error_login_rejected">メールアドレスまたはパスワードが正しくないか、サイトが人間確認を求めています。WebView ログインをお試しください</string>
+    <string name="error_login_verify_inconclusive">ログイン結果を確認できませんでした。通信環境を確認して再試行するか、WebView ログインをお試しください</string>
+    <string name="comment_reply_failed">コメントへの返信に失敗しました</string>
+    <string name="playlist_save_failed">プレイリストへの保存に失敗しました</string>
+    <string name="playlist_create_failed">プレイリストの作成に失敗しました</string>
+    <string name="playlist_response_invalid">サイトが返したプレイリスト情報を読み取れませんでした</string>
+    <string name="error_author_parse_failed">作者ページを読み取れませんでした</string>
 </resources>

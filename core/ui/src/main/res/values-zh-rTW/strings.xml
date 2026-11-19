@@ -1258,4 +1258,12 @@
     <!-- Duration -->
     <string name="duration_hours_minutes">%1$d 小時 %2$d 分鐘</string>
     <string name="duration_minutes">%1$d 分鐘</string>
+    <string name="error_cloudflare_required">站點要求完成人機驗證，請在「設定 → 人機驗證」中完成</string>
+    <string name="error_login_rejected">電子郵件或密碼不正確，或站點要求人機驗證，請改用 WebView 登入</string>
+    <string name="error_login_verify_inconclusive">無法確認登入結果，請檢查網路後重試，或改用 WebView 登入</string>
+    <string name="comment_reply_failed">回覆評論失敗</string>
+    <string name="playlist_save_failed">儲存到清單失敗</string>
+    <string name="playlist_create_failed">建立清單失敗</string>
+    <string name="playlist_response_invalid">站點回傳的清單資料無法辨識</string>
+    <string name="error_author_parse_failed">無法解析作者主頁</string>
 </resources>

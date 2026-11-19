@@ -9,6 +9,8 @@ import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
 import app.amisles.hanime.data.parser.SubscriptionsParser
 import app.amisles.hanime.data.parser.WatchLaterPageParser
+import app.amisles.hanime.domain.result.AppException
+import app.amisles.hanime.domain.result.DomainError
 import app.amisles.hanime.data.preferences.Preferences
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -204,7 +206,8 @@ class NetworkService @Inject constructor(
         path: String,
         form: FormBody,
         csrfToken: String,
-        label: String
+        label: String,
+        errorCode: DomainError
     ): String = withContext(Dispatchers.IO) {
         val baseUrl = getCurrentBaseUrl()
         val request = Request.Builder()
@@ -224,8 +227,8 @@ class NetworkService @Inject constructor(
             val code = response.code
             AppLogger.log("NetworkService", label + " response code: " + code)
             val body = response.body.string()
-            if (!response.isSuccessful) throw IOException(label + "失败 (HTTP " + code + ")")
-            if (body.isEmpty()) throw IOException(label + "返回空响应")
+            if (!response.isSuccessful) throw AppException(errorCode)
+            if (body.isEmpty()) throw AppException(errorCode)
             body
         }
     }
@@ -412,7 +415,7 @@ class NetworkService @Inject constructor(
         return withContext(Dispatchers.IO) {
             val html = executeRequest(buildRequest(authorPageUrl))
             authorPageParser.parse(html, authorPageUrl)
-                ?: throw IllegalStateException("无法解析作者主页")
+                ?: throw AppException(DomainError.AUTHOR_PARSE_FAILED)
         }
     }
 
@@ -630,7 +633,7 @@ class NetworkService @Inject constructor(
             .add("comment-count", commentCount.toString())
             .add("comment-text", commentText)
             .build()
-        return postXhrForm("/createComment", form, csrfToken, "发表评论")
+        return postXhrForm("/createComment", form, csrfToken, "发表评论", DomainError.COMMENT_POST_FAILED)
     }
 
     /**
@@ -661,7 +664,7 @@ class NetworkService @Inject constructor(
             .add("comment-likes-sum", likeCount.toString())
             .add("unlike-comment-status", "0")
             .build()
-        return postXhrForm("/commentLike", form, csrfToken, "评论点赞")
+        return postXhrForm("/commentLike", form, csrfToken, "评论点赞", DomainError.COMMENT_LIKE_FAILED)
     }
 
     /**
@@ -679,7 +682,7 @@ class NetworkService @Inject constructor(
             .add("reply-comment-id", commentId)
             .add("reply-comment-text", replyText)
             .build()
-        return postXhrForm("/replyComment", form, csrfToken, "回复评论")
+        return postXhrForm("/replyComment", form, csrfToken, "回复评论", DomainError.COMMENT_REPLY_FAILED)
     }
 
     /**
@@ -699,7 +702,7 @@ class NetworkService @Inject constructor(
             .add("subscribe-artist-id", artistId)
             .add("subscribe-status", if (willSubscribe) "" else "1")
             .build()
-        return postXhrForm("/subscribe", form, csrfToken, "订阅作者")
+        return postXhrForm("/subscribe", form, csrfToken, "订阅作者", DomainError.SUBSCRIBE_FAILED)
     }
 
     suspend fun saveToPlaylist(
@@ -715,7 +718,7 @@ class NetworkService @Inject constructor(
             .add("video_id", videoId)
             .add("is_checked", saved.toString())
             .build()
-        return postXhrForm("/save", form, csrfToken, "保存到清单")
+        return postXhrForm("/save", form, csrfToken, "保存到清单", DomainError.PLAYLIST_SAVE_FAILED)
     }
 
     suspend fun createPlaylist(
@@ -730,7 +733,7 @@ class NetworkService @Inject constructor(
             .add("playlist-title", title)
             .add("playlist-description", description)
             .build()
-        return postXhrForm("/createPlaylist", form, csrfToken, "创建清单")
+        return postXhrForm("/createPlaylist", form, csrfToken, "创建清单", DomainError.PLAYLIST_CREATE_FAILED)
     }
 }
 

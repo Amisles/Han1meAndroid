@@ -1293,4 +1293,12 @@
     <!-- Duration -->
     <string name="duration_hours_minutes">%1$d 小时 %2$d 分钟</string>
     <string name="duration_minutes">%1$d 分钟</string>
+    <string name="error_cloudflare_required">站点要求完成人机验证，请在「设置 → 人机验证」中完成</string>
+    <string name="error_login_rejected">邮箱或密码不正确，或站点要求人机验证，请改用 WebView 登录</string>
+    <string name="error_login_verify_inconclusive">无法确认登录结果，请检查网络后重试，或改用 WebView 登录</string>
+    <string name="comment_reply_failed">回复评论失败</string>
+    <string name="playlist_save_failed">保存到清单失败</string>
+    <string name="playlist_create_failed">创建清单失败</string>
+    <string name="playlist_response_invalid">站点返回的清单数据无法识别</string>
+    <string name="error_author_parse_failed">无法解析作者主页</string>
 </resources>

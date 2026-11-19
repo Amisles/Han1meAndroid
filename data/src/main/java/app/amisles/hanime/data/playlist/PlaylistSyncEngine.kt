@@ -2,6 +2,8 @@ package app.amisles.hanime.data.playlist
 
 import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.VideoSaveOptions
+import app.amisles.hanime.domain.result.AppException
+import app.amisles.hanime.domain.result.DomainError
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -123,7 +125,7 @@ class PlaylistSyncEngine @Inject constructor(
         if (userId.isBlank()) 0 else store.pendingCount(userId)
 
     private fun requiredToken(): String =
-        tokens.read().takeIf { it.isNotBlank() } ?: throw IllegalStateException("缺少 CSRF Token")
+        tokens.read().takeIf { it.isNotBlank() } ?: throw AppException(DomainError.CSRF_MISSING)
 
     companion object {
         private const val DEFAULT_BATCH = 16

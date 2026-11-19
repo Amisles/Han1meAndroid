@@ -1,5 +1,7 @@
 package app.amisles.hanime.data.parser
 
+import app.amisles.hanime.domain.result.DomainError
+import app.amisles.hanime.domain.result.AppException
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -49,17 +51,17 @@ class PlaylistSaveResponseParserTest {
 
     @Test
     fun `create response without checkbox throws`() {
-        val error = assertThrows(IOException::class.java) {
+        val error = assertThrows(AppException::class.java) {
             parser.parseCreatedPlaylist("""{"csrf_token":"t"}""")
         }
 
-        assertTrue(error.message.orEmpty().contains("未返回新清单"))
+        assertEquals(DomainError.PLAYLIST_CREATE_FAILED, error.code)
     }
 
     @Test
     fun `invalid json throws`() {
-        val error = assertThrows(IOException::class.java) { parser.parseSave("not json") }
+        val error = assertThrows(AppException::class.java) { parser.parseSave("not json") }
 
-        assertTrue(error.message.orEmpty().contains("不是合法 JSON"))
+        assertEquals(DomainError.PLAYLIST_RESPONSE_INVALID, error.code)
     }
 }

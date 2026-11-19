@@ -1,5 +1,7 @@
 package app.amisles.hanime.data.playlist
 
+import app.amisles.hanime.domain.result.DomainError
+import app.amisles.hanime.domain.result.AppException
 import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.CreatedPlaylist
 import app.amisles.hanime.domain.model.PlaylistSaveOption
@@ -162,11 +164,11 @@ class PlaylistSyncEngineTest {
 
     @Test
     fun `createAndSave requires a csrf token`() {
-        val error = assertThrows(IllegalStateException::class.java) {
+        val error = assertThrows(AppException::class.java) {
             kotlinx.coroutines.runBlocking { engine.createAndSave("u1", "409004", "test2", "") }
         }
 
-        assertTrue(error.message.orEmpty().contains("缺少 CSRF Token"))
+        assertEquals(DomainError.CSRF_MISSING, error.code)
     }
 
     @Test
