@@ -3,23 +3,20 @@ package app.amisles.hanime.feature.comic
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.core.common.paging.Paged
+import app.amisles.hanime.core.common.paging.Pager
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
-import app.amisles.hanime.domain.model.ComicDirectoryResult
 import app.amisles.hanime.domain.model.ComicItem
 import app.amisles.hanime.domain.model.ComicSort
 import app.amisles.hanime.domain.repository.ComicRepository
-import app.amisles.hanime.domain.result.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -29,31 +26,37 @@ class ComicDirectoryResultViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val _items = MutableStateFlow<List<ComicItem>>(emptyList())
-    val items: StateFlow<List<ComicItem>> = _items.asStateFlow()
-
     private val _sort = MutableStateFlow(ComicSort.LATEST)
     val sort: StateFlow<ComicSort> = _sort.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _isLoadingMore = MutableStateFlow(false)
-    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
-
-    private val _hasMore = MutableStateFlow(false)
-    val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
-
-    private val _currentPage = MutableStateFlow(0)
-    val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
     private var baseUrl = ""
-    private var generation = 0
-    private var loadJob: Job? = null
-    private var loadMoreJob: Job? = null
+
+    private val pager = Pager<ComicItem>(
+        scope = viewModelScope,
+        fetch = { page ->
+            withContext(Dispatchers.IO) {
+                comics.getComicDirectoryResult(baseUrl, _sort.value, page)
+            }.map { Paged(it.items, it.hasNextPage) }
+        },
+        describeError = { throwable ->
+            ErrorMapper.message(context, throwable, context.getString(R.string.common_load_failed))
+        },
+        merge = { previous, incoming -> (previous + incoming).distinctBy { it.id } },
+        onFailure = { throwable ->
+            AppLogger.logError(
+                "ComicDirectoryResultViewModel",
+                "漫画目录分页失败: " + throwable?.message,
+                throwable
+            )
+        }
+    )
+
+    val items = pager.items
+    val isLoading = pager.isRefreshing
+    val isLoadingMore = pager.isLoadingMore
+    val hasMore = pager.hasMore
+    val currentPage = pager.currentPage
+    val error = pager.error
 
     fun start(url: String) {
         if (url.isBlank() || url == baseUrl) return
@@ -72,92 +75,12 @@ class ComicDirectoryResultViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        if (baseUrl.isBlank() || _isLoading.value || _isLoadingMore.value || !_hasMore.value) return
-        val requested = _currentPage.value + 1
-        val gen = generation
-        _isLoadingMore.value = true
-        loadMoreJob = viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    comics.getComicDirectoryResult(baseUrl, _sort.value, requested)
-                }
-                if (gen != generation) return@launch
-                when (result) {
-                    is AppResult.Success -> apply(result.data, requested)
-                    is AppResult.Error -> _error.value = ErrorMapper.message(
-                        context,
-                        result.exception,
-                        context.getString(R.string.common_load_failed)
-                    )
-                    is AppResult.Loading -> Unit
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (gen == generation) {
-                    AppLogger.logError("ComicDirectoryResultViewModel", "加载更多漫画失败: " + e.message, e)
-                    _error.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.common_load_failed)
-                    )
-                }
-            } finally {
-                if (gen == generation) _isLoadingMore.value = false
-            }
-        }
+        if (baseUrl.isBlank()) return
+        pager.loadMore()
     }
 
     private fun reload(sort: ComicSort) {
-        loadJob?.cancel()
-        loadMoreJob?.cancel()
-        generation++
-        val gen = generation
         _sort.value = sort
-        _items.value = emptyList()
-        _hasMore.value = false
-        _currentPage.value = 0
-        _isLoadingMore.value = false
-        _error.value = null
-        _isLoading.value = true
-        loadJob = viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    comics.getComicDirectoryResult(baseUrl, sort, 1)
-                }
-                if (gen != generation) return@launch
-                when (result) {
-                    is AppResult.Success -> apply(result.data, 1)
-                    is AppResult.Error -> _error.value = ErrorMapper.message(
-                        context,
-                        result.exception,
-                        context.getString(R.string.common_load_failed)
-                    )
-                    is AppResult.Loading -> Unit
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (gen == generation) {
-                    AppLogger.logError("ComicDirectoryResultViewModel", "加载漫画列表失败: " + e.message, e)
-                    _error.value = ErrorMapper.message(
-                        context,
-                        e,
-                        context.getString(R.string.common_load_failed)
-                    )
-                }
-            } finally {
-                if (gen == generation) _isLoading.value = false
-            }
-        }
-    }
-
-    private fun apply(page: ComicDirectoryResult, requested: Int) {
-        val incoming = page.items
-        val merged = if (requested > 1) (_items.value + incoming).distinctBy { it.id } else incoming
-        _items.value = merged
-        _currentPage.value = requested
-        _hasMore.value = page.hasNextPage && incoming.isNotEmpty()
-        _error.value = null
+        pager.reload()
     }
 }
