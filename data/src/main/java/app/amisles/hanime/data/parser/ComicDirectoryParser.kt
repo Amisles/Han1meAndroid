@@ -1,8 +1,6 @@
 package app.amisles.hanime.data.parser
 
-import app.amisles.hanime.data.remote.pathSegment
 import app.amisles.hanime.domain.model.ComicDirectoryEntry
-import app.amisles.hanime.domain.model.ComicDirectoryKind
 import org.jsoup.Jsoup
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,13 +10,15 @@ import javax.inject.Singleton
  *
  * 两者结构一致：<a href="/tags/{name}"><span>名称</span><span>数量</span></a>，数量可能缺失；
  * 导航栏里的 /comics/tags 不含尾部斜杠，不会被误当成条目。
+ *
+ * [marker] 由调用方按目录类型给出（形如 `/tags/`）：解析层不持有站点 URL 规则，否则会与
+ * `data.remote` 形成包级循环依赖。
  */
 @Singleton
 class ComicDirectoryParser @Inject constructor() {
 
-    fun parse(html: String, baseUrl: String, kind: ComicDirectoryKind): List<ComicDirectoryEntry> {
+    fun parse(html: String, baseUrl: String, marker: String): List<ComicDirectoryEntry> {
         val doc = Jsoup.parse(html, baseUrl)
-        val marker = "/" + kind.pathSegment + "/"
         return doc.select("a[href]").mapNotNull { anchor ->
             val href = anchor.attr("abs:href").trim().ifEmpty { anchor.attr("href").trim() }
             if (!href.contains(marker)) return@mapNotNull null

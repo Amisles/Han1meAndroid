@@ -1,6 +1,5 @@
 package app.amisles.hanime.data.parser
 
-import app.amisles.hanime.domain.model.ComicDirectoryKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,7 +11,7 @@ class ComicDirectoryRealHtmlTest {
         val entries = ComicDirectoryParser().parse(
             Fixtures.html("comic-directory-tags.html"),
             "https://hanimeone.me",
-            ComicDirectoryKind.TAG
+            "/tags/"
         )
 
         assertEquals(917, entries.size)

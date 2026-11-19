@@ -5,6 +5,7 @@ import app.amisles.hanime.data.cache.ComicDirectoryCacheStore
 import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.entity.toDomain
 import app.amisles.hanime.data.local.entity.toEntity
+import app.amisles.hanime.data.remote.ComicUrls
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.ComicDetailParser
 import app.amisles.hanime.data.parser.ComicDirectoryParser
@@ -69,7 +70,11 @@ class ComicRepositoryImpl @Inject constructor(
             onPhase(ComicDirectoryPhase.FETCHING)
             val result = networkService.fetchComicDirectoryPage(kind)
             onPhase(ComicDirectoryPhase.PARSING)
-            val entries = comicDirectoryParser.parse(result.html, result.baseUrl, kind)
+            val entries = comicDirectoryParser.parse(
+                result.html,
+                result.baseUrl,
+                ComicUrls.directoryEntryMarker(kind)
+            )
             comicDirectoryCache.write(kind, entries)
             AppResult.success(entries)
         } catch (e: CancellationException) {

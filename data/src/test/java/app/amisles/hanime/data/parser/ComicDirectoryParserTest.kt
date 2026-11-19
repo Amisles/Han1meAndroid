@@ -1,6 +1,5 @@
 package app.amisles.hanime.data.parser
 
-import app.amisles.hanime.domain.model.ComicDirectoryKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,7 +24,7 @@ class ComicDirectoryParserTest {
             chip("https://hanimeone.me/tags/%E7%A0%B4%E8%99%95", "破處", "4.2k"),
             chip("https://hanimeone.me/tags/NTR", "NTR", "918")
         )
-        val entries = parser.parse(html, baseUrl, ComicDirectoryKind.TAG)
+        val entries = parser.parse(html, baseUrl, "/tags/")
         assertEquals(2, entries.size)
         assertEquals("破處", entries[0].name)
         assertEquals("4.2k", entries[0].count)
@@ -36,14 +35,14 @@ class ComicDirectoryParserTest {
     @Test
     fun missingCountBecomesEmpty() {
         val html = page(chip("https://hanimeone.me/tags/solo", "solo"))
-        val entry = parser.parse(html, baseUrl, ComicDirectoryKind.TAG).single()
+        val entry = parser.parse(html, baseUrl, "/tags/").single()
         assertEquals("", entry.count)
     }
 
     @Test
     fun nonNumericSecondSpanIgnored() {
         val html = page(chip("https://hanimeone.me/tags/odd", "odd", "new"))
-        assertEquals("", parser.parse(html, baseUrl, ComicDirectoryKind.TAG).single().count)
+        assertEquals("", parser.parse(html, baseUrl, "/tags/").single().count)
     }
 
     @Test
@@ -52,7 +51,7 @@ class ComicDirectoryParserTest {
             "<a class=\"comic-nav-item\" href=\"https://hanimeone.me/comics/tags\">標籤</a>",
             chip("https://hanimeone.me/tags/a", "A", "1")
         )
-        val entries = parser.parse(html, baseUrl, ComicDirectoryKind.TAG)
+        val entries = parser.parse(html, baseUrl, "/tags/")
         assertEquals(1, entries.size)
         assertEquals("A", entries[0].name)
     }
@@ -63,7 +62,7 @@ class ComicDirectoryParserTest {
             chip("https://hanimeone.me/tags/a", "A", "1"),
             chip("https://hanimeone.me/artists/kuroinu%20juu", "kuroinu juu", "1.2k")
         )
-        val entries = parser.parse(html, baseUrl, ComicDirectoryKind.ARTIST)
+        val entries = parser.parse(html, baseUrl, "/artists/")
         assertEquals(1, entries.size)
         assertEquals("kuroinu juu", entries[0].name)
         assertTrue(entries[0].url.endsWith("/artists/kuroinu%20juu"))
@@ -75,13 +74,13 @@ class ComicDirectoryParserTest {
             chip("https://hanimeone.me/tags/a", "A", "1"),
             chip("https://hanimeone.me/tags/a", "A", "1")
         )
-        assertEquals(1, parser.parse(html, baseUrl, ComicDirectoryKind.TAG).size)
+        assertEquals(1, parser.parse(html, baseUrl, "/tags/").size)
     }
 
     @Test
     fun anchorWithoutSpansFallsBackToText() {
         val html = page("<a href=\"https://hanimeone.me/tags/plain\">plain</a>")
-        val entry = parser.parse(html, baseUrl, ComicDirectoryKind.TAG).single()
+        val entry = parser.parse(html, baseUrl, "/tags/").single()
         assertEquals("plain", entry.name)
         assertEquals("", entry.count)
     }

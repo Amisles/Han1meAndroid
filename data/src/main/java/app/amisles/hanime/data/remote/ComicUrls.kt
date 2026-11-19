@@ -3,13 +3,13 @@ package app.amisles.hanime.data.remote
 import app.amisles.hanime.domain.model.ComicDirectoryKind
 import app.amisles.hanime.domain.model.ComicSort
 
-internal val ComicDirectoryKind.pathSegment: String
+private val ComicDirectoryKind.pathSegment: String
     get() = when (this) {
         ComicDirectoryKind.TAG -> "tags"
         ComicDirectoryKind.ARTIST -> "artists"
     }
 
-internal val ComicSort.pathSegment: String
+private val ComicSort.pathSegment: String
     get() = when (this) {
         ComicSort.LATEST -> ""
         ComicSort.POPULAR_TODAY -> "popular-today"
@@ -20,6 +20,9 @@ internal val ComicSort.pathSegment: String
 internal object ComicUrls {
 
     fun directoryPath(kind: ComicDirectoryKind): String = "/comics/" + kind.pathSegment
+
+    /** 目录条目链接里用于区分标签与作者的路径片段（形如 `/tags/`）。 */
+    fun directoryEntryMarker(kind: ComicDirectoryKind): String = "/" + kind.pathSegment + "/"
 
     /** 目录条目地址 + 排序后缀；[page] 大于 1 时再挂 page 查询参数，与站点分页链接一致。 */
     fun directoryResult(baseUrl: String, sort: ComicSort, page: Int): String {
