@@ -66,12 +66,37 @@
 - CI（`.github/workflows/android-ci.yml`）必须全绿；改动构建脚本、ProGuard 规则或资源时，请自行确认 `assembleRelease` 也能通过。
 - 不接受：与改动无关的格式化重排、顺手重命名、把死代码清理混进功能提交。
 
+## 质量门禁
+
+CI（`.github/workflows/android-ci.yml`）在每次 PR 上跑四件事，任何一项失败都不能合并：
+
+| 步骤 | 命令 | 失败含义 |
+| --- | --- | --- |
+| 单元测试 | `./gradlew testDebugUnitTest` | 逻辑或解析回归 |
+| Android Lint | `./gradlew lintDebug` | 引入了基线外的新问题 |
+| Debug 构建 | `./gradlew assembleDebug` | 资源或编译错误 |
+| Release 构建 | `./gradlew :app:assembleRelease` | R8 规则失效、资源裁剪或 `mapping.txt` 缺失 |
+
+各模块根目录的 `lint-baseline.xml` 冻结的是既有告警，不是免检名单：修好一条就从基线里消掉一条（`./gradlew updateLintBaseline` 重新生成），不要在基线里新增条目。
+
+## 依赖与供应链
+
+- `gradle/wrapper/gradle-wrapper.properties` 固定了发行包 URL 与 `distributionSha256Sum`，升级 Gradle 必须同步更新校验和。
+- 版本号只在 `gradle/version.properties` 一处，构建与发布流程都读它。
+- Release 附带 R8 映射（`mapping-vX.Y.Z.txt.gz`）与依赖清单（`dependencies-vX.Y.Z.txt`），后者可用于核对实际打进包的构件。
+- 依赖校验清单（`gradle/verification-metadata.xml`）尚未启用；启用时须覆盖完整 CI 任务集，否则后续构建会因缺少条目失败：
+
+```bash
+./gradlew --write-verification-metadata sha256 help assembleDebug assembleRelease testDebugUnitTest lintDebug
+```
+
 ## 发布流程（维护者）
 
-1. 更新 `app/build.gradle.kts` 的 `versionCode` / `versionName`。
-2. 打 tag 并推送：`git tag vX.Y.Z && git push origin vX.Y.Z`，tag 必须等于 `v` + `versionName`。
-3. `.github/workflows/release.yml` 会校验版本一致、验证签名、产出 APK 与 sha256，并创建 GitHub Release。
-4. 发布说明可放在 `docs/release-vX.Y.Z.md`，工作流优先使用它，缺失时回退到自动生成的 notes。
+1. 更新 `gradle/version.properties` 的 `versionCode` / `versionName`（版本号的唯一来源，构建与发布流程都读它）。
+2. 把本版说明写到 `docs/release-vX.Y.Z.md` 并提交。
+3. 打 tag 并推送：`git tag vX.Y.Z && git push origin vX.Y.Z`，tag 必须等于 `v` + `versionName`。
+4. `.github/workflows/release.yml` 会校验版本一致、验证签名、产出 APK、sha256 与 R8 映射（`mapping-vX.Y.Z.txt.gz`），并创建 GitHub Release；映射文件缺失会直接失败。
+5. 重装与升级说明见 [docs/reproducible-build.md](docs/reproducible-build.md)。
 
 ## 行为准则
 

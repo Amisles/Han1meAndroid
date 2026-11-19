@@ -197,7 +197,12 @@ feature-* --> core:ui --> core:common
 
 # 运行单元测试
 ./gradlew testDebugUnitTest
+
+# Android Lint（基线外的新问题会失败）
+./gradlew lintDebug
 ```
+
+从 tag 重建发布包、核对签名与堆栈还原见 [docs/reproducible-build.md](docs/reproducible-build.md)。
 
 ### 测试
 

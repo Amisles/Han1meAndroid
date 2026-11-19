@@ -4,6 +4,16 @@
 
 安装包、校验和与每个版本的完整说明见 [Releases](https://github.com/Amisles/Han1meAndroid/releases)。1.5.0 之前的版本未收录。
 
+## [Unreleased]
+
+### 工程
+
+- Android Lint 从「只记录」改为门禁：既有告警冻结在 `lint-baseline.xml`，新问题会让 CI 失败
+- CI 增加 release 构建，R8 或资源裁剪出问题在 PR 阶段暴露，而不是发版时
+- 版本号收敛到 `gradle/version.properties` 单一来源，构建与发布流程共用
+- Gradle 发行包固定 sha256，新增依赖校验清单与可复现构建说明
+- 发布产物补上 R8 映射文件（`mapping-vX.Y.Z.txt.gz`），release 缺失即失败
+
 ## [1.8.0] - 2026-11-16
 
 ### 新增
