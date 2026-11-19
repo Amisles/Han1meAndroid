@@ -44,31 +44,15 @@ class VideoDetailStore(private val dir: File) {
 
     suspend fun put(key: String, detail: VideoDetail, limit: Int) = withContext(Dispatchers.IO) {
         synchronized(memory) { memory[key] = detail }
-        val written = synchronized(fileLock) {
-            if (!dir.exists()) dir.mkdirs()
+        synchronized(fileLock) {
             val target = fileFor(key)
-            val temp = File(dir, target.name + TEMP_SUFFIX)
-            val ok = runCatching {
-                temp.writeText(VideoDetailCacheCodec.encodeEntry(key, detail))
-                // 先写临时文件再改名：中途被杀不会留下半截 JSON 被当成有效缓存
-                if (temp.renameTo(target)) {
-                    true
-                } else {
-                    target.delete()
-                    temp.renameTo(target)
-                }
-            }.getOrDefault(false)
-            if (!ok) {
-                runCatching { temp.delete() }
-                AppLogger.logError("VideoDetailStore", "详情缓存写入失败: " + target.name)
-            }
+            val ok = writeCacheFile(target, VideoDetailCacheCodec.encodeEntry(key, detail))
+            if (!ok) AppLogger.logError("VideoDetailStore", "详情缓存写入失败: " + target.name)
             if (ok) {
                 if (knownFileCount < 0) knownFileCount = detailFiles().size else knownFileCount++
                 if (limit > 0 && knownFileCount > limit) trimToLocked(limit)
             }
-            ok
         }
-        if (!written) return@withContext
     }
 
     /** 用户调小上限后立即按新上限淘汰；不调用的话要等下一次写入才会收拢。 */
@@ -115,6 +99,5 @@ class VideoDetailStore(private val dir: File) {
 
         private const val MEMORY_ENTRIES = 24
         private const val SUFFIX = ".json"
-        private const val TEMP_SUFFIX = ".tmp"
     }
 }
