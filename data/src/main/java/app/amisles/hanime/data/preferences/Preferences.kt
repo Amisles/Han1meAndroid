@@ -4,6 +4,7 @@ import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.model.SessionCookie
+import app.amisles.hanime.domain.preferences.AppPreferences
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
@@ -35,7 +36,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
 import java.io.File
 
-object Preferences : SettingsRepository, SessionRepository {
+object Preferences : SettingsRepository, SessionRepository, AppPreferences {
 
     // 与 Application 同生命周期的作用域，避免直接使用被标记为 delicate 的 GlobalScope
     private val preferencesScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

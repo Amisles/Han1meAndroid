@@ -115,7 +115,7 @@ import app.amisles.hanime.ui.components.NavRail
 import app.amisles.hanime.feature.profile.ProfileScreen
 import app.amisles.hanime.feature.settings.UpdateAvailableDialog
 import app.amisles.hanime.ui.theme.HanimeTheme
-import app.amisles.hanime.ui.theme.PreferencesAppPreferences
+import app.amisles.hanime.domain.preferences.AppPreferences
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -167,6 +167,9 @@ class MainActivity : ComponentActivity() {
     /** 更新仓储：HanimeApp 需要它在启动时发起静默检查。 */
     @Inject
     lateinit var updateRepository: UpdateRepository
+
+    @Inject
+    lateinit var appPreferences: AppPreferences
 
     /** 创建时按当前语言包装 Context；Application 的 Resources 覆盖不影响本 Activity，运行中换语言由 getResources 的覆盖刷新。 */
     override fun attachBaseContext(newBase: Context) {
@@ -228,7 +231,7 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(
                 LocalContext provides localizedContext,
                 LocalConfiguration provides localizedConfiguration,
-                LocalAppPreferences provides PreferencesAppPreferences,
+                LocalAppPreferences provides appPreferences,
                 LocalPrivacyMode provides privacyMode
             ) {
             HanimeTheme(
