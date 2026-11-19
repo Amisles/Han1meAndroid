@@ -7,6 +7,11 @@ on:
   push:
     branches: ["main", "develop"]
   workflow_dispatch:
+    inputs:
+      release_only:
+        description: 只跑 release 构建校验，跳过单测、lint 与 debug 构建
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -86,6 +91,7 @@ jobs:
           echo 'ProGuard 规则扫描通过'
 
       - name: Run unit tests
+        if: ${{ !inputs.release_only }}
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |
@@ -93,6 +99,7 @@ jobs:
           ./gradlew testDebugUnitTest :domain:model:test --stacktrace --continue
 
       - name: Run Android Lint
+        if: ${{ !inputs.release_only }}
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |
@@ -100,11 +107,15 @@ jobs:
           ./gradlew lintDebug --stacktrace --continue
 
       - name: Build debug APK
+        if: ${{ !inputs.release_only }}
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: ./gradlew assembleDebug --stacktrace
 
+      # 一次 release 构建约 7 分钟，只在手动触发时执行：日常提交由 lint 与 debug 构建把关，
+      # 发 tag 时 release.yml 会再完整构建一次并校验 mapping。
       - name: Build release APK (R8)
+        if: github.event_name == 'workflow_dispatch'
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |

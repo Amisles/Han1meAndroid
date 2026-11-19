@@ -20,6 +20,7 @@ Closes #
 - [ ] 新增界面文案已同步 `core/ui/src/main/res/` 下的 4 个 `values-*`（简中 / 繁中 / English / 日本語）
 - [ ] 涉及 HTML 解析、文件读写、版本的改动已补充或更新单元测试
 - [ ] 本地 `./gradlew testDebugUnitTest` 通过
+- [ ] 改了 ProGuard 规则、依赖版本或构建脚本时，已在 Actions 手动跑过一次 release 构建校验（勾选 `release_only`）
 - [ ] 未提交 `keystore.properties`、`*.jks`、`*.log`、抓包或页面样本（测试夹具除外）
 
 ## 补充说明

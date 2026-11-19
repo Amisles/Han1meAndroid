@@ -60,14 +60,15 @@
 
 ## 质量门禁
 
-CI（`.github/workflows/android-ci.yml`）在每次 PR 上跑四件事，任何一项失败都不能合并：
+CI（`.github/workflows/android-ci.yml`）在每次 PR 上跑三件事，任何一项失败都不能合并：
 
 | 步骤 | 命令 | 失败含义 |
 | --- | --- | --- |
 | 单元测试 | `./gradlew testDebugUnitTest :domain:model:test` | 逻辑或解析回归 |
 | Android Lint | `./gradlew lintDebug` | 引入了基线外的新问题 |
 | Debug 构建 | `./gradlew assembleDebug` | 资源或编译错误 |
-| Release 构建 | `./gradlew :app:assembleRelease` | R8 规则失效、资源裁剪或 `mapping.txt` 缺失 |
+
+改到 ProGuard 规则、依赖版本或构建脚本时，需要额外验证 release 构建：在 Actions 里手动运行 `Android PR CI`（Run workflow），勾选 `release_only` 时只跑 `./gradlew :app:assembleRelease` 与 `mapping.txt` 检查（约 7 分钟），不勾选则连同单测、lint 与 debug 构建一起跑。发 tag 时 `release.yml` 也会完整构建一次，所以漏跑不会让坏配置直接发出去，只是发现得更晚。
 
 各模块根目录的 `lint-baseline.xml` 冻结的是既有告警，不是免检名单：修好一条就从基线里消掉一条（`./gradlew updateLintBaseline` 重新生成），不要在基线里新增条目。
 
