@@ -19,14 +19,14 @@ internal class DownloadServiceBridge(
         remainingMs: Long = 0L
     ) {
         val intent = Intent().apply {
-            setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
-            putExtra(EXTRA_TASK_ID, taskId)
-            putExtra(EXTRA_TITLE, title)
-            putExtra(EXTRA_PROGRESS, progress)
-            putExtra(EXTRA_STATUS, status.name)
-            putExtra(EXTRA_SPEED_BPS, speedBps)
-            putExtra(EXTRA_REMAINING_MS, remainingMs)
-            if (filePath.isNotBlank()) putExtra(EXTRA_FILE_PATH, filePath)
+            setClassName(context, DownloadServiceContract.SERVICE_CLASS_NAME)
+            putExtra(DownloadServiceContract.EXTRA_TASK_ID, taskId)
+            putExtra(DownloadServiceContract.EXTRA_TITLE, title)
+            putExtra(DownloadServiceContract.EXTRA_PROGRESS, progress)
+            putExtra(DownloadServiceContract.EXTRA_STATUS, status.name)
+            putExtra(DownloadServiceContract.EXTRA_SPEED_BPS, speedBps)
+            putExtra(DownloadServiceContract.EXTRA_REMAINING_MS, remainingMs)
+            if (filePath.isNotBlank()) putExtra(DownloadServiceContract.EXTRA_FILE_PATH, filePath)
         }
         when (status) {
             DownloadStatus.PENDING, DownloadStatus.DOWNLOADING -> startForegroundServiceSafely(intent)
@@ -40,9 +40,9 @@ internal class DownloadServiceBridge(
 
     fun forwardRemove(taskId: Int) {
         val intent = Intent().apply {
-            setClassName(context, DOWNLOAD_SERVICE_CLASS_NAME)
-            action = ACTION_REMOVE_TASK
-            putExtra(EXTRA_TASK_ID, taskId)
+            setClassName(context, DownloadServiceContract.SERVICE_CLASS_NAME)
+            action = DownloadServiceContract.ACTION_REMOVE_TASK
+            putExtra(DownloadServiceContract.EXTRA_TASK_ID, taskId)
         }
         runCatching { context.startService(intent) }.onFailure { err ->
             AppLogger.log("DownloadManager", "转发取消通知被系统拒绝（通知可能残留到进程结束）: ${err.message}")

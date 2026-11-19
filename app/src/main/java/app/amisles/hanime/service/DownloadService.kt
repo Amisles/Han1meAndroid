@@ -17,7 +17,8 @@ import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.data.download.DownloadManager
+import app.amisles.hanime.data.download.DownloadServiceContract
+import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,10 +37,10 @@ import javax.inject.Inject
 class DownloadService : Service() {
 
     @Inject
-    lateinit var downloadManager: DownloadManager
+    lateinit var downloads: DownloadRepository
 
     companion object {
-        const val CHANNEL_ID = "download_channel"
+        const val CHANNEL_ID = DownloadServiceContract.CHANNEL_ID
         // 每个任务独立通知 id = BASE + taskId，避免并发互相覆盖。
         // 取高段位：taskId 随历史任务单调递增（DB 最大 id 恢复），低位段（1000/2001）
         // 会被长期累积的任务 id 撞上，与播放通知（2001）、订阅提醒（3001）互相覆盖。
@@ -54,27 +55,27 @@ class DownloadService : Service() {
         /** WakeLock 超时兜底：每次进度回调 acquire 即续期，进度完全停滞超时后自动释放，避免永久占锁耗电。 */
         private const val TRANSFER_LOCK_TIMEOUT_MS = 10 * 60 * 1000L
 
-        const val EXTRA_TASK_ID = "extra_task_id"
-        const val EXTRA_TITLE = "extra_title"
-        const val EXTRA_PROGRESS = "extra_progress"
-        const val EXTRA_STATUS = "extra_status"
+        const val EXTRA_TASK_ID = DownloadServiceContract.EXTRA_TASK_ID
+        const val EXTRA_TITLE = DownloadServiceContract.EXTRA_TITLE
+        const val EXTRA_PROGRESS = DownloadServiceContract.EXTRA_PROGRESS
+        const val EXTRA_STATUS = DownloadServiceContract.EXTRA_STATUS
 
         /** 下载速率（字节/秒）与预计剩余毫秒数；须与 DownloadManager 侧同名常量手工保持一致。 */
-        const val EXTRA_SPEED_BPS = "extra_speed_bps"
-        const val EXTRA_REMAINING_MS = "extra_remaining_ms"
+        const val EXTRA_SPEED_BPS = DownloadServiceContract.EXTRA_SPEED_BPS
+        const val EXTRA_REMAINING_MS = DownloadServiceContract.EXTRA_REMAINING_MS
 
         /** 下载完成事件携带的成品文件绝对路径，用于通知点击直达本地播放页。 */
-        const val EXTRA_FILE_PATH = "extra_file_path"
+        const val EXTRA_FILE_PATH = DownloadServiceContract.EXTRA_FILE_PATH
 
         /** 取消/删除任务：撤销通知并从活动集合移除。需与 DownloadManager 侧同名常量手工保持一致。 */
-        const val ACTION_REMOVE_TASK = "app.amisles.hanime.service.action.REMOVE_TASK"
+        const val ACTION_REMOVE_TASK = DownloadServiceContract.ACTION_REMOVE_TASK
 
-        const val ACTION_PAUSE_ALL = "app.amisles.hanime.service.action.PAUSE_ALL"
-        const val ACTION_RESUME_TASK = "app.amisles.hanime.service.action.RESUME_TASK"
-        const val ACTION_CANCEL_TASK = "app.amisles.hanime.service.action.CANCEL_TASK"
-        const val ACTION_RETRY_FAILED = "app.amisles.hanime.service.action.RETRY_FAILED"
+        const val ACTION_PAUSE_ALL = DownloadServiceContract.ACTION_PAUSE_ALL
+        const val ACTION_RESUME_TASK = DownloadServiceContract.ACTION_RESUME_TASK
+        const val ACTION_CANCEL_TASK = DownloadServiceContract.ACTION_CANCEL_TASK
+        const val ACTION_RETRY_FAILED = DownloadServiceContract.ACTION_RETRY_FAILED
 
-        const val SERVICE_CLASS_NAME = "app.amisles.hanime.service.DownloadService"
+        const val SERVICE_CLASS_NAME = DownloadServiceContract.SERVICE_CLASS_NAME
     }
 
     /**
@@ -187,12 +188,12 @@ class DownloadService : Service() {
 
         when {
             action == ACTION_PAUSE_ALL -> {
-                downloadManager.pauseAll()
+                downloads.pauseAll()
                 stopSelfResult(startId)
                 return START_NOT_STICKY
             }
             action == ACTION_RETRY_FAILED -> {
-                downloadManager.retryAllFailed()
+                downloads.retryAllFailed()
                 stopSelfResult(startId)
                 return START_NOT_STICKY
             }
@@ -213,7 +214,7 @@ class DownloadService : Service() {
             return START_NOT_STICKY
         }
 
-        val currentStatus = downloadManager.tasks.value.firstOrNull { it.id == taskId }?.status
+        val currentStatus = downloads.tasks.value.firstOrNull { it.id == taskId }?.status
         val stale = when (status) {
             DownloadStatus.PAUSED, DownloadStatus.COMPLETED, DownloadStatus.FAILED -> currentStatus != status
             DownloadStatus.DOWNLOADING -> currentStatus != DownloadStatus.DOWNLOADING
@@ -223,12 +224,12 @@ class DownloadService : Service() {
         when {
             action == ACTION_REMOVE_TASK -> handleRemove(taskId, startId)
             action == ACTION_RESUME_TASK -> {
-                downloadManager.resumeDownload(taskId)
+                downloads.resumeDownload(taskId)
                 stopSelfResult(startId)
                 return START_NOT_STICKY
             }
             action == ACTION_CANCEL_TASK -> {
-                downloadManager.cancelDownload(taskId)
+                downloads.cancelDownload(taskId)
                 stopSelfResult(startId)
                 return START_NOT_STICKY
             }
@@ -295,7 +296,7 @@ class DownloadService : Service() {
         // 必须真的暂停：下载协程挂在 DownloadManager 的进程级作用域上，本服务被系统收回后它们
         // 照常运行，却已失去前台豁免 —— 随时可能被静默杀掉，界面还停在「下载中」。
         // 转 PAUSED 后位图表已经落盘，用户点「继续」即可从断点续传。
-        runCatching { downloadManager.pauseAllForSystemQuota() }.onFailure { e ->
+        runCatching { downloads.pauseAllForQuota() }.onFailure { e ->
             AppLogger.logError("DownloadService", "暂停下载失败: " + e.message, e)
         }
         activeTasks.clear()
@@ -311,7 +312,7 @@ class DownloadService : Service() {
     }
 
     private fun handleCurrentTask(taskId: Int, startId: Int) {
-        val task = downloadManager.tasks.value.firstOrNull { it.id == taskId }
+        val task = downloads.tasks.value.firstOrNull { it.id == taskId }
         if (task == null) {
             handleRemove(taskId, startId)
             return
@@ -361,7 +362,7 @@ class DownloadService : Service() {
             stopSelfResult(startId)
             return
         }
-        val task = downloadManager.tasks.value.firstOrNull { it.id == taskId }
+        val task = downloads.tasks.value.firstOrNull { it.id == taskId }
         if (task == null || (task.status != DownloadStatus.DOWNLOADING && task.status != DownloadStatus.PENDING)) {
             handleCurrentTask(taskId, startId)
             return

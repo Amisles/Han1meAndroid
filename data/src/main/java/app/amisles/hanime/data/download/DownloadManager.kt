@@ -102,7 +102,7 @@ class DownloadManager @Inject constructor(
         _tasks.value = cur.toMutableList().also { it[idx] = newTask }
     }
 
-    var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus, speedBps: Long, remainingMs: Long) -> Unit)? = null
+    private var onProgressUpdate: ((taskId: Int, title: String, progress: Int, status: DownloadStatus, speedBps: Long, remainingMs: Long) -> Unit)? = null
 
     private val downloadJobs = ConcurrentHashMap<Int, Job>()
     // 在途 Call 跟踪。用 ConcurrentLinkedQueue 而非 CopyOnWriteArrayList：后者每次 add 都复制
@@ -1017,7 +1017,7 @@ class DownloadManager @Inject constructor(
      * 与用户主动「全部暂停」等价，单独命名只是为了在日志里能区分触发来源：前台服务被系统收回后
      * 进程里的协程并不会停，任务必须显式转 PAUSED，否则会失去前台豁免、随后被系统静默杀掉。
      */
-    fun pauseAllForSystemQuota() {
+    override fun pauseAllForQuota() {
         AppLogger.log("DownloadManager", "系统回收前台服务配额，暂停全部下载")
         pauseAll()
     }
@@ -1693,13 +1693,13 @@ class DownloadManager @Inject constructor(
         return out.toByteArray()
     }
 
-    fun getCompletedDownloads(): List<DownloadTask> {
+    private fun getCompletedDownloads(): List<DownloadTask> {
         return taskMap.values
             .filter { it.status == DownloadStatus.COMPLETED }
             .sortedByDescending { it.id }
     }
 
-    fun getDownloadingTasks(): List<DownloadTask> {
+    private fun getDownloadingTasks(): List<DownloadTask> {
         return taskMap.values
             .filter {
                 it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING

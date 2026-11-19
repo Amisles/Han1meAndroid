@@ -68,6 +68,9 @@ interface DownloadRepository {
     /** 暂停全部进行中与排队中的任务。 */
     fun pauseAll()
 
+    /** 系统回收 dataSync 前台服务配额时的兜底暂停：与用户主动暂停区分，不改变后续自动恢复策略。 */
+    fun pauseAllForQuota()
+
     /** 恢复全部已暂停的任务，受并发上限与调度闸门约束。 */
     fun resumeAll()
 
@@ -103,10 +106,4 @@ interface DownloadRepository {
     fun isVideoDownloaded(videoId: String, quality: String = ""): Boolean
     fun isVideoDownloading(videoId: String, quality: String = ""): Boolean
     fun getDownloadStatus(videoId: String): DownloadStatus?
-
-    companion object {
-        const val RESULT_INVALID_URL = -1
-        const val RESULT_ALREADY_ACTIVE = -2
-        const val RESULT_ALREADY_COMPLETED = -3
-    }
 }
