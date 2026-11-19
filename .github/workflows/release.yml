@@ -9,10 +9,10 @@
 #   RELEASE_KEY_PASSWORD      密钥口令
 #
 # 触发方式：
-#   1) push tag：git tag vX.Y.Z && git push origin vX.Y.Z（X.Y.Z 取 app/build.gradle.kts 的 versionName）
+#   1) push tag：git tag vX.Y.Z && git push origin vX.Y.Z（X.Y.Z 取 gradle/version.properties 的 versionName）
 #   2) 手动：Actions → Release → Run workflow，填 tag，publish 决定是否创建 Release
 #
-# 版本一致性：tag 必须等于 app/build.gradle.kts 里的 "v" + versionName，否则直接失败。
+# 版本一致性：tag 必须等于 gradle/version.properties 里的 "v" + versionName，否则直接失败。
 
 name: Release
 
@@ -74,8 +74,12 @@ jobs:
             v*) ;;
             *) echo "::error::tag 必须以 v 开头，当前为 $TAG"; exit 1 ;;
           esac
-          version=$(sed -n 's/.*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
-          code=$(sed -n 's/.*versionCode[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+          version=$(sed -n 's/^versionName=//p' gradle/version.properties | tr -d '[:space:]')
+          code=$(sed -n 's/^versionCode=//p' gradle/version.properties | tr -d '[:space:]')
+          if [ -z "$version" ] || [ -z "$code" ]; then
+            echo "::error::gradle/version.properties 缺少 versionName / versionCode"
+            exit 1
+          fi
           echo "tag=$TAG versionName=$version versionCode=$code"
           if [ "v$version" != "$TAG" ]; then
             echo "::error::tag（$TAG）与 versionName（$version）不一致，请先改版本号再打 tag"
@@ -199,9 +203,14 @@ jobs:
           cp "$src" "dist/$name"
           ( cd dist && sha256sum "$name" > "$name.sha256" )
           mapping="app/build/outputs/mapping/release/mapping.txt"
-          if [ -f "$mapping" ]; then
-            cp "$mapping" "dist/mapping-${TAG}.txt"
+          if [ ! -f "$mapping" ]; then
+            echo "::error::未找到 R8 映射文件 $mapping，release 构建可能没开 minify"
+            find app/build/outputs -name 'mapping*' || true
+            exit 1
           fi
+          gzip -9 -c "$mapping" > "dist/mapping-${TAG}.txt.gz"
+          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath --console=plain > "dist/dependencies-${TAG}.txt"
+          ls -l "dist/mapping-${TAG}.txt.gz" "dist/dependencies-${TAG}.txt"
           echo "APK_NAME=$name" >> "$GITHUB_ENV"
           ls -l dist
 
@@ -238,10 +247,9 @@ jobs:
           assets=(
             "dist/${APK_NAME}"
             "dist/${APK_NAME}.sha256"
+            "dist/mapping-${TAG}.txt.gz"
+            "dist/dependencies-${TAG}.txt"
           )
-          if [ -f "dist/mapping-${TAG}.txt" ]; then
-            assets+=( "dist/mapping-${TAG}.txt" )
-          fi
           notes="docs/release-${TAG}.md"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG 已存在，改为覆盖上传资产"
