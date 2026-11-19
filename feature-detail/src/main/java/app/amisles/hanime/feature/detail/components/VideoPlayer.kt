@@ -94,7 +94,6 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.theme.HanimePrimary
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.domain.preferences.PlayerLayout
@@ -269,7 +268,7 @@ fun VideoPlayer(
     // 手势状态
     val gestureHintState = remember { mutableStateOf<String?>(null) }
     var gestureHint by gestureHintState
-    var showGestureIntro by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.playerGestureIntroShown) }
+    var showGestureIntro by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !appPrefs.hints.playerGestureIntroShown) }
     val lastTapTimeState = remember { mutableLongStateOf(0L) }
     var lastTapTime by lastTapTimeState
     // 进度预览的目标位置：null = 未在拖动。滑动手势与进度条共用这一个来源
@@ -903,7 +902,7 @@ fun VideoPlayer(
     LaunchedEffect(Unit) {
         if (!showGestureIntro) return@LaunchedEffect
         delay(3_500L)
-        Preferences.markPlayerGestureIntroShown()
+        appPrefs.hints.markPlayerGestureIntroShown()
         showGestureIntro = false
     }
 

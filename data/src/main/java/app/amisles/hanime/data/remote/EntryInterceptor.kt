@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.remote
 
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.domain.remote.EntryPaths
 import okhttp3.Interceptor
 import okhttp3.Response
 
@@ -12,20 +13,8 @@ import okhttp3.Response
  * 直接重写为 `/enter`，官方域名保持原样。
  */
 class EntryInterceptor(
-    private val officialDomains: List<String> = DEFAULT_OFFICIAL_DOMAINS
+    private val officialDomains: List<String> = EntryPaths.DEFAULT_OFFICIAL_DOMAINS
 ) : Interceptor {
-
-    companion object {
-        val DEFAULT_OFFICIAL_DOMAINS = listOf("hanime1.me", "hanimeone.me")
-
-        /**
-         * 站点真实入口路径：官方域名即 `/`，镜像站的 `/` 是门页，内容在 `/enter`。
-         *
-         * 内置浏览器加载校验页时也必须走同一路径，否则校验入口本身可能是门页。
-         */
-        fun entryPathFor(host: String): String =
-            if (DEFAULT_OFFICIAL_DOMAINS.any { host == it || host.endsWith(".$it") }) "/" else "/enter"
-    }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()

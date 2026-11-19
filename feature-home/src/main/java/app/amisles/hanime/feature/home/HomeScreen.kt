@@ -79,7 +79,6 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.domain.remote.CloudflareChallenge
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
@@ -260,7 +259,8 @@ fun HomeScreen(
     val error by viewModel.error.collectAsStateWithLifecycle()
     val errorKind by viewModel.errorKind.collectAsStateWithLifecycle()
     val challengeHost by viewModel.challengeHost.collectAsStateWithLifecycle()
-    val siteUrl by LocalAppPreferences.current.baseUrlFlow.collectAsStateWithLifecycle()
+    val appPrefs = LocalAppPreferences.current
+    val siteUrl by appPrefs.baseUrlFlow.collectAsStateWithLifecycle()
     // 换站后回到首页必须重拉：LaunchedEffect 在页面重新进入组合时同样会重跑，是否真的换站由 VM 判定
     LaunchedEffect(siteUrl) { viewModel.refreshIfSiteChanged(siteUrl) }
     // 人机校验通过后自动重拉：否则用户要手动下拉一次才知道已经能用了
@@ -338,10 +338,11 @@ fun HomeScreenContent(
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
     val sizeInfo = currentWindowSizeInfo()
+    val appPrefs = LocalAppPreferences.current
     val cfg = LocalUiConfig.current
     val homeConfig = LocalHomeSectionConfig.current
     var selectedCategory by remember { mutableStateOf(categories[0].label) }
-    var showLongPressHint by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.homeLongPressHintDismissed) }
+    var showLongPressHint by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !appPrefs.hints.homeLongPressHintDismissed) }
 
     val isCompactWidth = sizeInfo.widthClass == WindowWidthSizeClass.Compact
     val twoColumnSections = remember(sizeInfo) { homeTwoColumnSections(sizeInfo) }
@@ -475,7 +476,7 @@ fun HomeScreenContent(
                 HintBanner(
                     text = stringResource(R.string.home_long_press_hint),
                     onDismiss = {
-                        Preferences.dismissHomeLongPressHint()
+                        appPrefs.hints.dismissHomeLongPressHint()
                         showLongPressHint = false
                     },
                     modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp)

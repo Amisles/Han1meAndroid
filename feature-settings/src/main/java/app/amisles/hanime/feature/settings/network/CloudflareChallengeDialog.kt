@@ -52,7 +52,7 @@ import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.BrowserUserAgent
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.data.remote.EntryInterceptor
+import app.amisles.hanime.domain.remote.EntryPaths
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -106,7 +106,7 @@ fun CloudflareChallengeDialog(
     viewModel: CloudflareChallengeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val entryUrl = remember(host) { "https://$host" + EntryInterceptor.entryPathFor(host) }
+    val entryUrl = remember(host) { "https://$host" + EntryPaths.entryPathFor(host) }
     // 先清掉旧的 cf_clearance：留着它，内置浏览器会直接跳过校验，下面的轮询也会立刻判成功，
     // 表现就是窗口一闪而过、提示验证成功，而保存下来的是一张早就失效的 Cookie
     val staleCookie = remember(host) {

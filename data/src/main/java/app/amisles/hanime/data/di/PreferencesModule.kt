@@ -3,6 +3,7 @@ package app.amisles.hanime.data.di
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.NetworkDiagnostics
 import app.amisles.hanime.domain.preferences.AppPreferences
+import app.amisles.hanime.domain.preferences.UiHintStore
 import app.amisles.hanime.domain.repository.AppearanceSettings
 import app.amisles.hanime.domain.repository.DiagnosticsRepository
 import app.amisles.hanime.domain.repository.DownloadSettings
@@ -61,6 +62,10 @@ object PreferencesModule {
     @Provides
     @Singleton
     fun provideAppPreferences(): AppPreferences = Preferences
+
+    @Provides
+    @Singleton
+    fun provideUiHintStore(): UiHintStore = Preferences
 
     @Provides
     @Singleton

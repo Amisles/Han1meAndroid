@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.ComicReadMode
 import app.amisles.hanime.domain.model.SessionCookie
 import app.amisles.hanime.domain.preferences.AppPreferences
+import app.amisles.hanime.domain.preferences.UiHintStore
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PlayerLayout
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
@@ -36,7 +37,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
 import java.io.File
 
-object Preferences : SettingsRepository, SessionRepository, AppPreferences {
+object Preferences : SettingsRepository, SessionRepository, AppPreferences, UiHintStore {
 
     // 与 Application 同生命周期的作用域，避免直接使用被标记为 delicate 的 GlobalScope
     private val preferencesScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -152,6 +153,8 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     // 登录态 Cookie 的来源域名。历史版本只存 Cookie 不存域名，启动时按 baseUrl 推断一次。
     @Volatile
     private var _loginCookieDomain: String = ""
+    override val hints: UiHintStore get() = this
+
     override val loginCookieFlow: StateFlow<SessionCookie> = _loginCookieFlow.asStateFlow()
 
     private val _cloudFlareCookieFlow = MutableStateFlow(SessionCookie(""))
@@ -846,10 +849,10 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         sp.edit { putString(SP_ACKNOWLEDGED_CRASH, name) }
     }
 
-    val notificationPromptShown: Boolean
+    override val notificationPromptShown: Boolean
         get() = readBoolean(SP_NOTIFICATION_PROMPT_SHOWN, false)
 
-    fun markNotificationPromptShown() {
+    override fun markNotificationPromptShown() {
         sp.edit { putBoolean(SP_NOTIFICATION_PROMPT_SHOWN, true) }
     }
 
@@ -860,24 +863,24 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         sp.edit { putBoolean(SP_ONBOARDING_DONE, true) }
     }
 
-    val homeLongPressHintDismissed: Boolean
+    override val homeLongPressHintDismissed: Boolean
         get() = readBoolean(SP_HOME_LONG_PRESS_HINT_DISMISSED, false)
 
-    fun dismissHomeLongPressHint() {
+    override fun dismissHomeLongPressHint() {
         sp.edit { putBoolean(SP_HOME_LONG_PRESS_HINT_DISMISSED, true) }
     }
 
-    val downloadQuickHintDismissed: Boolean
+    override val downloadQuickHintDismissed: Boolean
         get() = readBoolean(SP_DOWNLOAD_QUICK_HINT_DISMISSED, false)
 
-    fun dismissDownloadQuickHint() {
+    override fun dismissDownloadQuickHint() {
         sp.edit { putBoolean(SP_DOWNLOAD_QUICK_HINT_DISMISSED, true) }
     }
 
-    val playerGestureIntroShown: Boolean
+    override val playerGestureIntroShown: Boolean
         get() = readBoolean(SP_PLAYER_GESTURE_INTRO_SHOWN, false)
 
-    fun markPlayerGestureIntroShown() {
+    override fun markPlayerGestureIntroShown() {
         sp.edit { putBoolean(SP_PLAYER_GESTURE_INTRO_SHOWN, true) }
     }
 
@@ -898,9 +901,9 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
         _subscriptionsHideWatchedFlow.value = enabled
     }
 
-    fun weeklyReportDismissedWeek(): String = _weeklyReportDismissedWeek.value
+    override fun weeklyReportDismissedWeek(): String = _weeklyReportDismissedWeek.value
 
-    fun setWeeklyReportDismissedWeek(weekKey: String) {
+    override fun setWeeklyReportDismissedWeek(weekKey: String) {
         sp.edit { putString(SP_WEEKLY_REPORT_DISMISSED, weekKey) }
         _weeklyReportDismissedWeek.value = weekKey
     }

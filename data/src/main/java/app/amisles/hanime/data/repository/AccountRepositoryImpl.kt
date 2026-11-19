@@ -1,7 +1,7 @@
 package app.amisles.hanime.data.repository
 
 import app.amisles.hanime.data.cookie.HCookieJar
-import app.amisles.hanime.data.remote.EntryInterceptor
+import app.amisles.hanime.domain.remote.EntryPaths
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.AccountIdentityParser
 import app.amisles.hanime.data.parser.AccountProfileParser
@@ -434,7 +434,7 @@ class AccountRepositoryImpl @Inject constructor(
     }
 
     private fun isOfficialDomain(host: String): Boolean =
-        EntryInterceptor.DEFAULT_OFFICIAL_DOMAINS.any { host == it || host.endsWith(".$it") }
+        EntryPaths.DEFAULT_OFFICIAL_DOMAINS.any { host == it || host.endsWith(".$it") }
 
     override suspend fun saveLoginCookie(
         cookieString: String,

@@ -62,6 +62,7 @@ import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.HintBanner
 import app.amisles.hanime.core.ui.components.WrappingActionRow
+import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.components.ConfirmDeleteDialog
 import app.amisles.hanime.core.ui.components.BottomActionBar
@@ -71,7 +72,6 @@ import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.ui.util.AppSnackbar
-import app.amisles.hanime.data.preferences.Preferences
 
 enum class DownloadFilter {
     ALL, DOWNLOADING, COMPLETED, FAILED, PAUSED
@@ -131,13 +131,14 @@ fun DownloadScreen(
     onPlayLocalVideo: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val appPrefs = LocalAppPreferences.current
     val viewModel: DownloadViewModel = hiltViewModel()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val storageInfo by viewModel.storageInfo.collectAsStateWithLifecycle()
     val gateState by viewModel.gateState.collectAsStateWithLifecycle()
     // 不用 rememberSaveable：面板是一次性的浮层，离开页面再回来不应保持展开
     var showStoragePanel by remember { mutableStateOf(false) }
-    var showQuickDownloadHint by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !Preferences.downloadQuickHintDismissed) }
+    var showQuickDownloadHint by remember { mutableStateOf(AppFeatures.ONBOARDING_ENABLED && !appPrefs.hints.downloadQuickHintDismissed) }
 
     LaunchedEffect(showStoragePanel) {
         if (showStoragePanel) viewModel.refreshStorageInfo()
@@ -490,7 +491,7 @@ fun DownloadScreen(
                         HintBanner(
                             text = stringResource(R.string.download_quick_download_hint),
                             onDismiss = {
-                                Preferences.dismissDownloadQuickHint()
+                                appPrefs.hints.dismissDownloadQuickHint()
                                 showQuickDownloadHint = false
                             },
                             modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp)

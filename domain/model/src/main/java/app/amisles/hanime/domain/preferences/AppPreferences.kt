@@ -63,4 +63,7 @@ interface AppPreferences {
      */
     val antiHotlinkReferer: String
         get() = VideoAntiHotlink.refererOf(baseUrlFlow.value)
+
+    /** 一次性提示的展示标记；界面只读它决定是否首次弹出。 */
+    val hints: UiHintStore
 }

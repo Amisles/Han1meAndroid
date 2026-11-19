@@ -9,7 +9,7 @@ import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.model.WeeklyReportStats
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.preferences.UiHintStore
 import app.amisles.hanime.domain.repository.HomeSnapshotRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
@@ -42,6 +42,7 @@ class HomeViewModel @Inject constructor(
     private val statsRepository: app.amisles.hanime.domain.repository.StatsRepository,
     private val settings: SiteSettings,
     private val homeSnapshots: HomeSnapshotRepository,
+    private val hints: UiHintStore,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -94,7 +95,7 @@ class HomeViewModel @Inject constructor(
     fun dismissWeeklyReport() {
         _weeklyReportVisible.value = false
         viewModelScope.launch(Dispatchers.IO) {
-            Preferences.setWeeklyReportDismissedWeek(weekKeyOf())
+            hints.setWeeklyReportDismissedWeek(weekKeyOf())
         }
     }
 
@@ -110,7 +111,7 @@ class HomeViewModel @Inject constructor(
     private fun checkWeeklyReport() {
         val cal = java.util.Calendar.getInstance()
         if (cal.get(java.util.Calendar.DAY_OF_WEEK) != java.util.Calendar.MONDAY) return
-        if (Preferences.weeklyReportDismissedWeek() == weekKeyOf()) return
+        if (hints.weeklyReportDismissedWeek() == weekKeyOf()) return
         viewModelScope.launch(Dispatchers.IO) {
             val report = runCatching { statsRepository.loadWeeklyReportStats() }.getOrNull() ?: return@launch
             // 上周没有任何观看（时长与完成数均为 0）时，回顾卡片没有可回顾的内容，不弹出

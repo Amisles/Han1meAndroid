@@ -70,7 +70,6 @@ import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
@@ -186,8 +185,8 @@ fun DetailScreen(
         ) {
             return@LaunchedEffect
         }
-        if (Preferences.notificationPromptShown) return@LaunchedEffect
-        Preferences.markNotificationPromptShown()
+        if (appPrefs.hints.notificationPromptShown) return@LaunchedEffect
+        appPrefs.hints.markNotificationPromptShown()
         delay(1200)
         showNotificationRationale = true
     }
