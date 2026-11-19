@@ -18,12 +18,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 
-/** 长按触发加速的时长：短于它只会当作点击或滑动，避免误触把倍速改掉。 */
-private const val LONG_PRESS_BOOST_DELAY_MS = 1000L
-
-/** 双击判定的时间窗口。单击动作要等窗口结束再执行，否则每次双击快进都会顺带切换控制栏。 */
-private const val DOUBLE_TAP_WINDOW_MS = 300L
-
 internal fun Modifier.playerGestures(
     onControlsVisibleChange: (Boolean) -> Unit,
     isControlsVisible: () -> Boolean,
