@@ -7,6 +7,11 @@ import app.amisles.hanime.domain.model.BackupManifest
 
 interface BackupRepository {
 
+    companion object {
+        /** 备份包内保存界面配置（UiConfigStore）的条目名；导出与导入两侧共用。 */
+        const val ENTRY_UI_CONFIG = "ui_config.txt"
+    }
+
     /** 打包当前数据；[extraFiles] 用于携带调用方负责的附加内容（如界面配置）。 */
     suspend fun exportBackup(extraFiles: Map<String, String>): ByteArray
 

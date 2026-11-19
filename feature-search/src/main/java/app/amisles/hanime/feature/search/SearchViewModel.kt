@@ -5,15 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
-import app.amisles.hanime.data.preferences.SearchFilterState
-import app.amisles.hanime.data.preferences.SearchFilterStore
+import app.amisles.hanime.domain.model.SearchFilterState
+import app.amisles.hanime.domain.repository.SearchFilterRepository
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.util.AppSnackbar
-import app.amisles.hanime.data.remote.CloudflareChallengeException
+import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,7 +31,7 @@ class SearchViewModel @Inject constructor(
     // 搜索页既要读站点内容，也要读写本地搜索历史 —— 两个窄接口分别注入
     private val content: ContentRepository,
     private val library: LibraryRepository,
-    private val filters: SearchFilterStore,
+    private val filters: SearchFilterRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 

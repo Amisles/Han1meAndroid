@@ -10,6 +10,7 @@ import java.net.UnknownHostException
 import java.security.cert.CertificateException
 import javax.net.ssl.SSLException
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import app.amisles.hanime.domain.result.AppException
 import app.amisles.hanime.domain.result.DomainError
 
@@ -38,6 +39,7 @@ object ErrorMapper {
 
     fun message(context: Context, throwable: Throwable?, fallback: String): String {
         if (throwable is AppException) return domainText(context, throwable.code)
+        if (throwable is CloudflareChallengeException) return domainText(context, DomainError.CLOUDFLARE_REQUIRED)
         return when (kindOf(throwable)) {
             ErrorKind.NETWORK_UNAVAILABLE -> context.getString(R.string.error_network_unavailable)
             ErrorKind.TIMEOUT -> context.getString(R.string.error_network_timeout)

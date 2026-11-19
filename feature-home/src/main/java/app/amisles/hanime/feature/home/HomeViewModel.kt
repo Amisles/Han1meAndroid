@@ -10,7 +10,7 @@ import app.amisles.hanime.domain.model.WatchHistory
 import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.model.WeeklyReportStats
 import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.cache.HomeSnapshotCache
+import app.amisles.hanime.domain.repository.HomeSnapshotRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SiteSettings
@@ -18,7 +18,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorKind
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.core.ui.util.AppSnackbar
-import app.amisles.hanime.data.remote.CloudflareChallengeException
+import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,7 +41,7 @@ class HomeViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val statsRepository: app.amisles.hanime.domain.repository.StatsRepository,
     private val settings: SiteSettings,
-    private val homeSnapshotCache: HomeSnapshotCache,
+    private val homeSnapshots: HomeSnapshotRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -203,7 +203,7 @@ class HomeViewModel @Inject constructor(
             var hasRenderableContent = hasContent
             val siteKey = loadSiteUrl
             if (!hasRenderableContent) {
-                val snapshot = siteKey?.let { homeSnapshotCache.read(it) }
+                val snapshot = siteKey?.let { homeSnapshots.read(it) }
                 if (snapshot != null && snapshot.sections.isNotEmpty()) {
                     _sections.value = snapshot.sections
                     _banner.value = snapshot.banner
@@ -293,7 +293,7 @@ class HomeViewModel @Inject constructor(
             }
             pushSections()
             if (!streamFailed && _sections.value.isNotEmpty()) {
-                siteKey?.let { homeSnapshotCache.write(it, _banner.value, _sections.value) }
+                siteKey?.let { homeSnapshots.write(it, _banner.value, _sections.value) }
             }
         }
     }

@@ -548,6 +548,6 @@ class BackupManager @Inject constructor(
         const val ENTRY_DOWNLOADS = "downloads.json"
         const val ENTRY_SEARCH = "search_history.json"
         const val ENTRY_SETTINGS = "settings.json"
-        const val ENTRY_UI_CONFIG = "ui_config.txt"
+        const val ENTRY_UI_CONFIG = BackupRepository.ENTRY_UI_CONFIG
     }
 }

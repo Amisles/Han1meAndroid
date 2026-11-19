@@ -4,8 +4,8 @@ import android.app.Application
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import app.amisles.hanime.data.cache.VideoDetailStore
-import app.amisles.hanime.data.remote.CloudflareChallenge
+import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
+import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -69,7 +69,7 @@ class SettingsViewModel @Inject constructor(
     private val app: Application,
     private val settings: SettingsRepository,
     private val session: SessionRepository,
-    private val videoDetailStore: VideoDetailStore
+    private val videoDetailCache: VideoDetailCacheRepository
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -210,7 +210,7 @@ class SettingsViewModel @Inject constructor(
     fun setVideoDetailCacheLimit(limit: Int) {
         settings.setVideoDetailCacheLimit(limit)
         // 调小上限后立刻按新上限淘汰，不必等下一次写入详情缓存时才收拢
-        viewModelScope.launch { videoDetailStore.trimTo(limit) }
+        viewModelScope.launch { videoDetailCache.trimTo(limit) }
     }
 
     fun setDownloadRateLimit(megabytesPerSecond: Int) {
@@ -296,7 +296,7 @@ class SettingsViewModel @Inject constructor(
     fun clearAppCache() {
         viewModelScope.launch {
             // 详情解析缓存落在 filesDir，与缓存目录是两套存储：不在这里一并丢弃，清缓存后进入详情页仍会命中旧解析结果
-            videoDetailStore.clear()
+            videoDetailCache.clear()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val cacheDir = app.cacheDir

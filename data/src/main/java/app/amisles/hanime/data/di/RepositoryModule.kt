@@ -1,6 +1,8 @@
 package app.amisles.hanime.data.di
 
 import app.amisles.hanime.data.backup.BackupManager
+import app.amisles.hanime.data.cache.HomeSnapshotCache
+import app.amisles.hanime.data.preferences.SearchFilterStore
 import app.amisles.hanime.data.download.DownloadManager
 import app.amisles.hanime.data.icon.LauncherIconRepository
 import app.amisles.hanime.data.repository.AccountRepositoryImpl
@@ -15,6 +17,8 @@ import app.amisles.hanime.domain.repository.BackupRepository
 import app.amisles.hanime.domain.repository.ComicRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
+import app.amisles.hanime.domain.repository.HomeSnapshotRepository
+import app.amisles.hanime.domain.repository.SearchFilterRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.StatsRepository
@@ -79,5 +83,13 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAppIconRepository(impl: LauncherIconRepository): AppIconRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHomeSnapshotRepository(impl: HomeSnapshotCache): HomeSnapshotRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSearchFilterRepository(impl: SearchFilterStore): SearchFilterRepository
 
 }

@@ -2,6 +2,7 @@ package app.amisles.hanime.data.di
 
 import android.content.Context
 import app.amisles.hanime.data.cache.VideoDetailStore
+import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,4 +19,7 @@ object CacheModule {
     @Singleton
     fun provideVideoDetailStore(@ApplicationContext context: Context): VideoDetailStore =
         VideoDetailStore(File(context.filesDir, VideoDetailStore.DIR_NAME))
+
+    @Provides
+    fun provideVideoDetailCacheRepository(store: VideoDetailStore): VideoDetailCacheRepository = store
 }

@@ -78,7 +78,7 @@ import app.amisles.hanime.core.ui.components.VideoCard
 import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
-import app.amisles.hanime.data.remote.CloudflareChallenge
+import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences

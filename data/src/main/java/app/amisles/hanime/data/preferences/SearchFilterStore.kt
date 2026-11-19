@@ -1,29 +1,22 @@
 package app.amisles.hanime.data.preferences
 
 import android.content.Context
+import app.amisles.hanime.domain.model.SearchFilterState
+import app.amisles.hanime.domain.repository.SearchFilterRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class SearchFilterState(
-    val genre: String? = null,
-    val sort: String? = null,
-    val tags: List<String> = emptyList(),
-    val broad: Boolean = false,
-    val date: String = "",
-    val duration: String = ""
-)
-
 @Singleton
 class SearchFilterStore @Inject constructor(
     @ApplicationContext context: Context
-) {
+) : SearchFilterRepository {
 
     private val prefs = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
-    fun load(): SearchFilterState = SearchFilterCodec.decode(prefs.getString(KEY, null))
+    override fun load(): SearchFilterState = SearchFilterCodec.decode(prefs.getString(KEY, null))
 
-    fun save(state: SearchFilterState) {
+    override fun save(state: SearchFilterState) {
         prefs.edit().putString(KEY, SearchFilterCodec.encode(state)).apply()
     }
 

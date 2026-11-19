@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.theme.UiConfigStore
-import app.amisles.hanime.data.backup.BackupManager
 import app.amisles.hanime.domain.model.BackupConflictPolicy
 import app.amisles.hanime.domain.model.BackupError
 import app.amisles.hanime.domain.model.BackupManifest
@@ -66,7 +65,7 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             val result = runCatching {
                 val bytes = withContext(Dispatchers.IO) {
-                    backup.exportBackup(mapOf(BackupManager.ENTRY_UI_CONFIG to UiConfigStore.exportToText()))
+                    backup.exportBackup(mapOf(BackupRepository.ENTRY_UI_CONFIG to UiConfigStore.exportToText()))
                 }
                 withContext(Dispatchers.IO) {
                     val resolver = getApplication<Application>().contentResolver

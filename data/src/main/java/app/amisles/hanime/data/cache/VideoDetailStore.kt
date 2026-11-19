@@ -2,6 +2,7 @@ package app.amisles.hanime.data.cache
 
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.model.VideoDetail
+import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +14,7 @@ import kotlinx.coroutines.withContext
  * 落 filesDir 而不是 cacheDir：cacheDir 会被系统在存储紧张时整体清掉，「打开过一次就常驻」的预期会落空。
  * 条目上限由设置项决定，超出后按文件最后修改时间淘汰最久没被打开的条目。
  */
-class VideoDetailStore(private val dir: File) {
+class VideoDetailStore(private val dir: File) : VideoDetailCacheRepository {
 
     private val memory = object : LinkedHashMap<String, VideoDetail>(MEMORY_ENTRIES, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, VideoDetail>): Boolean =
@@ -56,11 +57,11 @@ class VideoDetailStore(private val dir: File) {
     }
 
     /** 用户调小上限后立即按新上限淘汰；不调用的话要等下一次写入才会收拢。 */
-    suspend fun trimTo(limit: Int) = withContext(Dispatchers.IO) {
+    override suspend fun trimTo(limit: Int) = withContext(Dispatchers.IO) {
         if (limit > 0) synchronized(fileLock) { trimToLocked(limit) }
     }
 
-    suspend fun clear() = withContext(Dispatchers.IO) {
+    override suspend fun clear() = withContext(Dispatchers.IO) {
         synchronized(fileLock) {
             synchronized(memory) { memory.clear() }
             runCatching { dir.deleteRecursively() }
@@ -68,7 +69,7 @@ class VideoDetailStore(private val dir: File) {
         }
     }
 
-    suspend fun count(): Int = withContext(Dispatchers.IO) { detailFiles().size }
+    override suspend fun count(): Int = withContext(Dispatchers.IO) { detailFiles().size }
 
     private fun trimToLocked(limit: Int) {
         // 已由调用方持有 fileLock

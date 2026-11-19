@@ -93,7 +93,7 @@ import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.core.ui.util.VolumeKeyPager
 import app.amisles.hanime.data.preferences.Preferences
-import app.amisles.hanime.data.remote.CloudflareChallenge
+import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.repository.UpdateRepository
 import app.amisles.hanime.core.ui.R

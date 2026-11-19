@@ -41,7 +41,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
 import app.amisles.hanime.core.ui.components.RefreshableContent
-import app.amisles.hanime.data.remote.CloudflareChallenge
+import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.WindowWidthSizeClass

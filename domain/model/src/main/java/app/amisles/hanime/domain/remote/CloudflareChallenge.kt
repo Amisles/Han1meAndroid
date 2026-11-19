@@ -1,4 +1,4 @@
-package app.amisles.hanime.data.remote
+package app.amisles.hanime.domain.remote
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

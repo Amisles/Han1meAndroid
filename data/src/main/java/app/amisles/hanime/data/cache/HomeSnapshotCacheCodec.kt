@@ -3,14 +3,9 @@ package app.amisles.hanime.data.cache
 import app.amisles.hanime.domain.model.HanimeBanner
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.HomeSection
+import app.amisles.hanime.domain.model.HomeSnapshot
 import org.json.JSONArray
 import org.json.JSONObject
-
-data class HomeSnapshot(
-    val siteUrl: String,
-    val banner: HanimeBanner?,
-    val sections: List<HomeSection>
-)
 
 internal object HomeSnapshotCacheCodec {
 

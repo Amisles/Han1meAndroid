@@ -9,6 +9,8 @@ import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.PlaylistParser
 import app.amisles.hanime.data.parser.SubscriptionsParser
 import app.amisles.hanime.data.parser.WatchLaterPageParser
+import app.amisles.hanime.domain.remote.CloudflareChallenge
+import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import app.amisles.hanime.domain.result.AppException
 import app.amisles.hanime.domain.result.DomainError
 import app.amisles.hanime.data.preferences.Preferences
