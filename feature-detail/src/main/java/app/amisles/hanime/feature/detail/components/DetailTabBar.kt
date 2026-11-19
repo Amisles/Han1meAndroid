@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,51 +40,57 @@ internal fun DetailTabBar(
     modifier: Modifier = Modifier
 ) {
     val primary = MaterialTheme.colorScheme.primary
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 2.dp)
-    ) {
-        val half = maxWidth / 2
-        val indicatorCenter = if (selectedTab == 0) half / 2 else half + half / 2
-        val indicatorX by animateDpAsState(
-            targetValue = indicatorCenter - 10.dp,
-            animationSpec = tween(durationMillis = 250),
-            label = "tab_indicator_x"
-        )
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                DetailTabButton(
-                    text = stringResource(R.string.detail_tab_intro),
-                    isSelected = selectedTab == 0,
-                    onClick = { onTabSelected(0) },
-                    modifier = Modifier.weight(1f)
-                )
-                DetailTabButton(
-                    text = stringResource(R.string.detail_tab_comments),
-                    isSelected = selectedTab == 1,
-                    onClick = { onTabSelected(1) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-            ) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+        ) {
+            val half = maxWidth / 2
+            val indicatorCenter = if (selectedTab == 0) half / 2 else half + half / 2
+            val indicatorX by animateDpAsState(
+                targetValue = indicatorCenter - 10.dp,
+                animationSpec = tween(durationMillis = 250),
+                label = "tab_indicator_x"
+            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    DetailTabButton(
+                        text = stringResource(R.string.detail_tab_intro),
+                        isSelected = selectedTab == 0,
+                        onClick = { onTabSelected(0) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    DetailTabButton(
+                        text = stringResource(R.string.detail_tab_comments),
+                        isSelected = selectedTab == 1,
+                        onClick = { onTabSelected(1) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
                 Box(
                     modifier = Modifier
-                        .width(20.dp)
-                        .height(3.dp)
-                        .offset(x = indicatorX)
-                        .clip(RoundedCornerShape(1.5.dp))
-                        .background(primary)
-                )
+                        .fillMaxWidth()
+                        .height(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(20.dp)
+                            .height(2.dp)
+                            .offset(x = indicatorX)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(primary)
+                    )
+                }
             }
         }
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }
 
@@ -98,7 +105,7 @@ internal fun DetailTabButton(
     Column(
         modifier = modifier
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(

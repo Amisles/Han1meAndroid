@@ -240,21 +240,29 @@ fun VideoListItem(
             }
             val hasStats = video.viewCount.isNotEmpty() || video.likeRate.isNotEmpty()
             val showTime = card.showPublishTime && video.publishTime.isNotEmpty()
+            // 三等分列：播放次数长短不一，只有列起点固定时，点赞率与发布时间才能在卡片之间对齐
             if (hasStats || showTime) Row(
                 horizontalArrangement = Arrangement.spacedBy(cfg.listMetaSpacing),
-                modifier = Modifier.padding(top = 4.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .fillMaxWidth()
             ) {
                 if (video.viewCount.isNotEmpty()) {
                     Text(
                         text = video.viewCount,
                         fontSize = cfg.listMetaFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1.1f)
                     )
                 }
                 if (video.likeRate.isNotEmpty()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.weight(0.9f)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.ThumbUp,
@@ -265,7 +273,9 @@ fun VideoListItem(
                         Text(
                             text = video.likeRate,
                             fontSize = cfg.listMetaFontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -277,7 +287,9 @@ fun VideoListItem(
                         fontSize = cfg.listMetaFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        softWrap = false
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1.1f)
                     )
                 }
             }
