@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.preferences
 
+import app.amisles.hanime.domain.model.SearchFilterState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

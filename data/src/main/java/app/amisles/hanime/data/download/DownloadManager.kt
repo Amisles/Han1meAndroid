@@ -2,7 +2,7 @@ package app.amisles.hanime.data.download
 
 import android.content.Context
 import app.amisles.hanime.data.local.database.DownloadDao
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.DownloadSettings
 import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.data.local.entity.toEntity
@@ -64,7 +64,8 @@ import kotlinx.coroutines.CancellationException
 @Singleton
 class DownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val downloadDao: DownloadDao
+    private val downloadDao: DownloadDao,
+    private val settings: DownloadSettings
 ) : app.amisles.hanime.domain.repository.DownloadRepository {
 
     // maxRequestsPerHost 只对异步调用生效：OkHttp 仅对 readyAsyncCalls 限流，本项目下载全部走
@@ -130,7 +131,7 @@ class DownloadManager @Inject constructor(
     private val scope = CoroutineScope(scopeJob + Dispatchers.IO)
     private val tasksLock = ReentrantLock()
     @Volatile
-    private var concurrencyLimit: Int = Preferences.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
+    private var concurrencyLimit: Int = settings.maxDownloadConcurrent.coerceIn(1, MAX_CONCURRENT)
     private val lastPersistTime = ConcurrentHashMap<Int, Long>()
     private val activeSlots = AtomicInteger(0)
     private val serviceBridge = DownloadServiceBridge(context)
@@ -242,7 +243,7 @@ class DownloadManager @Inject constructor(
      * 每次新建下载时实时读取 Preferences，使设置页变更立即对后续新下载生效。
      */
     private fun resolveDownloadDir(): File {
-        val custom = Preferences.downloadStoragePath
+        val custom = settings.downloadStoragePath
         if (custom.isNotBlank()) {
             val dir = File(custom)
             if (ensureDirWritable(dir)) return dir
@@ -252,7 +253,7 @@ class DownloadManager @Inject constructor(
     }
 
     @Volatile
-    private var queueOrder: List<Int> = Preferences.downloadQueueOrder
+    private var queueOrder: List<Int> = settings.downloadQueueOrder
 
     private val _gateState = MutableStateFlow(DownloadGateState.OPEN)
     /** 调度闸门状态。任一条件不满足则新任务不启动，已运行的任务不受影响。 */
@@ -274,20 +275,20 @@ class DownloadManager @Inject constructor(
         }
 
         scope.launch {
-            Preferences.maxDownloadConcurrentFlow.collect { updateConcurrencyLimit(it) }
+            settings.maxDownloadConcurrentFlow.collect { updateConcurrencyLimit(it) }
         }
 
         scope.launch {
-            Preferences.downloadRateLimitFlow.collect { megabytesPerSecond ->
+            settings.downloadRateLimitFlow.collect { megabytesPerSecond ->
                 GlobalDownloadRateLimiter.instance.setLimit(megabytesPerSecond.toLong() * 1024L * 1024L)
             }
         }
 
         scope.launch {
             combine(
-                Preferences.downloadWifiOnlyFlow,
-                Preferences.downloadChargingOnlyFlow,
-                Preferences.downloadNightOnlyFlow
+                settings.downloadWifiOnlyFlow,
+                settings.downloadChargingOnlyFlow,
+                settings.downloadNightOnlyFlow
             ) { wifi, charging, night -> Triple(wifi, charging, night) }
                 .collect {
                     if (refreshGateState().allowed) startNextPendingTask()
@@ -990,7 +991,7 @@ class DownloadManager @Inject constructor(
         current.remove(taskId)
         current.add(0, taskId)
         queueOrder = current
-        Preferences.setDownloadQueueOrder(current)
+        settings.setDownloadQueueOrder(current)
         // 只是把该任务提前，不打断已经在跑的任务
         val task = taskMap[taskId] ?: return
         if (task.status == DownloadStatus.PENDING) startNextPendingTask()
@@ -1057,9 +1058,9 @@ class DownloadManager @Inject constructor(
     internal fun refreshGateState(): DownloadGateState {
         val state = DownloadGate.evaluate(
             context,
-            Preferences.downloadWifiOnly,
-            Preferences.downloadChargingOnly,
-            Preferences.downloadNightOnly
+            settings.downloadWifiOnly,
+            settings.downloadChargingOnly,
+            settings.downloadNightOnly
         )
         _gateState.value = state
         return state
@@ -1567,7 +1568,7 @@ class DownloadManager @Inject constructor(
             while (true) {
                 val waitMs = DownloadGate.msUntilNextNightBoundary()
                 delay(waitMs)
-                if (Preferences.downloadNightOnly) {
+                if (settings.downloadNightOnly) {
                     AppLogger.log("DownloadManager", "夜间时段边界切换，重新求值调度闸门")
                     reevaluateGate()
                 }

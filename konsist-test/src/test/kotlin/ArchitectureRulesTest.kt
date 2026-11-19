@@ -49,6 +49,23 @@ class ArchitectureRulesTest {
     }
 
     @Test
+    fun `feature modules only depend on domain and core`() {
+        val violations = violations { _, module, import ->
+            if (!module.startsWith("feature-")) return@violations false
+            if (!import.startsWith("app.amisles.hanime.")) return@violations false
+            val ownPackage = "app.amisles.hanime.feature." + module.removePrefix("feature-") + "."
+            !(import.startsWith("app.amisles.hanime.domain.") ||
+                import.startsWith("app.amisles.hanime.core.") ||
+                import.startsWith(ownPackage))
+        }
+
+        assertTrue(
+            "feature 只能依赖 domain 与 core，不得直接 import :data 或 :app：\n" + violations.joinToString("\n"),
+            violations.isEmpty()
+        )
+    }
+
+    @Test
     fun `domain models stay free of android imports`() {
         val violations = violations { _, module, import ->
             module == "domain/model" && import.startsWith("android.")
