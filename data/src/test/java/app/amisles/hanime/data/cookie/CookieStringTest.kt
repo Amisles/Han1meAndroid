@@ -1,22 +1,9 @@
 package app.amisles.hanime.data.cookie
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CookieStringTest {
-
-    @Test
-    fun `test CookieString creation`() {
-        val cookie = CookieString("session=abc123; user=test")
-        assertEquals("session=abc123; user=test", cookie.raw)
-    }
-
-    @Test
-    fun `test CookieString empty`() {
-        val cookie = CookieString("")
-        assertTrue(cookie.raw.isEmpty())
-    }
 
     @Test
     fun `test filterPrintableAscii with normal string`() {

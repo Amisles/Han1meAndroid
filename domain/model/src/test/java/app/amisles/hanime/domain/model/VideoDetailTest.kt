@@ -7,86 +7,7 @@ import org.junit.Test
 class VideoDetailTest {
 
     @Test
-    fun `test VideoSource creation`() {
-        val source = VideoSource(
-            url = "https://example.com/video.m3u8",
-            resolution = "1080p",
-            size = 1024
-        )
-
-        assertEquals("https://example.com/video.m3u8", source.url)
-        assertEquals("1080p", source.resolution)
-        assertEquals(1024, source.size)
-    }
-
-    @Test
-    fun `test PlaylistInfo creation`() {
-        val videos = listOf(
-            HanimeVideo(
-                id = "1",
-                title = "Video 1",
-                thumbnailUrl = "",
-                duration = "5:00",
-                likeRate = "90%",
-                viewCount = "1K",
-                author = "Author",
-                publishTime = "2024-01-01",
-                videoUrl = "url1"
-            )
-        )
-
-        val playlist = PlaylistInfo(
-            title = "Test Playlist",
-            author = "Playlist Author",
-            videoCount = 1,
-            videos = videos
-        )
-
-        assertEquals("Test Playlist", playlist.title)
-        assertEquals("Playlist Author", playlist.author)
-        assertEquals(1, playlist.videoCount)
-        assertEquals(1, playlist.videos.size)
-    }
-
-    @Test
-    fun `test VideoDetail creation`() {
-        val sources = listOf(
-            VideoSource(
-                url = "https://example.com/video.m3u8",
-                resolution = "1080p",
-                size = 1024
-            )
-        )
-
-        val detail = VideoDetail(
-            title = "Test Video",
-            posterUrl = "https://example.com/poster.jpg",
-            videoSources = sources,
-            defaultSourceUrl = "https://example.com/video.m3u8",
-            tags = listOf("tag1", "tag2"),
-            releaseDate = "2024-01-01",
-            fileSize = "1GB",
-            author = "Test Author",
-            authorAvatarUrl = "https://example.com/avatar.jpg",
-            authorPageUrl = "https://example.com/author",
-            description = "Test description"
-        )
-
-        assertEquals("Test Video", detail.title)
-        assertEquals("https://example.com/poster.jpg", detail.posterUrl)
-        assertEquals(1, detail.videoSources.size)
-        assertEquals("https://example.com/video.m3u8", detail.defaultSourceUrl)
-        assertEquals(2, detail.tags.size)
-        assertEquals("2024-01-01", detail.releaseDate)
-        assertEquals("1GB", detail.fileSize)
-        assertEquals("Test Author", detail.author)
-        assertEquals("Test description", detail.description)
-        assertEquals(emptyList<HanimeVideo>(), detail.relatedVideos)
-        assertNull(detail.playlist)
-    }
-
-    @Test
-    fun `test VideoDetail with optional fields`() {
+    fun optionalFieldsDefaultToEmpty() {
         val detail = VideoDetail(
             title = "Test Video",
             posterUrl = "https://example.com/poster.jpg",
@@ -104,4 +25,30 @@ class VideoDetailTest {
         assertEquals(emptyList<HanimeVideo>(), detail.relatedVideos)
         assertNull(detail.playlist)
     }
+
+    @Test
+    fun normalizedMimeTypeNormalizesHlsVariants() {
+        assertEquals("application/x-mpegURL", source("application/x-mpegurl").normalizedMimeType)
+        assertEquals("application/x-mpegURL", source("application/x-MPEGURL").normalizedMimeType)
+        assertEquals("application/x-mpegURL", source("application/vnd.apple.mpegurl").normalizedMimeType)
+    }
+
+    @Test
+    fun normalizedMimeTypeRecognizesMp4WithCodecParameters() {
+        assertEquals("video/mp4", source("video/mp4; codecs=\"avc1.42E01E\"").normalizedMimeType)
+        assertEquals("video/mp4", source("VIDEO/MP4").normalizedMimeType)
+    }
+
+    @Test
+    fun normalizedMimeTypeIsEmptyForBlankOrUnknownTypes() {
+        assertEquals("", source("").normalizedMimeType)
+        assertEquals("", source("audio/aac").normalizedMimeType)
+    }
+
+    private fun source(mimeType: String) = VideoSource(
+        url = "https://example.com/video.mp4",
+        resolution = "1080p",
+        size = 1024,
+        mimeType = mimeType
+    )
 }

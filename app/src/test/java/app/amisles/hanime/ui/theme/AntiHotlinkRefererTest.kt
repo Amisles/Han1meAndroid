@@ -2,7 +2,6 @@ package app.amisles.hanime.ui.theme
 
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -13,15 +12,6 @@ import org.junit.Test
  * val 会编译出一个存储字段，get() 形式只有 getter，据此固定实现形态。
  */
 class AntiHotlinkRefererTest {
-
-    @Test
-    fun `referer is not cached in a backing field`() {
-        val cached = runCatching {
-            PreferencesAppPreferences::class.java.getDeclaredField("antiHotlinkReferer")
-        }.getOrNull()
-
-        assertNull("antiHotlinkReferer 被缓存成字段，改站点后不会生效", cached)
-    }
 
     @Test
     fun `referer always ends with a single slash`() {

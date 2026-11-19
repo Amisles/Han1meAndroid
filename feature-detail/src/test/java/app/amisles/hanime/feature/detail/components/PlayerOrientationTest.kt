@@ -1,9 +1,10 @@
 package app.amisles.hanime.feature.detail.components
 
+import android.content.pm.ActivityInfo
 import android.view.Surface
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerOrientationTest {
@@ -77,14 +78,18 @@ class PlayerOrientationTest {
     }
 
     @Test
-    fun pinnedOrientationNeverResolvesToSensorMode() {
-        val sensorLandscape = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    fun pinnedOrientationResolvesToAPinnedLandscapeConstant() {
+        val allowed = setOf(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+        )
         val rotations = listOf(Surface.ROTATION_0, Surface.ROTATION_90, Surface.ROTATION_180, Surface.ROTATION_270)
         val tilts = listOf(null, DeviceTilt.PORTRAIT, DeviceTilt.TOP_TO_LEFT, DeviceTilt.TOP_TO_RIGHT)
         rotations.forEach { rotation ->
             tilts.forEach { tilt ->
                 listOf(true, false).forEach { natural ->
-                    assertNotEquals(sensorLandscape, pinnedLandscapeOrientation(tilt, rotation, natural))
+                    val pinned = pinnedLandscapeOrientation(tilt, rotation, natural)
+                    assertTrue("rotation=$rotation tilt=$tilt natural=$natural -> $pinned", pinned in allowed)
                 }
             }
         }
