@@ -12,6 +12,7 @@ import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
+import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.WatchHistory
@@ -65,8 +66,8 @@ class DetailViewModel @Inject constructor(
     private val _isLoadingQualities = MutableStateFlow(false)
     val isLoadingQualities: StateFlow<Boolean> = _isLoadingQualities.asStateFlow()
 
-    private val _downloadStartResults = Channel<Int>(Channel.BUFFERED)
-    val downloadStartResults: Flow<Int> = _downloadStartResults.receiveAsFlow()
+    private val _downloadStartResults = Channel<StartDownloadResult>(Channel.BUFFERED)
+    val downloadStartResults: Flow<StartDownloadResult> = _downloadStartResults.receiveAsFlow()
 
     /**
      * 一次性提示（字符串资源 id）。
@@ -268,7 +269,7 @@ class DetailViewModel @Inject constructor(
      *
      * **不再同步返回结果码**：`DownloadManager.startDownload` 内含目录解析、`canonicalPath`
      * 越界校验与残留文件清理等磁盘 I/O，原实现在 Compose 点击回调（主线程）中同步执行会阻塞主线程；
-     * 现改到 IO 线程发起，结果码经 [downloadStartResults] 异步回传，由界面弹提示。
+     * 现改到 IO 线程发起，结果经 [downloadStartResults] 异步回传，由界面弹提示。
      * quality 统一传 `quality.quality`，与批次页保持一致，才能让「文件名 + 去重键」对上。
      */
     fun startDownload(quality: DownloadQuality) {

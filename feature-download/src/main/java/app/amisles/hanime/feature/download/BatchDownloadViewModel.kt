@@ -8,6 +8,7 @@ import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
@@ -545,17 +546,17 @@ class BatchDownloadViewModel @Inject constructor(
                         if (quality == null) {
                             AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
                         } else {
-                            val code = downloads.startDownload(
+                            val result = downloads.startDownload(
                                 title = video.title,
                                 quality = quality.quality,
                                 url = quality.downloadUrl,
                                 thumbnailUrl = video.thumbnailUrl,
                                 videoId = video.videoId
                             )
-                            if (code < 0) {
+                            if (result !is StartDownloadResult.Started) {
                                 AppLogger.w(
                                     "BatchDownloadViewModel",
-                                    "未创建下载任务(code=$code): ${video.title}"
+                                    "未创建下载任务($result): ${video.title}"
                                 )
                             }
                         }

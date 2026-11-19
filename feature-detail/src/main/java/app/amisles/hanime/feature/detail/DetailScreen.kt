@@ -72,7 +72,7 @@ import app.amisles.hanime.core.ui.theme.ResponsiveContent
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.preferences.RelatedLayoutMode
-import app.amisles.hanime.domain.repository.DownloadRepository
+import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.feature.detail.components.DetailDownloadDialog
 import app.amisles.hanime.feature.detail.components.DetailSkeletonScreen
 import app.amisles.hanime.feature.detail.components.DetailTabBar
@@ -815,12 +815,11 @@ fun DetailScreen(
 
 private const val UP_NEXT_COUNTDOWN_SECONDS = 5
 
-/** 把 DownloadRepository.startDownload 的结果码映射为提示文案。 */
-private fun downloadResultMessage(result: Int): Int = when (result) {
-    DownloadRepository.RESULT_INVALID_URL -> R.string.detail_download_invalid_url
-    DownloadRepository.RESULT_ALREADY_ACTIVE -> R.string.detail_download_in_progress
-    DownloadRepository.RESULT_ALREADY_COMPLETED -> R.string.detail_download_completed
-    else -> R.string.detail_download_added
+private fun downloadResultMessage(result: StartDownloadResult): Int = when (result) {
+    is StartDownloadResult.Started -> R.string.detail_download_added
+    StartDownloadResult.InvalidUrl -> R.string.detail_download_invalid_url
+    StartDownloadResult.AlreadyActive -> R.string.detail_download_in_progress
+    StartDownloadResult.AlreadyCompleted -> R.string.detail_download_completed
 }
 
 

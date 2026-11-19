@@ -8,6 +8,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.domain.repository.ContentRepository
@@ -312,19 +313,18 @@ class VideoQuickActionsViewModel @Inject constructor(
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            val taskId = downloads.startDownload(
+            val result = downloads.startDownload(
                 title = current.video.title,
                 quality = quality.quality,
                 url = quality.downloadUrl,
                 thumbnailUrl = current.video.thumbnailUrl,
                 videoId = videoId
             )
-            val event = when {
-                taskId >= 0 -> QuickDownloadEvent.Started(taskId)
-                taskId == DownloadRepository.RESULT_ALREADY_ACTIVE -> QuickDownloadEvent.AlreadyActive
-                taskId == DownloadRepository.RESULT_ALREADY_COMPLETED -> QuickDownloadEvent.AlreadyCompleted
-                taskId == DownloadRepository.RESULT_INVALID_URL -> QuickDownloadEvent.InvalidUrl
-                else -> QuickDownloadEvent.Failed
+            val event = when (result) {
+                is StartDownloadResult.Started -> QuickDownloadEvent.Started(result.taskId)
+                StartDownloadResult.AlreadyActive -> QuickDownloadEvent.AlreadyActive
+                StartDownloadResult.AlreadyCompleted -> QuickDownloadEvent.AlreadyCompleted
+                StartDownloadResult.InvalidUrl -> QuickDownloadEvent.InvalidUrl
             }
             _downloadEvents.trySend(event)
         }

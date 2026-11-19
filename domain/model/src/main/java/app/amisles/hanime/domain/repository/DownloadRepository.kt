@@ -4,6 +4,7 @@ import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
+import app.amisles.hanime.domain.model.StartDownloadResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -29,10 +30,7 @@ interface DownloadRepository {
     /**
      * 新建下载任务；同一文件已有暂停/失败的任务时复用该任务并直接续传。
      *
-     * @return 任务 id（新建或复用的既有任务，续传已触发）；负数表示未启动：
-     *   [RESULT_INVALID_URL] 直链非法或路径越界，
-     *   [RESULT_ALREADY_ACTIVE] 同一文件已有进行中 / 等待中的任务，
-     *   [RESULT_ALREADY_COMPLETED] 同一文件已下载完成。
+     * 未启动的原因用 [StartDownloadResult] 表达，界面据分支决定提示，不再比负数。
      */
     fun startDownload(
         title: String,
@@ -40,7 +38,7 @@ interface DownloadRepository {
         url: String,
         thumbnailUrl: String,
         videoId: String
-    ): Int
+    ): StartDownloadResult
 
     fun pauseDownload(taskId: Int)
     fun resumeDownload(taskId: Int)

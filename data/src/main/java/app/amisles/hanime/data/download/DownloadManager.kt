@@ -8,6 +8,7 @@ import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.data.local.entity.toEntity
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadErrorCode
+import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.extension.redactUrlForLog
@@ -421,27 +422,20 @@ class DownloadManager @Inject constructor(
         return adopted.size
     }
 
-    /**
-     * 新建下载任务。
-     *
-     * @return 成功时为任务 id；[RESULT_INVALID_URL] 直链非法或路径越界；
-     *         [RESULT_ALREADY_ACTIVE] 同一文件已有进行中/等待中的任务；
-     *         [RESULT_ALREADY_COMPLETED] 同一文件已下载完成。
-     */
     override fun startDownload(
         title: String,
         quality: String,
         url: String,
         thumbnailUrl: String,
         videoId: String
-    ): Int {
+    ): StartDownloadResult {
         val downloadUrl = url.toHttpUrlOrNull()
             ?.takeIf { it.scheme == "https" }
             ?.toString()
         if (downloadUrl == null) {
             // 脱敏：直链带时效签名，落盘后等同于泄露访问凭据
             AppLogger.logError("DownloadManager", "拒绝下载：非法 url=\"${url.redactUrlForLog()}\" (title=$title, videoId=$videoId)")
-            return RESULT_INVALID_URL
+            return StartDownloadResult.InvalidUrl
         }
         val dir = resolveDownloadDir()
         val uniqueSuffix = if (videoId.isNotBlank()) {
@@ -456,7 +450,7 @@ class DownloadManager @Inject constructor(
         val dirCanonical = runCatching { dir.canonicalPath }.getOrDefault(dir.absolutePath)
         if (!canonical.startsWith(dirCanonical + File.separator) && canonical != dirCanonical) {
             AppLogger.logError("DownloadManager", "拒绝下载：路径越界 fileName=\"$fileName\"")
-            return RESULT_INVALID_URL
+            return StartDownloadResult.InvalidUrl
         }
         val filePath = targetFile.absolutePath
 
@@ -475,8 +469,8 @@ class DownloadManager @Inject constructor(
                     // 暂停/失败：复用即续传，保持「点下载 = 继续」的既有语义。
                     // 续传推导含磁盘 IO，不能在前面的锁内做，故记下来移到锁外执行。
                     DownloadStatus.PAUSED, DownloadStatus.FAILED -> deferredResumeTask = existingTask
-                    DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> return RESULT_ALREADY_ACTIVE
-                    DownloadStatus.COMPLETED -> return RESULT_ALREADY_COMPLETED
+                    DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> return StartDownloadResult.AlreadyActive
+                    DownloadStatus.COMPLETED -> return StartDownloadResult.AlreadyCompleted
                 }
                 // 非局部 return 与 return@withLock 混用容易写错：这里只退出锁块，真正的启动在锁外
                 return@withLock
@@ -519,9 +513,9 @@ class DownloadManager @Inject constructor(
                     scheduledPauseEpoch = epochAtSchedule
                 )
             }
-            return task.id
+            return StartDownloadResult.Started(task.id)
         }
-        return createdTaskId ?: RESULT_INVALID_URL
+        return createdTaskId?.let(StartDownloadResult::Started) ?: StartDownloadResult.InvalidUrl
     }
 
     /**
@@ -1757,21 +1751,7 @@ class DownloadManager @Inject constructor(
         return task?.status
     }
 
-    /**
-     * 对外只暴露 [startDownload] 的三个结果码。
-     * 调参常量已移至 `DownloadTuning.kt`（包级 internal），此处只保留 UI 层需要读取的公开结果码。
-     */
     companion object {
-        /**
-         * [startDownload] 的结果码。负数均表示「未新建任务」，供 UI 层区分提示文案：
-         * - [RESULT_INVALID_URL]：直链非法或路径越界；
-         * - [RESULT_ALREADY_ACTIVE]：同一文件已有进行中 / 等待中的任务；
-         * - [RESULT_ALREADY_COMPLETED]：同一文件已下载完成。
-         */
-        const val RESULT_INVALID_URL = -1
-        const val RESULT_ALREADY_ACTIVE = -2
-        const val RESULT_ALREADY_COMPLETED = -3
-
         /** 分块下载标记目录（放在 filesDir 下，与公共下载目录里的位图表分开）。 */
         private const val CHUNKED_MARKER_DIR = "download_chunked"
     }
