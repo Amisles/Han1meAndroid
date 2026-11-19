@@ -96,14 +96,23 @@ jobs:
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: |
-          # 不阻断构建：当前 Lint 存在历史遗留问题（图标资源等）。
-          # 先把结果可视化并留档，待清理后再通过 lint { abortOnError = true } 收紧。
-          ./gradlew lintDebug --stacktrace --continue || true
+          # 既有告警由各模块 lint-baseline.xml 冻结；基线外的新问题必须清零才能合并。
+          ./gradlew lintDebug --stacktrace --continue
 
       - name: Build debug APK
         env:
           GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
         run: ./gradlew assembleDebug --stacktrace
+
+      - name: Build release APK (R8)
+        env:
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=512m
+        run: |
+          ./gradlew :app:assembleRelease --stacktrace
+          if [ ! -f app/build/outputs/mapping/release/mapping.txt ]; then
+            echo "::error::release 构建没有产出 mapping.txt，混淆或裁剪配置可能失效"
+            exit 1
+          fi
 
       - name: Upload test & lint reports
         if: always()
@@ -113,7 +122,7 @@ jobs:
           path: |
             **/build/reports/tests/
             **/build/test-results/
-            app/build/reports/lint-results-debug.html
-            app/build/reports/lint-results-debug.sarif
+            **/build/reports/lint-results-debug.html
+            **/build/reports/lint-results-debug.sarif
           retention-days: 7
           if-no-files-found: ignore

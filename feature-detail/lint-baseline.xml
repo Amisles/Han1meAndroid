@@ -1,0 +1,565 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.4.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.4.1)" variant="all" version="9.4.1">
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            message = context.getString(R.string.detail_resume_hint, formatTime(position)),"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="418"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            actionLabel = context.getString(R.string.detail_resume_restart),"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="419"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                    message = context.getString(downloadResultMessage(result)),"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="735"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                    message = context.getString(messageRes),"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="747"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            message = context.getString("
+        errorLine2="                      ^">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/LocalPlayerScreen.kt"
+            line="115"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            actionLabel = context.getString(R.string.detail_resume_restart),"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/LocalPlayerScreen.kt"
+            line="119"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                                gestureHint = context.getString(R.string.player_sleep_finished)"
+        errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="496"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                    gestureHint = context.getString(R.string.player_quality_fallback)"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="540"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="        gestureHint = context.getString(R.string.player_sleep_paused)"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="605"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            gestureHint = context.getString(R.string.player_unlock_hint)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="855"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/DetailIntroSection.kt"
+            line="54"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailSections.kt"
+            line="438"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/DetailVideoPlayer.kt"
+            line="54"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/ExpandableTags.kt"
+            line="38"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="141"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="SwitchIntDef"
+        message="Switch statement on an `int` with known associated constant missing case `Player.STATE_IDLE`"
+        errorLine1="                when (playbackState) {"
+        errorLine2="                ~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="436"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ExportedService"
+        message="Exported service does not require permission"
+        errorLine1="        &lt;service"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="8"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 30"
+        errorLine1="                if (isFullscreen &amp;&amp; layout.showPipEntry &amp;&amp; Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerControls.kt"
+            line="560"
+            column="60"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 30"
+        errorLine1="                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerEffects.kt"
+            line="163"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var selectedTab by remember { mutableStateOf(0) }"
+        errorLine2="                                  ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="216"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="    var initialSeekMs by remember { mutableStateOf(0L) }"
+        errorLine2="                                    ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="241"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="    var resumeSeekMs by remember { mutableStateOf(0L) }"
+        errorLine2="                                   ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="243"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableLongStateOf` instead of `mutableStateOf`"
+        errorLine1="    var savedSeekMs by remember { mutableStateOf(0L) }"
+        errorLine2="                                  ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="252"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
+        errorLine1="    var barWidth by remember { mutableStateOf(0f) }"
+        errorLine2="                               ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerLayoutEditor.kt"
+            line="353"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var rebufferCount by remember { mutableStateOf(0) }"
+        errorLine2="                                    ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="330"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var stableTicks by remember { mutableStateOf(0) }"
+        errorLine2="                                  ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="332"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var lastPlaybackState by remember { mutableStateOf(Player.STATE_IDLE) }"
+        errorLine2="                                        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="338"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="                            if (now - lastTapTimeState.value &lt; DOUBLE_TAP_WINDOW_MS) {"
+        errorLine2="                                                       ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="129"
+            column="56"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="                                lastTapTimeState.value = 0L"
+        errorLine2="                                                 ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="132"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="                                lastTapTimeState.value = 0L"
+        errorLine2="                                                 ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="155"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="                                lastTapTimeState.value = now"
+        errorLine2="                                                 ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="159"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                            videoZoomState.value = (videoZoomState.value * factor).coerceIn(0.5f, 2.0f)"
+        errorLine2="                                           ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="195"
+            column="44"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                            videoZoomState.value = (videoZoomState.value * factor).coerceIn(0.5f, 2.0f)"
+        errorLine2="                                                                   ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="195"
+            column="68"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                String.format(Locale.getDefault(), &quot;%.1f&quot;, videoZoomState.value)"
+        errorLine2="                                                                                          ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="198"
+            column="91"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="                            controlsActivityRef.value = controlsActivityRef.value + 1"
+        errorLine2="                                                ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="227"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="                            controlsActivityRef.value = controlsActivityRef.value + 1"
+        errorLine2="                                                                            ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="227"
+            column="77"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        brightnessState.value = (brightnessState.value + delta).coerceIn(0f, 1f)"
+        errorLine2="                                                        ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="309"
+            column="57"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        brightnessState.value = (brightnessState.value + delta).coerceIn(0f, 1f)"
+        errorLine2="                                                                                 ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="309"
+            column="82"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        setBrightness(brightnessState.value)"
+        errorLine2="                                                                      ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="310"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        gestureHintState.value = context.getString(R.string.player_brightness, (brightnessState.value * 100).toInt())"
+        errorLine2="                                                                                                                                ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="311"
+            column="129"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Assigning `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        volumeState.value = ((if (isMutedState.value) 0f else volumeState.value) + delta).coerceIn(0f, 1f)"
+        errorLine2="                                                    ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="317"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        volumeState.value = ((if (isMutedState.value) 0f else volumeState.value) + delta).coerceIn(0f, 1f)"
+        errorLine2="                                                                                                          ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="317"
+            column="107"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        exoPlayer.volume = volumeState.value"
+        errorLine2="                                                                       ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="318"
+            column="72"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        exoPlayer.volume = volumeState.value"
+        errorLine2="                                                                       ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="318"
+            column="72"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        isMutedState.value = volumeState.value == 0f"
+        errorLine2="                                                                         ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="319"
+            column="74"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `floatValue` to avoid unnecessary allocations."
+        errorLine1="                                        gestureHintState.value = context.getString(R.string.player_volume, (volumeState.value * 100).toInt())"
+        errorLine2="                                                                                                                        ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerGestures.kt"
+            line="320"
+            column="121"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateValueProperty"
+        message="Reading `value` will cause an autoboxing operation. Use `longValue` to avoid unnecessary allocations."
+        errorLine1="        controlsActivityRef.value"
+        errorLine2="                            ~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="645"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                        .offset(x = indicatorX)"
+        errorLine2="                         ~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/DetailTabBar.kt"
+            line="81"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                                    setArtworkUri(Uri.parse(detail.posterUrl))"
+        errorLine2="                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/DetailScreen.kt"
+            line="303"
+            column="51"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="            Bitmap.createScaledBitmap(frame, MAX_WIDTH_PX, height, true)"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/PlayerFramePreview.kt"
+            line="126"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            .apply { if (artwork.isNotBlank()) setArtworkUri(Uri.parse(artwork)) }"
+        errorLine2="                                                             ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/detail/components/VideoPlayer.kt"
+            line="380"
+            column="62"/>
+    </issue>
+
+</issues>

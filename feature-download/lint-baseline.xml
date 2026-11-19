@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.4.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.4.1)" variant="all" version="9.4.1">
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 33 (current min is 30): `android.Manifest.permission#POST_NOTIFICATIONS`"
+        errorLine1="                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreenLaunchers.kt"
+            line="150"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                                        context.getString(R.string.download_migration_export_empty)"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
+            line="375"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                                    context.getString("
+        errorLine2="                                    ^">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
+            line="393"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                            context.getString(R.string.download_retry_all_toast, failedTasks.size)"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
+            line="757"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                    context.getString("
+        errorLine2="                    ^">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreenLaunchers.kt"
+            line="117"
+            column="21"/>
+    </issue>
+
+</issues>

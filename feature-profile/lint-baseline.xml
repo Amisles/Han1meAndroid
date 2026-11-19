@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.4.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.4.1)" variant="all" version="9.4.1">
+
+    <issue
+        id="NonObservableLocale"
+        message="Reading locale in a non-observable way in a composable function"
+        errorLine1="        else -> remember(Locale.getDefault()) {"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/HistoryScreen.kt"
+            line="95"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="NonObservableLocale"
+        message="Reading locale in a non-observable way in a composable function"
+        errorLine1="    val dayFormat = SimpleDateFormat(&quot;M/d&quot;, Locale.getDefault())"
+        errorLine2="                                            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/WatchStatsScreen.kt"
+            line="171"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                AppSnackbar.show(context.getString(R.string.profile_account_updated))"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/AccountProfileScreen.kt"
+            line="71"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            AppSnackbar.show(context.getString(messageRes))"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/FavoriteScreen.kt"
+            line="124"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                text = context.getString(R.string.common_deleted),"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/FavoriteScreen.kt"
+            line="176"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                actionLabel = context.getString(R.string.common_undo),"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/FavoriteScreen.kt"
+            line="177"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            AppSnackbar.show(context.getString(messageRes))"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/HistoryScreen.kt"
+            line="153"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                text = context.getString(R.string.common_deleted),"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/HistoryScreen.kt"
+            line="161"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                actionLabel = context.getString(R.string.common_undo),"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/HistoryScreen.kt"
+            line="162"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="                AppSnackbar.show(context.getString(R.string.profile_logout_success))"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/ProfileScreen.kt"
+            line="151"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/WatchStatsScreen.kt"
+            line="240"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="SetJavaScriptEnabled"
+        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully"
+        errorLine1="                    settings.javaScriptEnabled = true"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/LoginScreen.kt"
+            line="444"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                        .offset(x = indicatorX)"
+        errorLine2="                         ~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/CloudFavoritesScreen.kt"
+            line="258"
+            column="26"/>
+    </issue>
+
+</issues>
