@@ -21,7 +21,6 @@ git checkout v1.8.0
 ## 已固定的输入
 
 - Gradle 发行包：URL 与 sha256 校验和都写在 wrapper 配置里，下载内容被篡改会直接失败。
-- 依赖构件：`gradle/verification-metadata.xml` 记录了每个 jar/aar 的 sha256，Gradle 校验不通过即中止。
 - 版本号：`gradle/version.properties` 是唯一来源，`.github/workflows/release.yml` 用它校验 tag 与构建产物是否对应。
 - 发布说明：`docs/release-vX.Y.Z.md` 随 tag 入库，发布流程直接引用，不再需要站外粘贴。
 
