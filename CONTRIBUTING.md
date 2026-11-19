@@ -64,7 +64,7 @@ CI（`.github/workflows/android-ci.yml`）在每次 PR 上跑四件事，任何�
 
 | 步骤 | 命令 | 失败含义 |
 | --- | --- | --- |
-| 单元测试 | `./gradlew testDebugUnitTest` | 逻辑或解析回归 |
+| 单元测试 | `./gradlew testDebugUnitTest :domain:model:test` | 逻辑或解析回归 |
 | Android Lint | `./gradlew lintDebug` | 引入了基线外的新问题 |
 | Debug 构建 | `./gradlew assembleDebug` | 资源或编译错误 |
 | Release 构建 | `./gradlew :app:assembleRelease` | R8 规则失效、资源裁剪或 `mapping.txt` 缺失 |

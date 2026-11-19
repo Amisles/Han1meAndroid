@@ -196,7 +196,7 @@ feature-* --> core:ui --> core:common
 ./gradlew assembleRelease
 
 # 运行单元测试
-./gradlew testDebugUnitTest
+./gradlew testDebugUnitTest :domain:model:test
 
 # Android Lint（基线外的新问题会失败）
 ./gradlew lintDebug
@@ -207,7 +207,7 @@ feature-* --> core:ui --> core:common
 ### 测试
 
 ```bash
-./gradlew testDebugUnitTest                             # 全部模块
+./gradlew testDebugUnitTest :domain:model:test          # 全部模块
 ./gradlew :data:testDebugUnitTest --tests "*Parser*"    # 只跑解析层
 ```
 
