@@ -39,8 +39,6 @@ interface AccountRepository {
         userId: String? = null
     ): Boolean
 
-    fun logout()
-
     // ── 账户资料 ────────────────────────────────────────────────────────────
     suspend fun getAccountProfile(): AppResult<AccountProfile>
 

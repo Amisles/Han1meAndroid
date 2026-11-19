@@ -450,10 +450,4 @@ class AccountRepositoryImpl @Inject constructor(
         )
         return true
     }
-
-
-    override fun logout() {
-        Preferences.logout()
-    }
-
 }

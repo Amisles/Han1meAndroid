@@ -98,7 +98,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    account.logout()
+                    session.logout()
                 }
             } catch (e: CancellationException) {
                 throw e

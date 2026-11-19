@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.repository.AccountRepository
+import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.result.WebLoginVerification
 import app.amisles.hanime.core.common.util.AppLogger
@@ -22,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val repository: AccountRepository,
+    private val session: SessionRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -181,6 +183,6 @@ class LoginViewModel @Inject constructor(
     }
 
     fun logout() {
-        repository.logout()
+        session.logout()
     }
 }
