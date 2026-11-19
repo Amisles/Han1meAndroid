@@ -17,7 +17,7 @@ import app.amisles.hanime.domain.repository.SiteSettings
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorKind
 import app.amisles.hanime.core.ui.util.ErrorMapper
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.data.remote.CloudflareChallengeException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

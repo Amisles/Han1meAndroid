@@ -52,7 +52,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.HanimeVideo

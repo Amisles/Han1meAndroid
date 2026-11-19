@@ -1,4 +1,4 @@
-package app.amisles.hanime.core.common.util
+package app.amisles.hanime.core.ui.util
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

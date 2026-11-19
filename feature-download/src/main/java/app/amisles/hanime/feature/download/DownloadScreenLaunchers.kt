@@ -21,7 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.core.ui.R
 
 internal class DownloadScreenLaunchers(

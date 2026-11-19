@@ -1,4 +1,4 @@
-package app.amisles.hanime.core.common.util
+package app.amisles.hanime.core.ui.util
 
 /**
  * 音量键翻页的全局挂载点：阅读类页面进入时挂回调，离开时摘除。

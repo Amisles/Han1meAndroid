@@ -85,7 +85,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Layers
 import java.io.File
 import app.amisles.hanime.domain.preferences.ThemeMode
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.core.ui.components.ScreenHeader
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.repository.SettingsRepository

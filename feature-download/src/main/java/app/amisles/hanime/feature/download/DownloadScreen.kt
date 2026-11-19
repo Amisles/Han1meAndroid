@@ -70,7 +70,7 @@ import app.amisles.hanime.core.ui.components.RefreshableContent
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.common.AppFeatures
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.data.preferences.Preferences
 
 enum class DownloadFilter {

@@ -87,11 +87,11 @@ import androidx.navigation.compose.rememberNavController
 import app.amisles.hanime.BuildConfig
 import app.amisles.hanime.core.common.AppFeatures
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.CrashRecord
 import app.amisles.hanime.core.common.util.LocaleHelper
-import app.amisles.hanime.core.common.util.VolumeKeyPager
+import app.amisles.hanime.core.ui.util.VolumeKeyPager
 import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.CloudflareChallenge
 import app.amisles.hanime.domain.preferences.ThemeMode

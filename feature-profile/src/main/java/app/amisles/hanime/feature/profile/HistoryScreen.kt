@@ -71,7 +71,7 @@ import app.amisles.hanime.core.ui.components.BottomActionBar
 import app.amisles.hanime.core.ui.components.BottomBarAction
 import app.amisles.hanime.core.ui.components.SelectionTopBar
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.common.util.AppSnackbar
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import androidx.compose.material3.MaterialTheme
 import java.text.SimpleDateFormat
 import java.util.Date
