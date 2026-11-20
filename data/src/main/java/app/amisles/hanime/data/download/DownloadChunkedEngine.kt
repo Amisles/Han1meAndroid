@@ -27,7 +27,7 @@ import okhttp3.Request
 /**
  * 分块并行下载引擎：worker 调度、慢块驱逐、聚合低位全量重建、零进度看门狗、位图表节流落盘。
  *
- * 以 [DownloadManager] 的扩展函数承载，避免把类内状态整体放开为 internal；
+ * 以 [DownloadTransferHost] 的扩展函数承载，避免把类内状态整体放开为 internal；
  * 调参常量见 `DownloadTuning.kt`，位图表读写与分块几何见 `DownloadPartmap.kt`。
  */
 /**
@@ -119,7 +119,7 @@ private fun formatChunkDiag(
  * - 慢块驱逐：对持续低吞吐块取消连接后由空闲 worker 以新连接重试；
  * - 不 setLength 预分配，以避免空洞。
  */
-internal suspend fun DownloadManager.downloadFileChunked(
+internal suspend fun DownloadTransferHost.downloadFileChunked(
     taskId: Int,
     url: String,
     filePath: String,
@@ -531,7 +531,7 @@ internal suspend fun DownloadManager.downloadFileChunked(
             // 原先只有函数末尾「取消后正常返回」的分支会写位图，而 Job.cancel() 让协程以
             // CancellationException 退出，根本走不到那里 —— 位图停在上一次节流落盘（最多早 5 秒）
             // 的状态，暂停后「续传」实际会丢失这段时间内完成的块，并可能退回整份重下。
-            // 这里不调用 updateTask：暂停态由 DownloadManager.pauseDownload 负责写入。
+            // 这里不调用 updateTask：暂停态由 DownloadSessionController.pauseDownload 负责写入。
             flushPartmapBestEffort(partmapFile, outputFile, chunkCount, chunkDone, chunkDownloaded, lock, partmapWriteLock)
             throw ce
         }
@@ -625,7 +625,7 @@ private fun currentChunkBytes(chunkCount: Int, chunkDownloaded: AtomicLongArray)
  * 块内读取循环响应协程取消（暂停 / 取消时及时退出）。
  * @param callRef 该分块当前连接的引用，供监控器精准取消「单个慢块」而不影响其它块。
  */
-private suspend fun DownloadManager.downloadChunk(
+private suspend fun DownloadTransferHost.downloadChunk(
     taskId: Int,
     url: String,
     outputFile: File,
@@ -646,7 +646,7 @@ private suspend fun DownloadManager.downloadChunk(
     }
 }
 
-private suspend fun DownloadManager.downloadChunkInternal(
+private suspend fun DownloadTransferHost.downloadChunkInternal(
     taskId: Int,
     url: String,
     outputFile: File,
@@ -780,7 +780,7 @@ private fun verifyContentRange(
  * - 单连接已高速 → 降到 ≤3，省握手/调度开销；单连接低速 → 保持较多连接以提速；
  * - 受全局软预算、[MAX_PARALLEL_CONNECTIONS] 与块数约束。
  */
-private fun DownloadManager.computeParallelism(netClass: NetworkClass, singleBps: Long, chunkCount: Int): Int {
+private fun DownloadTransferHost.computeParallelism(netClass: NetworkClass, singleBps: Long, chunkCount: Int): Int {
     var base = when (netClass) {
         NetworkClass.WIFI -> 8
         NetworkClass.CELLULAR -> 4

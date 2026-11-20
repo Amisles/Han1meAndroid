@@ -90,7 +90,7 @@ internal object DownloadStorageInspector {
     /**
      * 扫描目录中已下载的 mp4，供卸载重装后重建任务列表。
      *
-     * 文件名由 [app.amisles.hanime.data.download.DownloadManager.startDownload] 按
+     * 文件名由 [app.amisles.hanime.data.download.DownloadSessionController.startDownload] 按
      * `标题_画质_<videoId>.mp4` 生成，videoId 固定是最后一段下划线之后、扩展名之前的内容。
      * 解析不出 videoId 的文件（用户自己放进去的、旧版命名）直接跳过，避免误收无关文件。
      * 带同名位图的文件同样跳过：下载直接写入最终 .mp4，位图存在即表示该文件尚未下完。

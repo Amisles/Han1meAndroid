@@ -58,3 +58,21 @@ internal fun resolveDefaultDownloadDir(appExternalFilesDir: File?): File {
 
 /** 默认下载目录名：公共 Download 下的子目录，避免与用户其它下载混在一起。 */
 internal const val DEFAULT_DOWNLOAD_SUBDIR = "Hanime"
+
+/**
+ * 磁盘空间预检：目标目录可用空间不足以完成 [needBytes] 时抛出 [NotEnoughSpaceException]。
+ *
+ * 保留 [SPACE_RESERVE_BYTES] 余量，避免写满整块分区后拖垮系统其它写入（日志、数据库）。
+ * 仅对「已知总量」的下载生效；总量未知的流式下载无法预判，只能依赖写入失败时的错误归类。
+ */
+internal fun requireFreeSpace(target: File, needBytes: Long) {
+    if (needBytes <= 0L) return
+    val dir = target.parentFile ?: return
+    val available = runCatching { android.os.StatFs(dir.absolutePath).availableBytes }
+        .getOrDefault(Long.MAX_VALUE)
+    if (available < needBytes + SPACE_RESERVE_BYTES) {
+        throw NotEnoughSpaceException(
+            "存储空间不足：需要 ${needBytes / 1024 / 1024}MB，可用 ${available / 1024 / 1024}MB"
+        )
+    }
+}

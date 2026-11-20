@@ -17,18 +17,18 @@ import okhttp3.Request
  * 单连接顺序下载引擎：首下前的 Range/吞吐探测，以及单连接续传下载。
  *
  * 首下降级、续传（恢复/失败重试）、服务器不支持分块三条路径都走这里。
- * 以 [DownloadManager] 的扩展函数承载，避免把类内状态整体放开为 internal。
+ * 以 [DownloadTransferHost] 的扩展函数承载，避免把类内状态整体放开为 internal。
  */
 /**
  * 首下前发一个小窗口 Range 请求，同时：1) 确认服务器支持 206 Range；2) 测量单连接稳态吞吐，
  * 作为自适应并行连接数的依据。探测窗口 [0, PROBE_WINDOW) 读后即弃。
  */
-internal suspend fun DownloadManager.probeSupportAndThroughput(taskId: Int, url: String): ProbeResult? {
+internal suspend fun DownloadTransferHost.probeSupportAndThroughput(taskId: Int, url: String): ProbeResult? {
     // 探测占一条真实连接，纳入全局连接预算
     return connectionPermits.withPermit { probeSupportAndThroughputInternal(taskId, url) }
 }
 
-internal suspend fun DownloadManager.probeSupportAndThroughputInternal(taskId: Int, url: String): ProbeResult? {
+internal suspend fun DownloadTransferHost.probeSupportAndThroughputInternal(taskId: Int, url: String): ProbeResult? {
     // 显式 catch：此前整体包在 runCatching 里，任何挂起点上的取消都会被吞成 null
     return try {
         val t0 = System.nanoTime()
@@ -93,14 +93,14 @@ internal suspend fun DownloadManager.probeSupportAndThroughputInternal(taskId: I
  * 支持 Range 续传与限次重试：建连失败与流中断都会从磁盘已写长度接续，
  * 避免弱网下长视频一次瞬断即整任务失败。每 500ms 节流更新进度。
  */
-internal suspend fun DownloadManager.downloadFileSingle(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
+internal suspend fun DownloadTransferHost.downloadFileSingle(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
     // 单连接路径同样占一条真实连接，整段纳入全局连接预算
     connectionPermits.withPermit {
         downloadFileSingleInternal(taskId, url, filePath, resumeBytes)
     }
 }
 
-internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
+internal suspend fun DownloadTransferHost.downloadFileSingleInternal(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
     var resume = resumeBytes
     var attempt = 0
     while (true) {
@@ -131,7 +131,7 @@ internal suspend fun DownloadManager.downloadFileSingleInternal(taskId: Int, url
     }
 }
 
-private suspend fun DownloadManager.downloadSingleConnectionAttempt(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
+private suspend fun DownloadTransferHost.downloadSingleConnectionAttempt(taskId: Int, url: String, filePath: String, resumeBytes: Long) {
     val requestBuilder = Request.Builder()
         .url(url)
         .header("User-Agent", DOWNLOAD_UA)
@@ -162,7 +162,7 @@ private suspend fun DownloadManager.downloadSingleConnectionAttempt(taskId: Int,
         }
 
         val isPartial = resp.code == 206
-        val persistedTotal = totalBytesOf(taskId)
+        val persistedTotal = knownTotalBytes(taskId)
         val totalFromRange = resp.header("Content-Range")?.let {
             Regex("/(\\d+)$").find(it)?.groupValues?.get(1)?.toLongOrNull()
         }

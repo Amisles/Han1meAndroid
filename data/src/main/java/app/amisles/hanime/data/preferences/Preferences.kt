@@ -1086,14 +1086,14 @@ private const val SP_COMIC_READER_BLACK = "comic_reader_black"
     }
 
     /**
-     * 下载存储路径。空串表示「默认目录」，由 DownloadManager.resolveDownloadDir() 解析为公共的
+     * 下载存储路径。空串表示「默认目录」，由 DownloadStorageMaintenance.resolveDownloadDir() 解析为公共的
      * Download/Hanime（主外部存储不可写时退回应用外部目录）；非空时为用户指定的目录绝对路径，
      * 该路径不可写时同样回退到默认目录。
      */
     override var downloadStoragePath: String
         // 读走内存快照而非 sp：本类是 object 且 sp 为 lateinit，直接访问 getter 会在
         // init() 之前抛 UninitializedPropertyAccessException；其余偏好项均由 Flow 支撑，
-        // 这一项此前是唯一例外，与 DownloadManager.resolveDownloadDir() 的实时读取冲突。
+        // 这一项此前是唯一例外，与 DownloadStorageMaintenance.resolveDownloadDir() 的实时读取冲突。
         get() = _downloadStoragePathFlow.value
         set(value) {
             val safe = value.trim()
