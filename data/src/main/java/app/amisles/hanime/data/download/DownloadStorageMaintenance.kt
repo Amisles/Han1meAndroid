@@ -106,13 +106,19 @@ internal class DownloadStorageMaintenance(
     }
 
     suspend fun storageInfo(): DownloadStorageInfo = withContext(Dispatchers.IO) {
-        val dir = DownloadStorageInspector.currentDirectory(appContext.getExternalFilesDir(null))
+        val dir = DownloadStorageInspector.currentDirectory(
+            appContext.getExternalFilesDir(null),
+            settings.downloadStoragePath
+        )
         val activePaths = store.tasks.value.mapTo(HashSet()) { it.filePath }
         DownloadStorageInspector.inspect(dir, activePaths)
     }
 
     suspend fun clearOrphanPartmaps(): Long = withContext(Dispatchers.IO) {
-        val dir = DownloadStorageInspector.currentDirectory(appContext.getExternalFilesDir(null))
+        val dir = DownloadStorageInspector.currentDirectory(
+            appContext.getExternalFilesDir(null),
+            settings.downloadStoragePath
+        )
         val activePaths = store.tasks.value.mapTo(HashSet()) { it.filePath }
         DownloadStorageInspector.clearOrphanPartmaps(dir, activePaths)
     }

@@ -7,7 +7,7 @@ import android.content.SharedPreferences
  *
  * 加密存储创建要经 Android Keystore，落在首帧关键路径上会让冷启动多等数十毫秒，而首帧真正
  * 需要的只有语言、主题这类非敏感项。会话键在 [SecureSession] 就绪前读出默认值，就绪后由
- * [Preferences] 回填；就绪前的写入先排队，随存储打开一并落盘。
+ * [SessionStore] 回填；就绪前的写入先排队，随存储打开一并落盘。
  */
 internal class SplitPreferences(
     private val hot: SharedPreferences,
@@ -163,7 +163,7 @@ internal class SecureSession {
 
     fun edit(): SharedPreferences.Editor = DeferredEditor(this)
 
-    fun submit(ops: List<(SharedPreferences.Editor) -> Unit>, commit: Boolean) {
+    fun submit(ops: List<(SharedPreferences.Editor) -> Unit>, commit: Boolean): Boolean {
         written = true
         val target = synchronized(lock) {
             val current = store
@@ -172,9 +172,9 @@ internal class SecureSession {
         }
         if (target == null) {
             if (!failed) onDemandOpen?.invoke()
-            return
+            return false
         }
-        replay(target, ops, commit)
+        return replay(target, ops, commit)
     }
 
     fun attach(opened: SharedPreferences?) {
@@ -186,17 +186,28 @@ internal class SecureSession {
             queued = pending.toList()
             pending.clear()
         }
-        if (opened != null && queued.isNotEmpty()) replay(opened, queued, commit = true)
+        if (opened != null && queued.isNotEmpty()) {
+            val committed = replay(opened, queued, commit = true)
+            if (!committed) {
+                app.amisles.hanime.core.common.util.AppLogger.logError(
+                    "Preferences",
+                    "会话存储在打开后补写失败，凭据可能只在本次进程内有效"
+                )
+            }
+        }
     }
 
     private fun replay(
         target: SharedPreferences,
         ops: List<(SharedPreferences.Editor) -> Unit>,
         commit: Boolean
-    ) {
+    ): Boolean {
         val editor = target.edit()
         ops.forEach { it(editor) }
-        if (commit) editor.commit() else editor.apply()
+        return if (commit) editor.commit() else {
+            editor.apply()
+            true
+        }
     }
 }
 
@@ -231,10 +242,7 @@ private class DeferredEditor(private val session: SecureSession) : SharedPrefere
 
     override fun clear(): SharedPreferences.Editor = record { it.clear() }
 
-    override fun commit(): Boolean {
-        session.submit(ops, commit = true)
-        return true
-    }
+    override fun commit(): Boolean = session.submit(ops, commit = true)
 
     override fun apply() {
         session.submit(ops, commit = false)

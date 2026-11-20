@@ -1266,4 +1266,5 @@
     <string name="playlist_create_failed">建立清單失敗</string>
     <string name="playlist_response_invalid">站點回傳的清單資料無法辨識</string>
     <string name="error_author_parse_failed">無法解析作者主頁</string>
+    <string name="login_memory_only">登入成功，但憑證無法安全落盤，重新啟動應用程式後需要重新登入</string>
 </resources>

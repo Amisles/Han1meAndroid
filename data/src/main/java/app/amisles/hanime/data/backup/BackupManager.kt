@@ -100,7 +100,8 @@ class BackupManager @Inject constructor(
 
     override suspend fun importBackup(
         bytes: ByteArray,
-        policy: BackupConflictPolicy
+        policy: BackupConflictPolicy,
+        applyUiConfig: (String) -> Boolean
     ): Pair<BackupContents, BackupImportSummary> = withContext(Dispatchers.IO) {
         val files = unzip(bytes)
         val manifest = parseManifest(files)
@@ -109,9 +110,12 @@ class BackupManager @Inject constructor(
         if (!BackupChecksum.matches(payload, files[BackupChecksum.ENTRY_CHECKSUM])) {
             throw BackupError.ChecksumMismatch
         }
+        // 全部条目解析成功后才允许进入写入阶段：任何一条损坏都整包拒绝，不做静默裁剪。
         val contents = parseContents(files, manifest)
+        validateContents(files, manifest, contents)
         downloads.suspendForBackupImport()
         val autoBackupName = writeAutoBackup(policy)
+        val previousSettings = readSettings()
 
         try {
             db.withTransaction {
@@ -135,12 +139,19 @@ class BackupManager @Inject constructor(
                 contents.searchHistory.forEach { entry ->
                     searchHistoryDao.addSearch(SearchHistoryEntity(query = entry.first, searchedAt = entry.second))
                 }
+                // 设置与界面配置在事务内应用：任一失败都抛异常，让数据库回滚，避免「数据换了、配置没换」。
+                contents.settings?.let { applySettings(it) }
+                contents.uiConfigText?.let { text ->
+                    if (!applyUiConfig(text)) throw BackupError.UiConfigRejected
+                }
             }
+        } catch (e: Exception) {
+            // 设置在数据库之外，事务回滚不会自动恢复：按导入前快照还原。
+            runCatching { applySettings(previousSettings) }
+            throw e
         } finally {
             downloads.reloadTasksFromDatabase()
         }
-
-        val settingsApplied = contents.settings?.let { applySettings(it); true } ?: false
 
         // 导入的下载任务保留了源设备的主键 id，而运行中的 DownloadManager 只在进程启动时
         // 同步过一次自增计数器；不同步会让之后新建的任务撞上导入行的 id，
@@ -156,12 +167,37 @@ class BackupManager @Inject constructor(
             history = contents.history.size,
             downloads = contents.downloads.size,
             searchHistory = contents.searchHistory.size,
-            settingsApplied = settingsApplied,
+            settingsApplied = contents.settings != null,
             uiConfigApplied = contents.uiConfigText != null,
             autoBackupName = autoBackupName
         )
         AppLogger.log("BackupManager", "导入完成: " + summary)
         contents to summary
+    }
+
+    /** 清单声明的条目数必须与解析结果一致，避免缺失/损坏条目被当成「空」静默带入。 */
+    private fun validateContents(
+        files: Map<String, String>,
+        manifest: BackupManifest,
+        contents: BackupContents
+    ) {
+        fun requireCount(entry: String, declared: Int, actual: Int) {
+            // 旧备份可能没有计数字段（0 表示未知）；只有明确声明了数量才做一致性校验。
+            if (declared > 0 && declared != actual) {
+                throw BackupError.InvalidEntry(entry, "清单声明 $declared 条，实际解析 $actual 条")
+            }
+        }
+        requireCount(ENTRY_FAVORITES, manifest.favoriteCount, contents.favorites.size)
+        requireCount(ENTRY_GROUPS, manifest.groupCount, contents.groups.size)
+        requireCount(ENTRY_HISTORY, manifest.historyCount, contents.history.size)
+        requireCount(ENTRY_DOWNLOADS, manifest.downloadCount, contents.downloads.size)
+        requireCount(ENTRY_SEARCH, manifest.searchHistoryCount, contents.searchHistory.size)
+        if (manifest.hasSettings && files[ENTRY_SETTINGS] == null) {
+            throw BackupError.InvalidEntry(ENTRY_SETTINGS, "清单声明包含设置，但条目缺失")
+        }
+        if (manifest.hasUiConfig && files[ENTRY_UI_CONFIG] == null) {
+            throw BackupError.InvalidEntry(ENTRY_UI_CONFIG, "清单声明包含界面配置，但条目缺失")
+        }
     }
 
     private suspend fun writeAutoBackup(policy: BackupConflictPolicy): String? = runCatching {
@@ -194,7 +230,11 @@ class BackupManager @Inject constructor(
         history = parseHistory(files[ENTRY_HISTORY]),
         downloads = parseDownloads(files[ENTRY_DOWNLOADS]),
         searchHistory = parseSearch(files[ENTRY_SEARCH]),
-        settings = files[ENTRY_SETTINGS]?.let { runCatching { parseSettings(JSONObject(it)) }.getOrNull() },
+        settings = files[ENTRY_SETTINGS]?.let { raw ->
+            runCatching { parseSettings(JSONObject(raw)) }.getOrElse { e ->
+                throw BackupError.InvalidEntry(ENTRY_SETTINGS, e.message.orEmpty())
+            }
+        },
         uiConfigText = files[ENTRY_UI_CONFIG]
     )
 
@@ -446,7 +486,7 @@ class BackupManager @Inject constructor(
         playerLayout = o.stringOrNull("playerLayout")
     )
 
-    private fun parseFavorites(raw: String?): List<FavoriteVideo> = parseArray(raw) { o ->
+    private fun parseFavorites(raw: String?): List<FavoriteVideo> = parseArray(ENTRY_FAVORITES, raw) { o ->
         FavoriteVideo(
             id = o.getString("id"),
             title = o.optString("title", ""),
@@ -464,7 +504,7 @@ class BackupManager @Inject constructor(
         )
     }
 
-    private fun parseGroups(raw: String?): List<FavoriteGroup> = parseArray(raw) { o ->
+    private fun parseGroups(raw: String?): List<FavoriteGroup> = parseArray(ENTRY_GROUPS, raw) { o ->
         FavoriteGroup(
             id = o.getString("id"),
             name = o.optString("name", ""),
@@ -472,7 +512,7 @@ class BackupManager @Inject constructor(
         )
     }
 
-    private fun parseHistory(raw: String?): List<WatchHistory> = parseArray(raw) { o ->
+    private fun parseHistory(raw: String?): List<WatchHistory> = parseArray(ENTRY_HISTORY, raw) { o ->
         WatchHistory(
             id = o.getString("id"),
             title = o.optString("title", ""),
@@ -486,7 +526,7 @@ class BackupManager @Inject constructor(
         )
     }
 
-    private fun parseDownloads(raw: String?): List<DownloadTask> = parseArray(raw) { o ->
+    private fun parseDownloads(raw: String?): List<DownloadTask> = parseArray(ENTRY_DOWNLOADS, raw) { o ->
         DownloadTask(
             id = o.getInt("id"),
             title = o.optString("title", ""),
@@ -504,15 +544,24 @@ class BackupManager @Inject constructor(
     }
 
     private fun parseSearch(raw: String?): List<Pair<String, Long>> =
-        parseArray(raw) { o -> o.optString("query", "") to o.optLong("searchedAt", 0L) }
+        parseArray(ENTRY_SEARCH, raw) { o -> o.optString("query", "") to o.optLong("searchedAt", 0L) }
             .filter { it.first.isNotEmpty() }
 
-    private fun <T> parseArray(raw: String?, mapper: (JSONObject) -> T): List<T> {
-        if (raw.isNullOrBlank()) return emptyList()
-        val arr = runCatching { JSONArray(raw) }.getOrElse { return emptyList() }
-        return (0 until arr.length()).mapNotNull { i ->
-            runCatching { mapper(arr.getJSONObject(i)) }.getOrNull()
+    private fun <T> parseArray(entry: String, raw: String?, mapper: (JSONObject) -> T): List<T> {
+        if (raw == null) return emptyList()
+        val arr = runCatching { JSONArray(raw) }.getOrElse { e ->
+            throw BackupError.InvalidEntry(entry, "不是合法 JSON 数组: ${e.message}")
         }
+        val result = ArrayList<T>(arr.length())
+        for (i in 0 until arr.length()) {
+            val item = runCatching { arr.getJSONObject(i) }.getOrElse { e ->
+                throw BackupError.InvalidEntry(entry, "第 $i 条不是对象: ${e.message}")
+            }
+            result += runCatching { mapper(item) }.getOrElse { e ->
+                throw BackupError.InvalidEntry(entry, "第 $i 条解析失败: ${e.message}")
+            }
+        }
+        return result
     }
 
     private fun JSONObject.stringOrNull(key: String): String? =

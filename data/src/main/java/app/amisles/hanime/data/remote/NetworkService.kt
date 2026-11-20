@@ -13,7 +13,8 @@ import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import app.amisles.hanime.domain.result.AppException
 import app.amisles.hanime.domain.result.DomainError
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.SiteSettings
 import javax.inject.Inject
 import javax.inject.Singleton
 import app.amisles.hanime.domain.model.AuthorPageData
@@ -52,7 +53,9 @@ class NetworkService @Inject constructor(
     private val playlistParser: PlaylistParser,
     private val subscriptionsParser: SubscriptionsParser,
     private val accountProfileParser: AccountProfileParser,
-    private val watchLaterPageParser: WatchLaterPageParser
+    private val watchLaterPageParser: WatchLaterPageParser,
+    private val site: SiteSettings,
+    private val cookieJar: HCookieJar
 ) {
     // 入口拦截器：非官方域名根路径请求重写为 /enter
     private val entryInterceptor = EntryInterceptor()
@@ -64,7 +67,7 @@ class NetworkService @Inject constructor(
         .followRedirects(true)
         .followSslRedirects(false)
         .retryOnConnectionFailure(true)
-        .cookieJar(HCookieJar)
+        .cookieJar(cookieJar)
         .addInterceptor(entryInterceptor)
         .build()
 
@@ -98,10 +101,10 @@ class NetworkService @Inject constructor(
             .followSslRedirects(false)
             .cookieJar(object : CookieJar {
                 override fun loadForRequest(url: HttpUrl): List<Cookie> =
-                    HCookieJar.observedCookies(url)
+                    cookieJar.observedCookies(url)
 
                 override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) =
-                    HCookieJar.saveFromResponse(url, cookies)
+                    cookieJar.saveFromResponse(url, cookies)
             })
             .build()
     }
@@ -120,7 +123,7 @@ class NetworkService @Inject constructor(
     }
 
     private fun getCurrentBaseUrl(): String {
-        return Preferences.baseUrl
+        return site.baseUrl
     }
 
     private val uaString get() = BrowserUserAgent.VALUE
@@ -399,7 +402,7 @@ class NetworkService @Inject constructor(
         val url = if (videoUrl.startsWith("http")) videoUrl else "${getCurrentBaseUrl()}$videoUrl"
         AppLogger.log("NetworkService", "Full URL: ${url.redactUrlForLog()}")
         val html = executeRequest(buildRequest(url))
-        val baseUrl = "https://${HOST_REGEX.find(url)?.groupValues?.get(1) ?: Preferences.DEFAULT_BASE_URL.removePrefix("https://")}"
+        val baseUrl = "https://${HOST_REGEX.find(url)?.groupValues?.get(1) ?: SettingsRepository.DEFAULT_BASE_URL.removePrefix("https://")}"
         FetchResult(html, baseUrl)
     }
 

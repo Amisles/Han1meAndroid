@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.result.SessionSaveResult
 import app.amisles.hanime.domain.result.WebLoginVerification
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
@@ -33,7 +34,7 @@ class LoginViewModel @Inject constructor(
 
         /** WebView 里已经拿到会话，正在向站点确认这份会话是否真的登录成功。 */
         data object Verifying : UiState
-        data class Success(val cookieLength: Int) : UiState
+        data class Success(val cookieLength: Int, val memoryOnly: Boolean = false) : UiState
         data class Error(val message: String) : UiState
     }
 
@@ -58,7 +59,7 @@ class LoginViewModel @Inject constructor(
             try {
                 val result = repository.login(cleanEmail, password)
                 when (result) {
-                    is AppResult.Success -> _uiState.value = UiState.Success(result.data.length)
+                    is AppResult.Success -> _uiState.value = successState(result.data, cleanEmail.length)
                     is AppResult.Error -> _uiState.value = UiState.Error(
                         ErrorMapper.message(
                             context,
@@ -99,16 +100,12 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                val ok = repository.saveLoginCookie(clean)
-                if (ok) {
-                    _uiState.value = UiState.Success(clean.length)
-                } else {
-                    _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
-                }
+                val saved = repository.saveLoginCookie(clean)
+                _uiState.value = successState(saved, clean.length)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Preferences 未初始化（lateinit）等异常会让 _uiState 永久停留在 Loading
+                // 会话存储未初始化等异常会让 _uiState 永久停留在 Loading
                 AppLogger.e("LoginViewModel", "保存 Cookie 失败: ${e.message}", e)
                 _uiState.value = UiState.Error(context.getString(R.string.login_cookie_invalid))
             }
@@ -170,12 +167,14 @@ class LoginViewModel @Inject constructor(
     }
 
     private suspend fun finishWebLogin(cookie: String, domain: String, userId: String?) {
-        val ok = repository.saveLoginCookie(cookie, domain, userId)
-        _uiState.value = if (ok) {
-            UiState.Success(cookie.length)
-        } else {
-            UiState.Error(context.getString(R.string.login_cookie_invalid))
-        }
+        val saved = repository.saveLoginCookie(cookie, domain, userId)
+        _uiState.value = successState(saved, cookie.length)
+    }
+
+    private fun successState(result: SessionSaveResult, cookieLength: Int): UiState = when (result) {
+        SessionSaveResult.PERSISTED -> UiState.Success(cookieLength)
+        SessionSaveResult.MEMORY_ONLY -> UiState.Success(cookieLength, memoryOnly = true)
+        SessionSaveResult.FAILED -> UiState.Error(context.getString(R.string.login_cookie_invalid))
     }
 
     fun reset() {
@@ -183,6 +182,8 @@ class LoginViewModel @Inject constructor(
     }
 
     fun logout() {
-        session.logout()
+        viewModelScope.launch {
+            runCatching { repository.logout() }
+        }
     }
 }

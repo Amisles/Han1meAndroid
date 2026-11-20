@@ -2,7 +2,7 @@ package app.amisles.hanime.data.download
 
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.data.remote.VideoAntiHotlink
+import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -667,7 +667,7 @@ private suspend fun DownloadTransferHost.downloadChunkInternal(
     val call = client.newCall(
         Request.Builder().url(url)
             .header("User-Agent", DOWNLOAD_UA)
-            .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
+            .header(VideoAntiHotlink.HEADER_NAME, referer)
             .header("Range", "bytes=$from-$end")
             .get().build()
     )

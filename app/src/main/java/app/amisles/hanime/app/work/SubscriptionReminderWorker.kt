@@ -13,7 +13,7 @@ import androidx.work.WorkerParameters
 import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SiteSettings
 import app.amisles.hanime.data.subscription.SubscriptionUpdateChecker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -29,11 +29,12 @@ import kotlinx.coroutines.CancellationException
 class SubscriptionReminderWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
-    private val checker: SubscriptionUpdateChecker
+    private val checker: SubscriptionUpdateChecker,
+    private val settings: SiteSettings
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        if (!Preferences.subscriptionReminder) return Result.success()
+        if (!settings.subscriptionReminder) return Result.success()
         return try {
             val updates = checker.detectUpdates()
             if (updates.isNotEmpty()) notify(updates.size, updates.first().title)

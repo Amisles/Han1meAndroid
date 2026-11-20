@@ -20,6 +20,7 @@ internal interface DownloadTransferHost {
 
     val client: OkHttpClient
     val connectionPermits: Semaphore
+    val referer: String
 
     /** 本进程内已判定「分块无收益」的文件（按 filePath）。 */
     val singleConnectionFiles: MutableSet<String>
@@ -47,7 +48,8 @@ internal class DefaultDownloadTransferHost(
     private val calls: DownloadCallTracker,
     private val updater: DownloadTaskUpdater,
     private val resolver: DownloadResumeResolver,
-    private val budget: DownloadConcurrencyBudget
+    private val budget: DownloadConcurrencyBudget,
+    private val antiHotlink: app.amisles.hanime.data.remote.VideoAntiHotlinkProvider
 ) : DownloadTransferHost {
 
     private val appContext = context.applicationContext ?: context
@@ -72,6 +74,8 @@ internal class DefaultDownloadTransferHost(
         .build()
 
     override val connectionPermits = Semaphore(MAX_CONCURRENT_CONNECTIONS)
+
+    override val referer: String get() = antiHotlink.referer
 
     override val singleConnectionFiles: MutableSet<String> = resolver.singleConnectionFiles
 

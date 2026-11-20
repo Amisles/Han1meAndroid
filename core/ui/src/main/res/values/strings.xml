@@ -1301,4 +1301,5 @@
     <string name="playlist_create_failed">创建清单失败</string>
     <string name="playlist_response_invalid">站点返回的清单数据无法识别</string>
     <string name="error_author_parse_failed">无法解析作者主页</string>
+    <string name="login_memory_only">登录成功，但凭据无法安全落盘，重启应用后需要重新登录</string>
 </resources>

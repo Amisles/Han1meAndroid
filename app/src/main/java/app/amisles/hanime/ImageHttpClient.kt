@@ -1,7 +1,9 @@
 package app.amisles.hanime
 
 import app.amisles.hanime.core.common.util.BrowserUserAgent
-import app.amisles.hanime.data.remote.VideoAntiHotlink
+import app.amisles.hanime.data.remote.VideoAntiHotlinkProvider
+import javax.inject.Inject
+import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -17,7 +19,10 @@ import java.util.concurrent.TimeUnit
  * 站点 HTML 请求早已通过 [BrowserUserAgent] 统一 UA（cf_clearance 与 UA 绑定），
  * 图片通道一直漏了这一步，这里补齐 UA 与防盗链 Referer。
  */
-internal object ImageHttpClient {
+@Singleton
+internal class ImageHttpClient @Inject constructor(
+    private val antiHotlink: VideoAntiHotlinkProvider
+) {
 
     /** 懒加载单例：全进程复用同一连接池与线程池，避免每张图新建客户端。 */
     val client: OkHttpClient by lazy {
@@ -37,6 +42,6 @@ internal object ImageHttpClient {
     fun withImageHeaders(request: Request): Request =
         request.newBuilder()
             .header("User-Agent", BrowserUserAgent.VALUE)
-            .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
+            .header("Referer", antiHotlink.referer)
             .build()
 }

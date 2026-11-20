@@ -98,12 +98,12 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    session.logout()
+                    account.logout()
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Preferences 未初始化等异常不应让登出流程崩溃
+                // 设置存储未初始化等异常不应让登出流程崩溃
                 AppLogger.e("ProfileViewModel", "登出失败: ${e.message}", e)
             }
         }

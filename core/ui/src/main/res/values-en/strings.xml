@@ -1266,4 +1266,5 @@
     <string name="playlist_create_failed">Failed to create the playlist</string>
     <string name="playlist_response_invalid">The playlist data returned by the site could not be read</string>
     <string name="error_author_parse_failed">Could not read the author page</string>
+    <string name="login_memory_only">Signed in, but the session could not be stored securely; you will need to sign in again after restarting.</string>
 </resources>

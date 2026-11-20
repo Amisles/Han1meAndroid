@@ -1,5 +1,7 @@
 package app.amisles.hanime
 
+import app.amisles.hanime.domain.repository.SettingsRepository
+
 import android.app.Application
 import android.app.LocaleManager
 import android.content.Context
@@ -11,7 +13,6 @@ import app.amisles.hanime.core.common.util.CrashLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.app.work.SubscriptionReminderWorker
 import app.amisles.hanime.data.icon.LauncherIconRepository
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.subscription.SubscriptionReminderScheduler
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
@@ -34,6 +35,12 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var settings: SettingsRepository
+
+    @Inject
+    internal lateinit var imageHttpClient: ImageHttpClient
 
     /** WorkManager 延迟初始化时由此提供工厂，使 Worker 能注入依赖。 */
     override val workManagerConfiguration: Configuration
@@ -62,18 +69,18 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
     /**
      * 供 Activity.attachBaseContext 使用的语言快照。
      *
-     * 该回调发生在 Activity 创建的最早期，而 Preferences 由 [onCreate] 初始化：直接读
-     * appLanguage 在系统极早期拉起 Activity 时会落到未初始化的 lateinit 上。
-     * 快照统一托管在 LocaleHelper：启动时预热，Preferences 写入语言时同步刷新。
+     * 该回调发生在 Activity 创建的最早期，而 SettingsStore 由 Hilt 在
+     * Application 创建时注入：直接读 appLanguage 在系统极早期拉起 Activity 时可能尚未完成初始化。
+     * 快照统一托管在 LocaleHelper：启动时预热，写入语言时同步刷新。
      */
     fun currentLanguage(): String = LocaleHelper.languageSnapshot { persistedLanguage() }
 
     /**
      * 只记录原始 base context，供 [applyLanguage] 重新包装。
      *
-     * **此处不能初始化 Preferences**：attachBaseContext 阶段 Application 尚未 attach 完成，
+     * **此处不能初始化设置存储**：attachBaseContext 阶段 Application 尚未 attach 完成，
      * `context.applicationContext` 为 null，传入的 base context 也不足以让
-     * `EncryptedSharedPreferences.create` 正常工作 —— 会话存储会创建失败并被判为
+     * `EncryptedSharedsettings.create` 正常工作 —— 会话存储会创建失败并被判为
      * 「换机恢复后主密钥不匹配」，进而清空用户偏好。
      */
     override fun attachBaseContext(newBase: Context) {
@@ -83,7 +90,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
 
     /**
      * 应用 Application 级语言。语言包装不通过 attachBaseContext 完成，而是由
-     * [getResources] / [getAssets] 覆盖生效，因此可以在 Preferences 初始化之后调用。
+     * [getResources] / [getAssets] 覆盖生效，因此可以在设置存储初始化之后调用。
      *
      * 初始调用来自 [onCreate]（进程启动），语言切换后由 MainActivity 重建时再次调用
      * （Application 的 attachBaseContext 每进程只执行一次）。
@@ -108,7 +115,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
         localizedContext?.assets ?: super.getAssets()
 
     private fun persistedLanguage(): String =
-        runCatching { Preferences.appLanguage }.getOrDefault(Preferences.LANGUAGE_ZH_CN)
+        runCatching { settings.appLanguage }.getOrDefault(SettingsRepository.LANGUAGE_ZH_CN)
 
     /** 图片磁盘缓存上限。Coil 默认取可用空间的 2% 且没有绝对上限，
      *  在本项目这种缩略图量级下（首页分区 + 搜索无限滚动 + 批量下载整作者列表）
@@ -141,7 +148,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
             // 显式挂载带浏览器 UA / 防盗链 Referer 的网络层：CDN 按 UA 判定浏览器，
             // Coil 默认的 okhttp/x.y.z 会被直接 403，缩略图整体空白。见 ImageHttpClient。
             .components {
-                add(OkHttpNetworkFetcherFactory(callFactory = { ImageHttpClient.client }))
+                add(OkHttpNetworkFetcherFactory(callFactory = { imageHttpClient.client }))
             }
             // 不设置 crossfade：该版本 ImageLoader.Builder 未暴露此方法，Coil 3 默认不对
             // AsyncImage 施加全局淡入，与 v1.6.0「移除图片淡入」的效果一致。
@@ -178,14 +185,14 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
             if (locales.isEmpty) return
             val tag = locales[0].toLanguageTag()
             val mapped = when {
-                tag.startsWith("zh-TW") || tag.startsWith("zh-Hant") -> Preferences.LANGUAGE_ZH_TW
-                tag.startsWith("zh") -> Preferences.LANGUAGE_ZH_CN
-                tag.startsWith("en") -> Preferences.LANGUAGE_EN
-                tag.startsWith("ja") -> Preferences.LANGUAGE_JA
+                tag.startsWith("zh-TW") || tag.startsWith("zh-Hant") -> SettingsRepository.LANGUAGE_ZH_TW
+                tag.startsWith("zh") -> SettingsRepository.LANGUAGE_ZH_CN
+                tag.startsWith("en") -> SettingsRepository.LANGUAGE_EN
+                tag.startsWith("ja") -> SettingsRepository.LANGUAGE_JA
                 else -> return
             }
-            if (mapped != Preferences.appLanguage) {
-                Preferences.setAppLanguage(mapped)
+            if (mapped != settings.appLanguage) {
+                settings.setAppLanguage(mapped)
             }
             LocaleHelper.rememberLanguage(mapped)
         }
@@ -199,7 +206,7 @@ class HanimeApplication : Application(), SingletonImageLoader.Factory, Configura
      */
     private fun syncSubscriptionReminder() {
         runCatching {
-            if (Preferences.subscriptionReminder) {
+            if (settings.subscriptionReminder) {
                 SubscriptionReminderScheduler.schedule(this, SubscriptionReminderWorker::class.java)
             } else {
                 SubscriptionReminderScheduler.cancel(this)

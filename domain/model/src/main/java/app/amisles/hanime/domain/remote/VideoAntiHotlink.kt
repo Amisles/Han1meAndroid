@@ -8,7 +8,7 @@ package app.amisles.hanime.domain.remote
  *
  * 至于"当前该注入哪个 Referer"，取决于用户在设置页选择的站点，属于配置读取，
  * 由 [app.amisles.hanime.domain.repository.SiteSettings.baseUrl] 派生，
- * 不在这里持有 —— 那会让 domain 依赖 data 的 Preferences 实现。
+ * 不在这里持有 —— 那会让 domain 依赖 data 的设置存储实现。
  */
 object VideoAntiHotlink {
     /** 防盗链请求头名称。 */

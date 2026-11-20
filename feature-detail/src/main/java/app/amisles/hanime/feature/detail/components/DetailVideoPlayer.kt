@@ -28,7 +28,7 @@ import app.amisles.hanime.feature.detail.util.pickInitialSourceUrl
 
 /**
  * 详情页播放器：把平板左半屏与手机单列两处重复的 VideoPlayer 调用收拢为一处，
- * 画质 / 倍速 / 连播等偏好统一落盘到 Preferences。
+ * 画质 / 倍速 / 连播等偏好统一经设置存储落盘。
  *
  * [autoFullscreenEnabled] 默认 true（手机单列）：转横屏自动全屏、转回竖屏自动退出；
  * 平板分栏由调用方传 false 关闭，避免常态横持误触发。用户可在设置里关掉「旋转自动全屏」，

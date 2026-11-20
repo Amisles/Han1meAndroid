@@ -2,6 +2,7 @@ package app.amisles.hanime.data.di
 
 import app.amisles.hanime.data.subscription.SubscriptionUpdateChecker
 import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.repository.SiteSettings
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,6 +16,7 @@ object SubscriptionModule {
     @Provides
     @Singleton
     fun provideSubscriptionUpdateChecker(
-        repository: ContentRepository
-    ): SubscriptionUpdateChecker = SubscriptionUpdateChecker(repository)
+        repository: ContentRepository,
+        settings: SiteSettings
+    ): SubscriptionUpdateChecker = SubscriptionUpdateChecker(repository, settings)
 }

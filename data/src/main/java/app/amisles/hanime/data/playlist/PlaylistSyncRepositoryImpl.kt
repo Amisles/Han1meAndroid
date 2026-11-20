@@ -1,6 +1,7 @@
 package app.amisles.hanime.data.playlist
 
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.PlaylistSettings
+
 import app.amisles.hanime.domain.model.CloudPlaylist
 import app.amisles.hanime.domain.model.PlaylistTargets
 import app.amisles.hanime.domain.model.VideoSaveOptions
@@ -13,7 +14,8 @@ import javax.inject.Singleton
 class PlaylistSyncRepositoryImpl @Inject constructor(
     private val engine: PlaylistSyncEngine,
     private val store: PlaylistLocalStore,
-    private val session: SessionRepository
+    private val session: SessionRepository,
+    private val settings: PlaylistSettings
 ) : PlaylistSyncRepository {
 
     override suspend fun cacheFromWatchPage(options: VideoSaveOptions) {
@@ -63,10 +65,10 @@ class PlaylistSyncRepositoryImpl @Inject constructor(
     override suspend fun pendingCount(): Int = engine.pendingCount(activeUserId())
 
     override suspend fun shouldOfferMigration(): Boolean =
-        session.isActiveLogin && !Preferences.playlistMigrationDone
+        session.isActiveLogin && !settings.playlistMigrationDone
 
     override suspend fun markMigrationHandled() {
-        Preferences.playlistMigrationDone = true
+        settings.playlistMigrationDone = true
     }
 
     override suspend fun migrateFavorites(videoIds: List<String>, target: String): Int {
@@ -74,7 +76,7 @@ class PlaylistSyncRepositoryImpl @Inject constructor(
         val userId = activeUserId()
         if (userId.isBlank() || target.isBlank() || videoIds.isEmpty()) return 0
         videoIds.forEach { engine.setSaved(userId, it, target, true) }
-        Preferences.playlistMigrationDone = true
+        settings.playlistMigrationDone = true
         engine.flush(userId)
         return videoIds.size
     }

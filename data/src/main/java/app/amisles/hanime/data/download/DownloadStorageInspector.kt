@@ -1,6 +1,5 @@
 package app.amisles.hanime.data.download
 
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import java.io.File
 
@@ -41,8 +40,8 @@ internal fun probeAccess(dir: File): DirectoryAccess = when {
 /** 存储面板的数据来源：目录解析、用量统计与孤儿位图清理。 */
 internal object DownloadStorageInspector {
 
-    fun currentDirectory(appExternalFilesDir: File?): File {
-        val custom = Preferences.downloadStoragePath
+    fun currentDirectory(appExternalFilesDir: File?, customPath: String): File {
+        val custom = customPath
         if (custom.isNotBlank()) {
             val dir = File(custom)
             if (ensureDirWritable(dir)) return dir

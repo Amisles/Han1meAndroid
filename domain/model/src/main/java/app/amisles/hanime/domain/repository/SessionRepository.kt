@@ -1,6 +1,7 @@
 package app.amisles.hanime.domain.repository
 
 import app.amisles.hanime.domain.model.SessionCookie
+import app.amisles.hanime.domain.result.SessionSaveResult
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -53,12 +54,16 @@ interface SessionRepository {
      *
      * @param sourceDomain 实际完成登录的站点 host；会话只会注入回该域名。
      */
-    fun saveLogin(cookieString: String, userId: String? = null, sourceDomain: String? = null)
+    fun saveLogin(
+        cookieString: String,
+        userId: String? = null,
+        sourceDomain: String? = null
+    ): SessionSaveResult
 
-    fun saveCloudFlareCookie(cookieString: String, sourceDomain: String? = null)
+    fun saveCloudFlareCookie(cookieString: String, sourceDomain: String? = null): SessionSaveResult
 
-    /** 清除全部会话凭据（Cookie、来源域名、用户 ID）。 */
-    fun logout()
+    /** 清除本地保存的会话凭据；调用方还需清理内存 CookieJar 与 WebView Cookie。 */
+    fun clearSession(): Boolean
 
     /** 从 Cookie 中提取用于展示的账号标识（邮箱前缀或用户 ID）。 */
     fun extractDisplayEmail(): String

@@ -1,6 +1,6 @@
 package app.amisles.hanime.data.subscription
 
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SiteSettings
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.repository.ContentRepository
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +14,8 @@ import kotlinx.coroutines.withContext
  * 只需要 id。
  */
 class SubscriptionUpdateChecker(
-    private val repository: ContentRepository
+    private val repository: ContentRepository,
+    private val settings: SiteSettings
 ) {
 
     /** 拉取订阅页并返回新出现的视频（按页面顺序）。首次运行只记录基线，不报更新。 */
@@ -23,7 +24,7 @@ class SubscriptionUpdateChecker(
         val currentIds = page.videos.map { it.id }.toSet()
         if (currentIds.isEmpty()) return@withContext emptyList()
 
-        val known = Preferences.subscriptionSeenVideoIds
+        val known = settings.subscriptionSeenVideoIds
         val isFirstRun = known.isEmpty()
         val fresh = if (isFirstRun) {
             emptyList()
@@ -33,7 +34,7 @@ class SubscriptionUpdateChecker(
         // 快照取并集而非直接覆盖：站点分页只返回最近若干条，覆盖会丢掉更早的记录，
         // 下一轮又把它们当成新片重复通知。
         val merged = (known + currentIds).toList().takeLast(MAX_TRACKED_IDS).toSet()
-        Preferences.setSubscriptionSeenVideoIds(merged)
+        settings.setSubscriptionSeenVideoIds(merged)
         fresh
     }
 

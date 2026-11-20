@@ -1,7 +1,9 @@
 package app.amisles.hanime.data.repository
 
+import app.amisles.hanime.domain.repository.PlayerSettings
+import app.amisles.hanime.domain.repository.SessionRepository
+
 import app.amisles.hanime.data.cache.VideoDetailStore
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
@@ -41,7 +43,9 @@ class ContentRepositoryImpl @Inject constructor(
     private val searchPageParser: SearchPageParser,
     private val watchPageParser: WatchPageParser,
     private val downloadPageParser: DownloadPageParser,
-    private val videoDetailStore: VideoDetailStore
+    private val videoDetailStore: VideoDetailStore,
+    private val session: SessionRepository,
+    private val playerSettings: PlayerSettings
 ) : ContentRepository {
 
     override suspend fun isChallengePassed(): Boolean =
@@ -126,7 +130,7 @@ class ContentRepositoryImpl @Inject constructor(
                 videoDetailStore.put(
                     videoDetailCacheKey(videoUrl),
                     detail,
-                    Preferences.videoDetailCacheLimit
+                    playerSettings.videoDetailCacheLimit
                 )
             }
             AppResult.success(detail)
@@ -187,7 +191,7 @@ class ContentRepositoryImpl @Inject constructor(
                     if (merged != cached) emit(VideoDetailEvent.MainInfo(merged))
                 }
                 // 新直链只落盘：界面上的播放器仍在用缓存里的直链，换成新签名会让它重载并回到片头
-                videoDetailStore.put(cacheKey, fresh, Preferences.videoDetailCacheLimit)
+                videoDetailStore.put(cacheKey, fresh, playerSettings.videoDetailCacheLimit)
             }
         } catch (e: CancellationException) {
             throw e
@@ -201,7 +205,7 @@ class ContentRepositoryImpl @Inject constructor(
     // 解析结果带 csrfToken / 当前用户 ID / 订阅态，按登录用户分区，换账号后不得复用
     private fun videoDetailCacheKey(videoUrl: String): String {
         val videoId = extractVideoId(videoUrl).ifEmpty { videoUrl }
-        return Preferences.savedUserId + "|" + videoId
+        return session.savedUserId + "|" + videoId
     }
 
 

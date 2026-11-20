@@ -79,4 +79,10 @@ sealed class BackupError : Exception() {
 
     /** 校验和不匹配：文件在传输或存储中损坏，导入会写入残缺数据。 */
     data object ChecksumMismatch : BackupError()
+
+    /** 某一条目存在但无法完整解析；导入必须整包拒绝，不能静默丢弃条目。 */
+    data class InvalidEntry(val entry: String, val detail: String) : BackupError()
+
+    /** 界面配置无法解析或无法落盘。 */
+    data object UiConfigRejected : BackupError()
 }

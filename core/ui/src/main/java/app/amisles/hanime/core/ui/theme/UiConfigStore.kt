@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** 界面配置的落盘结果；FAILED 表示内存已更新但重启后会回滚。 */
+enum class UiConfigWriteState { IDLE, PERSISTED, FAILED }
+
 object UiConfigStore {
 
     private const val NAME = "hanime_ui_config"
@@ -82,6 +85,9 @@ object UiConfigStore {
     val config: StateFlow<UiConfig> = _config.asStateFlow()
 
     private val _homeSections = MutableStateFlow(HomeSectionConfig.Default)
+
+    private val _writeState = MutableStateFlow(UiConfigWriteState.IDLE)
+    val writeState: StateFlow<UiConfigWriteState> = _writeState.asStateFlow()
     val homeSections: StateFlow<HomeSectionConfig> = _homeSections.asStateFlow()
 
     // 滑杆「预览改内存、提交补落盘」的脏标记：拖动期间 updatePreviewOnly 只改内存，
@@ -163,6 +169,13 @@ object UiConfigStore {
     /** 导出当前完整配置为可分享文本。 */
     fun exportToText(): String = UiConfigCodec.export(_config.value, _homeSections.value)
 
+    /** 同步导入配置；返回是否解析并成功落盘。备份恢复必须用这个入口。 */
+    fun importFromTextSync(raw: String): Boolean {
+        val result = UiConfigCodec.decode(raw)
+        if (result !is UiConfigImport.Success) return false
+        return applyImported(result.config, result.homeSections)
+    }
+
     /** 导入配置；仅在解析成功时落盘，失败不改变现状。 */
     fun importFromText(raw: String): UiConfigImport {
         val result = UiConfigCodec.decode(raw)
@@ -176,10 +189,43 @@ object UiConfigStore {
     /** 把一次写盘提交到串行写线程；异常只记录，不影响内存态（内存态已先行更新，UI 保持一致）。 */
     private fun persistAsync(block: () -> Unit) {
         writeExecutor.execute {
-            runCatching(block).onFailure { e ->
+            runCatching(block).onSuccess {
+                _writeState.value = UiConfigWriteState.PERSISTED
+            }.onFailure { e ->
+                _writeState.value = UiConfigWriteState.FAILED
                 android.util.Log.w("UiConfigStore", "界面配置落盘失败", e)
             }
         }
+    }
+
+    /**
+     * 同步应用导入的配置并返回真实落盘结果。
+     *
+     * 备份恢复需要「失败即不改变现状」的语义，不能只排进异步写队列后立刻返回成功。
+     */
+    fun applyImported(config: UiConfig, sections: HomeSectionConfig): Boolean {
+        val safeConfig = config.sanitized()
+        val safeSections = sections.sanitized()
+        val written = runCatching {
+            write(safeConfig)
+            writeHomeSections(safeSections)
+            val editor = sp.edit()
+            editor.putInt(KEY_VERSION, CURRENT_VERSION)
+            editor.commit()
+        }.getOrElse { e ->
+            android.util.Log.w("UiConfigStore", "界面配置导入落盘失败", e)
+            false
+        }
+        if (!written) {
+            _writeState.value = UiConfigWriteState.FAILED
+            return false
+        }
+        _config.value = safeConfig
+        _homeSections.value = safeSections
+        configPreviewDirty = false
+        homeSectionsPreviewDirty = false
+        _writeState.value = UiConfigWriteState.PERSISTED
+        return true
     }
 
     private fun read(): UiConfig {

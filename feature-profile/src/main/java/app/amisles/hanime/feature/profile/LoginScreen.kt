@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.profile
 
+import app.amisles.hanime.core.ui.util.AppSnackbar
+
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -121,11 +123,14 @@ fun LoginScreen(
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     val isLoginSupported by appPrefs.loginSupportedFlow.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
     LaunchedEffect(uiState) {
-        if (uiState is LoginViewModel.UiState.Success) {
-            vm.reset()
-            onLoginSuccess()
+        val state = uiState as? LoginViewModel.UiState.Success ?: return@LaunchedEffect
+        if (state.memoryOnly) {
+            AppSnackbar.show(context.getString(R.string.login_memory_only))
         }
+        vm.reset()
+        onLoginSuccess()
     }
 
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }

@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
 import app.amisles.hanime.domain.remote.CloudflareChallenge
+import app.amisles.hanime.domain.repository.PersistenceHealth
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
 import app.amisles.hanime.domain.preferences.ThemeMode
@@ -62,14 +63,15 @@ sealed class SettingsUiEvent {
 }
 
 /**
- * 设置页 ViewModel：封装所有 Preferences 读写，UI 层不再直接操作 Preferences。
+ * 设置页 ViewModel：封装设置读写，并把落盘失败如实反馈给界面。
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val app: Application,
     private val settings: SettingsRepository,
     private val session: SessionRepository,
-    private val videoDetailCache: VideoDetailCacheRepository
+    private val videoDetailCache: VideoDetailCacheRepository,
+    private val persistenceHealth: PersistenceHealth
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -77,6 +79,14 @@ class SettingsViewModel @Inject constructor(
         extraBufferCapacity = 4
     )
     val events: SharedFlow<SettingsUiEvent> = _events.asSharedFlow()
+
+    init {
+        viewModelScope.launch {
+            persistenceHealth.writeFailed.collect { failed ->
+                if (failed) _events.emit(SettingsUiEvent.Toast(R.string.local_save_failed))
+            }
+        }
+    }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settings.appLanguageFlow,

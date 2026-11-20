@@ -8,6 +8,9 @@ package app.amisles.hanime.domain.preferences
  */
 interface UiHintStore {
 
+    val onboardingDone: Boolean
+    fun markOnboardingDone()
+
     val playerGestureIntroShown: Boolean
     fun markPlayerGestureIntroShown()
 

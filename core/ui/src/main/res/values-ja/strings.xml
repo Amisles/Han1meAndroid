@@ -1266,4 +1266,5 @@
     <string name="playlist_create_failed">プレイリストの作成に失敗しました</string>
     <string name="playlist_response_invalid">サイトが返したプレイリスト情報を読み取れませんでした</string>
     <string name="error_author_parse_failed">作者ページを読み取れませんでした</string>
+    <string name="login_memory_only">ログインしましたが、認証情報を安全に保存できませんでした。アプリ再起動後に再ログインが必要です。</string>
 </resources>

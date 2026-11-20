@@ -31,7 +31,8 @@ import kotlinx.coroutines.launch
 class DownloadManager @Inject constructor(
     @ApplicationContext context: Context,
     private val downloadDao: DownloadDao,
-    settings: DownloadSettings
+    settings: DownloadSettings,
+    site: app.amisles.hanime.domain.repository.SiteSettings
 ) : DownloadRepository {
 
     private val scopeJob = SupervisorJob()
@@ -44,7 +45,15 @@ class DownloadManager @Inject constructor(
     private val calls = DownloadCallTracker()
     private val resolver = DownloadResumeResolver(context)
     private val budget = DownloadConcurrencyBudget(settings.maxDownloadConcurrent)
-    private val host = DefaultDownloadTransferHost(context, store, calls, updater, resolver, budget)
+    private val host = DefaultDownloadTransferHost(
+        context,
+        store,
+        calls,
+        updater,
+        resolver,
+        budget,
+        app.amisles.hanime.data.remote.VideoAntiHotlinkProvider(site)
+    )
     private val gate = DownloadGateController(context, settings, scope)
     private val maintenance = DownloadStorageMaintenance(context, store, persistence, settings)
     private val scheduler = DownloadQueueScheduler(

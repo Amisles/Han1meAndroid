@@ -1,5 +1,7 @@
 package app.amisles.hanime.feature.settings
 
+import androidx.compose.runtime.LaunchedEffect
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,6 +58,7 @@ import app.amisles.hanime.core.ui.theme.UiConfig
 import app.amisles.hanime.core.ui.theme.UiConfigCodec
 import app.amisles.hanime.core.ui.theme.UiConfigImport
 import app.amisles.hanime.core.ui.theme.UiConfigStore
+import app.amisles.hanime.core.ui.theme.UiConfigWriteState
 import app.amisles.hanime.core.ui.theme.UiPreset
 import app.amisles.hanime.core.ui.theme.currentWindowSizeInfo
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -85,7 +88,14 @@ fun CustomizeScreen(
     val wide = sizeInfo.isTablet || sizeInfo.widthDp >= 720
     val appliedConfig by UiConfigStore.config.collectAsStateWithLifecycle()
     val appliedSections by UiConfigStore.homeSections.collectAsStateWithLifecycle()
+    val writeState by UiConfigStore.writeState.collectAsStateWithLifecycle()
     val relatedLayout by appPrefs.relatedLayoutModeFlow.collectAsStateWithLifecycle()
+
+    LaunchedEffect(writeState) {
+        if (writeState == UiConfigWriteState.FAILED) {
+            AppSnackbar.show(context.getString(R.string.local_save_failed))
+        }
+    }
 
     val draft = rememberCustomizeDraft(appliedConfig, appliedSections, relatedLayout)
     var previewHeight by remember { mutableStateOf(0.dp) }

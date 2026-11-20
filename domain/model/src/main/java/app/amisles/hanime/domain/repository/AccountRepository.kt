@@ -5,6 +5,7 @@ import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.SubscribeResult
 import app.amisles.hanime.domain.result.AppResult
+import app.amisles.hanime.domain.result.SessionSaveResult
 import app.amisles.hanime.domain.result.WebLoginVerification
 
 /**
@@ -16,7 +17,7 @@ import app.amisles.hanime.domain.result.WebLoginVerification
  */
 interface AccountRepository {
     // ── 登录态 ──────────────────────────────────────────────────────────────
-    suspend fun login(email: String, password: String): AppResult<String>
+    suspend fun login(email: String, password: String): AppResult<SessionSaveResult>
 
     /**
      * 校验一份刚拿到的会话 Cookie 是否真的登录成功。
@@ -37,7 +38,10 @@ interface AccountRepository {
         cookieString: String,
         sourceDomain: String? = null,
         userId: String? = null
-    ): Boolean
+    ): SessionSaveResult
+
+    /** 清除全部会话凭据、CookieJar 与 WebView Cookie。 */
+    suspend fun logout()
 
     // ── 账户资料 ────────────────────────────────────────────────────────────
     suspend fun getAccountProfile(): AppResult<AccountProfile>

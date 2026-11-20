@@ -74,7 +74,7 @@ object LocaleHelper {
         }
     }
 
-    // 与 Preferences 保持一致的常量，避免循环依赖
+    // 与 SettingsRepository 保持一致的常量，避免循环依赖
     private const val LANGUAGE_ZH_CN = "zh-CN"
     private const val LANGUAGE_ZH_TW = "zh-TW"
     private const val LANGUAGE_EN = "en"

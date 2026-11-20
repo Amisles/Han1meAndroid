@@ -1,6 +1,9 @@
 package app.amisles.hanime.data.remote
 
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.repository.SiteSettings
+import javax.inject.Inject
+import javax.inject.Singleton
 import app.amisles.hanime.domain.model.SiteProbeResult
 import java.io.IOException
 import java.net.InetAddress
@@ -29,7 +32,11 @@ typealias DiagnosticResult = app.amisles.hanime.domain.model.DiagnosticResult
  * 站点可用性诊断器：检测 DNS、连接、证书、镜像 GATE、登录 cookie 有效性等常见问题。
  * 所有检测在 IO 线程执行，按 DNS → 连接 → SSL → 镜像状态 → 登录状态的顺序返回 [DiagnosticResult]。
  */
-class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepository {
+@Singleton
+class NetworkDiagnostics @Inject constructor(
+    private val site: SiteSettings,
+    private val session: SessionRepository
+) : app.amisles.hanime.domain.repository.DiagnosticsRepository {
 
     private val uaString =
         "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36"
@@ -49,7 +56,7 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
     /** 运行全部诊断项，返回按检测顺序排列的结果列表。 */
     override suspend fun runAll(): List<DiagnosticResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<DiagnosticResult>()
-        val baseUrl = Preferences.baseUrl
+        val baseUrl = site.baseUrl
         val host = runCatching { URL(baseUrl).host }.getOrNull() ?: ""
 
         // 1. DNS 解析
@@ -371,7 +378,7 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
      * 停留在 /login 说明登录已失效。未登录时跳过此检测。
      */
     private fun checkLoginStatus(): DiagnosticResult {
-        if (!Preferences.isAlreadyLogin) {
+        if (!session.isLoggedIn) {
             return DiagnosticResult(
                 type = DiagnosticType.LOGIN_STATUS,
                 status = DiagnosticStatus.SKIPPED,
@@ -379,9 +386,9 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
                 detail = "当前未登录，跳过登录检测"
             )
         }
-        val baseUrl = Preferences.baseUrl
+        val baseUrl = site.baseUrl
         val loginUrl = baseUrl.trimEnd('/') + "/login"
-        val sessionHost = Preferences.loginCookieDomain
+        val sessionHost = session.loginCookieDomain
         val baseHost = runCatching { URL(baseUrl).host.orEmpty().lowercase() }.getOrDefault("")
         if (sessionHost.isBlank() || baseHost != sessionHost) {
             return DiagnosticResult(
@@ -399,7 +406,7 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
                 .url(loginUrl)
                 .get()
                 .header("User-Agent", uaString)
-                .header("Cookie", Preferences.loginCookie.raw)
+                .header("Cookie", session.loginCookie.raw)
                 .build()
             client.newCall(request).execute().use { response ->
                 val latency = System.currentTimeMillis() - start
@@ -480,12 +487,12 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
     )
 
     override suspend fun probeSite(): SiteProbeResult = withContext(Dispatchers.IO) {
-        if (probeHostOf(Preferences.baseUrl) == null) {
+        if (probeHostOf(site.baseUrl) == null) {
             return@withContext SiteProbeResult.Unreachable(SiteProbeResult.Reason.INVALID_URL)
         }
         val startedAt = System.currentTimeMillis()
         try {
-            probeCode(Preferences.baseUrl)
+            probeCode(site.baseUrl)
             SiteProbeResult.Reachable(System.currentTimeMillis() - startedAt)
         } catch (e: IOException) {
             SiteProbeResult.Unreachable(probeFailureReason(e))
@@ -493,9 +500,6 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
             SiteProbeResult.Unreachable(SiteProbeResult.Reason.INVALID_URL)
         }
     }
-
-    internal fun probeHostOf(baseUrl: String): String? =
-        runCatching { URL(baseUrl).host }.getOrNull()?.takeIf { it.isNotBlank() }
 
     private fun probeCode(baseUrl: String): Int =
         try {
@@ -513,9 +517,14 @@ class NetworkDiagnostics : app.amisles.hanime.domain.repository.DiagnosticsRepos
         return probeClient.newCall(request).execute().use { it.code }
     }
 
-    internal fun probeFailureReason(failure: IOException): SiteProbeResult.Reason = when (failure) {
-        is UnknownHostException -> SiteProbeResult.Reason.DNS
-        is SocketTimeoutException -> SiteProbeResult.Reason.TIMEOUT
-        else -> SiteProbeResult.Reason.IO
+    companion object {
+        internal fun probeHostOf(baseUrl: String): String? =
+            runCatching { URL(baseUrl).host }.getOrNull()?.takeIf { it.isNotBlank() }
+
+        internal fun probeFailureReason(failure: IOException): SiteProbeResult.Reason = when (failure) {
+            is UnknownHostException -> SiteProbeResult.Reason.DNS
+            is SocketTimeoutException -> SiteProbeResult.Reason.TIMEOUT
+            else -> SiteProbeResult.Reason.IO
+        }
     }
 }

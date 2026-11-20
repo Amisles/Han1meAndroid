@@ -11,7 +11,6 @@ import app.amisles.hanime.domain.model.BackupConflictPolicy
 import app.amisles.hanime.domain.model.BackupError
 import app.amisles.hanime.domain.model.BackupManifest
 import app.amisles.hanime.domain.repository.BackupRepository
-import app.amisles.hanime.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,8 +36,7 @@ sealed interface BackupMessage {
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     app: Application,
-    private val backup: BackupRepository,
-    private val settings: SettingsRepository
+    private val backup: BackupRepository
 ) : AndroidViewModel(app) {
 
     private val _isBusy = MutableStateFlow(false)
@@ -88,6 +86,7 @@ class BackupViewModel @Inject constructor(
         if (_isBusy.value) return
         _isBusy.value = true
         viewModelScope.launch {
+            val previousUiConfig = UiConfigStore.exportToText()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val bytes = readLimited(uri)
@@ -132,11 +131,16 @@ class BackupViewModel @Inject constructor(
         if (_isBusy.value) return
         _isBusy.value = true
         viewModelScope.launch {
+            val previousUiConfig = UiConfigStore.exportToText()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    val (contents, _) = backup.importBackup(current.bytes, policy)
-                    contents.uiConfigText?.let { UiConfigStore.importFromText(it) }
+                    backup.importBackup(current.bytes, policy) { raw ->
+                        UiConfigStore.importFromTextSync(raw)
+                    }
                 }
+            }.onFailure {
+                // 数据库事务已回滚，但界面配置由组合层写入：失败时恢复到导入前快照。
+                runCatching { UiConfigStore.importFromTextSync(previousUiConfig) }
             }
             _isBusy.value = false
             if (result.isSuccess) _pending.value = null
@@ -153,7 +157,8 @@ class BackupViewModel @Inject constructor(
     private fun messageFor(e: Throwable): Int = when (e) {
         is BackupError.WrongPackage -> R.string.backup_error_package
         is BackupError.UnsupportedSchema -> R.string.backup_error_schema
-        is BackupError.MissingManifest, is BackupError.NotASupportedArchive -> R.string.backup_error_format
+        is BackupError.MissingManifest, is BackupError.NotASupportedArchive,
+        is BackupError.InvalidEntry, is BackupError.UiConfigRejected -> R.string.backup_error_format
         is BackupError.ChecksumMismatch -> R.string.backup_error_checksum
         else -> R.string.backup_import_failed
     }

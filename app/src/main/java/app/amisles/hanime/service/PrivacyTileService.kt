@@ -5,7 +5,9 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import app.amisles.hanime.R as AppR
 import app.amisles.hanime.core.ui.R as CoreR
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.AppearanceSettings
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -16,7 +18,11 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /** 快捷设置磁贴：一键切换隐私模式（遮罩封面；息屏时暂停并遮住播放器）。 */
+@AndroidEntryPoint
 class PrivacyTileService : TileService() {
+
+    @Inject
+    lateinit var appearance: AppearanceSettings
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -25,7 +31,7 @@ class PrivacyTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         observeJob?.cancel()
-        observeJob = Preferences.privacyModeFlow
+        observeJob = appearance.privacyModeFlow
             .onEach { enabled -> renderTile(enabled) }
             .launchIn(scope)
     }
@@ -37,9 +43,9 @@ class PrivacyTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        val next = !Preferences.privacyMode
+        val next = !appearance.privacyMode
         renderTile(next)
-        ioScope.launch { Preferences.setPrivacyMode(next) }
+        ioScope.launch { appearance.setPrivacyMode(next) }
     }
 
     override fun onDestroy() {

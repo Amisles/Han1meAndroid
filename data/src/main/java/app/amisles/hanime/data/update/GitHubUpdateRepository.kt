@@ -1,9 +1,10 @@
 package app.amisles.hanime.data.update
 
+import app.amisles.hanime.domain.repository.UpdateSettings
+
 import android.content.Context
 import android.content.pm.PackageManager
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.data.preferences.Preferences
 import app.amisles.hanime.domain.model.ApkDownloadResult
 import app.amisles.hanime.domain.model.ApkFailureReason
 import app.amisles.hanime.domain.model.AppUpdate
@@ -48,7 +49,8 @@ import okhttp3.Request
  */
 @Singleton
 class GitHubUpdateRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val updateSettings: UpdateSettings
 ) : UpdateRepository {
 
     companion object {
@@ -118,14 +120,14 @@ class GitHubUpdateRepository @Inject constructor(
         }.getOrNull().orEmpty().ifBlank { "0" }
     }
 
-    override val skippedVersion: String get() = Preferences.skippedUpdateVersion
-    override val skippedVersionFlow: StateFlow<String> = Preferences.skippedUpdateVersionFlow
+    override val skippedVersion: String get() = updateSettings.skippedVersion
+    override val skippedVersionFlow: StateFlow<String> = updateSettings.skippedVersionFlow
 
-    override val autoCheckEnabled: Boolean get() = Preferences.autoCheckUpdateEnabled
-    override val autoCheckEnabledFlow: StateFlow<Boolean> = Preferences.autoCheckUpdateEnabledFlow
+    override val autoCheckEnabled: Boolean get() = updateSettings.autoCheckEnabled
+    override val autoCheckEnabledFlow: StateFlow<Boolean> = updateSettings.autoCheckEnabledFlow
 
     override fun setAutoCheckEnabled(enabled: Boolean) {
-        Preferences.setAutoCheckUpdateEnabled(enabled)
+        updateSettings.setAutoCheckEnabled(enabled)
     }
 
     override suspend fun downloadApk(
@@ -223,7 +225,7 @@ class GitHubUpdateRepository @Inject constructor(
     override fun skipVersion(versionName: String) {
         val clean = versionName.trim()
         if (clean.isEmpty()) return
-        Preferences.setSkippedUpdateVersion(clean)
+        updateSettings.setSkippedVersion(clean)
         // 跳过即意味着当前不应再提示这个版本，立刻从可观察状态里撤下
         if (_availableUpdate.value?.versionName == clean) {
             _availableUpdate.value = null
@@ -232,7 +234,7 @@ class GitHubUpdateRepository @Inject constructor(
     }
 
     override fun clearSkippedVersion() {
-        Preferences.setSkippedUpdateVersion("")
+        updateSettings.setSkippedVersion("")
         AppLogger.log(TAG, "已清除「不再提示」记录")
     }
 
@@ -273,7 +275,7 @@ class GitHubUpdateRepository @Inject constructor(
         _availableUpdate.value = when (result) {
             is UpdateCheckResult.Available -> {
                 val update = result.update
-                if (update.versionName == Preferences.skippedUpdateVersion) {
+                if (update.versionName == updateSettings.skippedVersion) {
                     AppLogger.log(TAG, "版本 ${update.versionName} 已被用户跳过，不再提示")
                     null
                 } else {

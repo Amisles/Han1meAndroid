@@ -1,7 +1,7 @@
 package app.amisles.hanime.data.download
 
 import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.data.remote.VideoAntiHotlink
+import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import app.amisles.hanime.domain.model.DownloadStatus
 import java.io.File
 import java.io.IOException
@@ -35,7 +35,7 @@ internal suspend fun DownloadTransferHost.probeSupportAndThroughputInternal(task
         val call = client.newCall(
             Request.Builder().url(url)
                 .header("User-Agent", DOWNLOAD_UA)
-                .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
+                .header(VideoAntiHotlink.HEADER_NAME, referer)
                 .header("Range", "bytes=0-${PROBE_WINDOW - 1}")
                 .get().build()
         )
@@ -135,7 +135,7 @@ private suspend fun DownloadTransferHost.downloadSingleConnectionAttempt(taskId:
     val requestBuilder = Request.Builder()
         .url(url)
         .header("User-Agent", DOWNLOAD_UA)
-        .header(VideoAntiHotlink.REFERER_HEADER, VideoAntiHotlink.referer)
+        .header(VideoAntiHotlink.HEADER_NAME, referer)
         .get()
 
     if (resumeBytes > 0) {

@@ -1,5 +1,7 @@
 package app.amisles.hanime.data.repository
 
+import android.webkit.CookieManager
+
 import app.amisles.hanime.data.cookie.HCookieJar
 import app.amisles.hanime.domain.remote.EntryPaths
 import app.amisles.hanime.data.remote.NetworkService
@@ -8,7 +10,8 @@ import app.amisles.hanime.data.parser.AccountProfileParser
 import app.amisles.hanime.data.parser.CommentParser
 import app.amisles.hanime.data.parser.LoginParser
 import app.amisles.hanime.data.parser.SubscribeParser
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.result.SessionSaveResult
 import app.amisles.hanime.domain.model.Comment
 import app.amisles.hanime.domain.model.Reply
 import app.amisles.hanime.domain.model.SubscribeResult
@@ -32,7 +35,9 @@ class AccountRepositoryImpl @Inject constructor(
     private val commentParser: CommentParser,
     private val subscribeParser: SubscribeParser,
     private val accountProfileParser: AccountProfileParser,
-    private val accountIdentityParser: AccountIdentityParser
+    private val accountIdentityParser: AccountIdentityParser,
+    private val session: SessionRepository,
+    private val cookieJar: HCookieJar
 ) : AccountRepository {
 
     override suspend fun getComments(videoId: String, page: Int): AppResult<List<Comment>> {
@@ -77,7 +82,7 @@ class AccountRepositoryImpl @Inject constructor(
         csrfToken: String
     ): AppResult<Pair<Comment, Int>> {
         return try {
-            val userId = Preferences.savedUserId.ifBlank {
+            val userId = session.savedUserId.ifBlank {
                 return AppResult.error(DomainError.COMMENT_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
@@ -118,7 +123,7 @@ class AccountRepositoryImpl @Inject constructor(
         csrfToken: String
     ): AppResult<Unit> {
         return try {
-            val userId = Preferences.savedUserId.ifBlank {
+            val userId = session.savedUserId.ifBlank {
                 return AppResult.error(DomainError.LIKE_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
@@ -154,7 +159,7 @@ class AccountRepositoryImpl @Inject constructor(
         csrfToken: String
     ): AppResult<Reply> {
         return try {
-            if (Preferences.savedUserId.isBlank()) {
+            if (session.savedUserId.isBlank()) {
                 return AppResult.error(DomainError.REPLY_LOGIN_REQUIRED)
             }
             if (csrfToken.isBlank()) {
@@ -229,15 +234,15 @@ class AccountRepositoryImpl @Inject constructor(
      * 入口提取 ID 并落盘，之后无需再抓。
      */
     private suspend fun ensureUserId(): String {
-        val cached = Preferences.savedUserId
+        val cached = session.savedUserId
         if (cached.isNotBlank()) return cached
-        if (!Preferences.isActiveLogin) return ""
+        if (!session.isActiveLogin) return ""
         val html = runCatching { networkService.fetchHomePageWithBaseUrl().html }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
             ?: return ""
         val userId = accountIdentityParser.parseCurrentUserId(html) ?: return ""
-        Preferences.saveUserId(userId)
+        session.saveUserId(userId)
         return userId
     }
 
@@ -255,7 +260,7 @@ class AccountRepositoryImpl @Inject constructor(
             AppLogger.log("AccountRepositoryImpl", "Account edit page HTML length: ${result.html.length}")
             val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
                 ?: return AppResult.error(DomainError.SESSION_EXPIRED)
-            Preferences.saveUserName(profile.name)
+            session.saveUserName(profile.name)
             AppResult.success(profile)
         } catch (e: CancellationException) {
             throw e
@@ -267,7 +272,7 @@ class AccountRepositoryImpl @Inject constructor(
 
 
     override suspend fun refreshAccountName(): Boolean =
-        getAccountProfile() is AppResult.Success && Preferences.savedUserName.isNotBlank()
+        getAccountProfile() is AppResult.Success && session.savedUserName.isNotBlank()
 
 
     /**
@@ -294,7 +299,7 @@ class AccountRepositoryImpl @Inject constructor(
                 email = email
             )
             if (code in 300..399) {
-                Preferences.saveUserName(name)
+                session.saveUserName(name)
                 AppResult.success(Unit)
             } else {
                 AppResult.error(DomainError.ACCOUNT_UPDATE_FAILED)
@@ -308,7 +313,7 @@ class AccountRepositoryImpl @Inject constructor(
     }
 
 
-    override suspend fun login(email: String, password: String): AppResult<String> {
+    override suspend fun login(email: String, password: String): AppResult<SessionSaveResult> {
         return runCatching {
             val page = try {
                 networkService.fetchLoginPageWithBaseUrl()
@@ -351,7 +356,7 @@ class AccountRepositoryImpl @Inject constructor(
             // 优先存这次响应下发的会话：CookieJar 里可能还留着上一个账号的 remember 令牌，
             // 混进来会让站点认出旧身份。响应没带会话时（会话在 GET /login 时就已下发）才回落到 CookieJar。
             val sessionCookie = responseCookie.takeIf(::containsSession)
-                ?: sourceDomain?.let { HCookieJar.cookieHeaderFor(it) }.orEmpty()
+                ?: sourceDomain?.let { cookieJar.cookieHeaderFor(it) }.orEmpty()
                     .ifBlank { responseCookie }
             val isRedirect = result.code in 300..399
             val hasSession = containsSession(sessionCookie)
@@ -375,10 +380,10 @@ class AccountRepositoryImpl @Inject constructor(
             }
             // 站点认不认这份会话才是登录成功的唯一判据：只凭 302 + Set-Cookie 落盘，
             // 界面会显示已登录，而所有需要身份的功能都返回失败（游客会话被当成了登录态）。
-            when (val verification = verifyWebLogin(sessionCookie, sourceDomain)) {
+            val saved = when (val verification = verifyWebLogin(sessionCookie, sourceDomain)) {
                 is WebLoginVerification.Verified ->
                     // 会话与「实际提交登录的站点」绑定：之后即使用户把 baseUrl 改成镜像站，也不会跨域注入
-                    Preferences.saveLogin(sessionCookie, verification.userId, sourceDomain)
+                    session.saveLogin(sessionCookie, verification.userId, sourceDomain)
 
                 WebLoginVerification.NotLoggedIn ->
                     throw AppException(DomainError.LOGIN_REJECTED)
@@ -386,7 +391,7 @@ class AccountRepositoryImpl @Inject constructor(
                 WebLoginVerification.Inconclusive ->
                     throw AppException(DomainError.LOGIN_VERIFY_INCONCLUSIVE)
             }
-            sessionCookie
+            saved
         }.fold(
             onSuccess = { AppResult.success(it) },
             onFailure = { e ->
@@ -440,15 +445,23 @@ class AccountRepositoryImpl @Inject constructor(
         cookieString: String,
         sourceDomain: String?,
         userId: String?
-    ): Boolean {
+    ): SessionSaveResult {
         val safe = cookieString.trim().removePrefix("Cookie:").trim()
-        if (safe.isBlank()) return false
+        if (safe.isBlank()) return SessionSaveResult.FAILED
         // sourceDomain：WebView 登录时传入实际登录站点的 host；手填 Cookie 时为空（回落到当前 baseUrl）
-        Preferences.saveLogin(
+        return session.saveLogin(
             safe,
             userId = userId?.takeIf { it.isNotBlank() },
             sourceDomain = sourceDomain
         )
-        return true
+    }
+
+    override suspend fun logout() {
+        session.clearSession()
+        cookieJar.clearAll()
+        runCatching {
+            CookieManager.getInstance().removeAllCookies(null)
+            CookieManager.getInstance().flush()
+        }
     }
 }

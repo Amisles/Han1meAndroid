@@ -5,7 +5,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.data.preferences.Preferences
+import app.amisles.hanime.domain.repository.SiteSettings
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import android.widget.Toast
 
 /**
@@ -14,7 +16,11 @@ import android.widget.Toast
  * 只认 /watch?v= 形式的视频地址；作者、播放列表等页面仍从应用内浏览。解析失败时
  * 只提示「链接无法识别」并普通启动首页（不携带解析文本），不打断进入应用的路径。
  */
+@AndroidEntryPoint
 class ShareReceiverActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var site: SiteSettings
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,28 +61,26 @@ class ShareReceiverActivity : ComponentActivity() {
         return null
     }
 
+    /** 从任意文本中找出首个 /watch?v= 链接（容忍被聊天工具截断或附加了多余文案）。 */
+    private fun extractWatchUrl(text: String): String? {
+        val match = WATCH_URL_REGEX.find(text) ?: return null
+        val host = match.groupValues[1]
+        if (!isAllowedHost(host)) return null
+        return "https://" + host + match.groupValues[2] + match.groupValues[3]
+    }
+
+    private fun isAllowedHost(host: String): Boolean {
+        val lower = host.lowercase()
+        if (OFFICIAL_HOSTS.any { lower == it || lower.endsWith("." + it) }) return true
+        return lower == currentBaseHost()
+    }
+
+    private fun currentBaseHost(): String =
+        runCatching { Uri.parse(site.baseUrl).host?.lowercase() }.getOrNull().orEmpty()
+
     companion object {
         private const val DEEP_LINK_SCHEME = "hanime"
-
         private val OFFICIAL_HOSTS = listOf("hanime1.me", "hanimeone.me")
-
-        /** 从任意文本中找出首个 /watch?v= 链接（容忍被聊天工具截断或附加了多余文案）。 */
-        fun extractWatchUrl(text: String): String? {
-            val match = WATCH_URL_REGEX.find(text) ?: return null
-            val host = match.groupValues[1]
-            if (!isAllowedHost(host)) return null
-            return "https://" + host + match.groupValues[2] + match.groupValues[3]
-        }
-
-        private fun isAllowedHost(host: String): Boolean {
-            val lower = host.lowercase()
-            if (OFFICIAL_HOSTS.any { lower == it || lower.endsWith("." + it) }) return true
-            return lower == currentBaseHost()
-        }
-
-        private fun currentBaseHost(): String =
-            runCatching { Uri.parse(Preferences.baseUrl).host?.lowercase() }.getOrNull().orEmpty()
-
         private val WATCH_URL_REGEX = Regex(
             pattern = """https?://([A-Za-z0-9.-]+?)(/watch\?v=\d+)([^\s<>'"\\]*)""",
             options = setOf(RegexOption.IGNORE_CASE)
