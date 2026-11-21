@@ -82,6 +82,7 @@ object ErrorMapper {
             DomainError.COMMENT_POST_FAILED -> R.string.comment_post_failed
             DomainError.COMMENT_LIKE_FAILED -> R.string.comment_like_failed
             DomainError.COMMENT_REPLY_FAILED -> R.string.comment_reply_failed
+            DomainError.PLAYLIST_PARSE_FAILED -> R.string.playlist_response_invalid
             DomainError.PLAYLIST_SAVE_FAILED -> R.string.playlist_save_failed
             DomainError.PLAYLIST_CREATE_FAILED -> R.string.playlist_create_failed
             DomainError.PLAYLIST_RESPONSE_INVALID -> R.string.playlist_response_invalid

@@ -28,6 +28,7 @@ import app.amisles.hanime.domain.model.UserVideoListResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.domain.result.AppException
 import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.result.DomainError
 import kotlinx.coroutines.CancellationException
@@ -239,40 +240,62 @@ class ContentRepositoryImpl @Inject constructor(
         .catch { e -> emit(AuthorPageDataEvent.Error(e.message.orEmpty(), e)) }
 
 
-    override suspend fun getVideoListPage(url: String): List<HanimeVideo> {
-        val result = siteApi.fetchVideoListPage(url)
-        return authorPageParser.parseVideoListPage(result.html, url)
-    }
+    override suspend fun getVideoListPage(url: String): AppResult<List<HanimeVideo>> =
+        loadResult("getVideoListPage") {
+            val result = siteApi.fetchVideoListPage(url)
+            authorPageParser.parseVideoListPage(result.html, url)
+        }
 
 
-    override suspend fun getPlaylistListPage(url: String): List<PlaylistSummary> {
-        val result = siteApi.fetchPlaylistListPage(url)
-        return playlistParser.parseListPage(result.html, url)
-    }
+    override suspend fun getPlaylistListPage(url: String): AppResult<List<PlaylistSummary>> =
+        loadResult("getPlaylistListPage") {
+            val result = siteApi.fetchPlaylistListPage(url)
+            playlistParser.parseListPage(result.html, url)
+        }
 
 
-    override suspend fun getPlaylistDetail(url: String): PlaylistDetail? {
-        val result = siteApi.fetchPlaylistDetailPage(url)
-        return playlistParser.parseDetailPage(result.html, url)
-    }
+    override suspend fun getPlaylistDetail(url: String): AppResult<PlaylistDetail> =
+        loadResult("getPlaylistDetail") {
+            val result = siteApi.fetchPlaylistDetailPage(url)
+            playlistParser.parseDetailPage(result.html, url)
+                ?: throw AppException(DomainError.PLAYLIST_PARSE_FAILED)
+        }
 
 
-    override suspend fun getWatchLaterPage(url: String): List<HanimeVideo> {
-        val result = siteApi.fetchWatchLaterPage(url)
-        return watchLaterPageParser.parse(result.html, url)
-    }
+    override suspend fun getWatchLaterPage(url: String): AppResult<List<HanimeVideo>> =
+        loadResult("getWatchLaterPage") {
+            val result = siteApi.fetchWatchLaterPage(url)
+            watchLaterPageParser.parse(result.html, url)
+        }
 
 
-    override suspend fun getSubscriptionsPage(query: String): SubscriptionsContent {
-        val result = siteApi.fetchSubscriptionsPage(query)
-        return subscriptionsParser.parse(result.html, result.baseUrl)
-    }
+    override suspend fun getSubscriptionsPage(query: String): AppResult<SubscriptionsContent> =
+        loadResult("getSubscriptionsPage") {
+            val result = siteApi.fetchSubscriptionsPage(query)
+            subscriptionsParser.parse(result.html, result.baseUrl)
+        }
 
 
-    override suspend fun getUserVideoList(authorId: String, page: Int): UserVideoListResult? {
+    override suspend fun getUserVideoList(
+        authorId: String,
+        page: Int
+    ): AppResult<UserVideoListResult> = loadResult("getUserVideoList") {
         val result = siteApi.fetchUserVideoListPage(authorId, page)
-        return authorPageParser.parseUserVideoList(result.html, result.baseUrl)
+        authorPageParser.parseUserVideoList(result.html, result.baseUrl)
     }
+
+    private suspend fun <T> loadResult(tag: String, block: suspend () -> T): AppResult<T> =
+        try {
+            AppResult.success(block())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: AppException) {
+            AppLogger.logError("ContentRepositoryImpl", "Error in $tag: ${e.message}", e)
+            AppResult.Error(e.message.orEmpty(), e, e.code)
+        } catch (e: Exception) {
+            AppLogger.logError("ContentRepositoryImpl", "Error in $tag: ${e.message}", e)
+            AppResult.error(e.message.orEmpty(), e)
+        }
 }
 
 /**

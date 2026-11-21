@@ -3,16 +3,19 @@ package app.amisles.hanime.feature.download
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.core.common.paging.Paged
+import app.amisles.hanime.core.common.paging.Pager
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.BatchVideoItem
+import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
@@ -69,9 +72,33 @@ class BatchDownloadViewModel @Inject constructor(
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages: Flow<String> = _messages.receiveAsFlow()
 
-    // 搜索世代：每次 searchAuthor 递增，进行中的 loadMore 据此识别自己是否已被新一轮搜索取代
-    private var searchGeneration = 0
-    private var searchJob: Job? = null
+    private var requestedAuthorId = ""
+    private var loadMoreRequested = false
+
+    private val pager = Pager(
+        scope = viewModelScope,
+        fetch = { page ->
+            withContext(Dispatchers.IO) {
+                content.getUserVideoList(requestedAuthorId, page)
+            }.map { result ->
+                Paged(
+                    items = result.videos,
+                    hasNextPage = result.hasNextPage,
+                    currentPage = result.currentPage,
+                    totalPages = result.totalPages,
+                    meta = mapOf(
+                        "authorName" to result.authorName,
+                        "authorId" to result.authorId
+                    )
+                )
+            }
+        },
+        describeError = { throwable ->
+            ErrorMapper.message(context, throwable, context.getString(R.string.common_load_failed))
+        },
+        onFailure = { throwable -> handlePageFailure(throwable) },
+        onPage = { page -> applyPage(page) }
+    )
 
     @Volatile
     private var batchInitInProgress = false
@@ -113,151 +140,78 @@ class BatchDownloadViewModel @Inject constructor(
             _state.update { it.copy(error = context.getString(R.string.batch_enter_author_id)) }
             return
         }
-
-        // 新一轮搜索：递增世代，让进行中的 loadMore 结果失效；同时清掉它的加载态
-        val generation = ++searchGeneration
-        searchJob?.cancel()
-
-        searchJob = viewModelScope.launch {
-            _state.update { current ->
-                if (searchGeneration != generation) current else current.copy(
-                    isSearching = true,
-                    isLoadMore = false,
-                    error = null,
-                    videos = emptyList(),
-                    authorName = "",
-                    authorId = "",
-                    selectedCount = 0,
-                    downloadingVideoIds = emptySet(),
-                    isDownloading = false
-                )
-            }
-
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    content.getUserVideoList(authorId, page = 1)
-                }
-
-                if (searchGeneration != generation) return@launch
-                if (result == null) {
-                    _state.update { it.copy(
-                        isSearching = false,
-                        error = context.getString(R.string.batch_search_failed)
-                    )}
-                    return@launch
-                }
-
-                if (result.videos.isEmpty()) {
-                    _state.update { it.copy(
-                        isSearching = false,
-                        error = context.getString(R.string.batch_no_author_videos)
-                    )}
-                    return@launch
-                }
-
-                val tasksByVideoId = downloads.tasks.value.indexTasksByVideoId()
-                val batchVideos = result.videos.toBatchVideos(tasksByVideoId)
-
-                _state.update { current ->
-                    if (searchGeneration != generation) current else current.copy(
-                        isSearching = false,
-                        authorName = result.authorName,
-                        authorId = result.authorId,
-                        videos = batchVideos,
-                        currentPage = result.currentPage,
-                        totalPages = result.totalPages,
-                        hasNextPage = result.hasNextPage,
-                        selectedCount = 0
-                    )
-                }
-
-            } catch (e: CancellationException) {
-                // 协程取消必须原样抛出，否则会被当作普通失败并把页面卡在错误态
-                throw e
-            } catch (e: Exception) {
-                if (searchGeneration != generation) return@launch
-                // 捕获宽泛异常：站点改版 / 解析等运行期异常若逃逸出 viewModelScope 会直接崩溃
-                AppLogger.e("BatchDownloadViewModel", "搜索失败: ${e.message}", e)
-                _state.update { it.copy(
-                    isSearching = false,
-                    error = context.getString(
-                        R.string.batch_search_failed_detail,
-                        ErrorMapper.message(context, e, context.getString(R.string.common_load_failed))
-                    )
-                )}
-            }
+        requestedAuthorId = authorId
+        loadMoreRequested = false
+        _state.update {
+            it.copy(
+                isSearching = true,
+                isLoadMore = false,
+                error = null,
+                videos = emptyList(),
+                authorName = "",
+                authorId = "",
+                hasNextPage = false,
+                selectedCount = 0,
+                downloadingVideoIds = emptySet(),
+                isDownloading = false
+            )
         }
+        pager.reload()
     }
 
     fun loadMore() {
-        val currentState = _state.value
-        if (!currentState.hasNextPage || currentState.isLoadMore) {
-            return
-        }
+        val current = _state.value
+        if (!current.hasNextPage || current.isLoadMore) return
+        loadMoreRequested = true
+        _state.update { it.copy(isLoadMore = true, error = null) }
+        pager.loadMore()
+    }
 
-        // 绑定发起时的搜索世代与作者：加载中若用户重新搜索，旧作者的下一页 / 失败信息须整批丢弃
-        val generation = searchGeneration
-        val requestAuthorId = currentState.authorId
-
-        viewModelScope.launch {
-            _state.update { current ->
-                if (searchGeneration != generation) current else current.copy(isLoadMore = true)
+    private fun applyPage(page: Paged<HanimeVideo>) {
+        val batchVideos = page.items.toBatchVideos(
+            downloads.tasks.value.indexTasksByVideoId()
+        )
+        _state.update { current ->
+            val firstPage = page.currentPage <= 1
+            val merged = if (firstPage) {
+                batchVideos
+            } else {
+                (current.videos + batchVideos).distinctBy { it.videoId }
             }
-
-            try {
-                val nextPage = currentState.currentPage + 1
-                val result = withContext(Dispatchers.IO) {
-                    content.getUserVideoList(requestAuthorId, page = nextPage)
+            current.copy(
+                isSearching = false,
+                isLoadMore = false,
+                authorName = page.meta["authorName"].orEmpty().ifEmpty { current.authorName },
+                authorId = page.meta["authorId"].orEmpty().ifEmpty { current.authorId },
+                videos = merged,
+                currentPage = page.currentPage.takeIf { it > 0 } ?: current.currentPage,
+                totalPages = page.totalPages,
+                hasNextPage = page.hasNextPage,
+                selectedCount = merged.count { it.isSelected },
+                error = when {
+                    page.items.isNotEmpty() -> current.error
+                    firstPage -> context.getString(R.string.batch_no_author_videos)
+                    else -> context.getString(R.string.batch_load_more_failed)
                 }
-
-                if (result != null) {
-                    val tasksByVideoId = downloads.tasks.value.indexTasksByVideoId()
-                    val newBatchVideos = result.videos.toBatchVideos(tasksByVideoId)
-
-                    _state.update { current ->
-                        if (searchGeneration != generation) {
-                            // 已被新一轮搜索取代：不追加、不改分页信息，isLoadMore 由新一轮搜索重置
-                            current
-                        } else {
-                            current.copy(
-                                isLoadMore = false,
-                                videos = (current.videos + newBatchVideos).distinctBy { v -> v.videoId },
-                                currentPage = result.currentPage,
-                                totalPages = result.totalPages,
-                                hasNextPage = result.hasNextPage
-                            )
-                        }
-                    }
-                } else {
-                    // 空结果也必须复位 isLoadMore，否则加载按钮停在 loading 态、分页彻底失效
-                    AppLogger.e("BatchDownloadViewModel", "加载更多失败: 第 $nextPage 页返回空结果")
-                    _state.update { current ->
-                        if (searchGeneration != generation) {
-                            current
-                        } else {
-                            current.copy(
-                                isLoadMore = false,
-                                error = context.getString(R.string.batch_load_more_failed)
-                            )
-                        }
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("BatchDownloadViewModel", "加载更多失败: ${e.message}", e)
-                _state.update { current ->
-                    if (searchGeneration != generation) {
-                        current
-                    } else {
-                        current.copy(
-                            isLoadMore = false,
-                            error = context.getString(R.string.batch_load_more_failed)
-                        )
-                    }
-                }
-            }
+            )
         }
+        loadMoreRequested = false
+    }
+
+    private fun handlePageFailure(throwable: Throwable?) {
+        AppLogger.e("BatchDownloadViewModel", "作者分页失败: ${throwable?.message}", throwable)
+        val message = if (loadMoreRequested) {
+            context.getString(R.string.batch_load_more_failed)
+        } else {
+            context.getString(
+                R.string.batch_search_failed_detail,
+                ErrorMapper.message(context, throwable, context.getString(R.string.common_load_failed))
+            )
+        }
+        _state.update {
+            it.copy(isSearching = false, isLoadMore = false, error = message)
+        }
+        loadMoreRequested = false
     }
 
     fun toggleVideoSelection(videoId: String) {

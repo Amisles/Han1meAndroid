@@ -133,4 +133,86 @@ class PagerTest {
         assertEquals(listOf(1), pager.items.value)
         assertEquals(1, pager.currentPage.value)
     }
+
+    @Test
+    fun `keepItemsOnReload keeps the previous page visible while refreshing`() = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        var first = true
+        val pager = Pager(
+            scope = scope(),
+            fetch = { page ->
+                if (first) {
+                    first = false
+                    AppResult.Success(Paged(listOf(1), true))
+                } else {
+                    gate.await()
+                    AppResult.Success(Paged(listOf(2), true))
+                }
+            },
+            describeError = { "错误" },
+            keepItemsOnReload = true
+        )
+
+        pager.reload()
+        pager.reload()
+
+        assertEquals(listOf(1), pager.items.value)
+        assertTrue(pager.isRefreshing.value)
+
+        gate.complete(Unit)
+        yield()
+
+        assertEquals(listOf(2), pager.items.value)
+        assertFalse(pager.isRefreshing.value)
+    }
+
+    @Test
+    fun `onPage exposes metadata and generation advances on reload`() = runBlocking {
+        var received: Map<String, String>? = null
+        val pager = Pager(
+            scope = scope(),
+            fetch = {
+                AppResult.Success(
+                    Paged(
+                        items = listOf(1),
+                        hasNextPage = false,
+                        currentPage = 1,
+                        totalPages = 3,
+                        meta = mapOf("authorName" to "alice")
+                    )
+                )
+            },
+            describeError = { "错误" },
+            onPage = { page -> received = page.meta }
+        )
+
+        pager.reload()
+
+        assertEquals(mapOf("authorName" to "alice"), received)
+        assertEquals(3, pager.totalPages.value)
+        assertEquals(1, pager.generation.value)
+    }
+
+    @Test
+    fun `loadMore failure records loadMoreError without dropping hasMore`() = runBlocking {
+        val pager = Pager(
+            scope = scope(),
+            fetch = { page ->
+                if (page == 1) {
+                    AppResult.Success(Paged(listOf(1), true))
+                } else {
+                    AppResult.Error("more", IllegalStateException("more"))
+                }
+            },
+            describeError = { throwable -> throwable?.message ?: "兜底" }
+        )
+
+        pager.reload()
+        pager.loadMore()
+
+        assertTrue(pager.loadMoreError.value)
+        assertTrue(pager.hasMore.value)
+        assertFalse(pager.isLoadingMore.value)
+        assertEquals("more", pager.error.value)
+    }
 }

@@ -10,6 +10,7 @@ import app.amisles.hanime.domain.model.PlaylistSummary
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SiteSettings
+import app.amisles.hanime.domain.result.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -71,15 +72,17 @@ class CloudFavoritesViewModel @Inject constructor(
             _error.value = null
             try {
                 val url = settings.baseUrl.trimEnd('/') + "/user/" + userId + "/playlists"
-                _playlists.value = content.getPlaylistListPage(url).distinctBy { it.playlistUrl }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _error.value = ErrorMapper.message(
-                    context,
-                    e,
-                    context.getString(R.string.common_load_failed)
-                )
+                when (val result = content.getPlaylistListPage(url)) {
+                    is AppResult.Success -> _playlists.value =
+                        result.data.distinctBy { it.playlistUrl }
+                    is AppResult.Error -> _error.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        result.code,
+                        context.getString(R.string.common_load_failed)
+                    )
+                    is AppResult.Loading -> Unit
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -97,15 +100,16 @@ class CloudFavoritesViewModel @Inject constructor(
             _watchLaterError.value = null
             try {
                 val url = settings.baseUrl.trimEnd('/') + "/user/" + userId + "/saves"
-                _watchLater.value = content.getWatchLaterPage(url)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _watchLaterError.value = ErrorMapper.message(
-                    context,
-                    e,
-                    context.getString(R.string.common_load_failed)
-                )
+                when (val result = content.getWatchLaterPage(url)) {
+                    is AppResult.Success -> _watchLater.value = result.data
+                    is AppResult.Error -> _watchLaterError.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        result.code,
+                        context.getString(R.string.common_load_failed)
+                    )
+                    is AppResult.Loading -> Unit
+                }
             } finally {
                 _watchLaterLoading.value = false
             }

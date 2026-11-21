@@ -3,28 +3,28 @@ package app.amisles.hanime.feature.search
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.core.common.paging.Paged
+import app.amisles.hanime.core.common.paging.Pager
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.core.ui.util.AppSnackbar
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.model.SearchFilterState
-import app.amisles.hanime.domain.repository.SearchFilterRepository
+import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.repository.SearchFilterRepository
 import app.amisles.hanime.domain.result.AppResult
-import app.amisles.hanime.core.common.util.AppLogger
-import app.amisles.hanime.core.ui.util.AppSnackbar
-import app.amisles.hanime.domain.remote.CloudflareChallengeException
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
 
 private data class SearchCriteria(
     val query: String,
@@ -66,13 +66,41 @@ class SearchViewModel @Inject constructor(
     private val _state = MutableStateFlow(SearchUiState())
     val state: StateFlow<SearchUiState> = _state.asStateFlow()
 
-    private var searchJob: Job? = null
-    private var loadMoreJob: Job? = null
-
-    // 请求世代号：新一轮搜索/加载更多会递增，使被取消的旧任务的 finally 不再触碰加载态。
-    // 旧任务取消是异步的，其 finally 可能在新任务已把 _state.isLoading 置 true 之后才执行。
-    private var searchEpoch = 0
-    private var loadMoreEpoch = 0
+    private val pager = Pager(
+        scope = viewModelScope,
+        fetch = { page ->
+            val criteria = _state.value.toCriteria()
+            withContext(Dispatchers.IO) {
+                content.searchVideosWithPagination(
+                    query = criteria.query,
+                    genre = criteria.genre,
+                    sort = criteria.sort,
+                    page = page,
+                    tags = criteria.tags,
+                    broad = criteria.broad,
+                    date = criteria.date,
+                    duration = criteria.duration
+                )
+            }.map { result ->
+                Paged(
+                    items = result.videos.distinctBy { it.id },
+                    hasNextPage = result.hasNextPage,
+                    currentPage = result.currentPage,
+                    totalPages = result.totalPages
+                )
+            }
+        },
+        describeError = { throwable ->
+            ErrorMapper.message(context, throwable, context.getString(R.string.common_load_failed))
+        },
+        merge = { previous, incoming -> (previous + incoming).distinctBy { it.id } },
+        onFailure = { throwable ->
+            _state.update {
+                it.copy(challengeHost = (throwable as? CloudflareChallengeException)?.host)
+            }
+        },
+        keepItemsOnReload = true
+    )
 
     init {
         restoreFilters()
@@ -85,8 +113,42 @@ class SearchViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 // 搜索历史读取失败（如数据库损坏）不应让搜索页崩溃；按「无历史」收口，避免一直停在未加载态
-                AppLogger.e("SearchViewModel", "读取搜索历史失败: ${e.message}", e)
                 _state.update { it.copy(searchHistory = emptyList()) }
+            }
+        }
+        viewModelScope.launch {
+            pager.items.collect { items -> _state.update { it.copy(videos = items) } }
+        }
+        viewModelScope.launch {
+            pager.isRefreshing.collect { loading -> _state.update { it.copy(isLoading = loading) } }
+        }
+        viewModelScope.launch {
+            pager.isLoadingMore.collect { loading -> _state.update { it.copy(isLoadingMore = loading) } }
+        }
+        viewModelScope.launch {
+            pager.hasMore.collect { more -> _state.update { it.copy(hasMore = more) } }
+        }
+        viewModelScope.launch {
+            pager.currentPage.collect { page ->
+                if (page > 0) _state.update { it.copy(currentPage = page) }
+            }
+        }
+        viewModelScope.launch {
+            pager.totalPages.collect { pages ->
+                if (pages > 0) _state.update { it.copy(totalPages = pages) }
+            }
+        }
+        viewModelScope.launch {
+            pager.error.collect { error -> _state.update { it.copy(error = error) } }
+        }
+        viewModelScope.launch {
+            pager.loadMoreError.collect { failed ->
+                _state.update { it.copy(loadMoreError = failed) }
+            }
+        }
+        viewModelScope.launch {
+            pager.generation.collect { generation ->
+                _state.update { it.copy(searchGeneration = generation) }
             }
         }
     }
@@ -258,188 +320,41 @@ class SearchViewModel @Inject constructor(
     private fun hasAnyCriteria(): Boolean = _state.value.toCriteria().hasAny
 
     fun resetSearch() {
-        _state.update {
-            it.copy(
-                currentPage = 1,
-                totalPages = 1,
-                hasMore = true,
-                error = null,
-                loadMoreError = false
-            )
-        }
         if (hasAnyCriteria()) {
-            // 保留上一次结果直到新结果返回，由界面在顶部显示细进度条，避免列表清空后闪成空 spinner
             executeSearch()
         } else {
-            _state.update { it.copy(videos = emptyList()) }
+            pager.clear()
+            _state.update {
+                it.copy(
+                    videos = emptyList(),
+                    isLoading = false,
+                    isLoadingMore = false,
+                    hasMore = true,
+                    currentPage = 1,
+                    totalPages = 1,
+                    error = null,
+                    loadMoreError = false,
+                    challengeHost = null
+                )
+            }
         }
     }
 
     fun executeSearch() {
         val criteria = _state.value.toCriteria()
         if (!criteria.hasAny) return
-
-        val epoch = ++searchEpoch
-        // 同步失效在途 loadMore：新一轮搜索后，旧条件的加载更多结果不得再推进游标或触碰加载态
-        loadMoreEpoch++
-        searchJob?.cancel()
-        loadMoreJob?.cancel()
-        _state.update {
-            it.copy(
-                isLoadingMore = false,
-                isLoading = true,
-                error = null,
-                loadMoreError = false,
-                challengeHost = null,
-                currentPage = 1,
-                totalPages = 1,
-                hasMore = true,
-                // 滚动位置由界面代数变化回顶；此时旧结果仍显示、顶部细进度条提示加载中
-                searchGeneration = it.searchGeneration + 1
-            )
-        }
-
-        searchJob = viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    content.searchVideosWithPagination(
-                        query = criteria.query,
-                        genre = criteria.genre,
-                        sort = criteria.sort,
-                        page = 1,
-                        tags = criteria.tags,
-                        broad = criteria.broad,
-                        date = criteria.date,
-                        duration = criteria.duration
-                    )
+        _state.update { it.copy(error = null, loadMoreError = false, challengeHost = null) }
+        pager.reload {
+            if (criteria.query.isNotEmpty()) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    library.addSearchHistory(criteria.query)
                 }
-                if (epoch != searchEpoch) return@launch
-                when (result) {
-                    is AppResult.Success -> {
-                        val data = result.data
-                        _state.update {
-                            it.copy(
-                                // 去重：同一 id 重复会与 LazyColumn 的 key 冲突并崩溃
-                                videos = data.videos.distinctBy { video -> video.id },
-                                currentPage = data.currentPage,
-                                totalPages = data.totalPages,
-                                hasMore = data.hasNextPage
-                            )
-                        }
-                        if (criteria.query.isNotEmpty()) {
-                            withContext(Dispatchers.IO) {
-                                library.addSearchHistory(criteria.query)
-                            }
-                        }
-                    }
-                    is AppResult.Error -> {
-                        val cause = result.exception
-                        _state.update {
-                            it.copy(
-                                videos = emptyList(),
-                                challengeHost = (cause as? CloudflareChallengeException)?.host,
-                                error = ErrorMapper.message(
-                                    context,
-                                    cause,
-                                    result.code,
-                                    context.getString(R.string.common_load_failed)
-                                )
-                            )
-                        }
-                    }
-                    is AppResult.Loading -> {}
-                }
-            } catch (e: CancellationException) {
-                // 新一轮搜索取消旧任务时必须原样抛出；加载态由新一轮搜索接管，不在此复位
-                throw e
-            } catch (e: Exception) {
-                // 解析/URL 构建等运行期异常若逃逸出 viewModelScope 会直接崩溃，且会跳过加载态复位
-                AppLogger.e("SearchViewModel", "搜索失败: ${e.message}", e)
-                if (epoch == searchEpoch) {
-                    _state.update {
-                        it.copy(
-                            videos = emptyList(),
-                            challengeHost = (e as? CloudflareChallengeException)?.host,
-                            error = ErrorMapper.message(
-                                context,
-                                e,
-                                context.getString(R.string.common_load_failed)
-                            )
-                        )
-                    }
-                }
-            } finally {
-                // 仅当本任务仍是最新一轮搜索时才复位，避免被取消的旧任务误清新一轮的加载态
-                if (epoch == searchEpoch) _state.update { it.copy(isLoading = false) }
             }
         }
     }
 
     fun loadMore() {
-        // 新一轮搜索进行中禁止追加：此时 hasMore 已被重置为 true、旧结果仍在屏上，
-        // 不设防会用「新条件 + 旧列表位置」发出错页请求，与新搜索第 1 页竞速时会把游标
-        // 推进到 2 而列表只剩第 1 页，第 2 页永久丢失
-        val current = _state.value
-        if (current.isLoading) return
-        if (current.isLoadingMore || !current.hasMore) return
-        val criteria = current.toCriteria()
-        if (!criteria.hasAny) return
-
-        val epoch = ++loadMoreEpoch
-        loadMoreJob?.cancel()
-        _state.update { it.copy(isLoadingMore = true, loadMoreError = false) }
-        // 局部页码：不再共享改写 currentPage。原实现在失败路径 currentPage--，若期间用户
-        // 已触发新一轮搜索（resetSearch 把它置 1），这个 -- 就会把页码减成 0，后续每一页都从 0 请求。
-        val pageToLoad = current.currentPage + 1
-
-        loadMoreJob = viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    content.searchVideosWithPagination(
-                        query = criteria.query,
-                        genre = criteria.genre,
-                        sort = criteria.sort,
-                        page = pageToLoad,
-                        tags = criteria.tags,
-                        broad = criteria.broad,
-                        date = criteria.date,
-                        duration = criteria.duration
-                    )
-                }
-                if (epoch != loadMoreEpoch) return@launch
-                when (result) {
-                    is AppResult.Success -> {
-                        val data = result.data
-                        _state.update {
-                            it.copy(
-                                videos = if (data.videos.isEmpty()) {
-                                    it.videos
-                                } else {
-                                    // 分页追加必须去重：站点结果集在两次请求间漂移时会重复返回，重复 key 会抛异常
-                                    (it.videos + data.videos).distinctBy { video -> video.id }
-                                },
-                                currentPage = pageToLoad,
-                                totalPages = data.totalPages,
-                                hasMore = data.hasNextPage
-                            )
-                        }
-                    }
-                    is AppResult.Error -> {
-                        _state.update { it.copy(hasMore = true, loadMoreError = true) }
-                    }
-                    is AppResult.Loading -> {}
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("SearchViewModel", "加载更多失败: ${e.message}", e)
-                if (epoch == loadMoreEpoch) {
-                    _state.update { it.copy(hasMore = true, loadMoreError = true) }
-                }
-            } finally {
-                if (epoch == loadMoreEpoch) _state.update { it.copy(isLoadingMore = false) }
-            }
-        }
+        pager.loadMore()
     }
 
     fun clearSearchHistory() {
@@ -462,7 +377,7 @@ class SearchViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                AppLogger.e("SearchViewModel", "Error clearing search history: ${e.message}", e)
+                // 搜索历史清理失败不应让页面崩溃
             }
         }
     }
@@ -476,7 +391,7 @@ class SearchViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                AppLogger.e("SearchViewModel", "Error removing search history: ${e.message}", e)
+                // 搜索历史删除失败不应让页面崩溃
             }
         }
     }

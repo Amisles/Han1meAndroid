@@ -7,6 +7,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.result.AppResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,16 +37,16 @@ class VideoListPageViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                _videos.value = content.getVideoListPage(url).distinctBy { it.id }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // 解析等运行期异常（非 IOException）同样要落到错误态，否则会逃逸出 viewModelScope 并崩溃
-                _error.value = ErrorMapper.message(
-                    context,
-                    e,
-                    context.getString(R.string.common_load_failed)
-                )
+                when (val result = content.getVideoListPage(url)) {
+                    is AppResult.Success -> _videos.value = result.data.distinctBy { it.id }
+                    is AppResult.Error -> _error.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        result.code,
+                        context.getString(R.string.common_load_failed)
+                    )
+                    is AppResult.Loading -> Unit
+                }
             } finally {
                 _isLoading.value = false
             }

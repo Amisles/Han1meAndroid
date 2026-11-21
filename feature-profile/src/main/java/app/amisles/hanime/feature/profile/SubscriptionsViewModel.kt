@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.model.HanimeVideo
+import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.model.SubscribedArtist
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
@@ -52,18 +53,20 @@ class SubscriptionsViewModel @Inject constructor(
             _error.value = null
             _selectedQuery.value = query
             try {
-                val result = content.getSubscriptionsPage(query)
-                _artists.value = result.artists
-                // 去重：SubscriptionsScreen 以 id 作为 LazyColumn 的 key，重复会触发 key 冲突异常
-                _videos.value = result.videos.distinctBy { it.id }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _error.value = ErrorMapper.message(
-                    context,
-                    e,
-                    context.getString(R.string.common_load_failed)
-                )
+                when (val result = content.getSubscriptionsPage(query)) {
+                    is AppResult.Success -> {
+                        _artists.value = result.data.artists
+                        // 去重：SubscriptionsScreen 以 id 作为 LazyColumn 的 key，重复会触发 key 冲突异常
+                        _videos.value = result.data.videos.distinctBy { it.id }
+                    }
+                    is AppResult.Error -> _error.value = ErrorMapper.message(
+                        context,
+                        result.exception,
+                        result.code,
+                        context.getString(R.string.common_load_failed)
+                    )
+                    is AppResult.Loading -> Unit
+                }
             } finally {
                 // 被取消（loadJob?.cancel）时跳过，避免把新一轮加载的 isLoading 误置回 false
                 if (coroutineContext.isActive) {

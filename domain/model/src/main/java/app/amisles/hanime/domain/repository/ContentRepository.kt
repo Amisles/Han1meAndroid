@@ -78,23 +78,23 @@ interface ContentRepository {
     fun getAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent>
 
     /** 拉取作者的作品列表页（分页）。 */
-    suspend fun getVideoListPage(url: String): List<HanimeVideo>
+    suspend fun getVideoListPage(url: String): AppResult<List<HanimeVideo>>
 
     /** 人机校验后的复检：能正常取到首页即视为已通过，避免把整段网络栈暴露给界面层。 */
     suspend fun isChallengePassed(): Boolean
 
     /** 拉取作者的播放列表清单页。 */
-    suspend fun getPlaylistListPage(url: String): List<PlaylistSummary>
+    suspend fun getPlaylistListPage(url: String): AppResult<List<PlaylistSummary>>
 
     /** 拉取单个播放列表详情。 */
-    suspend fun getPlaylistDetail(url: String): PlaylistDetail?
+    suspend fun getPlaylistDetail(url: String): AppResult<PlaylistDetail>
 
     /** 拉取站点「稍后观看」列表页。 */
-    suspend fun getWatchLaterPage(url: String): List<HanimeVideo>
+    suspend fun getWatchLaterPage(url: String): AppResult<List<HanimeVideo>>
 
     /** 拉取已订阅作者的视频流（query 为空表示全部）。 */
-    suspend fun getSubscriptionsPage(query: String = ""): SubscriptionsContent
+    suspend fun getSubscriptionsPage(query: String = ""): AppResult<SubscriptionsContent>
 
     /** 拉取某作者的作品列表（批量下载页用，分页）。 */
-    suspend fun getUserVideoList(authorId: String, page: Int = 1): UserVideoListResult?
+    suspend fun getUserVideoList(authorId: String, page: Int = 1): AppResult<UserVideoListResult>
 }

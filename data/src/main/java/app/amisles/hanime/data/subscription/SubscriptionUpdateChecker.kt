@@ -3,6 +3,7 @@ package app.amisles.hanime.data.subscription
 import app.amisles.hanime.domain.repository.SiteSettings
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.repository.ContentRepository
+import app.amisles.hanime.domain.result.AppResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -20,7 +21,11 @@ class SubscriptionUpdateChecker(
 
     /** 拉取订阅页并返回新出现的视频（按页面顺序）。首次运行只记录基线，不报更新。 */
     suspend fun detectUpdates(): List<HanimeVideo> = withContext(Dispatchers.IO) {
-        val page = repository.getSubscriptionsPage()
+        val page = when (val result = repository.getSubscriptionsPage()) {
+            is AppResult.Success -> result.data
+            is AppResult.Error -> throw (result.exception ?: IllegalStateException(result.message))
+            is AppResult.Loading -> return@withContext emptyList()
+        }
         val currentIds = page.videos.map { it.id }.toSet()
         if (currentIds.isEmpty()) return@withContext emptyList()
 
