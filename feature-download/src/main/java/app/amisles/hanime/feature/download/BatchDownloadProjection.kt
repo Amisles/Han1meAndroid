@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.download
 
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.model.DownloadStatusPolicy
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.domain.model.HanimeVideo
 
@@ -19,9 +20,8 @@ internal fun List<Pair<String, DownloadStatus>>.indexStatusesByVideoId(): Map<St
  * 是否「下载中」。仅 DOWNLOADING / PENDING 计入；PAUSED 不计入，使已暂停的视频仍可在本页
  * 重新选中加入队列以恢复下载。
  */
-internal fun List<DownloadStatus>.hasActiveDownload(): Boolean = any {
-    it == DownloadStatus.DOWNLOADING || it == DownloadStatus.PENDING
-}
+internal fun List<DownloadStatus>.hasActiveDownload(): Boolean =
+    any(DownloadStatusPolicy::isActive)
 
 internal fun resolveVideoFlags(
     videoId: String,

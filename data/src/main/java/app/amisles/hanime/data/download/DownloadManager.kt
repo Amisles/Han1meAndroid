@@ -6,6 +6,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.domain.model.DownloadGateState
 import app.amisles.hanime.domain.model.DownloadStatus
+import app.amisles.hanime.domain.model.DownloadStatusPolicy
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.domain.model.StartDownloadResult
@@ -175,9 +176,7 @@ class DownloadManager @Inject constructor(
             store.tasksById.values.any {
                 it.videoId == videoId &&
                     (quality.isBlank() || it.quality == quality) &&
-                    (it.status == DownloadStatus.DOWNLOADING ||
-                        it.status == DownloadStatus.PENDING ||
-                        it.status == DownloadStatus.PAUSED)
+                    DownloadStatusPolicy.isActive(it.status)
             }
         }
 
@@ -185,7 +184,13 @@ class DownloadManager @Inject constructor(
         if (videoId.isBlank()) {
             null
         } else {
-            store.tasksById.values.find { it.videoId == videoId }?.status
+            DownloadStatusPolicy.aggregate(
+                store.tasksById.values
+                    .asSequence()
+                    .filter { it.videoId == videoId }
+                    .map { it.status }
+                    .toList()
+            )
         }
 
     override suspend fun getStorageInfo(): DownloadStorageInfo = maintenance.storageInfo()
