@@ -34,7 +34,7 @@ import okhttp3.Request
  *
  * 几个刻意的设计决定：
  *
- * 1. **独立的 OkHttpClient**：不复用 NetworkService 的 client。后者挂了 HCookieJar，
+ * 1. **独立的 OkHttpClient**：不复用 HttpTransport 的 client。后者挂了 HCookieJar，
  *    会把站点会话 Cookie 注入到 api.github.com 的请求里 —— 那是明确的凭据外泄。
  *    这里用不带 CookieJar、不带入口重写的裸 client。
  *

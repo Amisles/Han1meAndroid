@@ -72,7 +72,7 @@ interface ContentRepository {
 
     // ── 作者页 / 列表页 / 订阅内容 ──────────────────────────────────────────
     // 这些页面同样是「站点内容」，与首页/搜索共用抓取与解析链路；原先上层直接注入
-    // NetworkService 才能拿到它们，等于让 ViewModel 依赖具体 HTTP 实现。
+    // SiteApi 才能拿到它们，等于让 ViewModel 依赖具体 HTTP 实现。
 
     /** 流式拉取作者主页：资料 → 作品 → 播放列表。 */
     fun getAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent>

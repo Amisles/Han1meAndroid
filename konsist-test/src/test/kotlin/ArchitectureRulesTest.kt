@@ -35,10 +35,10 @@ class ArchitectureRulesTest {
     }
 
     @Test
-    fun `feature modules never touch network service or parsers`() {
+    fun `feature modules never touch network layer or parsers`() {
         val violations = violations { _, module, import ->
             if (!module.startsWith("feature-")) return@violations false
-            import.startsWith("app.amisles.hanime.data.remote.NetworkService") ||
+            import.startsWith("app.amisles.hanime.data.remote.") ||
                 import.startsWith("app.amisles.hanime.data.parser.")
         }
 

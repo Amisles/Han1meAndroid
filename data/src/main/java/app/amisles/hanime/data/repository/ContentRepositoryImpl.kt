@@ -4,10 +4,14 @@ import app.amisles.hanime.domain.repository.PlayerSettings
 import app.amisles.hanime.domain.repository.SessionRepository
 
 import app.amisles.hanime.data.cache.VideoDetailStore
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.data.remote.SiteApi
+import app.amisles.hanime.data.parser.AuthorPageParser
 import app.amisles.hanime.data.parser.DownloadPageParser
 import app.amisles.hanime.data.parser.HomePageParser
+import app.amisles.hanime.data.parser.PlaylistParser
 import app.amisles.hanime.data.parser.SearchPageParser
+import app.amisles.hanime.data.parser.SubscriptionsParser
+import app.amisles.hanime.data.parser.WatchLaterPageParser
 import app.amisles.hanime.data.parser.WatchPageParser
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.HanimeVideo
@@ -28,6 +32,7 @@ import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.domain.result.DomainError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -38,22 +43,26 @@ import javax.inject.Singleton
 
 @Singleton
 class ContentRepositoryImpl @Inject constructor(
-    private val networkService: NetworkService,
+    private val siteApi: SiteApi,
     private val homePageParser: HomePageParser,
     private val searchPageParser: SearchPageParser,
     private val watchPageParser: WatchPageParser,
     private val downloadPageParser: DownloadPageParser,
+    private val authorPageParser: AuthorPageParser,
+    private val subscriptionsParser: SubscriptionsParser,
+    private val playlistParser: PlaylistParser,
+    private val watchLaterPageParser: WatchLaterPageParser,
     private val videoDetailStore: VideoDetailStore,
     private val session: SessionRepository,
     private val playerSettings: PlayerSettings
 ) : ContentRepository {
 
     override suspend fun isChallengePassed(): Boolean =
-        runCatching { networkService.fetchHomePageWithBaseUrl() }.isSuccess
+        runCatching { siteApi.fetchHomePage() }.isSuccess
 
     override suspend fun getHomeData(): AppResult<HomePageData> {
         return try {
-            val result = networkService.fetchHomePageWithBaseUrl()
+            val result = siteApi.fetchHomePage()
             AppLogger.log("ContentRepositoryImpl", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(homePageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
@@ -68,7 +77,7 @@ class ContentRepositoryImpl @Inject constructor(
     /** 流式加载首页 */
     override fun getHomeDataStream(): Flow<HomeDataEvent> = flow {
         try {
-            val result = networkService.fetchHomePageWithBaseUrl()
+            val result = siteApi.fetchHomePage()
             AppLogger.log("ContentRepositoryImpl", "HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             emitAll(homePageParser.parseStreaming(result.html, result.baseUrl))
         } catch (e: CancellationException) {
@@ -84,7 +93,7 @@ class ContentRepositoryImpl @Inject constructor(
 
     override suspend fun searchVideos(query: String, genre: String?, sort: String?, page: Int): AppResult<List<HanimeVideo>> {
         return try {
-            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page)
+            val result = siteApi.fetchSearchPage(query, genre, sort, page)
             AppLogger.log("ContentRepositoryImpl", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
@@ -107,7 +116,7 @@ class ContentRepositoryImpl @Inject constructor(
         duration: String
     ): AppResult<SearchResult> {
         return try {
-            val result = networkService.fetchSearchPageWithBaseUrl(query, genre, sort, page, tags, broad, date, duration)
+            val result = siteApi.fetchSearchPage(query, genre, sort, page, tags, broad, date, duration)
             AppLogger.log("ContentRepositoryImpl", "Search HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(searchPageParser.parseWithPagination(result.html, result.baseUrl))
         } catch (e: CancellationException) {
@@ -121,7 +130,7 @@ class ContentRepositoryImpl @Inject constructor(
 
     override suspend fun getVideoDetail(videoUrl: String): AppResult<VideoDetail> {
         return try {
-            val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
+            val result = siteApi.fetchWatchPage(videoUrl)
             AppLogger.log("ContentRepositoryImpl", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             val detail = watchPageParser.parse(result.html, result.baseUrl)
                 ?: return AppResult.error(DomainError.DETAIL_PARSE_FAILED)
@@ -158,7 +167,7 @@ class ContentRepositoryImpl @Inject constructor(
             emit(VideoDetailEvent.MainInfo(cached))
         }
         try {
-            val result = networkService.fetchWatchPageWithBaseUrl(videoUrl)
+            val result = siteApi.fetchWatchPage(videoUrl)
             AppLogger.log("ContentRepositoryImpl", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             var mainInfo: VideoDetail? = null
             var playlist: PlaylistInfo? = null
@@ -211,7 +220,7 @@ class ContentRepositoryImpl @Inject constructor(
 
     override suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
         return try {
-            val result = networkService.fetchDownloadPageWithBaseUrl(videoId)
+            val result = siteApi.fetchDownloadPage(videoId)
             AppLogger.log("ContentRepositoryImpl", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(downloadPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
@@ -223,32 +232,47 @@ class ContentRepositoryImpl @Inject constructor(
     }
 
 
-    override fun getAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent> =
-        networkService.fetchAuthorPageStream(authorPageUrl)
+    override fun getAuthorPageStream(authorPageUrl: String): Flow<AuthorPageDataEvent> = flow {
+        val result = siteApi.fetchAuthorPage(authorPageUrl)
+        emitAll(authorPageParser.parseStreaming(result.html, authorPageUrl))
+    }.flowOn(Dispatchers.IO)
+        .catch { e -> emit(AuthorPageDataEvent.Error(e.message.orEmpty(), e)) }
 
 
-    override suspend fun getVideoListPage(url: String): List<HanimeVideo> =
-        networkService.fetchVideoListPage(url)
+    override suspend fun getVideoListPage(url: String): List<HanimeVideo> {
+        val result = siteApi.fetchVideoListPage(url)
+        return authorPageParser.parseVideoListPage(result.html, url)
+    }
 
 
-    override suspend fun getPlaylistListPage(url: String): List<PlaylistSummary> =
-        networkService.fetchPlaylistListPage(url)
+    override suspend fun getPlaylistListPage(url: String): List<PlaylistSummary> {
+        val result = siteApi.fetchPlaylistListPage(url)
+        return playlistParser.parseListPage(result.html, url)
+    }
 
 
-    override suspend fun getPlaylistDetail(url: String): PlaylistDetail? =
-        networkService.fetchPlaylistDetailPage(url)
+    override suspend fun getPlaylistDetail(url: String): PlaylistDetail? {
+        val result = siteApi.fetchPlaylistDetailPage(url)
+        return playlistParser.parseDetailPage(result.html, url)
+    }
 
 
-    override suspend fun getWatchLaterPage(url: String): List<HanimeVideo> =
-        networkService.fetchWatchLaterPage(url)
+    override suspend fun getWatchLaterPage(url: String): List<HanimeVideo> {
+        val result = siteApi.fetchWatchLaterPage(url)
+        return watchLaterPageParser.parse(result.html, url)
+    }
 
 
-    override suspend fun getSubscriptionsPage(query: String): SubscriptionsContent =
-        networkService.fetchSubscriptionsPage(query)
+    override suspend fun getSubscriptionsPage(query: String): SubscriptionsContent {
+        val result = siteApi.fetchSubscriptionsPage(query)
+        return subscriptionsParser.parse(result.html, result.baseUrl)
+    }
 
 
-    override suspend fun getUserVideoList(authorId: String, page: Int): UserVideoListResult? =
-        networkService.fetchUserVideoList(authorId, page)
+    override suspend fun getUserVideoList(authorId: String, page: Int): UserVideoListResult? {
+        val result = siteApi.fetchUserVideoListPage(authorId, page)
+        return authorPageParser.parseUserVideoList(result.html, result.baseUrl)
+    }
 }
 
 /**

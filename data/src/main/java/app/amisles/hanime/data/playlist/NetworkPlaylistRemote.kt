@@ -1,7 +1,7 @@
 package app.amisles.hanime.data.playlist
 
 import app.amisles.hanime.data.parser.PlaylistSaveResponseParser
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.data.remote.CommunityApi
 import app.amisles.hanime.domain.model.CreatedPlaylist
 import app.amisles.hanime.domain.model.PlaylistSaveResult
 import javax.inject.Inject
@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 @Singleton
 class NetworkPlaylistRemote @Inject constructor(
-    private val networkService: NetworkService,
+    private val community: CommunityApi,
     private val responseParser: PlaylistSaveResponseParser
 ) : PlaylistRemote {
 
@@ -19,7 +19,7 @@ class NetworkPlaylistRemote @Inject constructor(
         saved: Boolean,
         csrfToken: String
     ): PlaylistSaveResult = responseParser.parseSave(
-        networkService.saveToPlaylist(
+        community.saveToPlaylist(
             videoId = videoId,
             target = target,
             saved = saved,
@@ -33,7 +33,7 @@ class NetworkPlaylistRemote @Inject constructor(
         description: String,
         csrfToken: String
     ): CreatedPlaylist = responseParser.parseCreatedPlaylist(
-        networkService.createPlaylist(
+        community.createPlaylist(
             videoId = videoId,
             title = title,
             description = description,

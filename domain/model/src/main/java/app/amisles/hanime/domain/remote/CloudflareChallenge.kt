@@ -18,7 +18,7 @@ data class CloudflareChallengeRequest(val host: String, val id: Long)
 /**
  * 人机校验的全局状态。
  *
- * 检测在 [NetworkService] 完成，弹窗由 MainActivity 统一承载，成功后各页面自行刷新：
+ * 检测在网络传输层完成，弹窗由 MainActivity 统一承载，成功后各页面自行刷新：
  * 这样任何请求触发校验都能引导用户，不必给每个页面单独接一条链路。
  */
 object CloudflareChallenge {

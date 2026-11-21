@@ -5,8 +5,8 @@ import app.amisles.hanime.data.cache.ComicDirectoryCacheStore
 import app.amisles.hanime.data.local.database.ComicProgressDao
 import app.amisles.hanime.data.local.entity.toDomain
 import app.amisles.hanime.data.local.entity.toEntity
+import app.amisles.hanime.data.remote.ComicApi
 import app.amisles.hanime.data.remote.ComicUrls
-import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.data.parser.ComicDetailParser
 import app.amisles.hanime.data.parser.ComicDirectoryParser
 import app.amisles.hanime.data.parser.ComicDirectoryResultParser
@@ -32,7 +32,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ComicRepositoryImpl @Inject constructor(
-    private val networkService: NetworkService,
+    private val comicApi: ComicApi,
     private val comicPageParser: ComicPageParser,
     private val comicDetailParser: ComicDetailParser,
     private val comicReaderParser: ComicReaderParser,
@@ -44,7 +44,7 @@ class ComicRepositoryImpl @Inject constructor(
 
     override suspend fun getComics(page: Int): AppResult<ComicPage> {
         return try {
-            val result = networkService.fetchComicsPage(page)
+            val result = comicApi.fetchComics(page)
             AppLogger.log("ComicRepositoryImpl", "Comics HTML received, length: " + result.html.length)
             AppResult.success(comicPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
@@ -68,7 +68,7 @@ class ComicRepositoryImpl @Inject constructor(
         }
         return try {
             onPhase(ComicDirectoryPhase.FETCHING)
-            val result = networkService.fetchComicDirectoryPage(kind)
+            val result = comicApi.fetchComicDirectory(kind)
             onPhase(ComicDirectoryPhase.PARSING)
             val entries = comicDirectoryParser.parse(
                 result.html,
@@ -93,7 +93,7 @@ class ComicRepositoryImpl @Inject constructor(
         page: Int
     ): AppResult<ComicDirectoryResult> {
         return try {
-            val result = networkService.fetchComicDirectoryResultPage(baseUrl, sort, page)
+            val result = comicApi.fetchComicDirectoryResult(baseUrl, sort, page)
             AppResult.success(comicDirectoryResultParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
             throw e
@@ -106,7 +106,7 @@ class ComicRepositoryImpl @Inject constructor(
 
     override suspend fun getComicDetail(comicId: String): AppResult<ComicDetail> {
         return try {
-            val result = networkService.fetchComicDetailPage(comicId)
+            val result = comicApi.fetchComicDetail(comicId)
             AppResult.success(comicDetailParser.parse(result.html, result.baseUrl, comicId))
         } catch (e: CancellationException) {
             throw e
@@ -119,7 +119,7 @@ class ComicRepositoryImpl @Inject constructor(
 
     override suspend fun getComicChapter(comicId: String, page: Int): AppResult<ComicChapter> {
         return try {
-            val result = networkService.fetchComicChapterPage(comicId, page)
+            val result = comicApi.fetchComicChapter(comicId, page)
             AppResult.success(comicReaderParser.parse(result.html, result.baseUrl, comicId))
         } catch (e: CancellationException) {
             throw e

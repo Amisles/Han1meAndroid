@@ -12,7 +12,6 @@ import app.amisles.hanime.data.local.database.WatchLaterDao
 import app.amisles.hanime.data.local.entity.toDomain as toWatchLaterDomain
 import app.amisles.hanime.data.local.entity.toEntity as toWatchLaterEntity
 import app.amisles.hanime.domain.model.WatchLaterVideo
-import app.amisles.hanime.data.remote.NetworkService
 import app.amisles.hanime.domain.model.FavoriteGroup
 import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.WatchHistory

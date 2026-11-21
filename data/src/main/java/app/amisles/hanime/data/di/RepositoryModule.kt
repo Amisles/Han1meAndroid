@@ -34,7 +34,7 @@ import javax.inject.Singleton
  * 仓储接口 → 实现的绑定。
  *
  * 上层（feature-*）原则上依赖 `:domain:model` 的接口，替换实现不需要改动上层代码；
- * 但仍有少数具体类型被直接引用（Preferences、NetworkService、CloudflareChallenge、
+ * 但仍有少数具体类型被直接引用（SessionStore、SiteApi、CloudflareChallenge、
  * BackupManager 等），这些调用点不受本模块的接口绑定约束。
  *
  * NetworkDiagnostics 不含 @Inject 构造且需要手动 new，其绑定放在 PreferencesModule

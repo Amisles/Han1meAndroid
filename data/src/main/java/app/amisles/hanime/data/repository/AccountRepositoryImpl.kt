@@ -4,7 +4,8 @@ import android.webkit.CookieManager
 
 import app.amisles.hanime.data.cookie.HCookieJar
 import app.amisles.hanime.domain.remote.EntryPaths
-import app.amisles.hanime.data.remote.NetworkService
+import app.amisles.hanime.data.remote.AuthApi
+import app.amisles.hanime.data.remote.CommunityApi
 import app.amisles.hanime.data.parser.AccountIdentityParser
 import app.amisles.hanime.data.parser.AccountProfileParser
 import app.amisles.hanime.data.parser.CommentParser
@@ -31,7 +32,8 @@ import javax.inject.Singleton
 
 @Singleton
 class AccountRepositoryImpl @Inject constructor(
-    private val networkService: NetworkService,
+    private val auth: AuthApi,
+    private val community: CommunityApi,
     private val commentParser: CommentParser,
     private val subscribeParser: SubscribeParser,
     private val accountProfileParser: AccountProfileParser,
@@ -42,7 +44,7 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun getComments(videoId: String, page: Int): AppResult<List<Comment>> {
         return try {
-            val json = networkService.fetchComments(videoId, page)
+            val json = community.fetchComments(videoId, page)
             AppLogger.log("AccountRepositoryImpl", "Comments JSON received, length: ${json.length}")
             AppResult.success(commentParser.parse(json))
         } catch (e: CancellationException) {
@@ -56,7 +58,7 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun getReplies(commentId: String): AppResult<List<Reply>> {
         return try {
-            val json = networkService.fetchReplies(commentId)
+            val json = community.fetchReplies(commentId)
             AppLogger.log("AccountRepositoryImpl", "Replies JSON received, length: ${json.length}")
             AppResult.success(commentParser.parseReplies(json))
         } catch (e: CancellationException) {
@@ -88,7 +90,7 @@ class AccountRepositoryImpl @Inject constructor(
             if (csrfToken.isBlank()) {
                 return AppResult.error(DomainError.CSRF_MISSING)
             }
-            val json = networkService.postComment(
+            val json = community.postComment(
                 videoId = videoId,
                 commentText = commentText,
                 commentCount = commentCount,
@@ -129,7 +131,7 @@ class AccountRepositoryImpl @Inject constructor(
             if (csrfToken.isBlank()) {
                 return AppResult.error(DomainError.CSRF_MISSING)
             }
-            networkService.toggleCommentLike(
+            community.toggleCommentLike(
                 commentId = commentId,
                 commentLikeUserId = userId,
                 currentLikeStatus = currentLikeStatus,
@@ -165,7 +167,7 @@ class AccountRepositoryImpl @Inject constructor(
             if (csrfToken.isBlank()) {
                 return AppResult.error(DomainError.CSRF_MISSING)
             }
-            val json = networkService.replyComment(
+            val json = community.replyComment(
                 commentId = commentId,
                 replyText = replyText,
                 csrfToken = csrfToken
@@ -207,7 +209,7 @@ class AccountRepositoryImpl @Inject constructor(
             if (artistId.isBlank()) {
                 return AppResult.error(DomainError.SUBSCRIBE_ARTIST_MISSING)
             }
-            val json = networkService.toggleSubscribe(
+            val json = community.toggleSubscribe(
                 csrfToken = csrfToken,
                 userId = userId,
                 artistId = artistId,
@@ -237,7 +239,7 @@ class AccountRepositoryImpl @Inject constructor(
         val cached = session.savedUserId
         if (cached.isNotBlank()) return cached
         if (!session.isActiveLogin) return ""
-        val html = runCatching { networkService.fetchHomePageWithBaseUrl().html }
+        val html = runCatching { auth.fetchHomePage().html }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
             ?: return ""
@@ -256,7 +258,7 @@ class AccountRepositoryImpl @Inject constructor(
             val userId = ensureUserId().ifBlank {
                 return AppResult.error(DomainError.USER_ID_MISSING)
             }
-            val result = networkService.fetchAccountEditPage(userId)
+            val result = auth.fetchAccountEditPage(userId)
             AppLogger.log("AccountRepositoryImpl", "Account edit page HTML length: ${result.html.length}")
             val profile = accountProfileParser.parseEditPage(result.html, result.baseUrl)
                 ?: return AppResult.error(DomainError.SESSION_EXPIRED)
@@ -292,7 +294,7 @@ class AccountRepositoryImpl @Inject constructor(
             if (csrfToken.isBlank()) {
                 return AppResult.error(DomainError.CSRF_MISSING)
             }
-            val code = networkService.updateAccountProfile(
+            val code = auth.updateAccountProfile(
                 userId = userId,
                 csrfToken = csrfToken,
                 name = name,
@@ -316,7 +318,7 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun login(email: String, password: String): AppResult<SessionSaveResult> {
         return runCatching {
             val page = try {
-                networkService.fetchLoginPageWithBaseUrl()
+                auth.fetchLoginPage()
             } catch (t: IOException) {
                 val msg = t.message.orEmpty()
                 when {
@@ -333,7 +335,7 @@ class AccountRepositoryImpl @Inject constructor(
             val csrf = LoginParser.parseCsrfToken(page.html)
                 ?: throw AppException(DomainError.CSRF_MISSING)
             val result = try {
-                networkService.postLoginForm(csrf, email, password)
+                auth.postLoginForm(csrf, email, password)
             } catch (t: IOException) {
                 val msg = t.message.orEmpty()
                 when {
@@ -420,7 +422,7 @@ class AccountRepositoryImpl @Inject constructor(
         val safe = cookie.trim().removePrefix("Cookie:").trim()
         if (safe.isBlank()) return WebLoginVerification.NotLoggedIn
         return try {
-            val html = networkService.fetchHomePageWithCookie(safe, domain)
+            val html = auth.fetchHomePageWithCookie(safe, domain)
             val userId = accountIdentityParser.parseCurrentUserId(html)
             if (userId != null) {
                 AppLogger.log("AccountRepositoryImpl", "会话校验通过: userId=$userId")
