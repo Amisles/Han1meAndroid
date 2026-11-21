@@ -70,23 +70,24 @@ fun SearchScreen(
 ) {
     val appPrefs = LocalAppPreferences.current
     val viewModel: SearchViewModel = hiltViewModel()
-    val query by viewModel.query.collectAsStateWithLifecycle()
-    val videos by viewModel.videos.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
-    val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
-    val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
-    val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
-    val error by viewModel.error.collectAsStateWithLifecycle()
-    val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
-    val challengeHost by viewModel.challengeHost.collectAsStateWithLifecycle()
-    val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
-    val sortValue by viewModel.sort.collectAsStateWithLifecycle()
-    val genreValue by viewModel.genre.collectAsStateWithLifecycle()
-    val tagsValue by viewModel.tags.collectAsStateWithLifecycle()
-    val broadValue by viewModel.broad.collectAsStateWithLifecycle()
-    val dateValue by viewModel.date.collectAsStateWithLifecycle()
-    val durationValue by viewModel.duration.collectAsStateWithLifecycle()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val query = uiState.query
+    val videos = uiState.videos
+    val isLoading = uiState.isLoading
+    val isLoadingMore = uiState.isLoadingMore
+    val hasMore = uiState.hasMore
+    val currentPage = uiState.currentPage
+    val totalPages = uiState.totalPages
+    val error = uiState.error
+    val loadMoreError = uiState.loadMoreError
+    val challengeHost = uiState.challengeHost
+    val searchHistory = uiState.searchHistory
+    val sortValue = uiState.sort
+    val genreValue = uiState.genre
+    val tagsValue = uiState.tags
+    val broadValue = uiState.broad
+    val dateValue = uiState.date
+    val durationValue = uiState.duration
 
     var localQuery by rememberSaveable { mutableStateOf(query) }
     // 上一次已同步给输入框的 query。两者都走 rememberSaveable，随导航条目一起保存。
@@ -210,7 +211,7 @@ fun SearchScreen(
     // 故用 handledGeneration 记住「本页已经处理过的代数」，只有代数真的前进（确实开了新一轮搜索）
     // 才回顶；首次组合时初值即当前代数（或由 rememberSaveable 恢复），天然跳过，
     // 滚动位置交给 rememberLazyListState 自带的保存 / 恢复。
-    val searchGeneration by viewModel.searchGeneration.collectAsStateWithLifecycle()
+    val searchGeneration = uiState.searchGeneration
     // 用 rememberSaveable 而非 remember：若「提交搜索后立刻进详情」，回顶的 effect 可能还没跑，
     // 随导航条目一起保存的旧代数会让返回时补做一次回顶，避免新结果配着旧滚动位置。
     var handledGeneration by rememberSaveable { mutableStateOf(searchGeneration) }
@@ -245,8 +246,8 @@ fun SearchScreen(
         )
         if (applied) {
             // 只对齐输入框；分类与排序胶囊已由 ViewModel 的 genre / sort 派生，无需手动同步
-            localQuery = viewModel.query.value
-            lastSyncedQuery = viewModel.query.value
+            localQuery = viewModel.state.value.query
+            lastSyncedQuery = viewModel.state.value.query
         }
     }
 

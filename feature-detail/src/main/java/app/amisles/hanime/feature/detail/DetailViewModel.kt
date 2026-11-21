@@ -11,18 +11,11 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.model.DownloadQuality
-import app.amisles.hanime.domain.model.FavoriteVideo
 import app.amisles.hanime.domain.model.StartDownloadResult
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
-import app.amisles.hanime.domain.model.WatchHistory
-import app.amisles.hanime.domain.model.WatchLaterVideo
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.extension.redactUrlForLog
-import app.amisles.hanime.domain.result.AppResult
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +25,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -53,21 +45,8 @@ class DetailViewModel @Inject constructor(
     private val _videoDetail = MutableStateFlow<VideoDetail?>(null)
     val videoDetail: StateFlow<VideoDetail?> = _videoDetail.asStateFlow()
 
-    // 已保存的播放进度（毫秒）；目前只写入与暴露，未被订阅，续播进度由 DetailScreen 直接查库取得
-    private val _savedPosition = MutableStateFlow(0L)
-    val savedPosition: StateFlow<Long> = _savedPosition.asStateFlow()
-
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _downloadQualities = MutableStateFlow<List<DownloadQuality>>(emptyList())
-    val downloadQualities: StateFlow<List<DownloadQuality>> = _downloadQualities.asStateFlow()
-
-    private val _isLoadingQualities = MutableStateFlow(false)
-    val isLoadingQualities: StateFlow<Boolean> = _isLoadingQualities.asStateFlow()
-
-    private val _downloadStartResults = Channel<StartDownloadResult>(Channel.BUFFERED)
-    val downloadStartResults: Flow<StartDownloadResult> = _downloadStartResults.receiveAsFlow()
 
     /**
      * 一次性提示（字符串资源 id）。
@@ -78,22 +57,21 @@ class DetailViewModel @Inject constructor(
     private val _messages = Channel<Int>(Channel.BUFFERED)
     val messages: Flow<Int> = _messages.receiveAsFlow()
 
-    private val _isFavorite = MutableStateFlow(false)
-    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
+    private val downloadActions = DetailDownloadActions(content, downloads, viewModelScope)
+    private val libraryActions = DetailLibraryActions(library, viewModelScope) {
+        _messages.trySend(R.string.local_save_failed)
+    }
+    private val subscriptionActions = DetailSubscriptionActions(account, viewModelScope)
 
-    private val _isWatchLater = MutableStateFlow(false)
-    val isWatchLater: StateFlow<Boolean> = _isWatchLater.asStateFlow()
-
-    // 订阅作者相关状态
-    private val _isSubscribed = MutableStateFlow(false)
-    val isSubscribed: StateFlow<Boolean> = _isSubscribed.asStateFlow()
-
-    private val _isSubscribing = MutableStateFlow(false)
-    val isSubscribing: StateFlow<Boolean> = _isSubscribing.asStateFlow()
-
-    // 订阅错误（未登录 / CSRF 缺失 / 作者 ID 缺失 / 网络失败等），以枚举区分便于 UI 本地化
-    private val _subscribeError = MutableStateFlow<SubscribeError?>(null)
-    val subscribeError: StateFlow<SubscribeError?> = _subscribeError.asStateFlow()
+    val savedPosition: StateFlow<Long> = libraryActions.savedPosition
+    val downloadQualities: StateFlow<List<DownloadQuality>> = downloadActions.qualities
+    val isLoadingQualities: StateFlow<Boolean> = downloadActions.isLoading
+    val downloadStartResults: Flow<StartDownloadResult> = downloadActions.results
+    val isFavorite: StateFlow<Boolean> = libraryActions.isFavorite
+    val isWatchLater: StateFlow<Boolean> = libraryActions.isWatchLater
+    val isSubscribed: StateFlow<Boolean> = subscriptionActions.isSubscribed
+    val isSubscribing: StateFlow<Boolean> = subscriptionActions.isSubscribing
+    val subscribeError: StateFlow<SubscribeError?> = subscriptionActions.error
 
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""
@@ -137,9 +115,9 @@ class DetailViewModel @Inject constructor(
         // 视频域 VM 不持有评论域 VM（Hilt 不允许 @HiltViewModel 互为依赖）。
 
         // 清空下载画质，避免弹窗短暂展示上一部视频的画质列表
-        _downloadQualities.value = emptyList()
-        _isLoadingQualities.value = false
-        _isWatchLater.value = false
+        downloadActions.reset()
+        libraryActions.reset()
+        subscriptionActions.reset(null)
 
         // 取消上一次未完成的详情请求（快速重进页面时去重）
         detailLoadJob?.cancel()
@@ -168,38 +146,9 @@ class DetailViewModel @Inject constructor(
                                 session.saveUserId(resolvedUserId)
                             }
                             if (currentVideoId.isNotEmpty()) {
-                                // 先读取已有历史，保留播放进度，避免每次进入覆盖为 0
-                                val existing = withContext(Dispatchers.IO) {
-                                    library.getWatchHistory(currentVideoId)
-                                }
-                                val history = WatchHistory(
-                                    id = currentVideoId,
-                                    title = detail.title,
-                                    thumbnailUrl = detail.posterUrl,
-                                    videoUrl = currentVideoUrl,
-                                    author = detail.author,
-                                    duration = "",
-                                    watchedAt = System.currentTimeMillis(),
-                                    playbackPosition = existing?.playbackPosition ?: 0L,
-                                    playbackDuration = existing?.playbackDuration ?: 0L
-                                )
-                                withContext(Dispatchers.IO) {
-                                    library.addWatchHistory(history)
-                                }
-                                _savedPosition.value = existing?.playbackPosition ?: 0L
+                                libraryActions.loadForVideo(currentVideoId, currentVideoUrl, detail)
                             }
-
-                            val isFav = withContext(Dispatchers.IO) {
-                                library.isFavorite(currentVideoId)
-                            }
-                            _isFavorite.value = isFav
-
-                            _isWatchLater.value =
-                                withContext(Dispatchers.IO) { library.getWatchLaterIds() }
-                                    .contains(currentVideoId)
-
-                            // 已解析出订阅状态（"1" 表示已订阅），还原高亮
-                            _isSubscribed.value = detail.subscribeStatus == "1"
+                            subscriptionActions.reset(detail)
                         }
                         is VideoDetailEvent.RelatedVideos -> {
                             _videoDetail.value = _videoDetail.value?.copy(relatedVideos = event.videos)
@@ -225,150 +174,20 @@ class DetailViewModel @Inject constructor(
         requestVideoId == currentVideoId
 
     fun loadDownloadQualities() {
-        if (currentVideoId.isEmpty()) return
         val requestVideoId = currentVideoId
-        AppLogger.d("DetailViewModel", "loadDownloadQualities called, videoId: $requestVideoId")
-        _isLoadingQualities.value = true
-
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    content.getDownloadQualities(requestVideoId)
-                }
-                if (!isSameVideoAsRequest(requestVideoId)) {
-                    // 已切到其他视频：丢弃结果，相关状态已由 loadVideoDetail 重置
-                    AppLogger.d("DetailViewModel", "Discard stale qualities response: $requestVideoId")
-                    return@launch
-                }
-                when (result) {
-                    is AppResult.Success -> {
-                        AppLogger.d("DetailViewModel", "Got ${result.data.size} download qualities")
-                        _downloadQualities.value = result.data
-                    }
-                    is AppResult.Error -> {
-                        AppLogger.e("DetailViewModel", "Error loading download qualities: ${result.message}", result.exception)
-                        _downloadQualities.value = emptyList()
-                    }
-                    is AppResult.Loading -> {}
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // 异常若逃逸出 viewModelScope 会直接崩溃，且会跳过加载态复位
-                AppLogger.e("DetailViewModel", "Error loading download qualities: ${e.message}", e)
-                if (isSameVideoAsRequest(requestVideoId)) _downloadQualities.value = emptyList()
-            } finally {
-                // 已切到其他视频时相关状态由 loadVideoDetail 统一复位，此处不得触碰
-                if (isSameVideoAsRequest(requestVideoId)) _isLoadingQualities.value = false
-            }
-        }
+        downloadActions.load(requestVideoId) { isSameVideoAsRequest(requestVideoId) }
     }
 
-    /**
-     * 发起下载。
-     *
-     * **不再同步返回结果码**：`DownloadManager.startDownload` 内含目录解析、`canonicalPath`
-     * 越界校验与残留文件清理等磁盘 I/O，原实现在 Compose 点击回调（主线程）中同步执行会阻塞主线程；
-     * 现改到 IO 线程发起，结果经 [downloadStartResults] 异步回传，由界面弹提示。
-     * quality 统一传 `quality.quality`，与批次页保持一致，才能让「文件名 + 去重键」对上。
-     */
     fun startDownload(quality: DownloadQuality) {
-        val detail = _videoDetail.value
-        val title = detail?.title ?: "video"
-        val thumbnailUrl = detail?.posterUrl ?: ""
-        // 切到 IO 线程前快照视频 id：协程可能晚于「用户已切到另一个视频」才执行，
-        // 而任务必须归属于发起时那部视频（原同步实现读到的也是发起时的值）。
-        val videoId = currentVideoId
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = downloads.startDownload(
-                title,
-                quality.quality,
-                quality.downloadUrl,
-                thumbnailUrl,
-                videoId
-            )
-            AppLogger.d("DetailViewModel", "Start download result=$result, quality=${quality.quality}")
-            _downloadStartResults.trySend(result)
-        }
+        downloadActions.start(_videoDetail.value, currentVideoId, quality)
     }
 
     fun toggleWatchLater() {
-        val videoId = currentVideoId
-        if (videoId.isEmpty()) return
-        val detail = _videoDetail.value
-        viewModelScope.launch {
-            try {
-                val willAdd = !_isWatchLater.value
-                val ok = withContext(Dispatchers.IO) {
-                    if (willAdd) {
-                        library.addWatchLater(
-                            WatchLaterVideo(
-                                id = videoId,
-                                title = detail?.title.orEmpty(),
-                                thumbnailUrl = detail?.posterUrl.orEmpty(),
-                                videoUrl = currentVideoUrl,
-                                author = detail?.author.orEmpty(),
-                                duration = "",
-                                addedAt = System.currentTimeMillis()
-                            )
-                        )
-                    } else {
-                        library.removeWatchLater(videoId)
-                    }
-                }
-                if (ok) _isWatchLater.value = willAdd
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error toggling watch later: ${e.message}", e)
-            }
-        }
+        libraryActions.toggleWatchLater(currentVideoId, currentVideoUrl, _videoDetail.value)
     }
 
     fun toggleFavorite() {
-        if (currentVideoId.isEmpty()) return
-        AppLogger.d("DetailViewModel", "toggleFavorite called, currentVideoId: $currentVideoId")
-
-        viewModelScope.launch {
-            try {
-                val currentState = _isFavorite.value
-                val detail = _videoDetail.value
-
-                // 写失败不再被仓储吞掉：下面据此补一条提示（星标会被复核复位，不给提示等于「点了没反应」）
-                var written = true
-                if (currentState) {
-                    written = withContext(Dispatchers.IO) {
-                        library.removeFavorite(currentVideoId)
-                    }
-                    AppLogger.d("DetailViewModel", "Removed from favorites")
-                } else {
-                    if (detail != null) {
-                        val favoriteVideo = FavoriteVideo(
-                            id = currentVideoId,
-                            title = detail.title,
-                            thumbnailUrl = detail.posterUrl,
-                            videoUrl = currentVideoUrl,
-                            author = detail.author,
-                            duration = "",
-                            likeRate = "",
-                            viewCount = "",
-                            createdAt = System.currentTimeMillis()
-                        )
-                        written = withContext(Dispatchers.IO) {
-                            library.addFavorite(favoriteVideo)
-                        }
-                        AppLogger.d("DetailViewModel", "Added to favorites")
-                    }
-                }
-                val verified = withContext(Dispatchers.IO) { library.isFavorite(currentVideoId) }
-                _isFavorite.value = verified
-                if (!written) _messages.trySend(R.string.local_save_failed)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error toggling favorite: ${e.message}", e)
-            }
-        }
+        libraryActions.toggleFavorite(currentVideoId, currentVideoUrl, _videoDetail.value)
     }
 
     /**
@@ -382,9 +201,7 @@ class DetailViewModel @Inject constructor(
         val id = currentVideoId
         if (id.isEmpty()) return
         val detail = _videoDetail.value ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            persistProgress(id, detail, position, duration)
-        }
+        libraryActions.saveProgress(id, currentVideoUrl, detail, position, duration, uncancellable = false)
     }
 
     /**
@@ -399,43 +216,12 @@ class DetailViewModel @Inject constructor(
         val id = currentVideoId
         if (id.isEmpty()) return
         val detail = _videoDetail.value ?: return
-        viewModelScope.launch {
-            withContext(NonCancellable + Dispatchers.IO) {
-                persistProgress(id, detail, position, duration)
-            }
-        }
-    }
-
-    private suspend fun persistProgress(id: String, detail: VideoDetail, position: Long, duration: Long) {
-        try {
-            val updated = library.updateWatchProgress(id, position, duration)
-            if (updated) return
-            // 尚无历史记录（例如首次播放即调用）：插入完整记录
-            library.addWatchHistory(
-                WatchHistory(
-                    id = id,
-                    title = detail.title,
-                    thumbnailUrl = detail.posterUrl,
-                    videoUrl = currentVideoUrl,
-                    author = detail.author,
-                    duration = "",
-                    watchedAt = System.currentTimeMillis(),
-                    playbackPosition = position,
-                    playbackDuration = duration
-                )
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // 进度落盘失败不应影响播放：记录后吞掉，避免异常逃逸出 viewModelScope 导致崩溃
-            AppLogger.e("DetailViewModel", "Error saving playback progress: ${e.message}", e)
-        }
+        libraryActions.saveProgress(id, currentVideoUrl, detail, position, duration, uncancellable = true)
     }
 
     /** 读取某视频的已保存播放进度（毫秒），用于进入时续播。 */
     suspend fun getSavedPlaybackPosition(videoId: String): Long =
-        withContext(Dispatchers.IO) { library.getWatchHistory(videoId)?.playbackPosition ?: 0L }
-
+        libraryActions.savedPosition(videoId)
     private var refreshingSources = false
 
     fun refreshVideoSources() {
@@ -460,73 +246,15 @@ class DetailViewModel @Inject constructor(
      * 采用乐观更新：先本地切换，接口成功用服务端返回的新状态 / CSRF Token 修正，失败回滚。
      */
     fun toggleSubscribe() {
-        val detail = _videoDetail.value
-        if (detail == null || detail.subscribeArtistId.isBlank()) {
-            _subscribeError.value = SubscribeError.ARTIST_ID_MISSING
-            return
-        }
-        if (detail.csrfToken.isBlank()) {
-            _subscribeError.value = SubscribeError.CSRF_MISSING
-            return
-        }
-        if (detail.subscribeUserId.isBlank()) {
-            _subscribeError.value = SubscribeError.NOT_LOGGED_IN
-            return
-        }
-        // 防止请求未完成前重复点击
-        if (_isSubscribing.value) return
-
-        val willSubscribe = !_isSubscribed.value
-        _isSubscribed.value = willSubscribe
-        _isSubscribing.value = true
-        // 绑定发起时的视频：结果落地与加载态复位都要校验，避免旧视频的订阅响应写进新视频的状态
         val requestVideoId = currentVideoId
-
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    account.toggleSubscribe(
-                        userId = detail.subscribeUserId,
-                        artistId = detail.subscribeArtistId,
-                        willSubscribe = willSubscribe,
-                        csrfToken = detail.csrfToken
-                    )
-                }
-                if (!isSameVideoAsRequest(requestVideoId)) {
-                    // 已切到其他视频：订阅状态已由 loadVideoDetail 整体重置，此处不得回写
-                    AppLogger.d("DetailViewModel", "Discard stale subscribe result: ${detail.subscribeArtistId}")
-                    return@launch
-                }
-                when (result) {
-                    is AppResult.Success -> {
-                        val res = result.data
-                        _isSubscribed.value = res.subscribeStatus == "1"
-                        // 用接口回传的新令牌刷新 CSRF，保证后续请求有效
-                        if (res.csrfToken.isNotBlank()) {
-                            _videoDetail.value = _videoDetail.value?.copy(csrfToken = res.csrfToken)
-                        }
-                        AppLogger.d("DetailViewModel", "Subscribe toggled for artist ${detail.subscribeArtistId}, willSubscribe=$willSubscribe")
-                    }
-                    is AppResult.Error -> {
-                        _isSubscribed.value = !willSubscribe
-                        _subscribeError.value = SubscribeError.FAILED
-                        AppLogger.e("DetailViewModel", "Error toggling subscribe: ${result.message}", result.exception)
-                    }
-                    is AppResult.Loading -> {}
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e("DetailViewModel", "Error toggling subscribe: ${e.message}", e)
-                if (isSameVideoAsRequest(requestVideoId)) {
-                    _isSubscribed.value = !willSubscribe
-                    _subscribeError.value = SubscribeError.FAILED
-                }
-            } finally {
-                // 只在仍是本次请求的视频时复位进行中标记，避免覆盖切视频后新一轮订阅的状态
-                if (isSameVideoAsRequest(requestVideoId)) _isSubscribing.value = false
+        subscriptionActions.toggle(
+            detail = _videoDetail.value,
+            requestVideoId = requestVideoId,
+            isCurrent = { isSameVideoAsRequest(requestVideoId) },
+            onCsrfToken = { token ->
+                _videoDetail.value = _videoDetail.value?.copy(csrfToken = token)
             }
-        }
+        )
     }
 
     /**
@@ -541,7 +269,7 @@ class DetailViewModel @Inject constructor(
 
     /** 清除订阅操作的错误状态。 */
     fun clearSubscribeError() {
-        _subscribeError.value = null
+        subscriptionActions.clearError()
     }
 }
 

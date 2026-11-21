@@ -7,9 +7,6 @@ import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.BatchVideoItem
 import app.amisles.hanime.domain.model.DownloadStatus
-import app.amisles.hanime.domain.model.DownloadTask
-import app.amisles.hanime.domain.model.StartDownloadResult
-import app.amisles.hanime.domain.result.AppResult
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.util.ErrorMapper
@@ -56,6 +53,8 @@ class BatchDownloadViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val content: ContentRepository,
     private val downloads: DownloadRepository,
+    private val qualityLoader: BatchQualityLoader,
+    private val enqueuer: BatchDownloadEnqueuer,
 ) : ViewModel() {
     private val _state = MutableStateFlow(BatchDownloadState())
     val state: StateFlow<BatchDownloadState> = _state.asStateFlow()
@@ -99,81 +98,9 @@ class BatchDownloadViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 按 videoId 聚合下载任务。
-     *
-     * 不能按 url 匹配：downloadUrl 是带时效签名的 CDN 直链，重新拉取画质页会得到不同 url，
-     * 与已存在任务的 url 必然不相等，导致漏配。
-     */
-    private fun indexTasksByVideoId(tasks: List<DownloadTask>): Map<String, List<DownloadStatus>> =
-        tasks.filter { it.videoId.isNotBlank() }.groupBy({ it.videoId }, { it.status })
-
-    /** 与 [indexTasksByVideoId] 等价，但输入是已投影的 (videoId, status) 列表，无需再建实体。 */
-    private fun indexStatusesByVideoId(pairs: List<Pair<String, DownloadStatus>>): Map<String, List<DownloadStatus>> =
-        pairs.filter { it.first.isNotBlank() }.groupBy({ it.first }, { it.second })
-
-    /**
-     * 是否「下载中」。仅 DOWNLOADING / PENDING 计入；PAUSED 不计入，使已暂停的视频仍可在本页
-     * 重新选中加入队列以恢复下载。
-     */
-    private fun List<DownloadStatus>.hasActiveDownload(): Boolean = any {
-        it == DownloadStatus.DOWNLOADING || it == DownloadStatus.PENDING
-    }
-
-    /**
-     * 单个视频的（已下载, 下载中）判定。加载初始态与后续同步共用，避免两处谓词不一致导致
-     * 首次同步后界面状态跳变。
-     */
-    private fun resolveVideoFlags(
-        videoId: String,
-        tasksByVideoId: Map<String, List<DownloadStatus>>
-    ): Pair<Boolean, Boolean> {
-        val statuses = tasksByVideoId[videoId].orEmpty()
-        return statuses.any { it == DownloadStatus.COMPLETED } to statuses.hasActiveDownload()
-    }
-
-    /**
-     * 根据下载任务状态同步更新视频列表与 downloadingVideoIds。
-     *
-     * 判定键统一为 videoId，且与 [searchAuthor] / [loadMore] 的初始判定使用同一套逻辑，
-     * 避免首次同步后状态跳变。tasks 发射频率跟随下载进度（可达每秒数次），故先建索引避免嵌套遍历。
-     */
     private fun syncDownloadStatuses(statusPairs: List<Pair<String, DownloadStatus>>) {
         if (batchInitInProgress) return
-
-        val tasksByVideoId = indexStatusesByVideoId(statusPairs)
-
-        _state.update { currentState ->
-            if (currentState.videos.isEmpty() && currentState.downloadingVideoIds.isEmpty()) {
-                return@update currentState
-            }
-
-            var changed = false
-            val updatedVideos = currentState.videos.map { video ->
-                val (isDownloaded, isDownloading) = resolveVideoFlags(video.videoId, tasksByVideoId)
-                if (video.isDownloaded == isDownloaded && video.isDownloading == isDownloading) {
-                    // 状态未变时复用原对象，避免下游无意义重组
-                    video
-                } else {
-                    changed = true
-                    video.copy(isDownloaded = isDownloaded, isDownloading = isDownloading)
-                }
-            }
-
-            val newDownloadingIds = currentState.downloadingVideoIds
-                .filter { tasksByVideoId[it].orEmpty().hasActiveDownload() }
-                .toSet()
-
-            if (!changed && newDownloadingIds == currentState.downloadingVideoIds) {
-                currentState
-            } else {
-                currentState.copy(
-                    videos = updatedVideos,
-                    downloadingVideoIds = newDownloadingIds,
-                    isDownloading = newDownloadingIds.isNotEmpty()
-                )
-            }
-        }
+        _state.update { it.syncDownloadStatuses(statusPairs) }
     }
 
     fun updateAuthorIdInput(input: String) {
@@ -228,25 +155,8 @@ class BatchDownloadViewModel @Inject constructor(
                     return@launch
                 }
 
-                val tasksByVideoId = indexTasksByVideoId(downloads.tasks.value)
-                val batchVideos = result.videos.distinctBy { it.id }.map { video ->
-                    val (downloaded, downloading) = resolveVideoFlags(video.id, tasksByVideoId)
-                    BatchVideoItem(
-                        videoId = video.id,
-                        title = video.title,
-                        thumbnailUrl = video.thumbnailUrl,
-                        videoUrl = video.videoUrl,
-                        duration = video.duration,
-                        author = video.author,
-                        publishTime = video.publishTime,
-                        isSelected = false,
-                        qualities = emptyList(),
-                        selectedQualityIndex = 0,
-                        isLoadingQualities = false,
-                        isDownloaded = downloaded,
-                        isDownloading = downloading
-                    )
-                }
+                val tasksByVideoId = downloads.tasks.value.indexTasksByVideoId()
+                val batchVideos = result.videos.toBatchVideos(tasksByVideoId)
 
                 _state.update { current ->
                     if (searchGeneration != generation) current else current.copy(
@@ -301,25 +211,8 @@ class BatchDownloadViewModel @Inject constructor(
                 }
 
                 if (result != null) {
-                    val tasksByVideoId = indexTasksByVideoId(downloads.tasks.value)
-                    val newBatchVideos = result.videos.map { video ->
-                        val (downloaded, downloading) = resolveVideoFlags(video.id, tasksByVideoId)
-                        BatchVideoItem(
-                            videoId = video.id,
-                            title = video.title,
-                            thumbnailUrl = video.thumbnailUrl,
-                            videoUrl = video.videoUrl,
-                            duration = video.duration,
-                            author = video.author,
-                            publishTime = video.publishTime,
-                            isSelected = false,
-                            qualities = emptyList(),
-                            selectedQualityIndex = 0,
-                            isLoadingQualities = false,
-                            isDownloaded = downloaded,
-                            isDownloading = downloading
-                        )
-                    }
+                    val tasksByVideoId = downloads.tasks.value.indexTasksByVideoId()
+                    val newBatchVideos = result.videos.toBatchVideos(tasksByVideoId)
 
                     _state.update { current ->
                         if (searchGeneration != generation) {
@@ -443,16 +336,7 @@ class BatchDownloadViewModel @Inject constructor(
                 async {
                     qualitySemaphore.withPermit {
                         try {
-                            // 接口直接返回解析后的画质列表：原先要自行取 HTML 再调解析器，
-                            // 那一步把「抓取」与「解析」两件事都泄漏到了 ViewModel。
-                            val qualities = when (val r = content.getDownloadQualities(video.videoId)) {
-                                is AppResult.Success -> r.data
-                                is AppResult.Error -> {
-                                    AppLogger.e("BatchDownloadViewModel", "获取画质失败: " + r.message)
-                                    emptyList()
-                                }
-                                is AppResult.Loading -> emptyList()
-                            }
+                            val qualities = qualityLoader.load(video.videoId)
 
                             _state.update { currentState ->
                                 val updatedVideos = currentState.videos.map { v ->
@@ -534,39 +418,7 @@ class BatchDownloadViewModel @Inject constructor(
         // startDownload 内部含目录解析、canonicalPath 校验等磁盘 I/O，改到 IO 线程避免批量时卡顿
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                selectedVideos.forEach { video ->
-                    try {
-                        val quality = if (video.qualities.isNotEmpty() && video.selectedQualityIndex < video.qualities.size) {
-                            video.qualities[video.selectedQualityIndex]
-                        } else {
-                            null
-                        }
-
-                        // 画质为空时跳过下载（videoUrl 是网页 URL 而非视频直链）
-                        if (quality == null) {
-                            AppLogger.w("BatchDownloadViewModel", "跳过无画质信息的视频: ${video.title}")
-                        } else {
-                            val result = downloads.startDownload(
-                                title = video.title,
-                                quality = quality.quality,
-                                url = quality.downloadUrl,
-                                thumbnailUrl = video.thumbnailUrl,
-                                videoId = video.videoId
-                            )
-                            if (result !is StartDownloadResult.Started) {
-                                AppLogger.w(
-                                    "BatchDownloadViewModel",
-                                    "未创建下载任务($result): ${video.title}"
-                                )
-                            }
-                        }
-
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        AppLogger.e("BatchDownloadViewModel", "添加下载失败: ${video.title}", e)
-                    }
-                }
+                enqueuer.enqueue(selectedVideos)
             } finally {
                 batchInitInProgress = false
                 // 与 init 里的投影保持一致：这里同样只需要 (videoId, status)
