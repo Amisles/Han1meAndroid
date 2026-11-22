@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +57,7 @@ internal fun ProfileDrawerHost(
     LaunchedEffect(open, rawProgress) {
         if (!open && rawProgress == 0f) closeSkip = 0f
     }
-    val showOverlay by remember { derivedStateOf { open || progress > 0.001f } }
+    val showOverlay = open || progress > 0.001f
     BackHandler(enabled = showOverlay, onBack = onClose)
 
     var composed by remember { mutableStateOf(false) }
