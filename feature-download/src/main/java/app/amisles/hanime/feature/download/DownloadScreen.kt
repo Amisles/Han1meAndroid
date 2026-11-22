@@ -57,7 +57,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Storage
-import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.HintBanner
@@ -80,28 +79,6 @@ enum class DownloadFilter {
 enum class DownloadSort {
     ADDED, NAME, SIZE, PROGRESS
 }
-
-/** 下载页按状态分组 + 按 id 索引的一次性遍历结果，供列表与分组视图共用。 */
-private data class TaskGroups(
-    val downloading: List<DownloadTask>,
-    val completed: List<DownloadTask>,
-    val paused: List<DownloadTask>,
-    val failed: List<DownloadTask>,
-    val byId: Map<Int, DownloadTask>
-)
-
-/**
- * 筛选 / 排序用的稳定键。
- * tasks 每秒会因进度产生多个新列表；抽出「筛选与排序真正依赖的字段」作不可变键，
- * 进度以外的字段没变时即可复用排序结果，避免每秒重排整表。
- */
-private data class TaskOrderKey(
-    val id: Int,
-    val status: DownloadStatus,
-    val title: String,
-    val totalBytes: Long,
-    val progress: Float
-)
 
 /**
  * 下载页文件名搜索框。
@@ -158,117 +135,27 @@ fun DownloadScreen(
     var nameQuery by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // 一次遍历同时完成分组与 id 索引：原来分别做 4 次 filter + 1 次 associateBy，
-    // 每次重组都要把整个任务表扫 5 遍；下载进度每 500ms 更新一次，代价随任务数线性增长。
-    // 以 tasks 为 key 记忆，只有任务列表真正变化时才重算。
-    val groups = remember(tasks) {
-        val downloading = ArrayList<DownloadTask>()
-        val completed = ArrayList<DownloadTask>()
-        val paused = ArrayList<DownloadTask>()
-        val failed = ArrayList<DownloadTask>()
-        val byId = HashMap<Int, DownloadTask>(tasks.size * 2)
-        for (task in tasks) {
-            byId[task.id] = task
-            when (task.status) {
-                DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> downloading += task
-                DownloadStatus.COMPLETED -> completed += task
-                DownloadStatus.PAUSED -> paused += task
-                DownloadStatus.FAILED -> failed += task
-            }
-        }
-        TaskGroups(downloading, completed, paused, failed, byId)
-    }
-    val downloadingTasks = groups.downloading
-    val completedTasks = groups.completed
-    val pausedTasks = groups.paused
-    val failedTasks = groups.failed
-
-    // 筛选 + 排序后的可见任务：先取排序/筛选依据的稳定键，再按 id 映射回最新 Task 对象，
-    // 这样进度更新不会触发整表重排，而界面进度仍是实时的
-    val taskOrderKeys = remember(tasks, downloadSort) {
-        tasks.map { task ->
-            TaskOrderKey(
-                id = task.id,
-                status = task.status,
-                title = task.title,
-                totalBytes = task.totalBytes,
-                // 仅「按进度排序」时把进度纳入键；否则进度变化不应引起重排
-                progress = if (downloadSort == DownloadSort.PROGRESS && task.totalBytes > 0) {
-                    task.downloadedBytes.toFloat() / task.totalBytes
-                } else {
-                    0f
-                }
-            )
-        }
-    }
-    val orderedTaskIds = remember(taskOrderKeys, downloadFilter, downloadSort, nameQuery) {
-        val byStatus = when (downloadFilter) {
-            DownloadFilter.ALL -> taskOrderKeys
-            DownloadFilter.DOWNLOADING -> taskOrderKeys.filter {
-                it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
-            }
-            DownloadFilter.COMPLETED -> taskOrderKeys.filter { it.status == DownloadStatus.COMPLETED }
-            DownloadFilter.FAILED -> taskOrderKeys.filter { it.status == DownloadStatus.FAILED }
-            DownloadFilter.PAUSED -> taskOrderKeys.filter { it.status == DownloadStatus.PAUSED }
-        }
-        // 文件名搜索：按子串匹配且忽略大小写；关键词为空白时不参与过滤
-        val keyword = nameQuery.trim()
-        val base = if (keyword.isEmpty()) {
-            byStatus
-        } else {
-            byStatus.filter { it.title.contains(keyword, ignoreCase = true) }
-        }
-        when (downloadSort) {
-            DownloadSort.ADDED -> base.sortedByDescending { it.id }
-            DownloadSort.NAME -> base.sortedBy { it.title.lowercase() }
-            DownloadSort.SIZE -> base.sortedByDescending { it.totalBytes }
-            DownloadSort.PROGRESS -> base.sortedByDescending { it.progress }
-        }.map { it.id }
-    }
-    val visibleTasks = remember(orderedTaskIds, groups) {
-        orderedTaskIds.mapNotNull { groups.byId[it] }
-    }
-    // 搜索态必须退化为扁平列表：分组视图按状态整段渲染原始列表，不经过关键词过滤
-    val useGroupedView = downloadFilter == DownloadFilter.ALL &&
-        downloadSort == DownloadSort.ADDED &&
-        nameQuery.isBlank()
+    val projection = rememberDownloadListProjection(tasks, downloadFilter, downloadSort, nameQuery)
+    val downloadingTasks = projection.downloadingTasks
+    val completedTasks = projection.completedTasks
+    val pausedTasks = projection.pausedTasks
+    val failedTasks = projection.failedTasks
+    val useGroupedView = projection.grouped
+    val visibleTasks = projection.visibleTasks
 
     LaunchedEffect(highlightTaskId, tasks.size, useGroupedView) {
         if (highlightTaskId < 0) return@LaunchedEffect
-        val task = tasks.firstOrNull { it.id == highlightTaskId } ?: return@LaunchedEffect
         val bannerCount = if (gateState.blocked && downloadingTasks.isNotEmpty()) 1 else 0
-        val index = if (useGroupedView) {
-            var cursor = bannerCount
-            for (group in listOf(downloadingTasks, pausedTasks, failedTasks, completedTasks)) {
-                if (group.isEmpty()) continue
-                cursor += 1
-                val at = group.indexOfFirst { it.id == task.id }
-                if (at >= 0) return@LaunchedEffect listState.animateScrollToItem(cursor + at)
-                cursor += group.size
-            }
-            return@LaunchedEffect
-        } else {
-            bannerCount + visibleTasks.indexOfFirst { it.id == task.id }
-        }
-        if (index >= bannerCount) listState.animateScrollToItem(index)
+        val index = projection.highlightIndex(highlightTaskId, bannerCount) ?: return@LaunchedEffect
+        listState.animateScrollToItem(index)
     }
 
-    var isSelectionMode by remember { mutableStateOf(false) }
-    var selectedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    val selection = rememberDownloadSelectionState()
+    val isSelectionMode = selection.isActive
+    val selectedIds = selection.selectedIds
+    val selectableIds = remember(projection) { projection.selectableIds() }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<Int?>(null) }
-
-    // 选择模式下「全选 / 取消全选」的作用域必须与当前可见条目一致。
-    // 否则筛选后再进入选择模式，会出现「选中了屏幕上看不见的任务 → 删除时连带删掉不可见项」。
-    val selectableIds = remember(useGroupedView, tasks, visibleTasks) {
-        (if (useGroupedView) tasks else visibleTasks).mapTo(HashSet()) { it.id }
-    }
-
-    LaunchedEffect(isSelectionMode) {
-        if (!isSelectionMode) {
-            selectedIds = emptySet()
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -310,7 +197,7 @@ fun DownloadScreen(
                 ) {
                     if (isSelectionMode) {
                         IconButton(
-                            onClick = { isSelectionMode = false },
+                            onClick = { selection.exit() },
                             modifier = Modifier.size(24.dp)
                         ) {
                             Icon(
@@ -333,13 +220,7 @@ fun DownloadScreen(
                             fontSize = 14.sp,
                             color = if (selectedIds.containsAll(selectableIds)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                             modifier = Modifier
-                                .clickable {
-                                    selectedIds = if (selectedIds.containsAll(selectableIds)) {
-                                        emptySet()
-                                    } else {
-                                        selectableIds
-                                    }
-                                }
+                                .clickable { selection.toggleAll(selectableIds) }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     } else {
@@ -525,12 +406,8 @@ fun DownloadScreen(
                                 isSelectionMode = isSelectionMode,
                                 tasks = downloadingTasks,
                                 selectedIds = selectedIds,
-                                onToggleAll = { allSelected ->
-                                    selectedIds = if (allSelected) {
-                                        selectedIds - downloadingTasks.map { it.id }.toSet()
-                                    } else {
-                                        selectedIds + downloadingTasks.map { it.id }.toSet()
-                                    }
+                                onToggleAll = {
+                                    selection.toggleAll(downloadingTasks.mapTo(HashSet()) { it.id })
                                 }
                             )
                         }
@@ -541,11 +418,7 @@ fun DownloadScreen(
                                 isSelected = task.id in selectedIds,
                                 actions = DownloadItemActions(
                                     onToggleSelection = {
-                                        selectedIds = if (task.id in selectedIds) {
-                                            selectedIds - task.id
-                                        } else {
-                                            selectedIds + task.id
-                                        }
+                                        selection.toggle(task.id)
                                     },
                                     onPauseClick = { viewModel.pauseDownload(task.id) },
                                     onCancelClick = { viewModel.cancelDownload(task.id) },
@@ -562,12 +435,8 @@ fun DownloadScreen(
                                 isSelectionMode = isSelectionMode,
                                 tasks = pausedTasks,
                                 selectedIds = selectedIds,
-                                onToggleAll = { allSelected ->
-                                    selectedIds = if (allSelected) {
-                                        selectedIds - pausedTasks.map { it.id }.toSet()
-                                    } else {
-                                        selectedIds + pausedTasks.map { it.id }.toSet()
-                                    }
+                                onToggleAll = {
+                                    selection.toggleAll(pausedTasks.mapTo(HashSet()) { it.id })
                                 }
                             )
                         }
@@ -578,11 +447,7 @@ fun DownloadScreen(
                                 isSelected = task.id in selectedIds,
                                 actions = DownloadItemActions(
                                     onToggleSelection = {
-                                        selectedIds = if (task.id in selectedIds) {
-                                            selectedIds - task.id
-                                        } else {
-                                            selectedIds + task.id
-                                        }
+                                        selection.toggle(task.id)
                                     },
                                     onResumeClick = { viewModel.resumeDownload(task.id) },
                                     onCancelClick = { viewModel.cancelDownload(task.id) }
@@ -598,12 +463,8 @@ fun DownloadScreen(
                                 isSelectionMode = isSelectionMode,
                                 tasks = failedTasks,
                                 selectedIds = selectedIds,
-                                onToggleAll = { allSelected ->
-                                    selectedIds = if (allSelected) {
-                                        selectedIds - failedTasks.map { it.id }.toSet()
-                                    } else {
-                                        selectedIds + failedTasks.map { it.id }.toSet()
-                                    }
+                                onToggleAll = {
+                                    selection.toggleAll(failedTasks.mapTo(HashSet()) { it.id })
                                 }
                             )
                         }
@@ -614,11 +475,7 @@ fun DownloadScreen(
                                 isSelected = task.id in selectedIds,
                                 actions = DownloadItemActions(
                                     onToggleSelection = {
-                                        selectedIds = if (task.id in selectedIds) {
-                                            selectedIds - task.id
-                                        } else {
-                                            selectedIds + task.id
-                                        }
+                                        selection.toggle(task.id)
                                     },
                                     onRetryClick = { viewModel.resumeDownload(task.id) },
                                     onCancelClick = { viewModel.cancelDownload(task.id) }
@@ -634,12 +491,8 @@ fun DownloadScreen(
                                 isSelectionMode = isSelectionMode,
                                 tasks = completedTasks,
                                 selectedIds = selectedIds,
-                                onToggleAll = { allSelected ->
-                                    selectedIds = if (allSelected) {
-                                        selectedIds - completedTasks.map { it.id }.toSet()
-                                    } else {
-                                        selectedIds + completedTasks.map { it.id }.toSet()
-                                    }
+                                onToggleAll = {
+                                    selection.toggleAll(completedTasks.mapTo(HashSet()) { it.id })
                                 }
                             )
                         }
@@ -650,11 +503,7 @@ fun DownloadScreen(
                                 isSelected = task.id in selectedIds,
                                 actions = DownloadItemActions(
                                     onToggleSelection = {
-                                        selectedIds = if (task.id in selectedIds) {
-                                            selectedIds - task.id
-                                        } else {
-                                            selectedIds + task.id
-                                        }
+                                        selection.toggle(task.id)
                                     },
                                     onPlayClick = { onPlayLocalVideo(task.filePath) },
                                     onDeleteClick = {
@@ -697,13 +546,7 @@ fun DownloadScreen(
                                     isSelectionMode = isSelectionMode,
                                     isSelected = task.id in selectedIds,
                                     actions = DownloadItemActions(
-                                        onToggleSelection = {
-                                            selectedIds = if (task.id in selectedIds) {
-                                                selectedIds - task.id
-                                            } else {
-                                                selectedIds + task.id
-                                            }
-                                        },
+                                        onToggleSelection = { selection.toggle(task.id) },
                                         onPauseClick = { viewModel.pauseDownload(task.id) },
                                         onResumeClick = { viewModel.resumeDownload(task.id) },
                                         onCancelClick = { viewModel.cancelDownload(task.id) },
@@ -762,7 +605,7 @@ fun DownloadScreen(
             }
             BottomBarAction(
                 text = stringResource(R.string.common_manage),
-                onClick = { isSelectionMode = true }
+                onClick = { selection.enter() }
             )
         }
     }
@@ -786,7 +629,7 @@ fun DownloadScreen(
                     selectedIds.forEach { taskId ->
                         viewModel.cancelDownload(taskId)
                     }
-                    isSelectionMode = false
+                    selection.exit()
                 }
                 deleteTargetId = null
                 showDeleteConfirm = false

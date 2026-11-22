@@ -79,7 +79,6 @@ import app.amisles.hanime.core.ui.components.VideoGridCard
 import app.amisles.hanime.core.ui.components.VideoListItem
 import app.amisles.hanime.core.ui.theme.HomeSectionConfig
 import app.amisles.hanime.domain.remote.CloudflareChallenge
-import app.amisles.hanime.core.ui.theme.HomeSectionLayout
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.LocalHomeSectionConfig
 import app.amisles.hanime.core.ui.theme.ResponsiveContent
@@ -127,9 +126,6 @@ internal fun rowThumbnailWidth(
         .coerceAtLeast(56f).dp
 }
 
-/** AUTO 解析后的渲染形态：由宽度档位与是否分栏共同决定，故需与用户可选的 [HomeSectionLayout] 区分。 */
-private enum class SectionRenderMode { LIST_COLUMN, LIST_ROWS, GRID_ROWS, CAROUSEL }
-
 private enum class HomeItemType {
     HEADER,
     CATEGORY,
@@ -143,94 +139,6 @@ private enum class HomeItemType {
     SECTION_ROW,
     SECTION_CAROUSEL,
     SPACER
-}
-
-private data class SectionPlan(
-    val section: HomeSection,
-    val mode: SectionRenderMode,
-    val videos: List<HanimeVideo>,
-    val rowVideos: List<List<HanimeVideo>>
-)
-
-private fun renderMode(
-    configured: HomeSectionLayout,
-    widthClass: WindowWidthSizeClass,
-    twoColumnSections: Boolean
-): SectionRenderMode =
-    when (configured) {
-        HomeSectionLayout.LIST -> SectionRenderMode.LIST_COLUMN
-        HomeSectionLayout.GRID -> SectionRenderMode.GRID_ROWS
-        HomeSectionLayout.CAROUSEL -> SectionRenderMode.CAROUSEL
-        HomeSectionLayout.AUTO -> when {
-            twoColumnSections -> SectionRenderMode.GRID_ROWS
-            widthClass == WindowWidthSizeClass.Compact -> SectionRenderMode.LIST_COLUMN
-            widthClass == WindowWidthSizeClass.Medium -> SectionRenderMode.LIST_ROWS
-            else -> SectionRenderMode.GRID_ROWS
-        }
-    }
-
-private fun buildPlans(
-    sections: List<HomeSection>,
-    homeConfig: HomeSectionConfig,
-    widthClass: WindowWidthSizeClass,
-    columns: Int,
-    twoColumnSections: Boolean
-): List<SectionPlan> = homeConfig.arrange(sections).map { section ->
-    val mode = renderMode(homeConfig.layoutFor(section.title), widthClass, twoColumnSections)
-    val videos = section.videos.take(homeConfig.countFor(section.title))
-    val rowVideos = when (mode) {
-        SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> videos.chunked(columns)
-        SectionRenderMode.LIST_COLUMN, SectionRenderMode.CAROUSEL -> emptyList()
-    }
-    SectionPlan(section = section, mode = mode, videos = videos, rowVideos = rowVideos)
-}
-
-private fun sectionItemKey(plan: SectionPlan, index: Int): String =
-    "home-section-$index-" + plan.section.title
-
-private enum class SectionEntryKind { BLOCK, HEADER, VIDEO, ROW, CAROUSEL }
-
-/**
- * 分区拆成独立 item 后的最小单元。
- *
- * 一个分区整体作为一个 item 时，它第一次进入视口要在同一帧里组合十来个卡片；拆开之后由
- * LazyVerticalStaggeredGrid 决定先组合哪几行。[sectionKey] 与分区块的 item key 相同，锚点
- * 在「整块/拆行」两种结构之间切换时仍能落回同一个分区。
- */
-private data class SectionEntry(
-    val key: String,
-    val sectionKey: String,
-    val plan: SectionPlan,
-    val kind: SectionEntryKind,
-    val videos: List<HanimeVideo> = emptyList(),
-    val bottomGap: Boolean = false
-)
-
-private fun buildSectionEntries(
-    plans: List<SectionPlan>,
-    splitRows: Boolean
-): List<SectionEntry> = buildList {
-    plans.forEachIndexed { index, plan ->
-        val sectionKey = sectionItemKey(plan, index)
-        if (!splitRows) {
-            add(SectionEntry(sectionKey, sectionKey, plan, SectionEntryKind.BLOCK))
-            return@forEachIndexed
-        }
-        add(SectionEntry(sectionKey, sectionKey, plan, SectionEntryKind.HEADER))
-        val rows = when (plan.mode) {
-            SectionRenderMode.LIST_COLUMN -> plan.videos.mapIndexed { i, video ->
-                SectionEntry("$sectionKey-video-$i", sectionKey, plan, SectionEntryKind.VIDEO, listOf(video))
-            }
-            SectionRenderMode.LIST_ROWS, SectionRenderMode.GRID_ROWS -> plan.rowVideos.mapIndexed { i, row ->
-                SectionEntry("$sectionKey-row-$i", sectionKey, plan, SectionEntryKind.ROW, row)
-            }
-            SectionRenderMode.CAROUSEL -> listOf(
-                SectionEntry("$sectionKey-carousel", sectionKey, plan, SectionEntryKind.CAROUSEL)
-            )
-        }
-        rows.dropLast(1).forEach(::add)
-        rows.lastOrNull()?.let { add(it.copy(bottomGap = true)) }
-    }
 }
 
 @Composable
@@ -355,75 +263,45 @@ fun HomeScreenContent(
         homeHeroLayout(sizeInfo.widthDp, sizeInfo.heightDp, sizeInfo.contentMaxWidth, hasSideContent)
     }
     val twoColumnHero = heroLayout.twoColumn && banner != null
-    val plans = remember(sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections) {
-        buildPlans(sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections)
+    val feedPlan = remember(
+        sections, homeConfig, sizeInfo.widthClass, columns, twoColumnSections,
+        showLongPressHint, cfg.homeShowCategoryBar, error != null, sections.isNotEmpty(),
+        twoColumnHero, banner != null, continueWatching.isNotEmpty(), watchLater.isNotEmpty(),
+        weeklyReportVisible, weeklyReport != null
+    ) {
+        planHomeFeed(
+            HomeFeedInput(
+                sections = sections,
+                homeConfig = homeConfig,
+                widthClass = sizeInfo.widthClass,
+                columns = columns,
+                twoColumnSections = twoColumnSections,
+                showLongPressHint = showLongPressHint,
+                showCategoryBar = cfg.homeShowCategoryBar,
+                showRefreshError = error != null && sections.isNotEmpty(),
+                twoColumnHero = twoColumnHero,
+                hasBanner = banner != null,
+                hasContinueWatching = continueWatching.isNotEmpty(),
+                hasWatchLater = watchLater.isNotEmpty(),
+                showWeeklyReport = weeklyReportVisible && weeklyReport != null
+            )
+        )
     }
+    val plans = feedPlan.plans
+    val sectionEntries = feedPlan.entries
     // 多列时缩略图须按列宽等比缩小：固定 150dp 会把文字区压到几 dp。比例取 0.42，
     // 与手机单列下缩略图占卡宽的比例（150 / 340）一致
     val rowThumbnailWidth = remember(cfg.listThumbnailWidth, columns, sizeInfo, isCompactWidth) {
         rowThumbnailWidth(cfg, sizeInfo.widthDp, sizeInfo.contentMaxWidth, columns, isCompactWidth)
     }
-    val headKeys = buildList {
-        add("home-header")
-        if (showLongPressHint) add("home-long-press-hint")
-        if (cfg.homeShowCategoryBar) add("home-category")
-        if (error != null && sections.isNotEmpty()) add("home-refresh-error")
-        if (twoColumnHero) {
-            add("home-hero")
-        } else {
-            if (banner != null) add("home-banner")
-            if (continueWatching.isNotEmpty()) add("home-continue-watching")
-            if (watchLater.isNotEmpty()) add("home-watch-later")
-        }
-        if (weeklyReportVisible && weeklyReport != null) add("home-weekly-report")
-    }
-    val sectionEntries = remember(plans, twoColumnSections) { buildSectionEntries(plans, !twoColumnSections) }
-    val sectionTitleToIndex: Map<String, Int> = remember(sectionEntries, headKeys) {
-        buildMap {
-            sectionEntries.forEachIndexed { index, entry ->
-                if (entry.kind == SectionEntryKind.HEADER || entry.kind == SectionEntryKind.BLOCK) {
-                    put(entry.plan.section.title, headKeys.size + index)
-                }
-            }
-        }
-    }
-    // 转屏或分屏改变档位时，item 结构与行高都会变，LazyList 只保留下标，画面会跳到
-    // 别的分区。旧布局仍可读的时刻记下首个可见 item 的 key 和它被裁掉的高度，
-    // 新布局量完按 key 找回同一个位置；只按下标推断会在两栏与单栏之间错位。
-    val itemKeys = remember(headKeys, sectionEntries) {
-        headKeys + sectionEntries.map { it.key }
-    }
-    // 分区拆行后单个 item 的 key 只属于一种布局：退回分区 key 才能在两栏与单栏之间落回同一处
-    val sectionKeyByItemKey = remember(sectionEntries) {
-        sectionEntries.associate { it.key to it.sectionKey }
-    }
+    val sectionTitleToIndex = feedPlan.sectionTitleToIndex
     val layoutSignature = listOf(sizeInfo.widthDp, sizeInfo.heightDp, columns, twoColumnSections, twoColumnHero)
-    var pendingAnchorKey by remember { mutableStateOf<String?>(null) }
-    var pendingAnchorSectionKey by remember { mutableStateOf<String?>(null) }
-    var pendingAnchorOffset by remember { mutableStateOf(0) }
+    val anchorState = rememberHomeFeedAnchorState(listState)
     DisposableEffect(layoutSignature) {
-        onDispose {
-            val info = listState.layoutInfo.visibleItemsInfo.minByOrNull { it.index }
-            val key = info?.key as? String
-            if (key != null) {
-                pendingAnchorKey = key
-                pendingAnchorSectionKey = sectionKeyByItemKey[key]
-                pendingAnchorOffset = info.offset.y
-            }
-        }
+        onDispose { anchorState.capture(feedPlan) }
     }
     LaunchedEffect(layoutSignature) {
-        val anchor = pendingAnchorKey ?: return@LaunchedEffect
-        val fallback = pendingAnchorSectionKey
-        val offset = pendingAnchorOffset
-        pendingAnchorKey = null
-        pendingAnchorSectionKey = null
-        pendingAnchorOffset = 0
-        val index = itemKeys.indexOf(anchor).takeIf { it >= 0 }
-            ?: fallback?.let { itemKeys.indexOf(it) }?.takeIf { it >= 0 }
-        if (index != null) {
-            listState.scrollToItem(index, offset)
-        }
+        anchorState.restore(feedPlan)
     }
 
     val context = LocalContext.current
