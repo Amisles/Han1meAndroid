@@ -59,11 +59,22 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            AppSnackbar.show(context.getString(R.string.local_save_failed))"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeScreen.kt"
+            line="97"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
         errorLine1="        AppSnackbar.show(context.getString(R.string.customize_apply_done))"
         errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/CustomizeScreen.kt"
-            line="107"
+            line="112"
             column="26"/>
     </issue>
 
@@ -74,7 +85,7 @@
         errorLine2="                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/CustomizeScreen.kt"
-            line="445"
+            line="450"
             column="50"/>
     </issue>
 
@@ -85,7 +96,7 @@
         errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/CustomizeScreen.kt"
-            line="498"
+            line="502"
             column="34"/>
     </issue>
 
@@ -96,8 +107,19 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/CustomizeScreen.kt"
-            line="530"
+            line="531"
             column="42"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            AppSnackbar.show(context.getString(it))"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/settings/FolderPickerDialog.kt"
+            line="115"
+            column="30"/>
     </issue>
 
     <issue
@@ -114,22 +136,11 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
-        errorLine1="            AppSnackbar.show(context.getString(it))"
-        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="267"
-            column="30"/>
-    </issue>
-
-    <issue
-        id="LocalContextGetResourceValueCall"
-        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
         errorLine1="                        context.getString(event.messageResId, event.arg)"
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="428"
+            line="201"
             column="25"/>
     </issue>
 
@@ -140,7 +151,7 @@
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="430"
+            line="203"
             column="25"/>
     </issue>
 
@@ -151,7 +162,7 @@
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="464"
+            line="237"
             column="17"/>
     </issue>
 
@@ -162,7 +173,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="641"
+            line="414"
             column="42"/>
     </issue>
 
@@ -173,7 +184,7 @@
         errorLine2="                        ^">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="855"
+            line="628"
             column="25"/>
     </issue>
 
@@ -184,7 +195,7 @@
         errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="869"
+            line="642"
             column="38"/>
     </issue>
 
@@ -205,8 +216,8 @@
         errorLine1="    var trackWidthPx by remember { mutableStateOf(0f) }"
         errorLine2="                                   ~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeWidgets.kt"
-            line="593"
+            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeInputs.kt"
+            line="102"
             column="36"/>
     </issue>
 
@@ -216,8 +227,8 @@
         errorLine1="    val latestValue = remember { mutableStateOf(value) }"
         errorLine2="                                 ~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeWidgets.kt"
-            line="611"
+            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeInputs.kt"
+            line="120"
             column="34"/>
     </issue>
 
@@ -228,7 +239,7 @@
         errorLine2="                                 ~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="127"
+            line="113"
             column="34"/>
     </issue>
 
@@ -239,7 +250,7 @@
         errorLine2="                                  ~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="128"
+            line="114"
             column="35"/>
     </issue>
 
@@ -249,8 +260,8 @@
         errorLine1="                .offset(x = thumbOffset)"
         errorLine2="                 ~~~~~~">
         <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeWidgets.kt"
-            line="703"
+            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeInputs.kt"
+            line="212"
             column="18"/>
     </issue>
 
@@ -294,7 +305,7 @@
         errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsViewModel.kt"
-            line="162"
+            line="172"
             column="34"/>
     </issue>
 

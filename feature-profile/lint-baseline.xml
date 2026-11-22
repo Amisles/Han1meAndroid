@@ -103,6 +103,17 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
+        errorLine1="            AppSnackbar.show(context.getString(R.string.login_memory_only))"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/amisles/hanime/feature/profile/LoginScreen.kt"
+            line="79"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="LocalContextGetResourceValueCall"
+        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
         errorLine1="                AppSnackbar.show(context.getString(R.string.profile_logout_success))"
         errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -128,8 +139,8 @@
         errorLine1="                    settings.javaScriptEnabled = true"
         errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/java/app/amisles/hanime/feature/profile/LoginScreen.kt"
-            line="444"
+            file="src/main/java/app/amisles/hanime/feature/profile/WebLoginTab.kt"
+            line="70"
             column="21"/>
     </issue>
 

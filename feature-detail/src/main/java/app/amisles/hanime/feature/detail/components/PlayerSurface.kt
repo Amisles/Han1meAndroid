@@ -13,12 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import app.amisles.hanime.domain.preferences.PlayerResizeMode
 import coil3.compose.AsyncImage
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 internal fun BoxScope.PlayerSurface(
     exoPlayer: ExoPlayer,
