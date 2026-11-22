@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.domain.model.DiagnosticResult
 import app.amisles.hanime.domain.model.DiagnosticStatus
+import app.amisles.hanime.domain.model.DiagnosticType
 import app.amisles.hanime.domain.repository.DiagnosticsRepository
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,7 +50,7 @@ class DiagnosticsViewModel @Inject constructor(
                 _uiState.value = DiagnosticsUiState.Done(
                     listOf(
                         DiagnosticResult(
-                            type = app.amisles.hanime.data.remote.DiagnosticType.CONNECTIVITY,
+                            type = DiagnosticType.CONNECTIVITY,
                             status = DiagnosticStatus.FAIL,
                             title = context.getString(R.string.diagnostics_error_title),
                             detail = context.getString(R.string.diagnostics_error_detail, e.message),

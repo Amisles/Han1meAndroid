@@ -38,7 +38,6 @@ composeCompiler {
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:ui"))
-    implementation(project(":data"))
     implementation(project(":domain:model"))
     
     implementation(libs.androidx.core.ktx)
