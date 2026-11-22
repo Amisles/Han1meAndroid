@@ -84,6 +84,7 @@ fun CustomizeScreen(
 ) {
     val context = LocalContext.current
     val appPrefs = LocalAppPreferences.current
+    val customizeWriter = rememberCustomizeWriter()
     val sizeInfo = currentWindowSizeInfo()
     val wide = sizeInfo.isTablet || sizeInfo.widthDp >= 720
     val appliedConfig by UiConfigStore.config.collectAsStateWithLifecycle()
@@ -107,13 +108,7 @@ fun CustomizeScreen(
     val dirty = draft.dirty
 
     val applyDraft: () -> Unit = {
-        UiConfigStore.set(draft.config)
-        UiConfigStore.setHomeSections(draft.sections)
-        if (draft.relatedLayout != relatedLayout) {
-            val target = draft.relatedLayout
-            if (target == null) appPrefs.clearRelatedLayoutMode() else appPrefs.setRelatedLayoutMode(target)
-        }
-        draft.commit()
+        customizeWriter.apply(draft)
         AppSnackbar.show(context.getString(R.string.customize_apply_done))
     }
     val revertDraft: () -> Unit = { draft.revert() }
@@ -503,8 +498,7 @@ fun CustomizeScreen(
             message = stringResource(R.string.customize_reset_confirm),
             confirmLabel = stringResource(R.string.common_confirm),
             onConfirm = {
-                UiConfigStore.reset()
-                draft.replace(UiConfig.Default, HomeSectionConfig.Default)
+                customizeWriter.reset(draft)
                 AppSnackbar.show(context.getString(R.string.customize_reset_done))
                 showResetDialog = false
             },
@@ -528,12 +522,9 @@ fun CustomizeScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val result = UiConfigStore.importFromText(importInput)
+                        val result = customizeWriter.import(importInput, draft)
                         val messageRes = when (result) {
-                            is UiConfigImport.Success -> {
-                                draft.replace(UiConfigStore.config.value, UiConfigStore.homeSections.value)
-                                R.string.customize_import_done
-                            }
+                            is UiConfigImport.Success -> R.string.customize_import_done
                             UiConfigImport.UnsupportedVersion -> R.string.customize_import_version
                             UiConfigImport.InvalidFormat -> R.string.customize_import_invalid
                         }

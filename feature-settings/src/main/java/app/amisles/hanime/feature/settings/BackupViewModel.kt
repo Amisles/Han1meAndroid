@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
-import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.domain.model.BackupConflictPolicy
 import app.amisles.hanime.domain.model.BackupError
 import app.amisles.hanime.domain.model.BackupManifest
@@ -63,7 +62,7 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             val result = runCatching {
                 val bytes = withContext(Dispatchers.IO) {
-                    backup.exportBackup(mapOf(BackupRepository.ENTRY_UI_CONFIG to UiConfigStore.exportToText()))
+                    backup.exportBackup()
                 }
                 withContext(Dispatchers.IO) {
                     val resolver = getApplication<Application>().contentResolver
@@ -86,7 +85,6 @@ class BackupViewModel @Inject constructor(
         if (_isBusy.value) return
         _isBusy.value = true
         viewModelScope.launch {
-            val previousUiConfig = UiConfigStore.exportToText()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     val bytes = readLimited(uri)
@@ -131,16 +129,10 @@ class BackupViewModel @Inject constructor(
         if (_isBusy.value) return
         _isBusy.value = true
         viewModelScope.launch {
-            val previousUiConfig = UiConfigStore.exportToText()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    backup.importBackup(current.bytes, policy) { raw ->
-                        UiConfigStore.importFromTextSync(raw)
-                    }
+                    backup.importBackup(current.bytes, policy)
                 }
-            }.onFailure {
-                // 数据库事务已回滚，但界面配置由组合层写入：失败时恢复到导入前快照。
-                runCatching { UiConfigStore.importFromTextSync(previousUiConfig) }
             }
             _isBusy.value = false
             if (result.isSuccess) _pending.value = null

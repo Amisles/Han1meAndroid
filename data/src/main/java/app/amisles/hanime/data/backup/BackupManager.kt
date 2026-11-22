@@ -7,6 +7,7 @@ import app.amisles.hanime.domain.model.BackupContents
 import app.amisles.hanime.domain.model.BackupError
 import app.amisles.hanime.domain.model.BackupImportSummary
 import app.amisles.hanime.domain.model.BackupManifest
+import app.amisles.hanime.domain.preferences.UiConfigBackup
 import app.amisles.hanime.domain.repository.BackupRepository
 import app.amisles.hanime.domain.repository.DownloadRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,12 +23,14 @@ class BackupManager @Inject constructor(
     private val store: BackupDatabaseStore,
     private val settingsMapper: BackupSettingsMapper,
     private val downloads: DownloadRepository,
-    private val codec: BackupJsonCodec
+    private val codec: BackupJsonCodec,
+    private val uiConfig: UiConfigBackup
 ) : BackupRepository {
 
-    override suspend fun exportBackup(extraFiles: Map<String, String>): ByteArray =
+    override suspend fun exportBackup(): ByteArray =
         withContext(Dispatchers.IO) {
             val snapshot = store.read()
+            val uiConfigText = uiConfig.read()
             val manifest = BackupManifest(
                 schemaVersion = BackupFormat.SCHEMA_VERSION,
                 packageName = context.packageName,
@@ -39,7 +42,7 @@ class BackupManager @Inject constructor(
                 downloadCount = snapshot.downloads.size,
                 searchHistoryCount = snapshot.searches.size,
                 hasSettings = true,
-                hasUiConfig = extraFiles.containsKey(BackupFormat.ENTRY_UI_CONFIG)
+                hasUiConfig = uiConfigText.isNotEmpty()
             )
 
             val files = linkedMapOf(
@@ -51,7 +54,7 @@ class BackupManager @Inject constructor(
                 BackupFormat.ENTRY_SEARCH to codec.searchToJson(snapshot.searches),
                 BackupFormat.ENTRY_SETTINGS to codec.settingsToJson(settingsMapper.read())
             )
-            files.putAll(extraFiles)
+            if (uiConfigText.isNotEmpty()) files[BackupFormat.ENTRY_UI_CONFIG] = uiConfigText
             // 校验值覆盖除自身以外的全部条目，写入后再落盘
             files[BackupChecksum.ENTRY_CHECKSUM] =
                 BackupChecksum.format(BackupChecksum.compute(files))
@@ -65,8 +68,7 @@ class BackupManager @Inject constructor(
 
     override suspend fun importBackup(
         bytes: ByteArray,
-        policy: BackupConflictPolicy,
-        applyUiConfig: (String) -> Boolean
+        policy: BackupConflictPolicy
     ): Pair<BackupContents, BackupImportSummary> = withContext(Dispatchers.IO) {
         val files = BackupArchiveCodec.unzip(bytes)
         val manifest = codec.parseManifest(files)
@@ -78,9 +80,10 @@ class BackupManager @Inject constructor(
         // 全部条目解析成功后才允许进入写入阶段：任何一条损坏都整包拒绝，不做静默裁剪。
         val contents = codec.parseContents(files, manifest)
         validateContents(files, manifest, contents)
+        val previousSettings = settingsMapper.read()
+        val previousUiConfig = uiConfig.read()
         downloads.suspendForBackupImport()
         val autoBackupName = writeAutoBackup(policy)
-        val previousSettings = settingsMapper.read()
 
         var restoredIdRange: DownloadIdRange? = null
         try {
@@ -88,11 +91,12 @@ class BackupManager @Inject constructor(
                 contents = contents,
                 policy = policy,
                 applySettings = { settingsMapper.apply(it) },
-                applyUiConfig = applyUiConfig
+                applyUiConfig = uiConfig::apply
             )
         } catch (e: Exception) {
-            // 设置在数据库之外，事务回滚不会自动恢复：按导入前快照还原。
+            // 设置与界面配置在数据库之外，事务回滚不会自动恢复：按导入前快照还原。
             runCatching { settingsMapper.apply(previousSettings) }
+            runCatching { uiConfig.apply(previousUiConfig) }
             throw e
         } finally {
             downloads.reloadTasksFromDatabase()
@@ -150,7 +154,7 @@ class BackupManager @Inject constructor(
         if (!dir.exists()) dir.mkdirs()
         val stamp = System.currentTimeMillis()
         val name = "auto-" + stamp + ".zip"
-        File(dir, name).writeBytes(exportBackup(emptyMap()))
+        File(dir, name).writeBytes(exportBackup())
         pruneAutoBackups(dir)
         name
     }.getOrElse { e ->
