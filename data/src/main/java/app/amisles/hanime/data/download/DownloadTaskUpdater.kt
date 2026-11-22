@@ -1,5 +1,6 @@
 package app.amisles.hanime.data.download
 
+import app.amisles.hanime.domain.model.DownloadEta
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import java.util.concurrent.ConcurrentHashMap
@@ -149,11 +150,8 @@ internal class DownloadTaskUpdater(
         return newTask.copy(speedBps = sampled.emaBps)
     }
 
-    private fun estimatedRemainingMs(task: DownloadTask): Long {
-        if (task.speedBps <= 0L || task.totalBytes <= 0L) return 0L
-        val remainingBytes = (task.totalBytes - task.downloadedBytes).coerceAtLeast(0L)
-        return remainingBytes * 1000L / task.speedBps
-    }
+    private fun estimatedRemainingMs(task: DownloadTask): Long =
+        DownloadEta.remainingMs(task.downloadedBytes, task.totalBytes, task.speedBps)
 
     /**
      * 进度类落盘节流：距上次落盘超过 [PROGRESS_PERSIST_INTERVAL_MS] 才允许写 DB。

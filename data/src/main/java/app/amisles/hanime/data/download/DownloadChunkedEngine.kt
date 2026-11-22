@@ -2,6 +2,7 @@ package app.amisles.hanime.data.download
 
 import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.core.common.util.NetworkClass
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import java.io.File
 import java.io.IOException

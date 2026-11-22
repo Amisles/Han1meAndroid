@@ -1,5 +1,7 @@
 package app.amisles.hanime.data.download
 
+import app.amisles.hanime.core.common.util.NetworkClass
+import app.amisles.hanime.core.common.util.getCurrentNetworkClass
 import app.amisles.hanime.domain.model.DownloadTask
 import java.io.File
 import java.util.concurrent.TimeUnit

@@ -1,8 +1,6 @@
 package app.amisles.hanime.feature.detail
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -18,6 +16,9 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import app.amisles.hanime.core.common.util.BrowserUserAgent
+import app.amisles.hanime.core.common.util.NetworkClass
+import app.amisles.hanime.core.common.util.getCurrentNetworkClass
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
@@ -38,10 +39,6 @@ import kotlinx.coroutines.withContext
  */
 @OptIn(UnstableApi::class)
 object ExoPlayerFactory {
-
-    // 伪装成 Chrome Mobile，避免 CDN 对 ExoPlayer 默认 UA 做单连接限速。
-    private const val BROWSER_UA =
-        "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
     // 磁盘缓存上限 512MB，按 LRU 淘汰最久未用的片段。
     private const val CACHE_MAX_BYTES = 512L * 1024 * 1024
@@ -98,24 +95,6 @@ object ExoPlayerFactory {
         }
     }
 
-    /** 网络类型分类，用于动态缓冲策略。 */
-    enum class NetworkClass { WIFI, CELLULAR, OTHER }
-
-    /** 读取当前网络类型；无权限 / 异常时回退 [NetworkClass.OTHER]。 */
-    fun getCurrentNetworkClass(context: Context): NetworkClass {
-        // minSdk 为 API 30，可直接使用 NetworkCapabilities，无需已废弃的 ConnectivityManager.TYPE_* 与 activeNetworkInfo
-        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return NetworkClass.OTHER
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return NetworkClass.OTHER
-        return when {
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-                || caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE) -> NetworkClass.WIFI
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkClass.CELLULAR
-            else -> NetworkClass.OTHER
-        }
-    }
-
     /**
      * 依据当前网络类型构建 LoadControl：
      * Wi-Fi 大缓冲（30/90s）更稳；移动数据中小缓冲（15/45s）省流量、更快起播；
@@ -132,7 +111,7 @@ object ExoPlayerFactory {
 
     /**
      * 构建视频直链的上游 HTTP 数据源工厂，统一注入反 CDN 限速 / 防盗链策略：
-     * - 浏览器 UA（[BROWSER_UA]）：绕过部分 CDN 对 ExoPlayer 默认 UA 的单连接限速。
+     * - 浏览器 UA（[BrowserUserAgent.VALUE]）：绕过部分 CDN 对 ExoPlayer 默认 UA 的单连接限速。
      * - Referer = 官网网址（[VideoAntiHotlink.refererOf]）：绕过 CDN 的 Referer 防盗链，否则返回 403。
      * - 允许跨协议重定向：部分直链会做 http→https 跳转，禁止后会直接播放失败。
      *   代价是自定义请求头（Referer）会随重定向发往跳转目标主机；头内只有官网地址、不含凭据，故接受。
@@ -145,12 +124,12 @@ object ExoPlayerFactory {
     private fun buildUpstreamFactory(connectTimeoutMs: Int, readTimeoutMs: Int, referer: String): LoggingHttpDataSourceFactory {
         val requestHeaders = mapOf(VideoAntiHotlink.HEADER_NAME to referer)
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(BROWSER_UA)
+            .setUserAgent(BrowserUserAgent.VALUE)
             .setConnectTimeoutMs(connectTimeoutMs)
             .setReadTimeoutMs(readTimeoutMs)
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(requestHeaders)
-        return LoggingHttpDataSourceFactory(httpFactory, BROWSER_UA, requestHeaders)
+        return LoggingHttpDataSourceFactory(httpFactory, BrowserUserAgent.VALUE, requestHeaders)
     }
 
     /**

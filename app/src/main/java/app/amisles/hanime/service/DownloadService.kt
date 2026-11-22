@@ -19,6 +19,7 @@ import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.download.DownloadServiceContract
 import app.amisles.hanime.domain.repository.DownloadRepository
+import app.amisles.hanime.domain.model.DownloadEta
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadTask
 import dagger.hilt.android.AndroidEntryPoint
@@ -343,10 +344,8 @@ class DownloadService : Service() {
         }
 
     /** 按任务内存态里的速率估算剩余毫秒；速率未知或已无剩余字节时返回 0（通知不显示剩余时间）。 */
-    private fun remainingMsOf(task: DownloadTask): Long {
-        if (task.speedBps <= 0L || task.totalBytes <= 0L) return 0L
-        return ((task.totalBytes - task.downloadedBytes).coerceAtLeast(0L)) * 1000L / task.speedBps
-    }
+    private fun remainingMsOf(task: DownloadTask): Long =
+        DownloadEta.remainingMs(task.downloadedBytes, task.totalBytes, task.speedBps)
 
     private fun formatEta(remainingMs: Long): String {
         val minutes = remainingMs / 60_000L

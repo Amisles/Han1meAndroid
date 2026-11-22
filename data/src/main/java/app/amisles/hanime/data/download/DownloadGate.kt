@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import app.amisles.hanime.core.common.util.NetworkClass
+import app.amisles.hanime.core.common.util.getCurrentNetworkClass
 import app.amisles.hanime.domain.model.DownloadGateReason
 import app.amisles.hanime.domain.model.DownloadGateState
 import java.util.Calendar
