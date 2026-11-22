@@ -2,6 +2,7 @@ package app.amisles.hanime.data.download
 
 import android.content.Context
 import app.amisles.hanime.core.common.util.AppLogger
+import app.amisles.hanime.data.parser.ParserUtils
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
@@ -70,6 +71,7 @@ internal class DownloadStorageMaintenance(
                     downloadedBytes = item.totalBytes,
                     status = DownloadStatus.COMPLETED,
                     filePath = item.filePath,
+                    thumbnailUrl = ParserUtils.generatePlaceholderThumbnail(item.videoId),
                     videoId = item.videoId
                 )
                 store.tasksById[nextId] = task
