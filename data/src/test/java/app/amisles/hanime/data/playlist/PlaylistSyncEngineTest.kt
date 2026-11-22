@@ -132,6 +132,16 @@ class PlaylistSyncEngineTest {
     }
 
     @Test
+    fun `flush fetches a page token when none is stored`() = kotlinx.coroutines.runBlocking {
+        engine.setSaved("u1", "409004", "1055606", true)
+        remote.pageToken = "page_token"
+
+        assertEquals(1, engine.flush("u1"))
+        assertEquals("page_token", remote.lastToken)
+        assertEquals(0, engine.pendingCount("u1"))
+    }
+
+    @Test
     fun `flush keeps entries and backs off when the site rejects`() = kotlinx.coroutines.runBlocking {
         engine.cacheOptions("u1", options)
         engine.setSaved("u1", "409004", "1055606", true)
@@ -282,6 +292,7 @@ class PlaylistSyncEngineTest {
         val calls = mutableListOf<Triple<String, String, Boolean>>()
         var fail = false
         var token = "server_token"
+        var pageToken: String = ""
         var lastToken: String = ""
 
         override suspend fun setSaved(
@@ -305,5 +316,7 @@ class PlaylistSyncEngineTest {
             lastToken = csrfToken
             return CreatedPlaylist(remoteId = "1055655", title = title, csrfToken = token)
         }
+
+        override suspend fun fetchToken(): String = pageToken
     }
 }

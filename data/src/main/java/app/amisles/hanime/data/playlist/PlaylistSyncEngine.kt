@@ -97,6 +97,8 @@ class PlaylistSyncEngine @Inject constructor(
 
     suspend fun flush(userId: String, limit: Int = DEFAULT_BATCH): Int {
         if (userId.isBlank()) return 0
+        // 站点只在页面里下发 CSRF Token：本地没有时必须现取一次，否则队列永远发不出去
+        if (!hasToken) rememberToken(runCatching { remote.fetchToken() }.getOrDefault(""))
         var sent = 0
         while (true) {
             val token = tokens.read().takeIf { it.isNotBlank() } ?: return sent

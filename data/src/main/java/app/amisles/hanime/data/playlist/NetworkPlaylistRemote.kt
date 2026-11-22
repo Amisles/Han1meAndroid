@@ -1,6 +1,8 @@
 package app.amisles.hanime.data.playlist
 
+import app.amisles.hanime.data.parser.LoginParser
 import app.amisles.hanime.data.parser.PlaylistSaveResponseParser
+import app.amisles.hanime.data.remote.AuthApi
 import app.amisles.hanime.data.remote.CommunityApi
 import app.amisles.hanime.domain.model.CreatedPlaylist
 import app.amisles.hanime.domain.model.PlaylistSaveResult
@@ -10,6 +12,7 @@ import javax.inject.Singleton
 @Singleton
 class NetworkPlaylistRemote @Inject constructor(
     private val community: CommunityApi,
+    private val auth: AuthApi,
     private val responseParser: PlaylistSaveResponseParser
 ) : PlaylistRemote {
 
@@ -40,4 +43,7 @@ class NetworkPlaylistRemote @Inject constructor(
             csrfToken = csrfToken
         )
     )
+
+    override suspend fun fetchToken(): String =
+        LoginParser.parseCsrfToken(auth.fetchHomePage().html).orEmpty()
 }

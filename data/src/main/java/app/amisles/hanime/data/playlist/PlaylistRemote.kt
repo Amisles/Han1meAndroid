@@ -13,4 +13,6 @@ interface PlaylistRemote {
         description: String,
         csrfToken: String
     ): CreatedPlaylist
+
+    suspend fun fetchToken(): String
 }
