@@ -50,7 +50,7 @@ class PreferenceStorage @Inject constructor(
         if (!runCatching { hot.getBoolean(PreferenceKeys.HOT_SPLIT_DONE, false) }.getOrDefault(false)) {
             migrateHotKeys(hot)
         }
-        prefs = SplitPreferences(hot, secureSession, PreferenceKeys.SESSION_KEYS)
+        prefs = SplitPreferences(hot, secureSession, PreferenceKeys.SECURE_KEYS)
         secureSession.onDemandOpen = { preferencesScope.launch { openSecureStore() } }
         if (secureSession.isReady()) {
             notifySessionReady()
@@ -166,7 +166,7 @@ class PreferenceStorage @Inject constructor(
         secureSession.attach(secure)
         val carried = runCatching { secure.all }.getOrDefault(emptyMap())
             .filterKeys {
-                it !in PreferenceKeys.SESSION_KEYS && it != PreferenceKeys.MIGRATED_TO_ENCRYPTED
+                it !in PreferenceKeys.SECURE_KEYS && it != PreferenceKeys.MIGRATED_TO_ENCRYPTED
             }
         runCatching {
             val hotEditor = hot.edit()

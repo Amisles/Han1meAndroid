@@ -65,6 +65,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PlaylistSaveSheet
 import app.amisles.hanime.core.ui.components.KaomojiErrorView
+import app.amisles.hanime.core.ui.components.LocalPrivacyMode
 import app.amisles.hanime.core.ui.components.LoginUnsupportedDialog
 import app.amisles.hanime.core.ui.components.ThumbnailPrefetcher
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
@@ -123,6 +124,8 @@ fun DetailScreen(
         )
     }
     val context = LocalContext.current
+    val privacyMode = LocalPrivacyMode.current
+    val privateMediaTitle = stringResource(R.string.privacy_media_title)
     val downloadQualities by viewModel.downloadQualities.collectAsStateWithLifecycle()
     val isLoadingQualities by viewModel.isLoadingQualities.collectAsStateWithLifecycle()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
@@ -281,10 +284,10 @@ fun DetailScreen(
                 mediaItemBuilder
                     .setMediaMetadata(
                         MediaMetadata.Builder()
-                            .setTitle(detail.title)
-                            .setArtist(detail.author)
+                            .setTitle(if (privacyMode) privateMediaTitle else detail.title)
+                            .setArtist(if (privacyMode) "" else detail.author)
                             .apply {
-                                if (detail.posterUrl.isNotBlank()) {
+                                if (!privacyMode && detail.posterUrl.isNotBlank()) {
                                     setArtworkUri(detail.posterUrl.toUri())
                                 }
                             }

@@ -12,6 +12,8 @@ import app.amisles.hanime.domain.preferences.RelatedLayoutMode
 import app.amisles.hanime.domain.preferences.SearchLayoutMode
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.domain.preferences.UiHintStore
+import app.amisles.hanime.domain.repository.AppLockResult
+import app.amisles.hanime.domain.repository.AppLockSettings
 import app.amisles.hanime.domain.repository.CrashSettings
 import app.amisles.hanime.domain.repository.PersistenceHealth
 import app.amisles.hanime.domain.repository.PlaylistSettings
@@ -26,8 +28,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 非敏感设置存储：语言、外观、播放器、下载、阅读、更新与一次性提示。
@@ -39,7 +44,8 @@ import kotlinx.coroutines.flow.stateIn
 @Singleton
 class SettingsStore @Inject constructor(
     private val storage: PreferenceStorage
-): SettingsRepository, UiHintStore, UpdateSettings, PlaylistSettings, CrashSettings, PersistenceHealth {
+): SettingsRepository, UiHintStore, UpdateSettings, PlaylistSettings, CrashSettings, PersistenceHealth,
+    AppLockSettings {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -83,6 +89,9 @@ class SettingsStore @Inject constructor(
 
     private val _privacyModeFlow = MutableStateFlow(false)
     override val privacyModeFlow: StateFlow<Boolean> = _privacyModeFlow.asStateFlow()
+
+    private val _appLockEnabledFlow = MutableStateFlow(false)
+    override val appLockEnabledFlow: StateFlow<Boolean> = _appLockEnabledFlow.asStateFlow()
 
     private val _playbackSpeedFlow = MutableStateFlow(1f)
     override val playbackSpeedFlow: StateFlow<Float> = _playbackSpeedFlow.asStateFlow()
@@ -183,6 +192,7 @@ class SettingsStore @Inject constructor(
         _themeModeFlow.value = ThemeMode.fromName(storage.readString(PreferenceKeys.THEME_MODE, null))
         _dynamicColorFlow.value = storage.readBoolean(PreferenceKeys.DYNAMIC_COLOR, false)
         _privacyModeFlow.value = storage.readBoolean(PreferenceKeys.PRIVACY_MODE, false)
+        _appLockEnabledFlow.value = storage.readBoolean(PreferenceKeys.APP_LOCK_ENABLED, false)
         _playbackSpeedFlow.value = storage.readFloat(PreferenceKeys.PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = storage.readString(PreferenceKeys.PREFERRED_QUALITY, "").orEmpty()
         _autoPlayNextFlow.value = storage.readBoolean(PreferenceKeys.AUTO_PLAY_NEXT, false)
@@ -321,6 +331,45 @@ class SettingsStore @Inject constructor(
     override fun setPrivacyMode(enabled: Boolean) {
         storage.write { putBoolean(PreferenceKeys.PRIVACY_MODE, enabled) }
         _privacyModeFlow.value = enabled
+    }
+
+    override suspend fun setPin(pin: String): Boolean = withContext(Dispatchers.Default) {
+        awaitSecureStore()
+        if (!storage.isSessionReady()) return@withContext false
+        val salt = PinHasher.newSalt()
+        val hash = PinHasher.hash(pin, salt)
+        if (hash.isEmpty()) return@withContext false
+        val written = storage.writeBlocking {
+            putBoolean(PreferenceKeys.APP_LOCK_ENABLED, true)
+            putString(PreferenceKeys.APP_LOCK_PIN_SALT, salt)
+            putString(PreferenceKeys.APP_LOCK_PIN_HASH, hash)
+        }
+        if (written) _appLockEnabledFlow.value = true
+        written
+    }
+
+    override fun disableAppLock() {
+        storage.write {
+            putBoolean(PreferenceKeys.APP_LOCK_ENABLED, false)
+            remove(PreferenceKeys.APP_LOCK_PIN_SALT)
+            remove(PreferenceKeys.APP_LOCK_PIN_HASH)
+        }
+        _appLockEnabledFlow.value = false
+    }
+
+    override suspend fun verifyPin(pin: String): AppLockResult = withContext(Dispatchers.Default) {
+        awaitSecureStore()
+        if (!storage.isSessionReady()) return@withContext AppLockResult.UNAVAILABLE
+        val salt = storage.readString(PreferenceKeys.APP_LOCK_PIN_SALT, null).orEmpty()
+        val hash = storage.readString(PreferenceKeys.APP_LOCK_PIN_HASH, null).orEmpty()
+        if (salt.isEmpty() || hash.isEmpty()) return@withContext AppLockResult.UNAVAILABLE
+        if (PinHasher.matches(pin, salt, hash)) AppLockResult.UNLOCKED else AppLockResult.MISMATCH
+    }
+
+    /** 加密存储首次打开要经 Keystore，冷启动后要几十毫秒才就绪；不等它会把「还没打开」误判成校验值丢失。 */
+    private suspend fun awaitSecureStore() {
+        if (storage.isSessionReady() || storage.hasSessionFailed()) return
+        withTimeoutOrNull(SECURE_STORE_WAIT_MS) { storage.sessionReady.first { it } }
     }
 
     override fun setBaseUrl(url: String): Boolean {
@@ -590,6 +639,8 @@ class SettingsStore @Inject constructor(
         const val DEFAULT_LONG_PRESS_SPEED = 2f
         const val MIN_LONG_PRESS_SPEED = 1.5f
         const val MAX_LONG_PRESS_SPEED = 3f
+
+        private const val SECURE_STORE_WAIT_MS = 3_000L
 
         const val LANGUAGE_ZH_CN = SettingsRepository.LANGUAGE_ZH_CN
         const val LANGUAGE_ZH_TW = SettingsRepository.LANGUAGE_ZH_TW

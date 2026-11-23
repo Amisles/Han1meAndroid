@@ -18,6 +18,7 @@ import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.formatBytes
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.data.download.DownloadServiceContract
+import app.amisles.hanime.domain.repository.AppearanceSettings
 import app.amisles.hanime.domain.repository.DownloadRepository
 import app.amisles.hanime.domain.model.DownloadEta
 import app.amisles.hanime.domain.model.DownloadStatus
@@ -39,6 +40,9 @@ class DownloadService : Service() {
 
     @Inject
     lateinit var downloads: DownloadRepository
+
+    @Inject
+    lateinit var appearance: AppearanceSettings
 
     companion object {
         const val CHANNEL_ID = DownloadServiceContract.CHANNEL_ID
@@ -509,7 +513,7 @@ class DownloadService : Service() {
         speedBps: Long = 0L,
         remainingMs: Long = 0L
     ): Notification {
-        val displayTitle = title.ifEmpty { getString(R.string.download_notification_downloading) }
+        val displayTitle = privacyTitle(title, R.string.download_notification_downloading)
         // 暂停态显示「已暂停 xx%」，其余显示「下载中 xx%」；速率与剩余时间仅在真实传输时出现
         val contentText = when {
             status == DownloadStatus.PAUSED ->
@@ -542,7 +546,7 @@ class DownloadService : Service() {
 
     /** 暂停态通知用常规通知（可划掉、点击自动消失）；若沿用 setOngoing(true)，用户将无法自行清除。 */
     private fun buildPausedNotification(title: String, progress: Int, taskId: Int): Notification {
-        val displayTitle = title.ifEmpty { getString(R.string.download_notification_downloading) }
+        val displayTitle = privacyTitle(title, R.string.download_notification_downloading)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
             .setContentText(getString(R.string.download_notification_paused, progress.coerceIn(0, 100)))
@@ -569,7 +573,7 @@ class DownloadService : Service() {
     }
 
     private fun buildCompletedNotification(title: String, filePath: String = "", taskId: Int = -1): Notification {
-        val displayTitle = title.ifEmpty { getString(R.string.download_notification_completed) }
+        val displayTitle = privacyTitle(title, R.string.download_notification_completed)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
             .setContentText(getString(R.string.download_notification_completed))
@@ -581,7 +585,7 @@ class DownloadService : Service() {
     }
 
     private fun buildFailedNotification(title: String, taskId: Int = -1): Notification {
-        val displayTitle = title.ifEmpty { getString(R.string.download_notification_failed) }
+        val displayTitle = privacyTitle(title, R.string.download_notification_failed)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(displayTitle)
             .setContentText(getString(R.string.download_notification_failed))
@@ -598,6 +602,10 @@ class DownloadService : Service() {
             )
             .build()
     }
+
+    /** 隐私模式下通知栏只留通用文案：任务标题就是视频名，会直接暴露正在下载的内容。 */
+    private fun privacyTitle(title: String, fallbackRes: Int): String =
+        if (appearance.privacyMode) getString(fallbackRes) else title.ifEmpty { getString(fallbackRes) }
 
     private fun buildOpenDownloadsIntent(taskId: Int): PendingIntent {
         val intent = Intent(this, MainActivity::class.java).apply {

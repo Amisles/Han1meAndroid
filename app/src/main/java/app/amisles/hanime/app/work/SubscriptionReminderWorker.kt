@@ -13,6 +13,7 @@ import androidx.work.WorkerParameters
 import app.amisles.hanime.MainActivity
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.ui.R
+import app.amisles.hanime.domain.repository.AppearanceSettings
 import app.amisles.hanime.domain.repository.SiteSettings
 import app.amisles.hanime.data.subscription.SubscriptionUpdateChecker
 import dagger.assisted.Assisted
@@ -30,7 +31,8 @@ class SubscriptionReminderWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val checker: SubscriptionUpdateChecker,
-    private val settings: SiteSettings
+    private val settings: SiteSettings,
+    private val appearance: AppearanceSettings
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
@@ -76,7 +78,7 @@ class SubscriptionReminderWorker @AssistedInject constructor(
             .setSmallIcon(R.drawable.ic_stat_playback)
             .setContentTitle(applicationContext.getString(R.string.subscription_reminder_title))
             .setContentText(
-                if (count == 1) {
+                if (count == 1 && !appearance.privacyMode) {
                     firstTitle
                 } else {
                     applicationContext.getString(R.string.subscription_reminder_body, count)

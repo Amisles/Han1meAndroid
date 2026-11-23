@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.amisles.hanime.domain.repository.AppLockResult
+import app.amisles.hanime.domain.repository.AppLockSettings
 import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
 import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.domain.repository.PersistenceHealth
@@ -33,6 +35,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
     val privacyMode: Boolean = false,
+    val appLockEnabled: Boolean = false,
     val maxDownloadConcurrent: Int = DEFAULT_MAX_DOWNLOAD_CONCURRENT,
     val downloadRateLimit: Int = 0,
     val downloadWifiOnly: Boolean = false,
@@ -72,7 +75,8 @@ class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val session: SessionRepository,
     private val videoDetailCache: VideoDetailCacheRepository,
-    private val persistenceHealth: PersistenceHealth
+    private val persistenceHealth: PersistenceHealth,
+    private val appLock: AppLockSettings
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -134,6 +138,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(dynamicColor = enabled)
     }.combine(settings.privacyModeFlow) { state, enabled ->
         state.copy(privacyMode = enabled)
+    }.combine(appLock.appLockEnabledFlow) { state, enabled ->
+        state.copy(appLockEnabled = enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -146,6 +152,7 @@ class SettingsViewModel @Inject constructor(
         themeMode = settings.themeMode,
         dynamicColor = settings.dynamicColor,
         privacyMode = settings.privacyMode,
+        appLockEnabled = appLock.appLockEnabledFlow.value,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         downloadRateLimit = settings.downloadRateLimit,
         downloadWifiOnly = settings.downloadWifiOnly,
@@ -213,6 +220,18 @@ class SettingsViewModel @Inject constructor(
     fun setPrivacyMode(enabled: Boolean) {
         settings.setPrivacyMode(enabled)
     }
+
+    fun setAppLockPin(pin: String) {
+        viewModelScope.launch {
+            if (!appLock.setPin(pin)) _events.emit(SettingsUiEvent.Toast(R.string.local_save_failed))
+        }
+    }
+
+    fun disableAppLock() {
+        appLock.disableAppLock()
+    }
+
+    suspend fun verifyAppLockPin(pin: String): AppLockResult = appLock.verifyPin(pin)
 
     fun setMaxDownloadConcurrent(count: Int) {
         settings.setMaxDownloadConcurrent(count)

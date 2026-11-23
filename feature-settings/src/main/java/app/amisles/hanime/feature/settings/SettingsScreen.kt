@@ -82,6 +82,7 @@ import app.amisles.hanime.core.ui.components.SettingsSwitchRow
 import app.amisles.hanime.core.ui.components.SettingsNavRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -215,6 +216,7 @@ fun SettingsScreen(
     var downloadRateLimitMenuExpanded by remember { mutableStateOf(false) }
     var themeModeMenuExpanded by remember { mutableStateOf(false) }
     var showBaseUrlDialog by remember { mutableStateOf(false) }
+    var showAppLockDialog by remember { mutableStateOf(false) }
     var baseUrlInput by remember { mutableStateOf(uiState.baseUrl) }
 
     val baseUrlEditorRequester = remember { BringIntoViewRequester() }
@@ -395,6 +397,14 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_privacy_mode_summary),
                     checked = uiState.privacyMode,
                     onCheckedChange = { enabled -> viewModel.setPrivacyMode(enabled) }
+                )
+                SettingsGroupDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Outlined.Lock,
+                    title = stringResource(R.string.settings_app_lock),
+                    subtitle = stringResource(R.string.settings_app_lock_summary),
+                    checked = uiState.appLockEnabled,
+                    onCheckedChange = { showAppLockDialog = true }
                 )
             }
 
@@ -586,6 +596,22 @@ fun SettingsScreen(
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    if (showAppLockDialog) {
+        AppLockPinDialog(
+            mode = if (uiState.appLockEnabled) AppLockDialogMode.DISABLE else AppLockDialogMode.ENABLE,
+            verify = viewModel::verifyAppLockPin,
+            onEnable = { pin ->
+                viewModel.setAppLockPin(pin)
+                showAppLockDialog = false
+            },
+            onDisable = {
+                viewModel.disableAppLock()
+                showAppLockDialog = false
+            },
+            onDismiss = { showAppLockDialog = false }
         )
     }
 

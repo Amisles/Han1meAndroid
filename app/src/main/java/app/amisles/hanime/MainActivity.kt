@@ -7,8 +7,10 @@ import android.content.ContextWrapper
 import android.content.res.AssetManager
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.os.Build
 import android.os.Bundle
 import android.os.LocaleList
+import android.view.WindowManager
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -16,22 +18,46 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.metrics.performance.FrameData
 import androidx.metrics.performance.JankStats
 import app.amisles.hanime.BuildConfig
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.LocaleHelper
+import app.amisles.hanime.core.ui.R as CoreR
 import app.amisles.hanime.core.ui.util.VolumeKeyPager
 import app.amisles.hanime.domain.preferences.ThemeMode
+import app.amisles.hanime.domain.repository.AppLockSettings
 import app.amisles.hanime.domain.repository.AppearanceSettings
 import app.amisles.hanime.domain.repository.CrashSettings
 import app.amisles.hanime.domain.repository.SettingsRepository
@@ -40,6 +66,7 @@ import app.amisles.hanime.domain.preferences.UiHintStore
 import app.amisles.hanime.core.ui.theme.LocalAppPreferences
 import app.amisles.hanime.core.ui.theme.UiConfigStore
 import app.amisles.hanime.core.ui.components.LocalPrivacyMode
+import app.amisles.hanime.ui.app.AppLockGate
 import app.amisles.hanime.ui.theme.HanimeTheme
 import app.amisles.hanime.domain.preferences.AppPreferences
 import dagger.hilt.android.AndroidEntryPoint
@@ -91,6 +118,23 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var hints: UiHintStore
+
+    @Inject
+    lateinit var appLock: AppLockSettings
+
+    /**
+     * 画中画是独立窗口：进出小窗都会让 Activity 走 ON_PAUSE，遮罩必须让位，
+     * 否则缩小后的窗口会被当作「已退到后台」一并盖住。
+     */
+    private var inPictureInPicture by mutableStateOf(false)
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPictureInPicture = isInPictureInPictureMode
+    }
 
     /** 创建时按当前语言包装 Context；Application 的 Resources 覆盖不影响本 Activity，运行中换语言由 getResources 的覆盖刷新。 */
     override fun attachBaseContext(newBase: Context) {
@@ -178,11 +222,33 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
-                HanimeApp(
-                    updateRepository = updateRepository,
-                    crashSettings = crashSettings,
-                    hints = hints
-                )
+                LaunchedEffect(privacyMode) {
+                    if (privacyMode) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    }
+                }
+                val inBackground = rememberAppInBackground()
+                val veilActive = privacyMode && inBackground && !inPictureInPicture
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(if (veilActive) Modifier.blur(PRIVACY_VEIL_BLUR) else Modifier)
+                    ) {
+                        AppLockGate(appLock = appLock) {
+                            HanimeApp(
+                                updateRepository = updateRepository,
+                                crashSettings = crashSettings,
+                                hints = hints
+                            )
+                        }
+                    }
+                    if (veilActive) {
+                        PrivacyOverviewVeil()
+                    }
+                }
             }
             }
         }
@@ -202,6 +268,61 @@ class MainActivity : ComponentActivity() {
                 }
             }
         )
+    }
+}
+
+private val PRIVACY_VEIL_BLUR = 28.dp
+
+/** 退到后台时置位，用于在概览界面遮住画面。 */
+@Composable
+private fun rememberAppInBackground(): Boolean {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var inBackground by remember { mutableStateOf(false) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> inBackground = true
+                Lifecycle.Event.ON_RESUME -> inBackground = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return inBackground
+}
+
+/**
+ * 概览界面的隐私遮罩。
+ *
+ * Android 12 起内容已先行模糊，这层只负责压住残余轮廓；更低版本没有 Modifier.blur 的渲染效果，
+ * 必须用不透明底色整屏盖住，否则概览缩略图仍能看清画面。
+ */
+@Composable
+private fun PrivacyOverviewVeil() {
+    val opaque = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                MaterialTheme.colorScheme.background.copy(alpha = if (opaque) 1f else 0.6f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Outlined.VisibilityOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(40.dp)
+            )
+            Text(
+                text = stringResource(CoreR.string.privacy_player_hidden),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 10.dp)
+            )
+        }
     }
 }
 

@@ -1267,4 +1267,17 @@
     <string name="playlist_response_invalid">站點回傳的清單資料無法辨識</string>
     <string name="error_author_parse_failed">無法解析作者主頁</string>
     <string name="login_memory_only">登入成功，但憑證無法安全落盤，重新啟動應用程式後需要重新登入</string>
+<string name="settings_app_lock">應用鎖</string>
+    <string name="settings_app_lock_summary">冷啟動與回到前景都需要輸入 4 位 PIN</string>
+    <string name="app_lock_title">輸入 PIN 解鎖</string>
+    <string name="app_lock_wrong_pin">PIN 錯誤，請重試</string>
+    <string name="app_lock_unavailable">PIN 儲存不可用，應用鎖已關閉</string>
+    <string name="app_lock_set_title">設定 4 位 PIN</string>
+    <string name="app_lock_confirm_title">再次輸入以確認</string>
+    <string name="app_lock_enable">開啟應用鎖</string>
+    <string name="app_lock_disable_title">輸入目前 PIN 以關閉應用鎖</string>
+    <string name="app_lock_disable">關閉應用鎖</string>
+    <string name="app_lock_confirm_mismatch">兩次輸入不一致</string>
+    <string name="privacy_media_title">正在播放</string>
+    <string name="cd_backspace">退格</string>
 </resources>

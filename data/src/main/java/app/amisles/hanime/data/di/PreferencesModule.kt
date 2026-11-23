@@ -6,6 +6,7 @@ import app.amisles.hanime.data.preferences.SettingsStore
 import app.amisles.hanime.data.remote.NetworkDiagnostics
 import app.amisles.hanime.domain.preferences.AppPreferences
 import app.amisles.hanime.domain.preferences.UiHintStore
+import app.amisles.hanime.domain.repository.AppLockSettings
 import app.amisles.hanime.domain.repository.AppearanceSettings
 import app.amisles.hanime.domain.repository.CrashSettings
 import app.amisles.hanime.domain.repository.DiagnosticsRepository
@@ -73,6 +74,10 @@ object PreferencesModule {
     @Provides
     @Singleton
     fun providePersistenceHealth(store: SettingsStore): PersistenceHealth = store
+
+    @Provides
+    @Singleton
+    fun provideAppLockSettings(store: SettingsStore): AppLockSettings = store
 
     @Provides
     @Singleton

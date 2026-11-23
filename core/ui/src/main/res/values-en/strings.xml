@@ -1267,4 +1267,17 @@
     <string name="playlist_response_invalid">The playlist data returned by the site could not be read</string>
     <string name="error_author_parse_failed">Could not read the author page</string>
     <string name="login_memory_only">Signed in, but the session could not be stored securely; you will need to sign in again after restarting.</string>
+<string name="settings_app_lock">App lock</string>
+    <string name="settings_app_lock_summary">Asks for a 4-digit PIN on every cold start and when returning to the app</string>
+    <string name="app_lock_title">Enter PIN to unlock</string>
+    <string name="app_lock_wrong_pin">Wrong PIN, try again</string>
+    <string name="app_lock_unavailable">PIN storage is unavailable, app lock has been turned off</string>
+    <string name="app_lock_set_title">Set a 4-digit PIN</string>
+    <string name="app_lock_confirm_title">Enter the PIN again to confirm</string>
+    <string name="app_lock_enable">Turn on app lock</string>
+    <string name="app_lock_disable_title">Enter current PIN to turn off app lock</string>
+    <string name="app_lock_disable">Turn off app lock</string>
+    <string name="app_lock_confirm_mismatch">The two PINs do not match</string>
+    <string name="privacy_media_title">Now playing</string>
+    <string name="cd_backspace">Backspace</string>
 </resources>

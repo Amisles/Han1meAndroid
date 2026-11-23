@@ -61,6 +61,9 @@ internal object PreferenceKeys {
     const val HOME_LONG_PRESS_HINT_DISMISSED = "home_long_press_hint_dismissed"
     const val DOWNLOAD_QUICK_HINT_DISMISSED = "download_quick_hint_dismissed"
     const val PLAYER_GESTURE_INTRO_SHOWN = "player_gesture_intro_shown"
+    const val APP_LOCK_ENABLED = "app_lock_enabled"
+    const val APP_LOCK_PIN_SALT = "app_lock_pin_salt"
+    const val APP_LOCK_PIN_HASH = "app_lock_pin_hash"
 
     /** 只写入加密存储的键；其余键走热存储。 */
     val SESSION_KEYS = setOf(
@@ -71,4 +74,7 @@ internal object PreferenceKeys {
         CF_COOKIE_DOMAIN,
         PLAYLIST_CSRF_TOKEN
     )
+
+    /** 需要加密但不属于会话的键：PIN 校验值只存加盐哈希。 */
+    val SECURE_KEYS = SESSION_KEYS + setOf(APP_LOCK_PIN_SALT, APP_LOCK_PIN_HASH)
 }

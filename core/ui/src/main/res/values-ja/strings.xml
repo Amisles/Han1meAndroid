@@ -1267,4 +1267,17 @@
     <string name="playlist_response_invalid">サイトが返したプレイリスト情報を読み取れませんでした</string>
     <string name="error_author_parse_failed">作者ページを読み取れませんでした</string>
     <string name="login_memory_only">ログインしましたが、認証情報を安全に保存できませんでした。アプリ再起動後に再ログインが必要です。</string>
+<string name="settings_app_lock">アプリロック</string>
+    <string name="settings_app_lock_summary">起動時と復帰時に 4 桁の PIN を要求します</string>
+    <string name="app_lock_title">PIN を入力してロック解除</string>
+    <string name="app_lock_wrong_pin">PIN が違います。もう一度入力してください</string>
+    <string name="app_lock_unavailable">PIN の保存領域を利用できないため、アプリロックを解除しました</string>
+    <string name="app_lock_set_title">4 桁の PIN を設定</string>
+    <string name="app_lock_confirm_title">確認のためもう一度入力</string>
+    <string name="app_lock_enable">アプリロックを有効にする</string>
+    <string name="app_lock_disable_title">現在の PIN を入力してアプリロックを解除</string>
+    <string name="app_lock_disable">アプリロックを無効にする</string>
+    <string name="app_lock_confirm_mismatch">PIN が一致しません</string>
+    <string name="privacy_media_title">再生中</string>
+    <string name="cd_backspace">バックスペース</string>
 </resources>

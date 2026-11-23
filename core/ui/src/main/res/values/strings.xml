@@ -1302,4 +1302,17 @@
     <string name="playlist_response_invalid">站点返回的清单数据无法识别</string>
     <string name="error_author_parse_failed">无法解析作者主页</string>
     <string name="login_memory_only">登录成功，但凭据无法安全落盘，重启应用后需要重新登录</string>
+<string name="settings_app_lock">应用锁</string>
+    <string name="settings_app_lock_summary">冷启动与回到前台都需要输入 4 位 PIN</string>
+    <string name="app_lock_title">输入 PIN 解锁</string>
+    <string name="app_lock_wrong_pin">PIN 错误，请重试</string>
+    <string name="app_lock_unavailable">PIN 存储不可用，应用锁已关闭</string>
+    <string name="app_lock_set_title">设置 4 位 PIN</string>
+    <string name="app_lock_confirm_title">再次输入以确认</string>
+    <string name="app_lock_enable">开启应用锁</string>
+    <string name="app_lock_disable_title">输入当前 PIN 以关闭应用锁</string>
+    <string name="app_lock_disable">关闭应用锁</string>
+    <string name="app_lock_confirm_mismatch">两次输入不一致</string>
+    <string name="privacy_media_title">正在播放</string>
+    <string name="cd_backspace">退格</string>
 </resources>

@@ -288,6 +288,7 @@ fun VideoPlayer(
     val onQualityChangedRef = rememberUpdatedState(onQualityChanged)
     val onPlaybackSpeedChangedRef = rememberUpdatedState(onPlaybackSpeedChanged)
     val onInitialSeekAppliedRef = rememberUpdatedState(onInitialSeekApplied)
+    val privacyModeRef = rememberUpdatedState(privacyMode)
 
     val playback = remember(exoPlayer) {
         PlayerPlaybackController(
@@ -299,6 +300,7 @@ fun VideoPlayer(
             posterUrl = { posterUrlRef.value },
             initialSourceUrl = initialSourceUrl,
             initialPositionMs = { initialPositionMsRef.value },
+            isPrivacyMode = { privacyModeRef.value },
             autoQualityEnabled = { autoQualityEnabled },
             isLoopPlayback = { isLoopPlaybackRef.value },
             sleepAfterEpisode = { sleepAfterEpisodeRef.value },
@@ -360,6 +362,10 @@ fun VideoPlayer(
 
     LaunchedEffect(Unit) {
         playback.attach()
+    }
+
+    LaunchedEffect(privacyMode) {
+        playback.refreshMetadata()
     }
 
     // 画面比例：适应与拉伸都要求解码器不裁切（拉伸由视图缩放实现），只有裁切模式才铺满容器

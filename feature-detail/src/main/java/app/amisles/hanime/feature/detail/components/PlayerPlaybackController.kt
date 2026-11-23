@@ -26,6 +26,7 @@ internal class PlayerPlaybackController(
     private val posterUrl: () -> String,
     initialSourceUrl: String,
     private val initialPositionMs: () -> Long,
+    private val isPrivacyMode: () -> Boolean,
     private val autoQualityEnabled: () -> Boolean,
     private val isLoopPlayback: () -> Boolean,
     private val sleepAfterEpisode: () -> Boolean,
@@ -340,15 +341,36 @@ internal class PlayerPlaybackController(
         runCatching { exoPlayer.setPlaybackSpeed(target) }
     }
 
-    private fun buildMediaItem(url: String): MediaItem {
-        val title = mediaTitle()
-        val artist = mediaArtist()
+    /**
+     * 隐私模式下只留通用标题：媒体元数据同时驱动通知栏、锁屏与蓝牙控件，任何一处带标题都会泄露内容。
+     */
+    private fun buildMetadata(): MediaMetadata {
+        if (isPrivacyMode()) {
+            return MediaMetadata.Builder()
+                .setTitle(context.getString(R.string.privacy_media_title))
+                .build()
+        }
         val artwork = posterUrl()
-        val metadata = MediaMetadata.Builder()
-            .setTitle(title)
-            .setArtist(artist)
+        return MediaMetadata.Builder()
+            .setTitle(mediaTitle())
+            .setArtist(mediaArtist())
             .apply { if (artwork.isNotBlank()) setArtworkUri(artwork.toUri()) }
             .build()
+    }
+
+    /** 开关隐私模式时重写当前条目的元数据：同一直链只改元数据，ExoPlayer 会无缝续播。 */
+    fun refreshMetadata() {
+        val item = exoPlayer.currentMediaItem ?: return
+        runCatching {
+            exoPlayer.replaceMediaItem(
+                exoPlayer.currentMediaItemIndex,
+                item.buildUpon().setMediaMetadata(buildMetadata()).build()
+            )
+        }
+    }
+
+    private fun buildMediaItem(url: String): MediaItem {
+        val metadata = buildMetadata()
         val mimeType = sources().firstOrNull { it.url == url }?.normalizedMimeType.orEmpty()
         val builder = MediaItem.Builder().setUri(url).setMediaMetadata(metadata)
         if (mimeType.isNotEmpty()) builder.setMimeType(mimeType)
