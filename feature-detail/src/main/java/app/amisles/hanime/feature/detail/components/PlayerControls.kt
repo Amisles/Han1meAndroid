@@ -1,6 +1,5 @@
 package app.amisles.hanime.feature.detail.components
 
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -557,7 +556,7 @@ internal fun BoxScope.PlayerControls(
                     modifier = Modifier.height(40.dp)
                 )
 
-                if (isFullscreen && layout.showPipEntry && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (isFullscreen && layout.showPipEntry) {
                     DropdownMenuItem(
                         text = {
                             Text(

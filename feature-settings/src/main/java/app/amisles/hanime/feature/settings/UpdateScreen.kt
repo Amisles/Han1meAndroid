@@ -1,7 +1,7 @@
 package app.amisles.hanime.feature.settings
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,7 +61,7 @@ import androidx.compose.material3.IconButton
 fun openReleasePage(context: android.content.Context, url: String) {
     if (url.isBlank()) return
     runCatching {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
     }
 }
 

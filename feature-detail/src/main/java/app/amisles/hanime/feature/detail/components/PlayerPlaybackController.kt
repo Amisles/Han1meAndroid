@@ -2,7 +2,6 @@ package app.amisles.hanime.feature.detail.components
 
 import android.content.Context
 import android.media.AudioManager
-import android.net.Uri
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.media3.common.MediaItem
@@ -11,6 +10,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.core.net.toUri
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
@@ -68,7 +68,7 @@ internal class PlayerPlaybackController(
     private var lastVolumeStep = -1
 
     val effectiveSpeed: Float
-        get() = if (isLongPressBoost.value) boostSpeed.value else playbackSpeed.value
+        get() = if (isLongPressBoost.value) boostSpeed.floatValue else playbackSpeed.floatValue
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -76,6 +76,7 @@ internal class PlayerPlaybackController(
             lastPlaybackState = playbackState
             isBuffering.value = playbackState == Player.STATE_BUFFERING
             when (playbackState) {
+                Player.STATE_IDLE -> Unit
                 Player.STATE_BUFFERING -> {
                     // 仅「从 READY 掉回 BUFFERING 且用户意图播放」算一次 rebuffer。
                     // 不能用 isPlaying 判定：ExoPlayer 进入缓冲会先回调 onIsPlayingChanged(false) 再回调
@@ -346,7 +347,7 @@ internal class PlayerPlaybackController(
         val metadata = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
-            .apply { if (artwork.isNotBlank()) setArtworkUri(Uri.parse(artwork)) }
+            .apply { if (artwork.isNotBlank()) setArtworkUri(artwork.toUri()) }
             .build()
         val mimeType = sources().firstOrNull { it.url == url }?.normalizedMimeType.orEmpty()
         val builder = MediaItem.Builder().setUri(url).setMediaMetadata(metadata)

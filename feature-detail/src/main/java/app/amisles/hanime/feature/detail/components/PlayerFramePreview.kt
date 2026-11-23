@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.scale
 import app.amisles.hanime.core.common.util.BrowserUserAgent
 import app.amisles.hanime.domain.remote.VideoAntiHotlink
 import java.util.LinkedHashMap
@@ -123,7 +124,7 @@ internal object PlayerFramePreview {
         if (frame.width <= MAX_WIDTH_PX) return frame
         val height = (frame.height.toLong() * MAX_WIDTH_PX / frame.width).toInt().coerceAtLeast(1)
         val scaled = runCatching {
-            Bitmap.createScaledBitmap(frame, MAX_WIDTH_PX, height, true)
+            frame.scale(MAX_WIDTH_PX, height)
         }.getOrDefault(frame)
         if (scaled !== frame) frame.recycle()
         return scaled

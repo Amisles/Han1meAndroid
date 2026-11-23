@@ -55,6 +55,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -110,8 +111,8 @@ private fun <T> SettingsDropdownRow(
     selectedValue: T,
     onSelect: (T) -> Unit
 ) {
-    var boxWidthPx by remember { mutableStateOf(0) }
-    var menuWidthPx by remember { mutableStateOf(0) }
+    var boxWidthPx by remember { mutableIntStateOf(0) }
+    var menuWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
 
     Box(modifier = Modifier.onSizeChanged { boxWidthPx = it.width }) {

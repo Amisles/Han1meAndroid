@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
@@ -80,7 +81,7 @@ internal fun DetailTabBar(
                         modifier = Modifier
                             .width(20.dp)
                             .height(2.dp)
-                            .offset(x = indicatorX)
+                            .offset { IntOffset(indicatorX.roundToPx(), 0) }
                             .clip(RoundedCornerShape(1.dp))
                             .background(primary)
                     )

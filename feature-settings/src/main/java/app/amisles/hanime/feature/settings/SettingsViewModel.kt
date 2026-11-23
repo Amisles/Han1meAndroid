@@ -2,6 +2,7 @@ package app.amisles.hanime.feature.settings
 
 import android.app.Application
 import android.os.Build
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
@@ -169,7 +170,7 @@ class SettingsViewModel @Inject constructor(
      * 站点要求校验时普通请求一律被拦成 403，界面自己无法通过，只能让用户在 WebView 里点一次。
      */
     fun verifyCloudflare() {
-        val host = runCatching { android.net.Uri.parse(settings.baseUrl).host?.lowercase() }.getOrNull()
+        val host = runCatching { settings.baseUrl.toUri().host?.lowercase() }.getOrNull()
         if (host.isNullOrBlank()) {
             _events.tryEmit(SettingsUiEvent.Toast(R.string.settings_cloudflare_verify_no_host))
             return

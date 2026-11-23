@@ -1,7 +1,6 @@
 package app.amisles.hanime.feature.settings.network
 
 import android.content.Intent
-import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
@@ -9,6 +8,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -309,7 +309,7 @@ internal fun clearanceCookie(raw: String): String? =
         .firstOrNull { it.startsWith(CLEARANCE_COOKIE) && it.length > CLEARANCE_COOKIE.length }
 
 private fun isChallengeUrlAllowed(url: String, challengeHost: String): Boolean {
-    val host = runCatching { Uri.parse(url).host?.lowercase() }.getOrNull() ?: return false
+    val host = runCatching { url.toUri().host?.lowercase() }.getOrNull() ?: return false
     if (host == challengeHost || host.endsWith(".$challengeHost")) return true
     return CHALLENGE_AUXILIARY_HOSTS.any { host == it || host.endsWith(".$it") }
 }

@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -75,7 +76,6 @@ import app.amisles.hanime.core.ui.util.AppSnackbar
 import androidx.compose.material3.MaterialTheme
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 private val ROW_THUMB_WIDTH = 140.dp
 
@@ -85,6 +85,7 @@ private fun formatWatchedTime(timestamp: Long): String {
     val minutes = diff / (60 * 1000)
     val hours = diff / (60 * 60 * 1000)
     val days = diff / (24 * 60 * 60 * 1000)
+    val locale = LocalConfiguration.current.locales[0]
     return when {
         minutes < 1 -> stringResource(R.string.history_time_just_now)
         minutes < 60 -> stringResource(R.string.history_time_minutes_ago, minutes)
@@ -92,8 +93,8 @@ private fun formatWatchedTime(timestamp: Long): String {
         days < 30 -> stringResource(R.string.history_time_days_ago, days)
         // SimpleDateFormat 构造成本不低，按 Locale 缓存一份复用，避免列表里每个
         // 超过 30 天的条目在每次重组时都新建一次；语言切换时 Locale 变化会自动重建。
-        else -> remember(Locale.getDefault()) {
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        else -> remember(locale) {
+            SimpleDateFormat("yyyy-MM-dd", locale)
         }.format(Date(timestamp))
     }
 }

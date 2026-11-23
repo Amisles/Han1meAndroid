@@ -121,10 +121,10 @@ internal fun Modifier.playerGestures(
                         if (!moved && !isZoom && !menuOpen() && !gestureTakenOver) {
                             // 视为一次点击
                             val now = System.currentTimeMillis()
-                            if (now - lastTapTimeState.value < DOUBLE_TAP_WINDOW_MS) {
+                            if (now - lastTapTimeState.longValue < DOUBLE_TAP_WINDOW_MS) {
                                 pendingSingleTap?.cancel()
                                 pendingSingleTap = null
-                                lastTapTimeState.value = 0L
+                                lastTapTimeState.longValue = 0L
                                 if (isControlTapState.value) {
                                     // 第二击落在控件上：控件已自行处理，手势不再叠加分区动作
                                     isControlTapState.value = false
@@ -147,11 +147,11 @@ internal fun Modifier.playerGestures(
                             } else if (isControlTapState.value) {
                                 // 单击落在控件上：交由控件自身处理，手势不切换控制栏显隐、不关菜单
                                 isControlTapState.value = false
-                                lastTapTimeState.value = 0L
+                                lastTapTimeState.longValue = 0L
                                 pendingSingleTap?.cancel()
                                 pendingSingleTap = null
                             } else {
-                                lastTapTimeState.value = now
+                                lastTapTimeState.longValue = now
                                 pendingSingleTap?.cancel()
                                 pendingSingleTap = gestureScope.launch {
                                     delay(DOUBLE_TAP_WINDOW_MS)
@@ -187,10 +187,10 @@ internal fun Modifier.playerGestures(
                         }
                         if (lastPinch > 0f && dist > 0f) {
                             val factor = dist / lastPinch
-                            videoZoomState.value = (videoZoomState.value * factor).coerceIn(0.5f, 2.0f)
+                            videoZoomState.floatValue = (videoZoomState.floatValue * factor).coerceIn(0.5f, 2.0f)
                             gestureHintState.value = context.getString(
                                 R.string.player_zoom,
-                                String.format(Locale.getDefault(), "%.1f", videoZoomState.value)
+                                String.format(Locale.getDefault(), "%.1f", videoZoomState.floatValue)
                             )
                         }
                         lastPinch = dist
@@ -219,7 +219,7 @@ internal fun Modifier.playerGestures(
                             // 若上次手势残留该标记会吞掉下一次空白点击
                             isControlTapState.value = false
                             // 手势开始即重置自动隐藏倒计时
-                            controlsActivityRef.value = controlsActivityRef.value + 1
+                            controlsActivityRef.longValue = controlsActivityRef.longValue + 1
                             // 启动长按加速定时器：单指按住满 1s 触发加速，松手 / 缩放 / 成段拖动即取消。
                             // 触发后进入「加速拖动」态：后续滑动只调倍率，不再切到进度 / 亮度 / 音量，
                             // 直到手指抬起 —— 见下方 dragMode 为 null 的分支。
@@ -302,15 +302,15 @@ internal fun Modifier.playerGestures(
                                 DragMode.BRIGHTNESS -> {
                                     if (playerHeight() > 0f) {
                                         val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight())
-                                        brightnessState.value = (brightnessState.value + delta).coerceIn(0f, 1f)
-                                        setBrightness(brightnessState.value)
-                                        gestureHintState.value = context.getString(R.string.player_brightness, (brightnessState.value * 100).toInt())
+                                        brightnessState.floatValue = (brightnessState.floatValue + delta).coerceIn(0f, 1f)
+                                        setBrightness(brightnessState.floatValue)
+                                        gestureHintState.value = context.getString(R.string.player_brightness, (brightnessState.floatValue * 100).toInt())
                                     }
                                 }
                                 DragMode.VOLUME -> {
                                     if (playerHeight() > 0f) {
                                         val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight())
-                                        val applied = setVolume((volumeState.value + delta).coerceIn(0f, 1f))
+                                        val applied = setVolume((volumeState.floatValue + delta).coerceIn(0f, 1f))
                                         gestureHintState.value = context.getString(R.string.player_volume, (applied * 100).toInt())
                                     }
                                 }

@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
@@ -99,7 +101,7 @@ internal fun CustomSlider(
     val valueFraction = ((value - range.start) / span).coerceIn(0f, 1f)
     val defaultFraction = ((defaultValue - range.start) / span).coerceIn(0f, 1f)
 
-    var trackWidthPx by remember { mutableStateOf(0f) }
+    var trackWidthPx by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
     val thumbWidth = 16.dp
 
@@ -117,7 +119,7 @@ internal fun CustomSlider(
     )
 
     val interactionSource = remember { MutableInteractionSource() }
-    val latestValue = remember { mutableStateOf(value) }
+    val latestValue = remember { mutableFloatStateOf(value) }
     val latestPreview = rememberUpdatedState(onPreview)
     val latestCommit = rememberUpdatedState(onCommit)
 
@@ -134,13 +136,13 @@ internal fun CustomSlider(
                     val next = (base + delta / trackWidthPx).coerceIn(0f, 1f)
                     dragFraction = next
                     val raw = range.start + next * span
-                    latestValue.value = raw
+                    latestValue.floatValue = raw
                     latestPreview.value(raw)
                 },
                 onDragStarted = { dragFraction = valueFraction },
                 onDragStopped = {
                     dragFraction = null
-                    latestCommit.value(latestValue.value)
+                    latestCommit.value(latestValue.floatValue)
                 }
             )
     ) {
@@ -209,7 +211,7 @@ internal fun CustomSlider(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .offset(x = thumbOffset)
+                .offset { IntOffset(thumbOffset.roundToPx(), 0) }
                 .size(width = thumbWidth, height = 26.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(MaterialTheme.colorScheme.onBackground)

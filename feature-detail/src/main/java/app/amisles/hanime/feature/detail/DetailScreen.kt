@@ -2,7 +2,6 @@ package app.amisles.hanime.feature.detail
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -11,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -197,7 +198,7 @@ fun DetailScreen(
     var upNext by remember { mutableStateOf<NextEpisode?>(null) }
     var upNextCountdown by remember { mutableIntStateOf(0) }
     // 0 = 简介（除评论外的全部信息），1 = 评论
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     // 简介与评论必须各持一个列表状态：共用一个会让两页共用同一滚动位置，翻其中一页时另一页跟着位移
     val introListState = rememberLazyListState()
     val commentsListState = rememberLazyListState()
@@ -222,9 +223,9 @@ fun DetailScreen(
     val scope = rememberCoroutineScope()
 
     // 续播点（毫秒）：进入时由历史记录计算，传给 VideoPlayer 在首帧就绪后跳转
-    var initialSeekMs by remember { mutableStateOf(0L) }
+    var initialSeekMs by remember { mutableLongStateOf(0L) }
 
-    var resumeSeekMs by remember { mutableStateOf(0L) }
+    var resumeSeekMs by remember { mutableLongStateOf(0L) }
     var resumeHintShownFor by rememberSaveable { mutableStateOf("") }
 
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -233,7 +234,7 @@ fun DetailScreen(
     // 把首帧起播往后推。读取结果是 State，VideoPlayer 在首帧就绪时再消费。
     //
     // 换片（推荐列表直接换视频）时必须先清零：同一个页面不重建 VM，旧值留着会让新视频跳到上一部的进度。
-    var savedSeekMs by remember { mutableStateOf(0L) }
+    var savedSeekMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(switchedVideoId) {
         savedSeekMs = 0L
         val id = viewModel.videoId
@@ -284,7 +285,7 @@ fun DetailScreen(
                             .setArtist(detail.author)
                             .apply {
                                 if (detail.posterUrl.isNotBlank()) {
-                                    setArtworkUri(Uri.parse(detail.posterUrl))
+                                    setArtworkUri(detail.posterUrl.toUri())
                                 }
                             }
                             .build()

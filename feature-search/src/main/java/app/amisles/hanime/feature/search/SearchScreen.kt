@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -130,7 +131,7 @@ fun SearchScreen(
     // LaunchedEffect 必然重跑）就会再搜一次：既白跑一次请求，又会推进搜索代数、把列表滚回顶部。
     // 故记住本页已处理过的 tick，只响应「本页在场期间新发生的那次通过」。
     val solvedTick by CloudflareChallenge.solvedTick.collectAsStateWithLifecycle()
-    var handledSolvedTick by remember { mutableStateOf(solvedTick) }
+    var handledSolvedTick by remember { mutableIntStateOf(solvedTick) }
     androidx.compose.runtime.LaunchedEffect(solvedTick) {
         if (solvedTick == handledSolvedTick) return@LaunchedEffect
         handledSolvedTick = solvedTick
@@ -214,7 +215,7 @@ fun SearchScreen(
     val searchGeneration = uiState.searchGeneration
     // 用 rememberSaveable 而非 remember：若「提交搜索后立刻进详情」，回顶的 effect 可能还没跑，
     // 随导航条目一起保存的旧代数会让返回时补做一次回顶，避免新结果配着旧滚动位置。
-    var handledGeneration by rememberSaveable { mutableStateOf(searchGeneration) }
+    var handledGeneration by rememberSaveable { mutableIntStateOf(searchGeneration) }
     androidx.compose.runtime.LaunchedEffect(searchGeneration) {
         if (searchGeneration == handledGeneration) return@LaunchedEffect
         handledGeneration = searchGeneration

@@ -19,7 +19,7 @@
         errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
-            line="375"
+            line="257"
             column="41"/>
     </issue>
 
@@ -30,7 +30,7 @@
         errorLine2="                                    ^">
         <location
             file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
-            line="393"
+            line="275"
             column="37"/>
     </issue>
 
@@ -41,7 +41,7 @@
         errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
-            line="757"
+            line="601"
             column="29"/>
     </issue>
 

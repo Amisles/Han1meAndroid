@@ -52,7 +52,7 @@
         errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/CrashLogScreen.kt"
-            line="90"
+            line="88"
             column="33"/>
     </issue>
 
@@ -140,7 +140,7 @@
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="201"
+            line="202"
             column="25"/>
     </issue>
 
@@ -151,7 +151,7 @@
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="203"
+            line="204"
             column="25"/>
     </issue>
 
@@ -162,7 +162,7 @@
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="237"
+            line="238"
             column="17"/>
     </issue>
 
@@ -173,7 +173,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="414"
+            line="415"
             column="42"/>
     </issue>
 
@@ -184,7 +184,7 @@
         errorLine2="                        ^">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="628"
+            line="629"
             column="25"/>
     </issue>
 
@@ -195,7 +195,7 @@
         errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="642"
+            line="643"
             column="38"/>
     </issue>
 
@@ -208,127 +208,6 @@
             file="src/main/java/app/amisles/hanime/feature/settings/network/CloudflareChallengeDialog.kt"
             line="252"
             column="5"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var trackWidthPx by remember { mutableStateOf(0f) }"
-        errorLine2="                                   ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeInputs.kt"
-            line="102"
-            column="36"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    val latestValue = remember { mutableStateOf(value) }"
-        errorLine2="                                 ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeInputs.kt"
-            line="120"
-            column="34"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var boxWidthPx by remember { mutableStateOf(0) }"
-        errorLine2="                                 ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="113"
-            column="34"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var menuWidthPx by remember { mutableStateOf(0) }"
-        errorLine2="                                  ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/SettingsScreen.kt"
-            line="114"
-            column="35"/>
-    </issue>
-
-    <issue
-        id="UseOfNonLambdaOffsetOverload"
-        message="State backed values should use the lambda overload of Modifier.offset"
-        errorLine1="                .offset(x = thumbOffset)"
-        errorLine2="                 ~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CustomizeInputs.kt"
-            line="212"
-            column="18"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))"
-        errorLine2="                                                             ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/AboutScreen.kt"
-            line="197"
-            column="62"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="    val host = runCatching { Uri.parse(url).host?.lowercase() }.getOrNull() ?: return false"
-        errorLine2="                             ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/network/CloudflareChallengeDialog.kt"
-            line="312"
-            column="30"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `Bitmap.scale` instead?"
-        errorLine1="        return Bitmap.createScaledBitmap(square, ICON_SIZE, ICON_SIZE, true)"
-        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/LauncherShortcut.kt"
-            line="80"
-            column="16"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="        val host = runCatching { android.net.Uri.parse(settings.baseUrl).host?.lowercase() }.getOrNull()"
-        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/SettingsViewModel.kt"
-            line="172"
-            column="34"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `String.toUri` instead?"
-        errorLine1="        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))"
-        errorLine2="                                                         ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/UpdateScreen.kt"
-            line="64"
-            column="58"/>
-    </issue>
-
-    <issue
-        id="ConstantLocale"
-        message="Assigning `Locale.getDefault()` to a final static field is suspicious; this code will not work correctly if the user changes locale while the app is running"
-        errorLine1="private val crashTimeFormatter = SimpleDateFormat(&quot;yyyy-MM-dd HH:mm&quot;, Locale.getDefault())"
-        errorLine2="                                                                      ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/settings/CrashLogScreen.kt"
-            line="53"
-            column="71"/>
     </issue>
 
 </issues>

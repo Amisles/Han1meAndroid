@@ -19,6 +19,7 @@
 ### 工程
 
 - Android Lint 从「只记录」改为门禁：既有告警冻结在 `lint-baseline.xml`，新问题会让 CI 失败
+- Lint 基线由 96 项收敛到 51 项：修复装箱状态、KTX 调用、冗余 SDK 判断与日期格式化的 Locale 来源
 - CI 的 release 构建改为手动触发：日常提交只跑单测、lint 与 debug 构建，不再为每次推送付出约 7 分钟
 - 版本号收敛到 `gradle/version.properties` 单一来源，构建与发布流程共用
 - Gradle 发行包固定 sha256，并补上可复现构建说明

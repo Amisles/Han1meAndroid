@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,9 +49,6 @@ import app.amisles.hanime.core.ui.components.WrappingActionRow
 import app.amisles.hanime.core.ui.theme.LocalUiConfig
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
-
-private val crashTimeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
 /**
  * 崩溃日志页。
@@ -197,6 +195,8 @@ fun CrashLogScreen(
 @Composable
 private fun CrashRow(record: CrashRecord) {
     val shape = RoundedCornerShape(LocalUiConfig.current.cardCornerRadius)
+    val locale = LocalConfiguration.current.locales[0]
+    val timeFormatter = remember(locale) { SimpleDateFormat("yyyy-MM-dd HH:mm", locale) }
     var expanded by remember { mutableStateOf(false) }
     val content = remember(record.file.absolutePath, expanded) {
         if (expanded) CrashLogger.read(record.file) else ""
@@ -213,7 +213,7 @@ private fun CrashRow(record: CrashRecord) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = crashTimeFormatter.format(Date(record.occurredAt)),
+                text = timeFormatter.format(Date(record.occurredAt)),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface

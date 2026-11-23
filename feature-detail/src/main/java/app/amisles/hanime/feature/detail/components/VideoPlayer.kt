@@ -407,7 +407,7 @@ fun VideoPlayer(
         showMoreMenu,
         layoutEditing,
         relatedActive,
-        controlsActivityRef.value
+        controlsActivityRef.longValue
     ) {
         if (isControlsVisible && isPlaying && !isInPip && !showSpeedMenu && !showQualityMenu &&
             !showMoreMenu && !layoutEditing && !relatedActive

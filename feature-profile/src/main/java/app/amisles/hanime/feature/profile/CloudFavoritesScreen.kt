@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -255,7 +256,7 @@ private fun FavoritesTabBar(
                     modifier = Modifier
                         .width(20.dp)
                         .height(3.dp)
-                        .offset(x = indicatorX)
+                        .offset { IntOffset(indicatorX.roundToPx(), 0) }
                         .clip(RoundedCornerShape(1.5.dp))
                         .background(primary)
                 )

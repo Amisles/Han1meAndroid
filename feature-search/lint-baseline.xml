@@ -8,30 +8,8 @@
         errorLine2="                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/app/amisles/hanime/feature/search/SearchScreen.kt"
-            line="146"
+            line="148"
             column="54"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var handledSolvedTick by remember { mutableStateOf(solvedTick) }"
-        errorLine2="                                        ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/search/SearchScreen.kt"
-            line="132"
-            column="41"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var handledGeneration by rememberSaveable { mutableStateOf(searchGeneration) }"
-        errorLine2="                                                ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/search/SearchScreen.kt"
-            line="216"
-            column="49"/>
     </issue>
 
 </issues>

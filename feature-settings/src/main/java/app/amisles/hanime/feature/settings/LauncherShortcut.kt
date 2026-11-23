@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.graphics.scale
 import app.amisles.hanime.core.ui.R
 
 internal object LauncherShortcut {
@@ -77,6 +78,6 @@ internal object LauncherShortcut {
             side,
             side
         )
-        return Bitmap.createScaledBitmap(square, ICON_SIZE, ICON_SIZE, true)
+        return square.scale(ICON_SIZE, ICON_SIZE)
     }
 }

@@ -23,9 +23,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,7 +42,6 @@ import app.amisles.hanime.domain.model.DailyWatch
 import app.amisles.hanime.domain.model.WatchStats
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
@@ -168,7 +169,8 @@ private fun StatsContent(stats: WatchStats) {
 private fun DailyBars(daily: List<DailyWatch>) {
     if (daily.isEmpty()) return
     val max = daily.maxOf { it.watchMillis }.coerceAtLeast(1L)
-    val dayFormat = SimpleDateFormat("M/d", Locale.getDefault())
+    val locale = LocalConfiguration.current.locales[0]
+    val dayFormat = remember(locale) { SimpleDateFormat("M/d", locale) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
