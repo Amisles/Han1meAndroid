@@ -39,7 +39,6 @@ internal fun Modifier.playerGestures(
     brightnessState: MutableFloatState,
     videoZoomState: MutableFloatState,
     isControlTapState: MutableState<Boolean>,
-    isMutedState: MutableState<Boolean>,
     showSpeedMenuState: MutableState<Boolean>,
     showQualityMenuState: MutableState<Boolean>,
     showMoreMenuState: MutableState<Boolean>,
@@ -47,6 +46,8 @@ internal fun Modifier.playerGestures(
     seekForward: () -> Unit,
     togglePlayPause: () -> Unit,
     setBrightness: (Float) -> Unit,
+    syncVolume: () -> Unit,
+    setVolume: (Float) -> Float,
     setLongPressBoost: (Boolean) -> Unit,
     setLongPressBoostSpeed: (Float) -> Unit,
     doubleTapSeekEnabled: () -> Boolean,
@@ -282,6 +283,7 @@ internal fun Modifier.playerGestures(
                                         seekStartPos = exoPlayer.currentPosition
                                         // 只有横滑进度才取帧预览：亮度 / 音量走中央提示条，一并出图会把当前读数盖住
                                         if (mode == DragMode.SEEK) seekPreviewState.value = seekStartPos
+                                        if (mode == DragMode.VOLUME) syncVolume()
                                         dragMode = mode
                                     }
                                 }
@@ -308,10 +310,8 @@ internal fun Modifier.playerGestures(
                                 DragMode.VOLUME -> {
                                     if (playerHeight() > 0f) {
                                         val delta = gestureMath.verticalDelta(lastY = lastY, y = y, playerHeight = playerHeight())
-                                        volumeState.value = ((if (isMutedState.value) 0f else volumeState.value) + delta).coerceIn(0f, 1f)
-                                        exoPlayer.volume = volumeState.value
-                                        isMutedState.value = volumeState.value == 0f
-                                        gestureHintState.value = context.getString(R.string.player_volume, (volumeState.value * 100).toInt())
+                                        val applied = setVolume((volumeState.value + delta).coerceIn(0f, 1f))
+                                        gestureHintState.value = context.getString(R.string.player_volume, (applied * 100).toInt())
                                     }
                                 }
                             }

@@ -1,6 +1,7 @@
 package app.amisles.hanime.feature.detail.components
 
 import android.content.Context
+import android.media.AudioManager
 import android.net.Uri
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +15,7 @@ import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.domain.model.VideoSource
 import app.amisles.hanime.feature.detail.playback.PlaybackSessionBridge
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 internal class PlayerPlaybackController(
     private val exoPlayer: ExoPlayer,
@@ -48,6 +50,7 @@ internal class PlayerPlaybackController(
     val videoAspect = mutableFloatStateOf(0f)
     val showPoster = mutableStateOf(posterUrl().isNotEmpty())
     val isMuted = mutableStateOf(false)
+    // 手势调整的是系统媒体音量，这里存它的 0..1 比例；exoPlayer.volume 只留给静音开关
     val volume = mutableFloatStateOf(1f)
     val playbackSpeed = mutableFloatStateOf(1f)
     val isLongPressBoost = mutableStateOf(false)
@@ -61,6 +64,8 @@ internal class PlayerPlaybackController(
     private var autoErrorRetryUsed = false
     private var sourceRefreshRequested = false
     private var initialSeekApplied = false
+    private val audioManager = context.getSystemService(AudioManager::class.java)
+    private var lastVolumeStep = -1
 
     val effectiveSpeed: Float
         get() = if (isLongPressBoost.value) boostSpeed.value else playbackSpeed.value
@@ -177,14 +182,8 @@ internal class PlayerPlaybackController(
     fun attach() {
         PlaybackSessionBridge.bind(exoPlayer, context)
         exoPlayer.addListener(listener)
-        val currentVolume = exoPlayer.volume
-        if (currentVolume == 0f) {
-            isMuted.value = true
-            volume.floatValue = 1f
-        } else {
-            isMuted.value = false
-            volume.floatValue = currentVolume
-        }
+        isMuted.value = exoPlayer.volume == 0f
+        syncVolume()
         playbackSpeed.floatValue = exoPlayer.playbackParameters.speed
         isPlaying.value = exoPlayer.isPlaying
         isBuffering.value = exoPlayer.playbackState == Player.STATE_BUFFERING
@@ -268,7 +267,34 @@ internal class PlayerPlaybackController(
 
     fun toggleMute() {
         isMuted.value = !isMuted.value
-        exoPlayer.volume = if (isMuted.value) 0f else volume.floatValue
+        exoPlayer.volume = if (isMuted.value) 0f else 1f
+    }
+
+    fun syncVolume() {
+        val manager = audioManager ?: return
+        val max = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (max <= 0) return
+        val step = manager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        lastVolumeStep = step
+        volume.floatValue = step.toFloat() / max
+    }
+
+    fun setVolume(fraction: Float): Float {
+        val target = fraction.coerceIn(0f, 1f)
+        volume.floatValue = target
+        if (isMuted.value) {
+            isMuted.value = false
+            exoPlayer.volume = 1f
+        }
+        val manager = audioManager ?: return target
+        val max = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (max <= 0) return target
+        val step = (target * max).roundToInt().coerceIn(0, max)
+        if (step != lastVolumeStep) {
+            lastVolumeStep = step
+            runCatching { manager.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0) }
+        }
+        return step.toFloat() / max
     }
 
     fun setPlaybackSpeed(speed: Float) {

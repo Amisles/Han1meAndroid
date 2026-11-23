@@ -250,12 +250,10 @@ fun VideoPlayer(
     val seekPreviewState = remember { mutableStateOf<Long?>(null) }
     var seekPreview by seekPreviewState
     var previewFrame by remember { mutableStateOf<ImageBitmap?>(null) }
-    val originalBrightness = remember(activity) {
-        activity?.window?.attributes?.screenBrightness
-            ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-    }
-    val brightnessState = remember(originalBrightness) {
-        mutableFloatStateOf(if (originalBrightness < 0f) 0.5f else originalBrightness)
+    val brightnessState = remember(activity) {
+        mutableFloatStateOf(
+            activity?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f
+        )
     }
     var brightness by brightnessState
     val videoZoomState = remember { mutableFloatStateOf(1f) }
@@ -453,7 +451,7 @@ fun VideoPlayer(
         }
     }
 
-    // 退出组合时复位系统栏与屏幕方向，避免残留全屏状态
+    // 退出组合时复位系统栏、屏幕亮度与屏幕方向，避免残留全屏状态
     DisposableEffect(activity) {
         onDispose {
             activity?.window?.let { w ->
@@ -461,8 +459,10 @@ fun VideoPlayer(
                 controller.show(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior = initialBarsBehavior
                 val attrs = w.attributes
-                if (abs(attrs.screenBrightness - originalBrightness) > 0.001f) {
-                    attrs.screenBrightness = originalBrightness
+                // 亮度覆盖挂在窗口上而不是播放器实例：离场一律交还系统亮度。改回「还原进场快照」会踩到
+                // 详情页连跳 / 平板全屏切换时两个实例同时在场——后进场者把前者写下的覆盖值当成快照，退出后全应用停在手势亮度。
+                if (attrs.screenBrightness >= 0f) {
+                    attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                     w.attributes = attrs
                 }
             }
@@ -686,6 +686,8 @@ fun VideoPlayer(
     controlsActivityRef = controlsActivityRef,
     longPressBoostSpeed = { longPressBoostSpeedRef.value },
     volumeState = playback.volume,
+                syncVolume = { playback.syncVolume() },
+                setVolume = { playback.setVolume(it) },
                 isInPip = { isInPip },
                 playerWidth = { playerWidth },
                 playerHeight = { playerHeight },
@@ -696,7 +698,6 @@ fun VideoPlayer(
                 brightnessState = brightnessState,
                 videoZoomState = videoZoomState,
                 isControlTapState = isControlTapState,
-                isMutedState = playback.isMuted,
                 showSpeedMenuState = showSpeedMenuState,
                 showQualityMenuState = showQualityMenuState,
                 showMoreMenuState = showMoreMenuState,
