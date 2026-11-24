@@ -35,6 +35,7 @@ data class BackupSettings(
     val doubleTapSeek: Boolean? = null,
     val autoQuality: Boolean? = null,
     val autoRotateFullscreen: Boolean? = null,
+    val realtimeTranslation: Boolean? = null,
     val maxDownloadConcurrent: Int? = null,
     val videoDetailCacheLimit: Int? = null,
     val downloadRateLimit: Int? = null,

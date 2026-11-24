@@ -51,6 +51,7 @@ internal fun DetailVideoPlayer(
     onRelatedVideoClick: (String) -> Unit = {},
     mediaId: String = "",
     showNavButtons: Boolean = true,
+    realtimeTranslationAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val appPrefs = LocalAppPreferences.current
@@ -91,6 +92,7 @@ internal fun DetailVideoPlayer(
         relatedVideos = detail.relatedVideos,
         onRelatedVideoClick = { onRelatedVideoClick(it.videoUrl) },
         mediaId = mediaId,
+        realtimeTranslationAvailable = realtimeTranslationAvailable,
         modifier = modifier
     )
 }

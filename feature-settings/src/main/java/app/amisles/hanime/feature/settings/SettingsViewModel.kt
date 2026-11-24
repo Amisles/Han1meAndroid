@@ -10,8 +10,10 @@ import app.amisles.hanime.domain.repository.AppLockSettings
 import app.amisles.hanime.domain.repository.VideoDetailCacheRepository
 import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.domain.repository.PersistenceHealth
+import app.amisles.hanime.domain.model.TranslationModelState
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.TranslationRepository
 import app.amisles.hanime.domain.preferences.ThemeMode
 import app.amisles.hanime.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +52,8 @@ data class SettingsUiState(
     val autoQuality: Boolean = true,
     val autoRotateFullscreen: Boolean = true,
     val autoPlayRelated: Boolean = false,
+    val translationModel: TranslationModelState = TranslationModelState.NotDownloaded,
+    val isTranslationModelPublished: Boolean = false,
     val watchStatsEnabled: Boolean = true,
     val videoDetailCacheLimit: Int = SettingsRepository.DEFAULT_VIDEO_DETAIL_CACHE_LIMIT
 ) {
@@ -76,7 +80,8 @@ class SettingsViewModel @Inject constructor(
     private val session: SessionRepository,
     private val videoDetailCache: VideoDetailCacheRepository,
     private val persistenceHealth: PersistenceHealth,
-    private val appLock: AppLockSettings
+    private val appLock: AppLockSettings,
+    private val translation: TranslationRepository
 ) : AndroidViewModel(app) {
 
     private val _events = MutableSharedFlow<SettingsUiEvent>(
@@ -140,6 +145,8 @@ class SettingsViewModel @Inject constructor(
         state.copy(privacyMode = enabled)
     }.combine(appLock.appLockEnabledFlow) { state, enabled ->
         state.copy(appLockEnabled = enabled)
+    }.combine(translation.modelStateFlow) { state, modelState ->
+        state.copy(translationModel = modelState)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -168,6 +175,8 @@ class SettingsViewModel @Inject constructor(
         autoQuality = settings.autoQuality,
         autoRotateFullscreen = settings.autoRotateFullscreen,
         autoPlayRelated = settings.autoPlayRelated,
+        translationModel = translation.modelStateFlow.value,
+        isTranslationModelPublished = translation.isModelPublished,
         videoDetailCacheLimit = settings.videoDetailCacheLimit
     )
 
@@ -285,6 +294,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoPlayRelated(enabled: Boolean) {
         settings.setAutoPlayRelated(enabled)
+    }
+
+    fun downloadTranslationModel() {
+        translation.downloadModel()
+    }
+
+    fun cancelTranslationModelDownload() {
+        translation.cancelDownload()
+    }
+
+    fun deleteTranslationModel() {
+        translation.deleteModel()
     }
 
     /** 设置站点基址；返回 true = 已生效，false = 输入非法（非 https 域名）且原设置不变。 */

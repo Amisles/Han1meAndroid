@@ -646,6 +646,16 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_diagnostics">Network Diagnostics</string>
+    <string name="settings_translation_model">Real-time translation model</string>
+    <string name="translation_model_desc">The model runs on this device and never uploads your video or audio. Once downloaded, enable real-time translation from the player\'s More menu.</string>
+    <string name="translation_model_not_downloaded">Not downloaded</string>
+    <string name="translation_model_unpublished">Model not released yet</string>
+    <string name="translation_model_downloading">Downloading…</string>
+    <string name="translation_model_downloading_percent">Downloading %1$d%%</string>
+    <string name="translation_model_ready">Downloaded</string>
+    <string name="translation_model_failed">Download failed, please retry</string>
+    <string name="translation_model_download">Download</string>
+    <string name="translation_model_cancel_download">Cancel download</string>
     <string name="cloudflare_verify_title">Complete Verification</string>
     <string name="cloudflare_verify_loading">Loading verification page…</string>
     <string name="cloudflare_verify_hint">Complete the check below. It is saved automatically so later requests go through.</string>
@@ -887,6 +897,7 @@
     <string name="player_sleep_remaining">Pausing in %1$ds</string>
     <string name="player_sleep_paused">Sleep timer ended, paused</string>
     <string name="player_sleep_finished">Episode finished, paused</string>
+    <string name="player_realtime_translation">Real-time translation</string>
     <string name="player_resize_mode">Aspect</string>
     <string name="player_resize_fit">Fit</string>
     <string name="player_resize_crop">Crop</string>

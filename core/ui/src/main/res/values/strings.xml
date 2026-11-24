@@ -670,6 +670,16 @@
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_diagnostics">网络诊断</string>
+    <string name="settings_translation_model">实时翻译模型</string>
+    <string name="translation_model_desc">模型在设备本机运行，画面与声音不会上传；下载完成后可在播放器的「更多」菜单里开启实时翻译。</string>
+    <string name="translation_model_not_downloaded">未下载</string>
+    <string name="translation_model_unpublished">模型尚未发布</string>
+    <string name="translation_model_downloading">下载中…</string>
+    <string name="translation_model_downloading_percent">下载中 %1$d%%</string>
+    <string name="translation_model_ready">已下载</string>
+    <string name="translation_model_failed">下载失败，请重试</string>
+    <string name="translation_model_download">下载</string>
+    <string name="translation_model_cancel_download">取消下载</string>
     <string name="cloudflare_verify_title">完成人机验证</string>
     <string name="cloudflare_verify_loading">正在加载验证页…</string>
     <string name="cloudflare_verify_hint">请在下方页面完成验证。通过后会自动保存，之后的请求即可正常访问。</string>
@@ -921,6 +931,7 @@
     <string name="player_sleep_remaining">%1$d 秒后暂停</string>
     <string name="player_sleep_paused">定时结束，已暂停</string>
     <string name="player_sleep_finished">已播完当前集，定时暂停</string>
+    <string name="player_realtime_translation">实时翻译</string>
     <string name="player_resize_mode">画面比例</string>
     <string name="player_resize_fit">适应</string>
     <string name="player_resize_crop">裁切</string>

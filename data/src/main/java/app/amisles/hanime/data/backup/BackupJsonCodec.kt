@@ -159,6 +159,7 @@ class BackupJsonCodec @Inject constructor(
         s.doubleTapSeek?.let { put("doubleTapSeek", it) }
         s.autoQuality?.let { put("autoQuality", it) }
         s.autoRotateFullscreen?.let { put("autoRotateFullscreen", it) }
+        s.realtimeTranslation?.let { put("realtimeTranslation", it) }
         s.maxDownloadConcurrent?.let { put("maxDownloadConcurrent", it) }
         s.videoDetailCacheLimit?.let { put("videoDetailCacheLimit", it) }
         s.downloadRateLimit?.let { put("downloadRateLimit", it) }
@@ -181,6 +182,7 @@ class BackupJsonCodec @Inject constructor(
         doubleTapSeek = o.booleanOrNull("doubleTapSeek"),
         autoQuality = o.booleanOrNull("autoQuality"),
         autoRotateFullscreen = o.booleanOrNull("autoRotateFullscreen"),
+        realtimeTranslation = o.booleanOrNull("realtimeTranslation"),
         maxDownloadConcurrent = o.intOrNull("maxDownloadConcurrent"),
         videoDetailCacheLimit = o.intOrNull("videoDetailCacheLimit"),
         downloadRateLimit = o.intOrNull("downloadRateLimit"),

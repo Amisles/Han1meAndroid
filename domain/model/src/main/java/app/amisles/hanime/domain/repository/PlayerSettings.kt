@@ -27,6 +27,11 @@ interface PlayerSettings {
     val loopPlaybackFlow: StateFlow<Boolean>
     fun setLoopPlayback(enabled: Boolean)
 
+    /** 实时翻译：由本机模型翻译播放内容。播放器只在模型就绪时才提供这个开关。 */
+    val realtimeTranslation: Boolean
+    val realtimeTranslationFlow: StateFlow<Boolean>
+    fun setRealtimeTranslation(enabled: Boolean)
+
     /** 长按临时加速的目标倍速（1.5–3.0）。只影响按住期间，不写回 [playbackSpeed]。 */
     val longPressBoostSpeed: Float
     val longPressBoostSpeedFlow: StateFlow<Float>

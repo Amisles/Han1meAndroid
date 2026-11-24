@@ -646,6 +646,16 @@
     <string name="settings_theme_light">淺色</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_diagnostics">網路診斷</string>
+    <string name="settings_translation_model">即時翻譯模型</string>
+    <string name="translation_model_desc">模型在裝置本機執行，畫面與聲音不會上傳；下載完成後可在播放器的「更多」選單中開啟即時翻譯。</string>
+    <string name="translation_model_not_downloaded">未下載</string>
+    <string name="translation_model_unpublished">模型尚未發布</string>
+    <string name="translation_model_downloading">下載中…</string>
+    <string name="translation_model_downloading_percent">下載中 %1$d%%</string>
+    <string name="translation_model_ready">已下載</string>
+    <string name="translation_model_failed">下載失敗，請重試</string>
+    <string name="translation_model_download">下載</string>
+    <string name="translation_model_cancel_download">取消下載</string>
     <string name="cloudflare_verify_title">完成人機驗證</string>
     <string name="cloudflare_verify_loading">正在載入驗證頁…</string>
     <string name="cloudflare_verify_hint">請在下方頁面完成驗證。通過後會自動儲存，之後的請求即可正常存取。</string>
@@ -887,6 +897,7 @@
     <string name="player_sleep_remaining">%1$d 秒後暫停</string>
     <string name="player_sleep_paused">定時結束，已暫停</string>
     <string name="player_sleep_finished">已播完目前集數，定時暫停</string>
+    <string name="player_realtime_translation">即時翻譯</string>
     <string name="player_resize_mode">畫面比例</string>
     <string name="player_resize_fit">適應</string>
     <string name="player_resize_crop">裁切</string>

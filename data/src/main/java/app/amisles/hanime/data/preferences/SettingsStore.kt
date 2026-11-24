@@ -108,6 +108,9 @@ class SettingsStore @Inject constructor(
     private val _loopPlaybackFlow = MutableStateFlow(false)
     override val loopPlaybackFlow: StateFlow<Boolean> = _loopPlaybackFlow.asStateFlow()
 
+    private val _realtimeTranslationFlow = MutableStateFlow(false)
+    override val realtimeTranslationFlow: StateFlow<Boolean> = _realtimeTranslationFlow.asStateFlow()
+
     private val _longPressBoostSpeedFlow = MutableStateFlow(DEFAULT_LONG_PRESS_SPEED)
     override val longPressBoostSpeedFlow: StateFlow<Float> = _longPressBoostSpeedFlow.asStateFlow()
 
@@ -198,6 +201,8 @@ class SettingsStore @Inject constructor(
         _autoPlayNextFlow.value = storage.readBoolean(PreferenceKeys.AUTO_PLAY_NEXT, false)
         _autoPlayRelatedFlow.value = storage.readBoolean(PreferenceKeys.AUTO_PLAY_RELATED, false)
         _loopPlaybackFlow.value = storage.readBoolean(PreferenceKeys.LOOP_PLAYBACK, false)
+        _realtimeTranslationFlow.value =
+            storage.readBoolean(PreferenceKeys.REALTIME_TRANSLATION, false)
         _longPressBoostSpeedFlow.value = storage.readFloat(
             PreferenceKeys.LONG_PRESS_SPEED,
             DEFAULT_LONG_PRESS_SPEED
@@ -248,6 +253,7 @@ class SettingsStore @Inject constructor(
     override val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
     override val autoPlayRelated: Boolean get() = _autoPlayRelatedFlow.value
     override val loopPlayback: Boolean get() = _loopPlaybackFlow.value
+    override val realtimeTranslation: Boolean get() = _realtimeTranslationFlow.value
     override val longPressBoostSpeed: Float get() = _longPressBoostSpeedFlow.value
     override val doubleTapSeek: Boolean get() = _doubleTapSeekFlow.value
     override val autoQuality: Boolean get() = _autoQualityFlow.value
@@ -500,6 +506,11 @@ class SettingsStore @Inject constructor(
     override fun setLoopPlayback(enabled: Boolean) {
         storage.write { putBoolean(PreferenceKeys.LOOP_PLAYBACK, enabled) }
         _loopPlaybackFlow.value = enabled
+    }
+
+    override fun setRealtimeTranslation(enabled: Boolean) {
+        storage.write { putBoolean(PreferenceKeys.REALTIME_TRANSLATION, enabled) }
+        _realtimeTranslationFlow.value = enabled
     }
 
     override fun setSearchLayoutMode(mode: SearchLayoutMode) {

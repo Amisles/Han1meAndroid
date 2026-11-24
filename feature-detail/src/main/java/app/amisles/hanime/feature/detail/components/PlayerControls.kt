@@ -87,6 +87,9 @@ internal fun BoxScope.PlayerControls(
     onAutoPlayNextChanged: (Boolean) -> Unit,
     isLoopPlayback: Boolean,
     onLoopPlaybackChanged: (Boolean) -> Unit,
+    realtimeTranslationAvailable: Boolean,
+    realtimeTranslation: Boolean,
+    onRealtimeTranslationChanged: (Boolean) -> Unit,
     sleepTimer: PlayerSleepTimer,
     resizeMode: PlayerResizeMode,
     isPlaying: Boolean,
@@ -519,6 +522,29 @@ internal fun BoxScope.PlayerControls(
                     onClick = { onLoopPlaybackChanged(!isLoopPlayback) },
                     modifier = Modifier.height(40.dp)
                 )
+
+                if (realtimeTranslationAvailable) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(R.string.player_realtime_translation),
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        trailingIcon = {
+                            HanimeSwitch(
+                                checked = realtimeTranslation,
+                                onCheckedChange = { onRealtimeTranslationChanged(it) },
+                                modifier = Modifier.scale(0.78f)
+                            )
+                        },
+                        onClick = { onRealtimeTranslationChanged(!realtimeTranslation) },
+                        modifier = Modifier.height(40.dp)
+                    )
+                }
 
                 ResizeModeMenu(
                     resizeMode = resizeMode,

@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -230,6 +231,7 @@ fun SettingsScreen(
     var showStoragePathDialog by remember { mutableStateOf(false) }
     var longPressMenuExpanded by remember { mutableStateOf(false) }
     var detailCacheLimitMenuExpanded by remember { mutableStateOf(false) }
+    var showTranslationModelDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -384,6 +386,21 @@ fun SettingsScreen(
                     options = cacheLimitOptions,
                     selectedValue = uiState.videoDetailCacheLimit,
                     onSelect = { viewModel.setVideoDetailCacheLimit(it) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 实时翻译
+            SettingsGroupCard {
+                SettingsNavRow(
+                    icon = Icons.Outlined.Translate,
+                    title = stringResource(R.string.settings_translation_model),
+                    subtitle = translationModelStatusText(
+                        uiState.translationModel,
+                        uiState.isTranslationModelPublished
+                    ),
+                    onClick = { showTranslationModelDialog = true }
                 )
             }
 
@@ -672,6 +689,17 @@ fun SettingsScreen(
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    if (showTranslationModelDialog) {
+        TranslationModelDialog(
+            state = uiState.translationModel,
+            isPublished = uiState.isTranslationModelPublished,
+            onDownload = { viewModel.downloadTranslationModel() },
+            onCancelDownload = { viewModel.cancelTranslationModelDownload() },
+            onDelete = { viewModel.deleteTranslationModel() },
+            onDismiss = { showTranslationModelDialog = false }
         )
     }
 

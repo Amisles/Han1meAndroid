@@ -174,6 +174,7 @@ fun DetailScreen(
     }
     val autoPlayNext by appPrefs.autoPlayNextFlow.collectAsStateWithLifecycle()
     val autoPlayRelated by appPrefs.autoPlayRelatedFlow.collectAsStateWithLifecycle()
+    val realtimeTranslationAvailable by viewModel.realtimeTranslationAvailable.collectAsStateWithLifecycle()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -573,6 +574,7 @@ fun DetailScreen(
                             onNavigateHome = onNavigateHome,
                             onRelatedVideoClick = openRelatedInPlace,
                             mediaId = switchedVideoId,
+                            realtimeTranslationAvailable = realtimeTranslationAvailable,
                             modifier = Modifier
                         )
                     }
@@ -665,6 +667,7 @@ fun DetailScreen(
                                 onNavigateHome = onNavigateHome,
                                 onRelatedVideoClick = openRelatedInPlace,
                                 mediaId = switchedVideoId,
+                                realtimeTranslationAvailable = realtimeTranslationAvailable,
                                 showNavButtons = !isPlayerFullscreen,
                                 modifier = (if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier)
                                     .graphicsLayer {

@@ -25,6 +25,7 @@ class BackupSettingsMapper @Inject constructor(
         doubleTapSeek = settings.doubleTapSeek,
         autoQuality = settings.autoQuality,
         autoRotateFullscreen = settings.autoRotateFullscreen,
+        realtimeTranslation = settings.realtimeTranslation,
         maxDownloadConcurrent = settings.maxDownloadConcurrent,
         videoDetailCacheLimit = settings.videoDetailCacheLimit,
         downloadRateLimit = settings.downloadRateLimit,
@@ -49,6 +50,7 @@ class BackupSettingsMapper @Inject constructor(
         s.doubleTapSeek?.let { settings.setDoubleTapSeek(it) }
         s.autoQuality?.let { settings.setAutoQuality(it) }
         s.autoRotateFullscreen?.let { settings.setAutoRotateFullscreen(it) }
+        s.realtimeTranslation?.let { settings.setRealtimeTranslation(it) }
         s.maxDownloadConcurrent?.let { settings.setMaxDownloadConcurrent(it) }
         s.videoDetailCacheLimit?.let { settings.setVideoDetailCacheLimit(it) }
         s.downloadRateLimit?.let { settings.setDownloadRateLimit(it) }

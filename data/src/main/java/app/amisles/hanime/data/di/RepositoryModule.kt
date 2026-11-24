@@ -10,6 +10,7 @@ import app.amisles.hanime.data.repository.ComicRepositoryImpl
 import app.amisles.hanime.data.repository.ContentRepositoryImpl
 import app.amisles.hanime.data.repository.LibraryRepositoryImpl
 import app.amisles.hanime.data.stats.StatsManager
+import app.amisles.hanime.data.translation.TranslationModelManager
 import app.amisles.hanime.data.update.GitHubUpdateRepository
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.AppIconRepository
@@ -23,6 +24,7 @@ import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.StatsRepository
 import app.amisles.hanime.domain.repository.SettingsRepository
+import app.amisles.hanime.domain.repository.TranslationRepository
 import app.amisles.hanime.domain.repository.UpdateRepository
 import dagger.Binds
 import dagger.Module
@@ -92,4 +94,7 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindSearchFilterRepository(impl: SearchFilterStore): SearchFilterRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindTranslationRepository(impl: TranslationModelManager): TranslationRepository
 }

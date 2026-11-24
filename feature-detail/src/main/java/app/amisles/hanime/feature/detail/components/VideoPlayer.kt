@@ -143,7 +143,9 @@ fun VideoPlayer(
     relatedVideos: List<HanimeVideo> = emptyList(),
     onRelatedVideoClick: (HanimeVideo) -> Unit = {},
     // 当前媒体标识。同一实例内换片（推荐列表直接换视频）时据此复位逐片状态
-    mediaId: String = ""
+    mediaId: String = "",
+    // 实时翻译模型就绪后才在「更多」菜单里提供开关；模型未下载时整项不出现
+    realtimeTranslationAvailable: Boolean = false
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -172,6 +174,7 @@ fun VideoPlayer(
 
     val playerResizeMode by appPrefs.playerResizeModeFlow.collectAsStateWithLifecycle()
     val playerLayout by appPrefs.playerLayoutFlow.collectAsStateWithLifecycle()
+    val realtimeTranslation by appPrefs.realtimeTranslationFlow.collectAsStateWithLifecycle()
     // 睡眠定时与播放锁都是会话级状态：不落盘，避免下次打开莫名停住或锁住
     var sleepTimer by remember { mutableStateOf(PlayerSleepTimer()) }
     var isLocked by rememberSaveable { mutableStateOf(false) }
@@ -784,6 +787,9 @@ fun VideoPlayer(
                     onLoopPlaybackChanged(enabled)
                     if (enabled && sleepTimer.afterEpisode) sleepTimer = PlayerSleepTimer()
                 },
+                realtimeTranslationAvailable = realtimeTranslationAvailable,
+                realtimeTranslation = realtimeTranslation,
+                onRealtimeTranslationChanged = { appPrefs.setRealtimeTranslation(it) },
                 isPlaying = isPlaying,
                 isBuffering = isBuffering,
                 isReady = isReady,

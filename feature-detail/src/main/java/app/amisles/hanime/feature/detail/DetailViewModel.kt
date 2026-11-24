@@ -10,8 +10,10 @@ import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
 import app.amisles.hanime.domain.repository.SessionRepository
+import app.amisles.hanime.domain.repository.TranslationRepository
 import app.amisles.hanime.domain.model.DownloadQuality
 import app.amisles.hanime.domain.model.StartDownloadResult
+import app.amisles.hanime.domain.model.TranslationModelState
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.core.common.util.AppLogger
@@ -21,8 +23,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import android.content.Context
@@ -39,6 +44,7 @@ class DetailViewModel @Inject constructor(
     private val account: AccountRepository,
     private val session: SessionRepository,
     private val downloads: DownloadRepository,
+    private val translation: TranslationRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -72,6 +78,14 @@ class DetailViewModel @Inject constructor(
     val isSubscribed: StateFlow<Boolean> = subscriptionActions.isSubscribed
     val isSubscribing: StateFlow<Boolean> = subscriptionActions.isSubscribing
     val subscribeError: StateFlow<SubscribeError?> = subscriptionActions.error
+
+    val realtimeTranslationAvailable: StateFlow<Boolean> = translation.modelStateFlow
+        .map { it is TranslationModelState.Ready }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = translation.modelStateFlow.value is TranslationModelState.Ready
+        )
 
     private var currentVideoId: String = ""
     private var currentVideoUrl: String = ""

@@ -27,6 +27,7 @@ internal object PreferenceKeys {
     const val AUTO_PLAY_NEXT = "auto_play_next"
     const val AUTO_PLAY_RELATED = "auto_play_related"
     const val LOOP_PLAYBACK = "loop_playback"
+    const val REALTIME_TRANSLATION = "realtime_translation"
     const val LONG_PRESS_SPEED = "long_press_boost_speed"
     const val DOUBLE_TAP_SEEK = "double_tap_seek"
     const val AUTO_QUALITY = "auto_quality"
