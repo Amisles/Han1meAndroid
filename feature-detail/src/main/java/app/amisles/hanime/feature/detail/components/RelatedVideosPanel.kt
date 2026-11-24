@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -33,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +43,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import app.amisles.hanime.core.ui.R
 import app.amisles.hanime.core.ui.components.PrivacyAwareAsyncImage
 import app.amisles.hanime.domain.model.HanimeVideo
+import kotlin.math.abs
 
 internal val RELATED_CARD_WIDTH = 176.dp
 internal val RELATED_CARD_HEIGHT = 99.dp
@@ -64,6 +68,9 @@ private const val RELATED_DRAG_TRAVEL_RATIO = 0.45f
 
 internal const val RELATED_OPEN_THRESHOLD = 0.35f
 
+// 拉出条叠在播放器手势层之上，必须自己吞掉整段触摸，否则外层会把左滑判成拖动进度。
+// 点击与拖动不能拆成 clickable + 拖动检测两层：两层在同一节点上的消费次序不受控，拖动会被
+// 点击检测或外层手势抢走（表现为只能点开、按住左滑毫无反应），故由一个 pointerInput 全权处理。
 @Composable
 internal fun BoxScope.RelatedPullPane(
     video: HanimeVideo,
@@ -73,27 +80,61 @@ internal fun BoxScope.RelatedPullPane(
     onDragBy: (Float) -> Unit,
     onDragFinished: () -> Unit
 ) {
+    val width = rememberUpdatedState(playerWidth)
+    val open = rememberUpdatedState(onOpen)
+    val dragBy = rememberUpdatedState(onDragBy)
+    val dragFinished = rememberUpdatedState(onDragFinished)
+    // 手势节点跨重组复用：回调经 rememberUpdatedState 取值，节点本身不再随重组更换
+    val pullGesture = remember {
+        Modifier.pointerInput(Unit) {
+            val slop = viewConfiguration.touchSlop
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                var lastX = down.position.x
+                var dragging = false
+                var abandoned = false
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id }
+                    event.changes.forEach { it.consume() }
+                    if (change == null) {
+                        if (dragging) dragFinished.value()
+                        break
+                    }
+                    val dx = change.position.x - lastX
+                    lastX = change.position.x
+                    if (!change.pressed) {
+                        if (dragging) dragFinished.value() else if (!abandoned) open.value()
+                        break
+                    }
+                    if (!dragging) {
+                        val totalX = change.position.x - down.position.x
+                        val totalY = change.position.y - down.position.y
+                        if (abs(totalX) <= slop && abs(totalY) <= slop) continue
+                        // 竖向滑动属于播放器的亮度 / 音量手势，本段手势不参与拉出
+                        if (abs(totalY) > abs(totalX)) {
+                            abandoned = true
+                            continue
+                        }
+                        dragging = true
+                    }
+                    val travel = width.value() * RELATED_DRAG_TRAVEL_RATIO
+                    if (travel > 0f) dragBy.value(-dx / travel)
+                }
+            }
+        }
+    }
+    val openLabel = stringResource(R.string.player_related_panel)
     Row(
         modifier = Modifier
             .align(Alignment.CenterEnd)
-            .claimPointerStream()
+            .then(pullGesture)
             .graphicsLayerTransform(progress)
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragEnd = { onDragFinished() },
-                    onDragCancel = { onDragFinished() },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        val travel = playerWidth() * RELATED_DRAG_TRAVEL_RATIO
-                        if (travel > 0f) onDragBy(-dragAmount / travel)
-                    }
-                )
-            }
             .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onOpen() },
+            .semantics {
+                role = Role.Button
+                onClick(label = openLabel) { onOpen(); true }
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         RelatedPullButton()
@@ -110,20 +151,6 @@ internal fun BoxScope.RelatedPullPane(
             ) {
                 RelatedThumbnail(video = video, modifier = Modifier.fillMaxSize())
             }
-        }
-    }
-}
-
-// 拉出条叠在播放器手势层之上：不在这里把整段触摸标记为已消费，外层会把左滑判成拖动进度，
-// 松手时按预览位置跳转（表现为拉不出面板、视频反而后退）。放在手势链最外层才不影响
-// 同节点内层的点击与横向拖动 —— 内层先拿到事件，标记消费不会截断它们。
-private fun Modifier.claimPointerStream(): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
-        while (true) {
-            val event = awaitPointerEvent()
-            event.changes.forEach { it.consume() }
-            if (event.changes.none { it.pressed }) break
         }
     }
 }
