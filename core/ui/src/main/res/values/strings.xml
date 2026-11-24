@@ -472,6 +472,13 @@
     <string name="download_delete_message">确定要删除这个下载任务吗？</string>
     <string name="download_delete_message_multiple">确定删除选中的 %1$d 个下载任务吗？</string>
     <string name="download_file_not_exist">文件不存在</string>
+    <string name="download_rename">重命名</string>
+    <string name="download_rename_title">重命名文件</string>
+    <string name="download_rename_hint">只替换文件名开头的标题，画质与编号后缀保持不变</string>
+    <string name="download_rename_done">已重命名为 %1$s</string>
+    <string name="download_rename_empty">名称不能为空</string>
+    <string name="download_rename_taken">同名文件已存在</string>
+    <string name="download_rename_failed">重命名失败，请重试</string>
     <string name="download_notification_channel">下载服务</string>
     <string name="download_notification_downloading">正在下载</string>
     <string name="download_notification_completed">下载完成</string>

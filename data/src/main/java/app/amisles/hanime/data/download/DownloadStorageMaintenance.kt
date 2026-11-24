@@ -3,6 +3,7 @@ package app.amisles.hanime.data.download
 import android.content.Context
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.parser.ParserUtils
+import app.amisles.hanime.domain.model.DownloadRenameResult
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
@@ -128,4 +129,53 @@ internal class DownloadStorageMaintenance(
     suspend fun rescanExistingDownloads(): Int = withContext(Dispatchers.IO) {
         adoptOrphans()
     }
+
+    /**
+     * 重命名已完成任务：磁盘文件与库内标题一起改。
+     *
+     * 站点标题多为日文 + 繁体中文，落盘名冗长且顺序凌乱，用户需要自行整理；而文件名尾部
+     * `_画质_<videoId>` 是卸载重装后认领文件的依据，故只替换标题段，尾部原样保留。
+     */
+    suspend fun rename(taskId: Int, newTitle: String): DownloadRenameResult = withContext(Dispatchers.IO) {
+        val task = store.tasksById[taskId] ?: return@withContext DownloadRenameResult.FAILED
+        if (task.status != DownloadStatus.COMPLETED) return@withContext DownloadRenameResult.NOT_COMPLETED
+        val title = newTitle.trim().replace(INVALID_FILE_NAME_CHARS, "_")
+        if (title.isEmpty()) return@withContext DownloadRenameResult.EMPTY_NAME
+        if (title == task.title) return@withContext DownloadRenameResult.SUCCESS
+
+        val current = File(task.filePath)
+        if (!current.isFile) return@withContext DownloadRenameResult.FILE_MISSING
+        val suffix = current.name.removeSuffix(".mp4").substringAfterLast('_')
+        val baseName = "${title}_${task.quality}".replace(INVALID_FILE_NAME_CHARS, "_")
+        val target = File(current.parentFile, "${clampFileNameBase(baseName, suffix)}_$suffix.mp4")
+        val renamed = when {
+            target.absolutePath == current.absolutePath -> current
+            target.exists() -> return@withContext DownloadRenameResult.NAME_TAKEN
+            !runCatching { current.renameTo(target) }.getOrDefault(false) ->
+                return@withContext DownloadRenameResult.FAILED
+            else -> target
+        }
+
+        val updated = task.copy(title = title, filePath = renamed.absolutePath)
+        val applied = store.lock.withLock {
+            val latest = store.tasksById[taskId]
+            if (latest == null || latest.status != DownloadStatus.COMPLETED) {
+                false
+            } else {
+                store.tasksById[taskId] = updated
+                store.emit()
+                true
+            }
+        }
+        if (!applied) {
+            // 改名期间任务被删除或重新下载：把文件名退回去，避免留下一条没人引用的文件
+            if (renamed != current) runCatching { renamed.renameTo(current) }
+            return@withContext DownloadRenameResult.FAILED
+        }
+        persistence.enqueue(updated)
+        AppLogger.log("DownloadManager", "重命名任务 $taskId: ${task.title} -> $title")
+        DownloadRenameResult.SUCCESS
+    }
 }
+
+private val INVALID_FILE_NAME_CHARS = Regex("[\\\\/:*?\"<>|]")

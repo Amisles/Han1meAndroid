@@ -57,6 +57,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Storage
+import app.amisles.hanime.domain.model.DownloadRenameResult
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.core.ui.components.SearchField
 import app.amisles.hanime.core.ui.components.HintBanner
@@ -156,6 +157,7 @@ fun DownloadScreen(
     val selectableIds = remember(projection) { projection.selectableIds() }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<Int?>(null) }
+    var renameTarget by remember { mutableStateOf<DownloadTask?>(null) }
 
     Box(
         modifier = Modifier
@@ -506,6 +508,7 @@ fun DownloadScreen(
                                         selection.toggle(task.id)
                                     },
                                     onPlayClick = { onPlayLocalVideo(task.filePath) },
+                                    onRenameClick = { renameTarget = task },
                                     onDeleteClick = {
                                         // 删除已完成任务会连带删除本地文件，先确认
                                         deleteTargetId = task.id
@@ -552,6 +555,7 @@ fun DownloadScreen(
                                         onCancelClick = { viewModel.cancelDownload(task.id) },
                                         onRetryClick = { viewModel.resumeDownload(task.id) },
                                         onPlayClick = { onPlayLocalVideo(task.filePath) },
+                                        onRenameClick = { renameTarget = task },
                                         onDeleteClick = {
                                             // 删除已完成任务会连带删除本地文件，先确认
                                             deleteTargetId = task.id
@@ -635,6 +639,33 @@ fun DownloadScreen(
                 showDeleteConfirm = false
             },
             messageTextAlign = TextAlign.Center
+        )
+    }
+
+    val renameTask = renameTarget
+    if (renameTask != null) {
+        DownloadRenameDialog(
+            currentTitle = renameTask.title,
+            onDismiss = { renameTarget = null },
+            onConfirm = { newTitle ->
+                renameTarget = null
+                viewModel.renameDownload(renameTask.id, newTitle) { result ->
+                    AppSnackbar.show(
+                        when (result) {
+                            DownloadRenameResult.SUCCESS ->
+                                context.getString(R.string.download_rename_done, newTitle)
+                            DownloadRenameResult.EMPTY_NAME ->
+                                context.getString(R.string.download_rename_empty)
+                            DownloadRenameResult.NAME_TAKEN ->
+                                context.getString(R.string.download_rename_taken)
+                            DownloadRenameResult.FILE_MISSING ->
+                                context.getString(R.string.download_file_not_exist)
+                            DownloadRenameResult.NOT_COMPLETED, DownloadRenameResult.FAILED ->
+                                context.getString(R.string.download_rename_failed)
+                        }
+                    )
+                }
+            }
         )
     }
 

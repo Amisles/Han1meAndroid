@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VerticalAlignTop
@@ -66,6 +67,7 @@ internal data class DownloadItemActions(
     val onCancelClick: () -> Unit = {},
     val onRetryClick: () -> Unit = {},
     val onPlayClick: () -> Unit = {},
+    val onRenameClick: () -> Unit = {},
     val onDeleteClick: () -> Unit = {},
     val onMoveToFront: () -> Unit = {},
 )
@@ -344,6 +346,21 @@ internal fun DownloadTaskItem(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+                    }
+                }
+
+                // 重命名只对成品文件有意义：未完成的文件由下载流程按命名规则继续写入
+                if (task.status == DownloadStatus.COMPLETED) {
+                    IconButton(
+                        onClick = actions.onRenameClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.download_rename),
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
 

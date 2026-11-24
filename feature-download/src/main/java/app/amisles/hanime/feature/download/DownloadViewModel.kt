@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.amisles.hanime.domain.model.DownloadGateState
+import app.amisles.hanime.domain.model.DownloadRenameResult
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
 import app.amisles.hanime.domain.repository.DownloadRepository
@@ -122,6 +123,17 @@ class DownloadViewModel @Inject constructor(
     fun pauseAll() = mutate { downloads.pauseAll() }
     fun resumeAll() = mutate { downloads.resumeAll() }
     fun moveToFront(taskId: Int) = mutate { downloads.moveToFront(taskId) }
+
+    /** 重命名已完成任务：磁盘文件名与列表标题一起改，结果回到主线程交给界面提示。 */
+    fun renameDownload(taskId: Int, newTitle: String, onResult: (DownloadRenameResult) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = mutationGate.withLock {
+                runCatching { downloads.renameCompletedDownload(taskId, newTitle) }
+                    .getOrDefault(DownloadRenameResult.FAILED)
+            }
+            withContext(Dispatchers.Main) { onResult(result) }
+        }
+    }
 
     fun pauseDownload(taskId: Int) = mutate { downloads.pauseDownload(taskId) }
     fun resumeDownload(taskId: Int) = mutate { downloads.resumeDownload(taskId) }

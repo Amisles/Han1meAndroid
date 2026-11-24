@@ -460,6 +460,13 @@
     <string name="download_delete_message">Are you sure you want to delete this download task?</string>
     <string name="download_delete_message_multiple">Delete the selected %1$d download task(s)?</string>
     <string name="download_file_not_exist">File does not exist</string>
+    <string name="download_rename">Rename</string>
+    <string name="download_rename_title">Rename file</string>
+    <string name="download_rename_hint">Only the leading title is replaced; the quality and ID suffix stay unchanged</string>
+    <string name="download_rename_done">Renamed to %1$s</string>
+    <string name="download_rename_empty">Name cannot be empty</string>
+    <string name="download_rename_taken">A file with this name already exists</string>
+    <string name="download_rename_failed">Rename failed, please try again</string>
     <string name="download_notification_channel">Download Service</string>
     <string name="download_notification_downloading">Downloading</string>
     <string name="download_notification_completed">Download completed</string>

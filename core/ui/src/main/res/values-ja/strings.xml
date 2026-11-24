@@ -460,6 +460,13 @@
     <string name="download_delete_message">このダウンロードタスクを削除しますか？</string>
     <string name="download_delete_message_multiple">選択した %1$d 件のダウンロードタスクを削除しますか？</string>
     <string name="download_file_not_exist">ファイルが存在しません</string>
+    <string name="download_rename">名前を変更</string>
+    <string name="download_rename_title">ファイル名を変更</string>
+    <string name="download_rename_hint">ファイル名の先頭のタイトルだけを置き換えます。画質と番号の接尾辞はそのまま残ります</string>
+    <string name="download_rename_done">%1$s に変更しました</string>
+    <string name="download_rename_empty">名前を入力してください</string>
+    <string name="download_rename_taken">同じ名前のファイルが既に存在します</string>
+    <string name="download_rename_failed">名前の変更に失敗しました。もう一度お試しください</string>
     <string name="download_notification_channel">ダウンロードサービス</string>
     <string name="download_notification_downloading">ダウンロード中</string>
     <string name="download_notification_completed">ダウンロード完了</string>

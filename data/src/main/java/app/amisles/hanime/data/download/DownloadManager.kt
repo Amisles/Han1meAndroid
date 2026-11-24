@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteException
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.data.local.database.DownloadDao
 import app.amisles.hanime.domain.model.DownloadGateState
+import app.amisles.hanime.domain.model.DownloadRenameResult
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStatusPolicy
 import app.amisles.hanime.domain.model.DownloadStorageInfo
@@ -152,6 +153,9 @@ class DownloadManager @Inject constructor(
     override fun adoptDownloadIdFloor(minId: Int) = store.adoptFloor(minId)
 
     override fun getCompletedDownloadCountFlow(): Flow<Int> = downloadDao.observeCompletedCount()
+
+    override suspend fun renameCompletedDownload(taskId: Int, newTitle: String): DownloadRenameResult =
+        maintenance.rename(taskId, newTitle)
 
     override suspend fun getCompletedDownloadCount(): Int = try {
         downloadDao.getCompletedCount()

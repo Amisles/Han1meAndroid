@@ -460,6 +460,13 @@
     <string name="download_delete_message">確定要刪除這個下載任務嗎？</string>
     <string name="download_delete_message_multiple">確定刪除選取的 %1$d 個下載任務嗎？</string>
     <string name="download_file_not_exist">檔案不存在</string>
+    <string name="download_rename">重新命名</string>
+    <string name="download_rename_title">重新命名檔案</string>
+    <string name="download_rename_hint">只替換檔名開頭的標題，畫質與編號後綴保持不變</string>
+    <string name="download_rename_done">已重新命名為 %1$s</string>
+    <string name="download_rename_empty">名稱不能為空</string>
+    <string name="download_rename_taken">同名檔案已存在</string>
+    <string name="download_rename_failed">重新命名失敗，請重試</string>
     <string name="download_notification_channel">下載服務</string>
     <string name="download_notification_downloading">正在下載</string>
     <string name="download_notification_completed">下載完成</string>

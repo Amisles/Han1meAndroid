@@ -1,6 +1,7 @@
 package app.amisles.hanime.domain.repository
 
 import app.amisles.hanime.domain.model.DownloadGateState
+import app.amisles.hanime.domain.model.DownloadRenameResult
 import app.amisles.hanime.domain.model.DownloadStatus
 import app.amisles.hanime.domain.model.DownloadStorageInfo
 import app.amisles.hanime.domain.model.DownloadTask
@@ -49,6 +50,13 @@ interface DownloadRepository {
 
     suspend fun getCompletedDownloadCount(): Int
     fun getCompletedDownloadCountFlow(): Flow<Int>
+
+    /**
+     * 重命名已完成任务：库内标题与磁盘文件名同时更新。
+     *
+     * 文件名保持 `标题_画质_<videoId>.mp4` 的结构，卸载重装后仍能被认领，故只替换标题段。
+     */
+    suspend fun renameCompletedDownload(taskId: Int, newTitle: String): DownloadRenameResult
 
     /** 存储面板数据：目录、已用 / 剩余空间、孤儿位图统计。 */
     suspend fun getStorageInfo(): DownloadStorageInfo
