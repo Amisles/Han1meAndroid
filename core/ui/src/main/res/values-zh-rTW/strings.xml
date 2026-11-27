@@ -898,6 +898,9 @@
     <string name="player_sleep_paused">定時結束，已暫停</string>
     <string name="player_sleep_finished">已播完目前集數，定時暫停</string>
     <string name="player_realtime_translation">即時翻譯</string>
+  <string name="player_subtitle">字幕</string>
+  <string name="player_subtitle_simplified">簡體字幕</string>
+  <string name="player_subtitle_traditional">繁體字幕</string>
     <string name="player_resize_mode">畫面比例</string>
     <string name="player_resize_fit">適應</string>
     <string name="player_resize_crop">裁切</string>

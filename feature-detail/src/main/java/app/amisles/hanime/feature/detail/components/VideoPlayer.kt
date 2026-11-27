@@ -145,7 +145,13 @@ fun VideoPlayer(
     // 当前媒体标识。同一实例内换片（推荐列表直接换视频）时据此复位逐片状态
     mediaId: String = "",
     // 实时翻译模型就绪后才在「更多」菜单里提供开关；模型未下载时整项不出现
-    realtimeTranslationAvailable: Boolean = false
+    realtimeTranslationAvailable: Boolean = false,
+    // 当前直链的字幕语种；空串（站点没给这个视频简繁双字幕）时整项不出现
+    subtitleLang: String = "",
+    subtitleSwitching: Boolean = false,
+    onSubtitleLangChange: (String) -> Unit = {},
+    // 递增即要求换用新的 initialSourceUrl：换字幕语种后直链变了，进度留在原处
+    sourceReloadToken: Int = 0
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -395,6 +401,11 @@ fun VideoPlayer(
     // 换片后父级会把新视频的直链传进来：本源标记必须跟上，否则清晰度菜单、预览取帧都还指着上一部
     LaunchedEffect(initialSourceUrl) {
         playback.onSourceUrlChanged(initialSourceUrl)
+    }
+
+    LaunchedEffect(sourceReloadToken) {
+        if (sourceReloadToken == 0) return@LaunchedEffect
+        playback.switchToSource(initialSourceUrl)
     }
 
     // 同一个播放器换片：逐片状态必须回初值，否则上一部的错误态、手动锁画质、续播标记会被带进新视频
@@ -790,6 +801,9 @@ fun VideoPlayer(
                 realtimeTranslationAvailable = realtimeTranslationAvailable,
                 realtimeTranslation = realtimeTranslation,
                 onRealtimeTranslationChanged = { appPrefs.setRealtimeTranslation(it) },
+                subtitleLang = subtitleLang,
+                subtitleSwitching = subtitleSwitching,
+                onSubtitleLangChange = onSubtitleLangChange,
                 isPlaying = isPlaying,
                 isBuffering = isBuffering,
                 isReady = isReady,

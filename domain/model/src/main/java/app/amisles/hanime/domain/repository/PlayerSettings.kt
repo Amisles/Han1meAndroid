@@ -14,6 +14,15 @@ interface PlayerSettings {
     val preferredQualityFlow: StateFlow<String>
     fun setPreferredQuality(resolution: String)
 
+    /**
+     * 字幕语种（[app.amisles.hanime.domain.model.SubtitleLang]，默认简体）。
+     *
+     * 简繁字幕是烧进画面的两份视频文件，换语种意味着换直链，因此由站点渲染语种决定而不是播放器内切换。
+     */
+    val subtitleLang: String
+    val subtitleLangFlow: StateFlow<String>
+    fun setSubtitleLang(lang: String)
+
     val autoPlayNext: Boolean
     val autoPlayNextFlow: StateFlow<Boolean>
     fun setAutoPlayNext(enabled: Boolean)

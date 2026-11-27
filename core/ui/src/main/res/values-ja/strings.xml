@@ -898,6 +898,9 @@
     <string name="player_sleep_paused">タイマー終了、一時停止しました</string>
     <string name="player_sleep_finished">動画終了のため一時停止</string>
     <string name="player_realtime_translation">リアルタイム翻訳</string>
+  <string name="player_subtitle">字幕</string>
+  <string name="player_subtitle_simplified">簡体字</string>
+  <string name="player_subtitle_traditional">繁体字</string>
     <string name="player_resize_mode">画面比率</string>
     <string name="player_resize_fit">フィット</string>
     <string name="player_resize_crop">クロップ</string>

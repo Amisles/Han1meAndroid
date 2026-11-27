@@ -898,6 +898,9 @@
     <string name="player_sleep_paused">Sleep timer ended, paused</string>
     <string name="player_sleep_finished">Episode finished, paused</string>
     <string name="player_realtime_translation">Real-time translation</string>
+  <string name="player_subtitle">Subtitles</string>
+  <string name="player_subtitle_simplified">Simplified</string>
+  <string name="player_subtitle_traditional">Traditional</string>
     <string name="player_resize_mode">Aspect</string>
     <string name="player_resize_fit">Fit</string>
     <string name="player_resize_crop">Crop</string>

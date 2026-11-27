@@ -9,6 +9,7 @@ import app.amisles.hanime.domain.model.extractVideoId
 import app.amisles.hanime.domain.repository.AccountRepository
 import app.amisles.hanime.domain.repository.ContentRepository
 import app.amisles.hanime.domain.repository.LibraryRepository
+import app.amisles.hanime.domain.repository.PlayerSettings
 import app.amisles.hanime.domain.repository.SessionRepository
 import app.amisles.hanime.domain.repository.TranslationRepository
 import app.amisles.hanime.domain.model.DownloadQuality
@@ -45,6 +46,7 @@ class DetailViewModel @Inject constructor(
     private val session: SessionRepository,
     private val downloads: DownloadRepository,
     private val translation: TranslationRepository,
+    private val playerSettings: PlayerSettings,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -53,6 +55,13 @@ class DetailViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    /** 递增即要求播放器换用新直链：换字幕语种后直链变了，进度必须留在原处。 */
+    private val _sourceReloadToken = MutableStateFlow(0)
+    val sourceReloadToken: StateFlow<Int> = _sourceReloadToken.asStateFlow()
+
+    private val _subtitleSwitching = MutableStateFlow(false)
+    val subtitleSwitching: StateFlow<Boolean> = _subtitleSwitching.asStateFlow()
 
     /**
      * 一次性提示（字符串资源 id）。
@@ -189,7 +198,43 @@ class DetailViewModel @Inject constructor(
 
     fun loadDownloadQualities() {
         val requestVideoId = currentVideoId
-        downloadActions.load(requestVideoId) { isSameVideoAsRequest(requestVideoId) }
+        val subtitleLang = _videoDetail.value?.subtitleLang.orEmpty()
+        downloadActions.load(requestVideoId, subtitleLang) { isSameVideoAsRequest(requestVideoId) }
+    }
+
+    /**
+     * 切换字幕语种：只换解析出来的视频直链，详情页的标题、简介、标签仍是默认语种渲染的那份。
+     *
+     * 站点把简繁字幕做成两份文件，换语种必须回站点重抓一次；抓不到就回滚偏好，
+     * 否则下次进来会按一个从未拿到直链的语种再抓一次。
+     */
+    fun switchSubtitleLang(lang: String) {
+        val detail = _videoDetail.value ?: return
+        if (detail.subtitleLang.isEmpty() || lang == detail.subtitleLang || _subtitleSwitching.value) return
+        val requestVideoId = currentVideoId
+        val previous = playerSettings.subtitleLang
+        playerSettings.setSubtitleLang(lang)
+        _subtitleSwitching.value = true
+        viewModelScope.launch {
+            try {
+                val fresh = content.getVideoDetail(currentVideoUrl).getOrNull()
+                val current = _videoDetail.value
+                if (!isSameVideoAsRequest(requestVideoId)) return@launch
+                if (fresh == null || current == null || fresh.subtitleLang != lang) {
+                    playerSettings.setSubtitleLang(previous)
+                    _messages.trySend(R.string.error_load_detail_failed)
+                    return@launch
+                }
+                _videoDetail.value = current.copy(
+                    videoSources = fresh.videoSources,
+                    defaultSourceUrl = fresh.defaultSourceUrl,
+                    subtitleLang = fresh.subtitleLang
+                )
+                _sourceReloadToken.value++
+            } finally {
+                _subtitleSwitching.value = false
+            }
+        }
     }
 
     fun startDownload(quality: DownloadQuality) {
@@ -247,7 +292,8 @@ class DetailViewModel @Inject constructor(
                 val current = _videoDetail.value ?: return@launch
                 _videoDetail.value = current.copy(
                     videoSources = fresh.videoSources,
-                    defaultSourceUrl = fresh.defaultSourceUrl
+                    defaultSourceUrl = fresh.defaultSourceUrl,
+                    subtitleLang = fresh.subtitleLang
                 )
             } finally {
                 refreshingSources = false

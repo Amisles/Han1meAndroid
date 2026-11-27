@@ -3,6 +3,7 @@ package app.amisles.hanime.data.preferences
 import android.net.Uri
 import app.amisles.hanime.core.common.util.LocaleHelper
 import app.amisles.hanime.domain.model.ComicReadMode
+import app.amisles.hanime.domain.model.SubtitleLang
 import app.amisles.hanime.domain.preferences.PageLayoutKey
 import app.amisles.hanime.domain.preferences.PageLayoutMode
 import app.amisles.hanime.domain.preferences.PageLayoutModes
@@ -98,6 +99,9 @@ class SettingsStore @Inject constructor(
 
     private val _preferredQualityFlow = MutableStateFlow("")
     override val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
+
+    private val _subtitleLangFlow = MutableStateFlow(SubtitleLang.SIMPLIFIED)
+    override val subtitleLangFlow: StateFlow<String> = _subtitleLangFlow.asStateFlow()
 
     private val _autoPlayNextFlow = MutableStateFlow(false)
     override val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
@@ -198,6 +202,9 @@ class SettingsStore @Inject constructor(
         _appLockEnabledFlow.value = storage.readBoolean(PreferenceKeys.APP_LOCK_ENABLED, false)
         _playbackSpeedFlow.value = storage.readFloat(PreferenceKeys.PLAYBACK_SPEED, 1f)
         _preferredQualityFlow.value = storage.readString(PreferenceKeys.PREFERRED_QUALITY, "").orEmpty()
+        _subtitleLangFlow.value = storage.readString(PreferenceKeys.SUBTITLE_LANG, null)
+            ?.takeIf { it in SubtitleLang.SUPPORTED }
+            ?: SubtitleLang.SIMPLIFIED
         _autoPlayNextFlow.value = storage.readBoolean(PreferenceKeys.AUTO_PLAY_NEXT, false)
         _autoPlayRelatedFlow.value = storage.readBoolean(PreferenceKeys.AUTO_PLAY_RELATED, false)
         _loopPlaybackFlow.value = storage.readBoolean(PreferenceKeys.LOOP_PLAYBACK, false)
@@ -250,6 +257,7 @@ class SettingsStore @Inject constructor(
     override val privacyMode: Boolean get() = _privacyModeFlow.value
     override val playbackSpeed: Float get() = _playbackSpeedFlow.value
     override val preferredQuality: String get() = _preferredQualityFlow.value
+    override val subtitleLang: String get() = _subtitleLangFlow.value
     override val autoPlayNext: Boolean get() = _autoPlayNextFlow.value
     override val autoPlayRelated: Boolean get() = _autoPlayRelatedFlow.value
     override val loopPlayback: Boolean get() = _loopPlaybackFlow.value
@@ -491,6 +499,12 @@ class SettingsStore @Inject constructor(
     override fun setPreferredQuality(resolution: String) {
         storage.write { putString(PreferenceKeys.PREFERRED_QUALITY, resolution) }
         _preferredQualityFlow.value = resolution
+    }
+
+    override fun setSubtitleLang(lang: String) {
+        if (lang !in SubtitleLang.SUPPORTED) return
+        storage.write { putString(PreferenceKeys.SUBTITLE_LANG, lang) }
+        _subtitleLangFlow.value = lang
     }
 
     override fun setAutoPlayNext(enabled: Boolean) {

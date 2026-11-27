@@ -71,6 +71,7 @@ import android.app.PictureInPictureParams
 import androidx.compose.ui.geometry.Offset
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
+import app.amisles.hanime.domain.model.SubtitleLang
 import app.amisles.hanime.domain.model.VideoSource
 import androidx.compose.runtime.Composable
 
@@ -90,6 +91,9 @@ internal fun BoxScope.PlayerControls(
     realtimeTranslationAvailable: Boolean,
     realtimeTranslation: Boolean,
     onRealtimeTranslationChanged: (Boolean) -> Unit,
+    subtitleLang: String,
+    subtitleSwitching: Boolean,
+    onSubtitleLangChange: (String) -> Unit,
     sleepTimer: PlayerSleepTimer,
     resizeMode: PlayerResizeMode,
     isPlaying: Boolean,
@@ -522,6 +526,31 @@ internal fun BoxScope.PlayerControls(
                     onClick = { onLoopPlaybackChanged(!isLoopPlayback) },
                     modifier = Modifier.height(40.dp)
                 )
+
+                if (subtitleLang.isNotEmpty()) {
+                    MenuSection(label = stringResource(R.string.player_subtitle)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 6.dp)
+                        ) {
+                            listOf(
+                                SubtitleLang.SIMPLIFIED to R.string.player_subtitle_simplified,
+                                SubtitleLang.TRADITIONAL to R.string.player_subtitle_traditional
+                            ).forEach { (lang, labelRes) ->
+                                MenuChip(
+                                    label = stringResource(labelRes),
+                                    selected = lang == subtitleLang,
+                                    onClick = {
+                                        if (!subtitleSwitching) {
+                                            onShowMoreMenuChange(false)
+                                            onSubtitleLangChange(lang)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 if (realtimeTranslationAvailable) {
                     DropdownMenuItem(

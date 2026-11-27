@@ -67,8 +67,16 @@ interface ContentRepository {
     /** 流式拉取详情：主信息 → 播放列表 → 相关视频。 */
     fun getVideoDetailStream(videoUrl: String): Flow<VideoDetailEvent>
 
-    /** 拉取某视频的可下载画质列表。 */
-    suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>>
+    /**
+     * 拉取某视频的可下载画质列表。
+     *
+     * [subtitleLang] 非空时按该字幕语种重渲染下载页：简繁字幕是两份不同的文件，直链只存在于
+     * 对应语种的页面里。
+     */
+    suspend fun getDownloadQualities(
+        videoId: String,
+        subtitleLang: String = ""
+    ): AppResult<List<DownloadQuality>>
 
     // ── 作者页 / 列表页 / 订阅内容 ──────────────────────────────────────────
     // 这些页面同样是「站点内容」，与首页/搜索共用抓取与解析链路；原先上层直接注入

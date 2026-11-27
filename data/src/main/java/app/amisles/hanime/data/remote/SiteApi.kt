@@ -66,19 +66,19 @@ class SiteApi @Inject constructor(
         return FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchWatchPage(videoUrl: String): FetchResult {
+    suspend fun fetchWatchPage(videoUrl: String, userLang: String = ""): FetchResult {
         val url = if (videoUrl.startsWith("http")) videoUrl else transport.baseUrl + videoUrl
-        AppLogger.log("SiteApi", "Fetching watch page: ${url.redactUrlForLog()}")
-        val html = transport.get(url)
+        AppLogger.log("SiteApi", "Fetching watch page: ${url.redactUrlForLog()} lang=$userLang")
+        val html = transport.get(url, userLang)
         val baseUrl = "https://" +
             (HOST_REGEX.find(url)?.groupValues?.get(1)
                 ?: SettingsRepository.DEFAULT_BASE_URL.removePrefix("https://"))
         return FetchResult(html, baseUrl)
     }
 
-    suspend fun fetchDownloadPage(videoId: String): FetchResult {
+    suspend fun fetchDownloadPage(videoId: String, userLang: String = ""): FetchResult {
         val baseUrl = transport.baseUrl
-        val html = transport.get("$baseUrl/download?v=$videoId")
+        val html = transport.get("$baseUrl/download?v=$videoId", userLang)
         return FetchResult(html, baseUrl)
     }
 

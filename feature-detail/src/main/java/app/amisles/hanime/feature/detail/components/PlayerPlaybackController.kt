@@ -242,6 +242,25 @@ internal class PlayerPlaybackController(
         if (userInitiated) onQualityChanged(source.resolution)
     }
 
+    /**
+     * 换用另一路直链（简繁字幕是两份文件），保留进度与播放态。
+     *
+     * 与 [switchQuality] 的区别：不标记手动覆盖、不回写画质偏好 —— 换的只是字幕版本，画质档位没变。
+     */
+    fun switchToSource(url: String) {
+        if (url.isBlank() || url == currentSourceUrl.value) return
+        val wasPlaying = exoPlayer.isPlaying
+        val position = exoPlayer.currentPosition
+        currentSourceUrl.value = url
+        // 复用换画质的标记：换源瞬间的缓冲区切换不应被算成卡顿降档
+        isSwitchingQuality.value = true
+        isBuffering.value = true
+        exoPlayer.setMediaItem(buildMediaItem(url))
+        exoPlayer.prepare()
+        exoPlayer.seekTo(position)
+        if (wasPlaying) exoPlayer.play()
+    }
+
     fun retry() {
         val position = exoPlayer.currentPosition
         playbackError.value = null

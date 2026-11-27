@@ -134,6 +134,8 @@ fun DetailScreen(
     val playlistState by playlistVm.state.collectAsStateWithLifecycle()
     val cloudSavedTargets by playlistVm.savedTargets.collectAsStateWithLifecycle()
     val cloudWatchLater by playlistVm.watchLater.collectAsStateWithLifecycle()
+    val subtitleSwitching by viewModel.subtitleSwitching.collectAsStateWithLifecycle()
+    val sourceReloadToken by viewModel.sourceReloadToken.collectAsStateWithLifecycle()
     val isSubscribed by viewModel.isSubscribed.collectAsStateWithLifecycle()
     val isSubscribing by viewModel.isSubscribing.collectAsStateWithLifecycle()
     val subscribeError by viewModel.subscribeError.collectAsStateWithLifecycle()
@@ -575,6 +577,10 @@ fun DetailScreen(
                             onRelatedVideoClick = openRelatedInPlace,
                             mediaId = switchedVideoId,
                             realtimeTranslationAvailable = realtimeTranslationAvailable,
+                            subtitleLang = detail.subtitleLang,
+                            subtitleSwitching = subtitleSwitching,
+                            onSubtitleLangChange = { viewModel.switchSubtitleLang(it) },
+                            sourceReloadToken = sourceReloadToken,
                             modifier = Modifier
                         )
                     }
@@ -668,6 +674,10 @@ fun DetailScreen(
                                 onRelatedVideoClick = openRelatedInPlace,
                                 mediaId = switchedVideoId,
                                 realtimeTranslationAvailable = realtimeTranslationAvailable,
+                                subtitleLang = detail.subtitleLang,
+                                subtitleSwitching = subtitleSwitching,
+                                onSubtitleLangChange = { viewModel.switchSubtitleLang(it) },
+                                sourceReloadToken = sourceReloadToken,
                                 showNavButtons = !isPlayerFullscreen,
                                 modifier = (if (isPlayerFullscreen) Modifier.fillMaxSize() else Modifier)
                                     .graphicsLayer {

@@ -2,6 +2,7 @@ package app.amisles.hanime.data.parser
 
 import app.amisles.hanime.domain.model.HanimeVideo
 import app.amisles.hanime.domain.model.PlaylistInfo
+import app.amisles.hanime.domain.model.SubtitleLang
 import app.amisles.hanime.domain.model.VideoDetail
 import app.amisles.hanime.domain.model.VideoDetailEvent
 import app.amisles.hanime.domain.model.VideoSource
@@ -88,6 +89,12 @@ class WatchPageParser @Inject constructor(
             }
         }
         sources.sortByDescending { it.size }
+
+        // 站点只给简繁双字幕的视频渲染这个入口：它存在才谈得上切换，data-lang 即当前页面的语种
+        val subtitleLang = doc.selectFirst("#player-lang-wrapper")
+            ?.let { doc.selectFirst("#player-switch-lang")?.attr("data-lang")?.trim() }
+            ?.takeIf { it in SubtitleLang.SUPPORTED }
+            .orEmpty()
 
         val titleElement = doc.selectFirst("h3#shareBtn-title")
             ?: doc.selectFirst("h3.single-video-title")
@@ -183,7 +190,8 @@ class WatchPageParser @Inject constructor(
             subscribeArtistId = subscribeArtistId,
             subscribeUserId = subscribeUserId,
             subscribeStatus = subscribeStatus,
-            saveOptions = saveOptionsParser.parse(doc, csrfToken)
+            saveOptions = saveOptionsParser.parse(doc, csrfToken),
+            subtitleLang = subtitleLang
         )
     }
 

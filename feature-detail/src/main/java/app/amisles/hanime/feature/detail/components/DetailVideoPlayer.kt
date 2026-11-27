@@ -52,6 +52,10 @@ internal fun DetailVideoPlayer(
     mediaId: String = "",
     showNavButtons: Boolean = true,
     realtimeTranslationAvailable: Boolean = false,
+    subtitleLang: String = "",
+    subtitleSwitching: Boolean = false,
+    onSubtitleLangChange: (String) -> Unit = {},
+    sourceReloadToken: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val appPrefs = LocalAppPreferences.current
@@ -93,6 +97,10 @@ internal fun DetailVideoPlayer(
         onRelatedVideoClick = { onRelatedVideoClick(it.videoUrl) },
         mediaId = mediaId,
         realtimeTranslationAvailable = realtimeTranslationAvailable,
+        subtitleLang = subtitleLang,
+        subtitleSwitching = subtitleSwitching,
+        onSubtitleLangChange = onSubtitleLangChange,
+        sourceReloadToken = sourceReloadToken,
         modifier = modifier
     )
 }

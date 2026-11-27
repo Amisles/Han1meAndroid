@@ -599,6 +599,36 @@ class WatchPageParserTest {
     }
 
     @Test
+    fun `parse reads subtitle language from switch entry`() {
+        val html = """
+            <html lang="zht"><body>
+                <div id="player-lang-wrapper" class="dropdown">
+                    <button type="button">繁體字幕</button>
+                    <div id="player-switch-lang" data-lang="zht" class="dropdown-menu">简体字幕</div>
+                </div>
+                <video id="player" src="https://cdn.example.com/v/720p.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+            </body></html>
+        """.trimIndent()
+        val detail = parser.parse(html, baseUrl)!!
+        assertEquals("zht", detail.subtitleLang)
+    }
+
+    @Test
+    fun `parse ignores switch markup that only appears in scripts`() {
+        val html = """
+            <html><body>
+                <video id="player" src="https://cdn.example.com/v.mp4"/>
+                <h3 id="shareBtn-title">Title</h3>
+                <script>$('#player-lang-wrapper').addClass('lang-hidden');</script>
+            </body></html>
+        """.trimIndent()
+        val detail = parser.parse(html, baseUrl)!!
+        // 单语种视频页只留 JS 里对容器的引用，没有这个元素本身，不能据此判定可切换
+        assertEquals("", detail.subtitleLang)
+    }
+
+    @Test
     fun `parse reads valid js user id`() {
         val html = """
             <html><body>

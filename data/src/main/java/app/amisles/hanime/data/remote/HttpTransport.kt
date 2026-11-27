@@ -5,7 +5,10 @@ import app.amisles.hanime.core.common.extension.redactUrlForLog
 import app.amisles.hanime.core.common.util.AppLogger
 import app.amisles.hanime.core.common.util.BrowserUserAgent
 import app.amisles.hanime.data.cookie.HCookieJar
+import app.amisles.hanime.data.cookie.USER_LANG_COOKIE
 import app.amisles.hanime.data.cookie.filterPrintableAscii
+import app.amisles.hanime.data.cookie.userLangCookie
+import app.amisles.hanime.domain.model.SubtitleLang
 import app.amisles.hanime.domain.remote.CloudflareChallenge
 import app.amisles.hanime.domain.remote.CloudflareChallengeException
 import app.amisles.hanime.domain.result.AppException
@@ -106,8 +109,34 @@ class HttpTransport @Inject constructor(
             .build()
     }
 
-    private suspend fun executeRequest(request: Request): String = withContext(Dispatchers.IO) {
-        client.newCall(request).execute().use { response ->
+    /**
+     * 指定整页渲染语种的请求链路：Cookie 只在本条链路上覆盖，不影响其它请求。
+     *
+     * 简繁字幕是两份带各自签名的视频文件，只有让站点按目标语种重渲染页面才能拿到对应直链。
+     */
+    private fun clientForUserLang(lang: String): OkHttpClient = client.newBuilder()
+        .cookieJar(object : CookieJar {
+            override fun loadForRequest(url: HttpUrl): List<Cookie> =
+                cookieJar.loadForRequest(url).filterNot { it.name == USER_LANG_COOKIE } +
+                    userLangCookie(url.host, lang)
+
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) =
+                cookieJar.saveFromResponse(url, cookies)
+        })
+        .build()
+
+    private val userLangClients: Map<String, OkHttpClient> by lazy {
+        mapOf(
+            SubtitleLang.SIMPLIFIED to clientForUserLang(SubtitleLang.SIMPLIFIED),
+            SubtitleLang.TRADITIONAL to clientForUserLang(SubtitleLang.TRADITIONAL)
+        )
+    }
+
+    private suspend fun executeRequest(
+        request: Request,
+        target: OkHttpClient = client
+    ): String = withContext(Dispatchers.IO) {
+        target.newCall(request).execute().use { response ->
             AppLogger.log("HttpTransport", "Response code: ${response.code}")
             if (!response.isSuccessful) {
                 val body = response.body.string()
@@ -141,7 +170,8 @@ class HttpTransport @Inject constructor(
             body.contains("cf_chl_", ignoreCase = true)
     }
 
-    suspend fun get(url: String): String = executeRequest(buildRequest(url))
+    suspend fun get(url: String, userLang: String = ""): String =
+        executeRequest(buildRequest(url), userLangClients[userLang] ?: client)
 
     suspend fun fetchLoginPage(): FetchResult = withContext(Dispatchers.IO) {
         AppLogger.log("HttpTransport", "fetchLoginPage called")

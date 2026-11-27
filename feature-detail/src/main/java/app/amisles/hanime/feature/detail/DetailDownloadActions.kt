@@ -38,14 +38,14 @@ internal class DetailDownloadActions(
         _isLoading.value = false
     }
 
-    fun load(videoId: String, isCurrent: () -> Boolean) {
+    fun load(videoId: String, subtitleLang: String, isCurrent: () -> Boolean) {
         if (videoId.isEmpty()) return
         AppLogger.d("DetailDownloadActions", "load called, videoId: $videoId")
         _isLoading.value = true
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    content.getDownloadQualities(videoId)
+                    content.getDownloadQualities(videoId, subtitleLang)
                 }
                 if (!isCurrent()) {
                     AppLogger.d("DetailDownloadActions", "Discard stale qualities response: $videoId")

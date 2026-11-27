@@ -69,6 +69,7 @@ internal object VideoDetailCacheCodec {
         .put("subscribeUserId", detail.subscribeUserId)
         .put("subscribeStatus", detail.subscribeStatus)
         .put("saveOptions", encodeSaveOptions(detail.saveOptions))
+        .put("subtitleLang", detail.subtitleLang)
 
     private fun decodeDetail(json: JSONObject): VideoDetail = VideoDetail(
         title = json.optString("title"),
@@ -91,7 +92,8 @@ internal object VideoDetailCacheCodec {
         subscribeUserId = json.optString("subscribeUserId"),
         subscribeStatus = json.optString("subscribeStatus"),
         saveOptions = json.optJSONObject("saveOptions")?.let { decodeSaveOptions(it) }
-            ?: VideoSaveOptions()
+            ?: VideoSaveOptions(),
+        subtitleLang = json.optString("subtitleLang")
     )
 
     private fun encodeSource(source: VideoSource): JSONObject = JSONObject()

@@ -57,7 +57,8 @@ class VideoDetailCacheCodecTest {
             videoId = "42",
             csrfToken = "save-token",
             options = listOf(PlaylistSaveOption("save", "稍后观看", isPrivate = false, selected = true))
-        )
+        ),
+        subtitleLang = "zht"
     )
 
     @Test
@@ -92,5 +93,6 @@ class VideoDetailCacheCodecTest {
         assertEquals(emptyList<HanimeVideo>(), detail?.relatedVideos)
         assertNull(detail?.playlist)
         assertEquals(VideoSaveOptions(), detail?.saveOptions)
+        assertEquals("", detail?.subtitleLang)
     }
 }

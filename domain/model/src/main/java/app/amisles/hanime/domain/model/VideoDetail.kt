@@ -51,7 +51,9 @@ data class VideoDetail(
     // 订阅状态，"" = 未订阅，"1" = 已订阅（与官网 subscribe-status 一致）
     val subscribeStatus: String = "",
     // 详情页「存储」弹窗：可选的清单与当前勾选态（未登录时为空）
-    val saveOptions: VideoSaveOptions = VideoSaveOptions()
+    val saveOptions: VideoSaveOptions = VideoSaveOptions(),
+    // 当前直链使用的字幕语种（见 SubtitleLang）；空串表示该视频没有简繁双字幕，播放器不提供切换
+    val subtitleLang: String = ""
 )
 
 /** 订阅/取消订阅接口（官网 /subscribe）的返回结果：新订阅状态 + 新的 CSRF Token。 */

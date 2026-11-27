@@ -24,6 +24,7 @@ internal object PreferenceKeys {
     const val PRIVACY_MODE = "privacy_mode"
     const val PLAYBACK_SPEED = "playback_speed"
     const val PREFERRED_QUALITY = "preferred_quality"
+    const val SUBTITLE_LANG = "subtitle_lang"
     const val AUTO_PLAY_NEXT = "auto_play_next"
     const val AUTO_PLAY_RELATED = "auto_play_related"
     const val LOOP_PLAYBACK = "loop_playback"

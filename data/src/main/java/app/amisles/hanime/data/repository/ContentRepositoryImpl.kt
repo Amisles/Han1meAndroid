@@ -135,15 +135,16 @@ class ContentRepositoryImpl @Inject constructor(
             AppLogger.log("ContentRepositoryImpl", "Watch page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             val detail = watchPageParser.parse(result.html, result.baseUrl)
                 ?: return AppResult.error(DomainError.DETAIL_PARSE_FAILED)
+            val resolved = applyPreferredSubtitleSources(videoUrl, detail)
             // 单次解析拿到的也是最新结果：写回缓存，避免刷新的播放地址被上一次的旧缓存顶掉
-            if (detail.title.isNotBlank()) {
+            if (resolved.title.isNotBlank()) {
                 videoDetailStore.put(
                     videoDetailCacheKey(videoUrl),
-                    detail,
+                    resolved,
                     playerSettings.videoDetailCacheLimit
                 )
             }
-            AppResult.success(detail)
+            AppResult.success(resolved)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -178,20 +179,30 @@ class ContentRepositoryImpl @Inject constructor(
             var failed = false
             watchPageParser.parseStreaming(result.html, result.baseUrl).collect { event ->
                 when (event) {
-                    is VideoDetailEvent.MainInfo -> mainInfo = event.detail
+                    is VideoDetailEvent.MainInfo -> {
+                        // 目标语种的直链要先补齐再下发：界面拿到主信息就会建播放器，
+                        // 迟到一步的换源会打断刚起播的画面
+                        val resolved = applyPreferredSubtitleSources(videoUrl, event.detail)
+                        mainInfo = resolved
+                        // 已有缓存时不逐块下发：流式的主信息不含相关视频与播放列表，
+                        // 直接发出去会先把界面上现有的列表清空再补回，等于白闪一下
+                        if (cached == null) emit(VideoDetailEvent.MainInfo(resolved))
+                    }
                     is VideoDetailEvent.Playlist -> {
                         playlist = event.playlist
                         playlistParsed = true
+                        if (cached == null) emit(event)
                     }
                     is VideoDetailEvent.RelatedVideos -> {
                         relatedVideos = event.videos
                         relatedParsed = true
+                        if (cached == null) emit(event)
                     }
-                    is VideoDetailEvent.Error -> failed = true
+                    is VideoDetailEvent.Error -> {
+                        failed = true
+                        if (cached == null) emit(event)
+                    }
                 }
-                // 已有缓存时不逐块下发：流式的主信息不含相关视频与播放列表，
-                // 直接发出去会先把界面上现有的列表清空再补回，等于白闪一下
-                if (cached == null) emit(event)
             }
             val parsed = mainInfo
             if (!failed && parsed != null && playlistParsed && relatedParsed && parsed.title.isNotBlank()) {
@@ -215,13 +226,48 @@ class ContentRepositoryImpl @Inject constructor(
     // 解析结果带 csrfToken / 当前用户 ID / 订阅态，按登录用户分区，换账号后不得复用
     private fun videoDetailCacheKey(videoUrl: String): String {
         val videoId = extractVideoId(videoUrl).ifEmpty { videoUrl }
-        return session.savedUserId + "|" + videoId
+        return session.savedUserId + "|" + videoId + "|" + playerSettings.subtitleLang
+    }
+
+    /**
+     * 用偏好语种的直链替换页面里的直链，其余（标题、简介、标签等文案）保持默认语种的渲染结果。
+     *
+     * 站点的渲染语种是整页一起变的，而简繁字幕各自是一份带独立签名的视频文件：只为拿直链再抓一次，
+     * 抓不到就保留默认语种的直链，界面文案不受影响。
+     */
+    private suspend fun applyPreferredSubtitleSources(
+        videoUrl: String,
+        detail: VideoDetail
+    ): VideoDetail {
+        val preferred = playerSettings.subtitleLang
+        if (detail.subtitleLang.isEmpty() || detail.subtitleLang == preferred) return detail
+        return try {
+            val page = siteApi.fetchWatchPage(videoUrl, preferred)
+            val alternate = watchPageParser.parse(page.html, page.baseUrl)
+            if (alternate == null || alternate.videoSources.isEmpty()) {
+                detail
+            } else {
+                detail.copy(
+                    videoSources = alternate.videoSources,
+                    defaultSourceUrl = alternate.defaultSourceUrl,
+                    subtitleLang = alternate.subtitleLang.ifEmpty { preferred }
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.logError("ContentRepositoryImpl", "Error fetching subtitle sources: ${e.message}", e)
+            detail
+        }
     }
 
 
-    override suspend fun getDownloadQualities(videoId: String): AppResult<List<DownloadQuality>> {
+    override suspend fun getDownloadQualities(
+        videoId: String,
+        subtitleLang: String
+    ): AppResult<List<DownloadQuality>> {
         return try {
-            val result = siteApi.fetchDownloadPage(videoId)
+            val result = siteApi.fetchDownloadPage(videoId, subtitleLang)
             AppLogger.log("ContentRepositoryImpl", "Download page HTML received, length: ${result.html.length}, baseUrl: ${result.baseUrl}")
             AppResult.success(downloadPageParser.parse(result.html, result.baseUrl))
         } catch (e: CancellationException) {
