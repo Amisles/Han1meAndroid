@@ -44,7 +44,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -108,7 +108,7 @@ fun DownloadScreen(
     // 点「播放」：交给上层跳转到应用内的本地播放页，不再走外部播放器 Intent
     onPlayLocalVideo: (String) -> Unit = {}
 ) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val appPrefs = LocalAppPreferences.current
     val viewModel: DownloadViewModel = hiltViewModel()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
@@ -256,7 +256,7 @@ fun DownloadScreen(
                             onClick = {
                                 viewModel.exportMigration {
                                     AppSnackbar.show(
-                                        context.getString(R.string.download_migration_export_empty)
+                                        resources.getString(R.string.download_migration_export_empty)
                                     )
                                 }
                             }
@@ -274,7 +274,7 @@ fun DownloadScreen(
                             onClick = {
                                 viewModel.pauseAll()
                                 AppSnackbar.show(
-                                    context.getString(
+                                    resources.getString(
                                         R.string.download_queue_toast_paused,
                                         downloadingTasks.size
                                     )
@@ -602,7 +602,7 @@ fun DownloadScreen(
                     onClick = {
                         viewModel.retryAllFailed()
                         AppSnackbar.show(
-                            context.getString(R.string.download_retry_all_toast, failedTasks.size)
+                            resources.getString(R.string.download_retry_all_toast, failedTasks.size)
                         )
                     }
                 )
@@ -653,15 +653,15 @@ fun DownloadScreen(
                     AppSnackbar.show(
                         when (result) {
                             DownloadRenameResult.SUCCESS ->
-                                context.getString(R.string.download_rename_done, newTitle)
+                                resources.getString(R.string.download_rename_done, newTitle)
                             DownloadRenameResult.EMPTY_NAME ->
-                                context.getString(R.string.download_rename_empty)
+                                resources.getString(R.string.download_rename_empty)
                             DownloadRenameResult.NAME_TAKEN ->
-                                context.getString(R.string.download_rename_taken)
+                                resources.getString(R.string.download_rename_taken)
                             DownloadRenameResult.FILE_MISSING ->
-                                context.getString(R.string.download_file_not_exist)
+                                resources.getString(R.string.download_file_not_exist)
                             DownloadRenameResult.NOT_COMPLETED, DownloadRenameResult.FAILED ->
-                                context.getString(R.string.download_rename_failed)
+                                resources.getString(R.string.download_rename_failed)
                         }
                     )
                 }

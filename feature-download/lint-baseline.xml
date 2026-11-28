@@ -15,39 +15,6 @@
     <issue
         id="LocalContextGetResourceValueCall"
         message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
-        errorLine1="                                        context.getString(R.string.download_migration_export_empty)"
-        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
-            line="257"
-            column="41"/>
-    </issue>
-
-    <issue
-        id="LocalContextGetResourceValueCall"
-        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
-        errorLine1="                                    context.getString("
-        errorLine2="                                    ^">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
-            line="275"
-            column="37"/>
-    </issue>
-
-    <issue
-        id="LocalContextGetResourceValueCall"
-        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
-        errorLine1="                            context.getString(R.string.download_retry_all_toast, failedTasks.size)"
-        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/app/amisles/hanime/feature/download/DownloadScreen.kt"
-            line="601"
-            column="29"/>
-    </issue>
-
-    <issue
-        id="LocalContextGetResourceValueCall"
-        message="Querying resource values using LocalContext.current is not configuration-aware and may return stale values if the Configuration changes"
         errorLine1="                    context.getString("
         errorLine2="                    ^">
         <location
