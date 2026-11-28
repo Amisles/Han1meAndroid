@@ -26,13 +26,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LinearScale
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ZoomOutMap
@@ -532,7 +532,7 @@ private val FEATURE_TILES = listOf(
     FeatureTile(PlayerControlId.MINI_PROGRESS, Icons.Outlined.LinearScale, R.string.player_layout_show_mini_progress),
     FeatureTile(PlayerControlId.SLEEP_TIMER, Icons.Outlined.Bedtime, R.string.player_layout_show_sleep_timer),
     FeatureTile(PlayerControlId.PIP, Icons.Outlined.PictureInPictureAlt, R.string.player_layout_show_pip),
-    FeatureTile(PlayerControlId.RELATED_LIST, Icons.Outlined.PlaylistPlay, R.string.player_layout_show_related_list)
+    FeatureTile(PlayerControlId.RELATED_LIST, Icons.AutoMirrored.Outlined.PlaylistPlay, R.string.player_layout_show_related_list)
 )
 
 private fun tapActionLabelRes(action: PlayerTapAction): Int = when (action) {
